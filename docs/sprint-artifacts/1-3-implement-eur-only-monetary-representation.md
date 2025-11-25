@@ -1,6 +1,6 @@
 # Story 1.3: Implement EUR-Only Monetary Representation
 
-Status: review
+Status: done
 
 ## Story
 
