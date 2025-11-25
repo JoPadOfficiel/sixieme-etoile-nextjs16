@@ -14,7 +14,7 @@ import { apiClient } from "@shared/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import nProgress from "nprogress";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState, useRef } from "react";
 import { ActiveOrganizationContext } from "../lib/active-organization-context";
 
 export function ActiveOrganizationProvider({
@@ -28,6 +28,8 @@ export function ActiveOrganizationProvider({
 	const params = useParams();
 
 	const activeOrganizationSlug = params.organizationSlug as string;
+	const syncingRef = useRef(false);
+	const lastSyncedSlugRef = useRef<string | null>(null);
 
 	const { data: activeOrganization } = useActiveOrganizationQuery(
 		activeOrganizationSlug,
@@ -35,6 +37,60 @@ export function ActiveOrganizationProvider({
 			enabled: !!activeOrganizationSlug,
 		},
 	);
+
+	// Auto-sync activeOrganizationId in session when URL slug changes
+	// Note: better-auth stores the slug in activeOrganizationId, not the id
+	useEffect(() => {
+		const syncActiveOrganization = async () => {
+			// Skip if already syncing, no organization loaded, or no slug
+			if (syncingRef.current || !activeOrganization || !activeOrganizationSlug) {
+				return;
+			}
+
+			// Check if we already synced this slug (prevents infinite loop)
+			if (lastSyncedSlugRef.current === activeOrganizationSlug) {
+				return;
+			}
+
+			// Check if session's activeOrganizationId matches the current organization
+			// better-auth stores slug in activeOrganizationId, so compare with both id and slug
+			const currentActiveOrgId = session?.activeOrganizationId;
+			if (currentActiveOrgId === activeOrganization.id || currentActiveOrgId === activeOrganization.slug) {
+				lastSyncedSlugRef.current = activeOrganizationSlug;
+				return; // Already synced
+			}
+
+			// Sync the active organization in the session
+			syncingRef.current = true;
+			try {
+				await authClient.organization.setActive({
+					organizationSlug: activeOrganizationSlug,
+				});
+
+				// Mark as synced to prevent re-triggering
+				lastSyncedSlugRef.current = activeOrganizationSlug;
+
+				// Update session query cache with the slug (what better-auth actually stores)
+				queryClient.setQueryData(sessionQueryKey, (data: unknown) => {
+					if (!data || typeof data !== 'object') return data;
+					const sessionData = data as { session?: { activeOrganizationId?: string } };
+					return {
+						...sessionData,
+						session: {
+							...sessionData.session,
+							activeOrganizationId: activeOrganization.slug,
+						},
+					};
+				});
+			} catch (error) {
+				console.error("Failed to sync active organization:", error);
+			} finally {
+				syncingRef.current = false;
+			}
+		};
+
+		syncActiveOrganization();
+	}, [activeOrganization, activeOrganizationSlug, session?.activeOrganizationId, queryClient]);
 
 	const refetchActiveOrganization = async () => {
 		await queryClient.refetchQueries({
@@ -84,12 +140,15 @@ export function ActiveOrganizationProvider({
 			});
 		}
 
-		await queryClient.setQueryData(sessionQueryKey, (data: any) => {
+		// Update session cache with slug (what better-auth actually stores)
+		queryClient.setQueryData(sessionQueryKey, (data: unknown) => {
+			if (!data || typeof data !== 'object') return data;
+			const sessionData = data as { session?: { activeOrganizationId?: string } };
 			return {
-				...data,
+				...sessionData,
 				session: {
-					...data?.session,
-					activeOrganizationId: newActiveOrganization.id,
+					...sessionData.session,
+					activeOrganizationId: newActiveOrganization.slug,
 				},
 			};
 		});
@@ -103,7 +162,15 @@ export function ActiveOrganizationProvider({
 		if (!loaded && activeOrganization !== undefined) {
 			setLoaded(true);
 		}
-	}, [activeOrganization]);
+	}, [activeOrganization, loaded]);
+
+	// Check if session is synced with current organization
+	// Note: better-auth stores slug in activeOrganizationId
+	const isSessionSynced = !!(
+		activeOrganization &&
+		(session?.activeOrganizationId === activeOrganization.id ||
+		 session?.activeOrganizationId === activeOrganization.slug)
+	);
 
 	const activeOrganizationUserRole = activeOrganization?.members.find(
 		(member) => member.userId === session?.userId,
@@ -117,6 +184,7 @@ export function ActiveOrganizationProvider({
 		<ActiveOrganizationContext.Provider
 			value={{
 				loaded,
+				isSessionSynced,
 				activeOrganization: activeOrganization ?? null,
 				activeOrganizationUserRole: activeOrganizationUserRole ?? null,
 				isOrganizationAdmin,

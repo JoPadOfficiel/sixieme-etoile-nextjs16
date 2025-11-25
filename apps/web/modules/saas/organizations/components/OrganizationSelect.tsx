@@ -40,38 +40,43 @@ export function OrganzationSelect({
 	return (
 		<div className={className}>
 			<DropdownMenu>
-				<DropdownMenuTrigger className="flex w-full items-center justify-between gap-2 rounded-md border bg-card px-2 py-1.5 text-left outline-none focus-visible:bg-primary/10 focus-visible:ring-none">
-					<div className="flex flex-1 items-center justify-start gap-2 text-sm">
-						{activeOrganization ? (
-							<>
-								<OrganizationLogo
-									name={activeOrganization.name}
-									logoUrl={activeOrganization.logo}
-									className="hidden size-8 sm:block"
-								/>
-								<span className="block flex-1 truncate">
-									{activeOrganization.name}
-								</span>
-								{config.organizations.enableBilling && (
-									<ActivePlanBadge organizationId={activeOrganization.id} />
-								)}
-							</>
-						) : (
-							<>
-								<UserAvatar
-									className="hidden size-8 sm:block"
-									name={user.name ?? ""}
-									avatarUrl={user.image}
-								/>
-								<span className="block truncate">
-									{t("organizations.organizationSelect.personalAccount")}
-								</span>
-								{config.users.enableBilling && <ActivePlanBadge />}
-							</>
-						)}
-					</div>
+				<DropdownMenuTrigger asChild>
+					<button
+						type="button"
+						className="flex w-full items-center justify-between gap-2 rounded-md border bg-card px-2 py-1.5 text-left outline-none focus-visible:bg-primary/10 focus-visible:ring-none"
+					>
+						<div className="flex flex-1 items-center justify-start gap-2 text-sm">
+							{activeOrganization ? (
+								<>
+									<OrganizationLogo
+										name={activeOrganization.name}
+										logoUrl={activeOrganization.logo}
+										className="hidden size-8 sm:block"
+									/>
+									<span className="block flex-1 truncate">
+										{activeOrganization.name}
+									</span>
+									{config.organizations.enableBilling && (
+										<ActivePlanBadge organizationId={activeOrganization.id} />
+									)}
+								</>
+							) : (
+								<>
+									<UserAvatar
+										className="hidden size-8 sm:block"
+										name={user.name ?? ""}
+										avatarUrl={user.image}
+									/>
+									<span className="block truncate">
+										{t("organizations.organizationSelect.personalAccount")}
+									</span>
+									{config.users.enableBilling && <ActivePlanBadge />}
+								</>
+							)}
+						</div>
 
-					<ChevronsUpDownIcon className="block size-4 opacity-50" />
+						<ChevronsUpDownIcon className="block size-4 opacity-50" />
+					</button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="w-full">
 					{!config.organizations.requireOrganization && (

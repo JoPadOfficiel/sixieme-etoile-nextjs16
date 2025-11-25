@@ -49,7 +49,7 @@ export function OrganizationMembersList({
 	const { toast } = useToast();
 
 	const isUserAdmin = user?.role === "admin";
-	const userOrganizationRole = organization?.members.find(
+	const userOrganizationRole = organization?.members?.find(
 		(member) => member.userId === user?.id,
 	)?.role;
 	const isOrganizationAdmin =

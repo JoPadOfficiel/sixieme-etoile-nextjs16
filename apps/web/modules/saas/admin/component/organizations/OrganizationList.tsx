@@ -225,12 +225,12 @@ export function OrganizationList() {
 					{t("admin.organizations.title")}
 				</h2>
 
-				<Button asChild>
-					<Link href={getAdminPath("/organizations/new")}>
+				<Link href={getAdminPath("/organizations/new")}>
+					<Button>
 						<PlusIcon className="mr-1.5 size-4" />
 						{t("admin.organizations.create")}
-					</Link>
-				</Button>
+					</Button>
+				</Link>
 			</div>
 			<Input
 				type="search"
