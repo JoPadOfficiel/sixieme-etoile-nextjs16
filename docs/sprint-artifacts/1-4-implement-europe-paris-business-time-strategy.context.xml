@@ -1,0 +1,292 @@
+<story-context id="story-1.4-europe-paris-business-time" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.4</storyId>
+    <title>Implement Europe/Paris Business Time Strategy</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-25T21:28:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-1.4</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>dispatcher</asA>
+    <iWant>times in the UI to match exactly the times stored in the database</iWant>
+    <soThat>there is no confusion due to timezone conversions</soThat>
+    <tasks>
+      <task id="1.4.1">Create backend datetime utilities in packages/api/src/lib/datetime.ts</task>
+      <task id="1.4.2">Create unit tests for datetime utilities in packages/api/src/lib/__tests__/datetime.test.ts</task>
+      <task id="1.4.3">Create frontend DateTimeDisplay component in apps/web/app/_components/datetime/</task>
+      <task id="1.4.4">Create frontend DateInput component for date selection</task>
+      <task id="1.4.5">Create frontend TimeInput component for time selection</task>
+      <task id="1.4.6">Create barrel export for datetime components</task>
+      <task id="1.4.7">Validate Prisma DateTime behavior with integration test</task>
+      <task id="1.4.8">Document the Europe/Paris business time strategy</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>date/time fields such as pickupAt, issueDate, validUntil and RSE counters</given>
+      <when>the frontend submits a datetime from the cockpit (Create Quote, Dispatch, Invoices)</when>
+      <then>the backend stores that value as-is in a Prisma DateTime field without applying any timezone conversion</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>a record with a stored datetime</given>
+      <when>the same record is fetched and rendered in the UI</when>
+      <then>the operator sees exactly the same wall-clock time they entered, assuming Europe/Paris as the business context</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>the need for consistent date/time handling</given>
+      <when>developers work with dates in the VTC ERP</when>
+      <then>they have access to utility functions for formatting, parsing, and displaying dates in Europe/Paris format</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>the cockpit UI needs date/time inputs</given>
+      <when>building forms</when>
+      <then>developers can use standardized DateTimeDisplay and DateTimeInput components that follow the Europe/Paris strategy</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>the Europe/Paris business time strategy</given>
+      <when>a new developer joins the project</when>
+      <then>they can find clear documentation explaining the approach and conventions</then>
+    </criterion>
+    <criterion id="AC-gherkin">
+      <feature>Europe/Paris Business Time Strategy</feature>
+      <background>a VTC ERP system where all operators work in Europe/Paris timezone</background>
+      <scenarios>
+        <scenario name="DateTime stored without conversion">
+          <given>a Quote with pickupAt set to "2025-06-15T14:30:00"</given>
+          <when>the Quote is saved to the database</when>
+          <then>the database stores exactly "2025-06-15T14:30:00" without timezone offset</then>
+        </scenario>
+        <scenario name="DateTime displayed identically">
+          <given>a Quote with pickupAt stored as "2025-06-15T14:30:00"</given>
+          <when>the Quote is retrieved and displayed in the UI</when>
+          <then>the UI shows "15/06/2025 14:30" (French format)</then>
+        </scenario>
+        <scenario name="Formatting utility produces French format">
+          <given>a Date object representing 2025-06-15 14:30</given>
+          <when>formatParisDateTime is called</when>
+          <then>it returns "15/06/2025 14:30"</then>
+        </scenario>
+        <scenario name="Parsing utility handles French input">
+          <given>a string "15/06/2025 14:30"</given>
+          <when>parseParisDateTime is called</when>
+          <then>it returns a Date object for 2025-06-15 14:30</then>
+        </scenario>
+        <scenario name="Round-trip preserves value">
+          <given>a datetime value submitted from the UI</given>
+          <when>it is stored, retrieved, and displayed</when>
+          <then>the displayed value matches the original input exactly</then>
+        </scenario>
+      </scenarios>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>VTC ERP Technical Specification</title>
+        <section>Date and Time Strategy (lines 196-216)</section>
+        <snippet>Goal: avoid complexity of multi-timezone logic while matching business expectations in Europe/Paris. All timestamp fields use Prisma DateTime without @db.Timestamptz annotations. The application treats DateTime as naive Europe/Paris business times. When the frontend sends a DateTime, it is taken as the business time. The backend does not perform timezone conversions.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP Product Requirements Document</title>
+        <section>FR40 - Time handling</section>
+        <snippet>FR40: The system shall store operational timestamps as business times in the Europe/Paris timezone and present the exact same values in the UI, without any timezone conversion logic.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 1.4: Implement Europe/Paris Business Time Strategy</section>
+        <snippet>Prerequisites: Story 1.1 (timestamp fields defined in Prisma), environment aligned with Europe/Paris strategy. Technical Notes: Follow the Tech Spec Date and Time Strategy: use DateTime without @db.Timestamptz annotations and avoid implicit conversions in the ORM layer.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>packages/api/src/lib/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>EUR formatting utilities</symbol>
+        <lines>1-235</lines>
+        <reason>Reference implementation for utility pattern. datetime.ts should follow same structure: constants, Intl formatters, format/parse functions, JSDoc documentation.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/app/_components/currency/EURDisplay.tsx</path>
+        <kind>component</kind>
+        <symbol>EURDisplay, EURDisplayInline, EURDisplayLarge</symbol>
+        <lines>1-175</lines>
+        <reason>Reference implementation for display component pattern. DateTimeDisplay should follow same structure: props interface, variants, cn() for styling.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/app/_components/currency/EURInput.tsx</path>
+        <kind>component</kind>
+        <symbol>EURInput</symbol>
+        <lines>N/A</lines>
+        <reason>Reference implementation for input component pattern. DateInput and TimeInput should follow same structure.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/app/_components/currency/index.ts</path>
+        <kind>barrel</kind>
+        <symbol>Currency exports</symbol>
+        <lines>1-25</lines>
+        <reason>Reference for barrel export pattern. datetime/index.ts should follow same structure.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>DateTime fields</symbol>
+        <lines>959, 988, 1028-1029</lines>
+        <reason>Existing DateTime fields: Quote.pickupAt, Quote.validUntil, Invoice.issueDate, Invoice.dueDate, SeasonalMultiplier.startDate/endDate, Promotion.validFrom/validTo, EmptyLegOpportunity.windowStart/windowEnd, DriverLicense.validFrom/validTo. All use DateTime without timezone annotations.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="date-fns" version="if needed for parsing" note="Check if already in project, otherwise use native Intl" />
+        <package name="date-fns-tz" version="NOT RECOMMENDED" note="Avoid timezone libraries - we want naive datetime handling" />
+      </ecosystem>
+      <ecosystem name="browser">
+        <package name="Intl.DateTimeFormat" version="native" note="Use for formatting with fr-FR locale" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="no-timezone-conversion">NEVER apply timezone conversion when storing or retrieving DateTime values. Values are naive Europe/Paris business times.</constraint>
+    <constraint type="french-locale">Use fr-FR locale for all date/time formatting: DD/MM/YYYY HH:mm format</constraint>
+    <constraint type="24-hour-format">Use 24-hour time format (14:30 not 2:30 PM)</constraint>
+    <constraint type="iso-api">Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss) for API request/response bodies</constraint>
+    <constraint type="no-timestamptz">Prisma DateTime fields must NOT use @db.Timestamptz annotation</constraint>
+    <constraint type="consistent-pattern">Follow the same utility/component pattern established by currency.ts and EURDisplay.tsx</constraint>
+    <constraint type="no-external-tz-libs">Avoid timezone manipulation libraries (moment-timezone, date-fns-tz, luxon). Use native Intl APIs.</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>formatParisDateTime</name>
+      <kind>function</kind>
+      <signature>formatParisDateTime(date: Date | string | null | undefined): string</signature>
+      <path>packages/api/src/lib/datetime.ts</path>
+      <description>Formats a date to French format "DD/MM/YYYY HH:mm"</description>
+    </interface>
+    <interface>
+      <name>formatParisDate</name>
+      <kind>function</kind>
+      <signature>formatParisDate(date: Date | string | null | undefined): string</signature>
+      <path>packages/api/src/lib/datetime.ts</path>
+      <description>Formats a date to French format "DD/MM/YYYY"</description>
+    </interface>
+    <interface>
+      <name>formatParisTime</name>
+      <kind>function</kind>
+      <signature>formatParisTime(date: Date | string | null | undefined): string</signature>
+      <path>packages/api/src/lib/datetime.ts</path>
+      <description>Formats a time to "HH:mm" format</description>
+    </interface>
+    <interface>
+      <name>parseParisDateTime</name>
+      <kind>function</kind>
+      <signature>parseParisDateTime(input: string): Date</signature>
+      <path>packages/api/src/lib/datetime.ts</path>
+      <description>Parses French format "DD/MM/YYYY HH:mm" to Date</description>
+    </interface>
+    <interface>
+      <name>toISOStringNoOffset</name>
+      <kind>function</kind>
+      <signature>toISOStringNoOffset(date: Date): string</signature>
+      <path>packages/api/src/lib/datetime.ts</path>
+      <description>Returns ISO string without timezone offset (YYYY-MM-DDTHH:mm:ss)</description>
+    </interface>
+    <interface>
+      <name>DateTimeDisplay</name>
+      <kind>React component</kind>
+      <signature>DateTimeDisplay({ value, format?, className?, fallback? })</signature>
+      <path>apps/web/app/_components/datetime/DateTimeDisplay.tsx</path>
+      <description>Displays datetime in French format with variants</description>
+    </interface>
+    <interface>
+      <name>DateInput</name>
+      <kind>React component</kind>
+      <signature>DateInput({ value, onChange, min?, max?, className? })</signature>
+      <path>apps/web/app/_components/datetime/DateInput.tsx</path>
+      <description>Date picker with French locale</description>
+    </interface>
+    <interface>
+      <name>TimeInput</name>
+      <kind>React component</kind>
+      <signature>TimeInput({ value, onChange, step?, className? })</signature>
+      <path>apps/web/app/_components/datetime/TimeInput.tsx</path>
+      <description>Time input in 24-hour format</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <paragraph>Use Vitest for unit tests (packages/api). Test formatting and parsing functions with known values. Test edge cases: midnight (00:00), noon (12:00), DST transition dates. For integration tests, create a Quote with a specific pickupAt, retrieve it, and verify the value matches exactly. Use curl to test API endpoints and verify DB values via MCP postgres_vtc_sixiemme_etoile.</paragraph>
+    </standards>
+    <locations>
+      <location>packages/api/src/lib/__tests__/datetime.test.ts (unit tests)</location>
+      <location>packages/api/src/routes/vtc/__tests__/ (integration tests)</location>
+    </locations>
+    <ideas>
+      <idea criterionId="AC1">Create Quote via API with pickupAt="2025-06-15T14:30:00", query DB to verify exact value stored</idea>
+      <idea criterionId="AC2">Retrieve Quote via API, verify pickupAt in response matches stored value</idea>
+      <idea criterionId="AC3">Unit test formatParisDateTime with various inputs</idea>
+      <idea criterionId="AC3">Unit test parseParisDateTime with French format strings</idea>
+      <idea criterionId="AC3">Unit test round-trip: format then parse returns equivalent Date</idea>
+      <idea criterionId="AC4">Render DateTimeDisplay with test value, verify output format</idea>
+      <idea criterionId="AC5">Verify documentation file exists and contains key concepts</idea>
+    </ideas>
+  </tests>
+
+  <technicalNotes>
+    <note id="1">Follow the Tech Spec Date and Time Strategy: use DateTime without @db.Timestamptz annotations</note>
+    <note id="2">All users are assumed to operate in Europe/Paris - no timezone detection needed</note>
+    <note id="3">Use Intl.DateTimeFormat with fr-FR locale for consistent formatting</note>
+    <note id="4">ISO strings in API should not include timezone offset to avoid conversion</note>
+    <note id="5">Database and app servers should be configured with Europe/Paris or UTC timezone</note>
+    <note id="6">Prisma stores DateTime as timestamp without timezone in PostgreSQL</note>
+    <note id="7">When parsing ISO strings, JavaScript Date will interpret as local time if no offset</note>
+    <note id="8">For DST transitions, the stored time is the business time - no automatic adjustment</note>
+  </technicalNotes>
+
+  <relatedFRs>
+    <fr id="FR40">The system shall store operational timestamps as business times in the Europe/Paris timezone and present the exact same values in the UI, without any timezone conversion logic.</fr>
+    <fr id="FR17-FR24">Pickup times for quotes and missions</fr>
+    <fr id="FR25-FR30">RSE counters and driver time tracking</fr>
+    <fr id="FR31-FR33">Quote lifecycle timestamps</fr>
+    <fr id="FR47-FR52">Compliance calculations based on time</fr>
+  </relatedFRs>
+
+  <previousStoryLearnings>
+    <learning storyId="1.3" title="EUR-Only Monetary Representation">
+      <point>Utility pattern: packages/api/src/lib/currency.ts provides good template for datetime.ts</point>
+      <point>Component pattern: apps/web/app/_components/currency/ structure to follow</point>
+      <point>Barrel exports for clean imports</point>
+      <point>Use Intl APIs for locale-aware formatting</point>
+      <point>Constants at top of file (CURRENCY_CODE, EUR_LOCALE)</point>
+    </learning>
+    <learning storyId="1.2" title="Organization-Level Multi-Tenancy">
+      <point>API routes at packages/api/src/routes/vtc/</point>
+      <point>Zod validation for request/response</point>
+      <point>Test patterns in __tests__ folders</point>
+    </learning>
+  </previousStoryLearnings>
+
+  <fileStructure>
+    <newFiles>
+      <file path="packages/api/src/lib/datetime.ts" description="DateTime utilities for Europe/Paris" />
+      <file path="packages/api/src/lib/__tests__/datetime.test.ts" description="Unit tests for datetime utilities" />
+      <file path="apps/web/app/_components/datetime/DateTimeDisplay.tsx" description="DateTime display component" />
+      <file path="apps/web/app/_components/datetime/DateInput.tsx" description="Date input component" />
+      <file path="apps/web/app/_components/datetime/TimeInput.tsx" description="Time input component" />
+      <file path="apps/web/app/_components/datetime/index.ts" description="Barrel export" />
+      <file path="docs/datetime-strategy.md" description="Documentation of the strategy" />
+    </newFiles>
+    <modifiedFiles>
+      <file path="packages/api/src/lib/index.ts" description="Add datetime exports if barrel exists" />
+    </modifiedFiles>
+  </fileStructure>
+</story-context>
