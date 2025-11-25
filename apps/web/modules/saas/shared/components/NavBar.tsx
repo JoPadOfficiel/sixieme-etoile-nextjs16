@@ -11,6 +11,7 @@ import {
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
+	UsersIcon,
 	Wand2Icon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -39,6 +40,12 @@ export function NavBar() {
 		},
 		...(activeOrganization
 			? [
+					{
+						label: t("contacts.title"),
+						href: `${basePath}/contacts`,
+						icon: UsersIcon,
+						isActive: pathname.startsWith(`${basePath}/contacts`),
+					},
 					{
 						label: t("app.menu.organizationSettings"),
 						href: `${basePath}/settings`,

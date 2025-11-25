@@ -9,6 +9,7 @@ export const ActiveOrganizationContext = React.createContext<
 				| null;
 			isOrganizationAdmin: boolean;
 			loaded: boolean;
+			isSessionSynced: boolean;
 			setActiveOrganization: (organizationId: string | null) => Promise<void>;
 			refetchActiveOrganization: () => Promise<void>;
 	  }

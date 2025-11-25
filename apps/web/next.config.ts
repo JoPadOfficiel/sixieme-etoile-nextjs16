@@ -39,6 +39,19 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
+	async rewrites() {
+		return [
+			// Rewrite localized icon requests to the root icon
+			{
+				source: "/:locale/icon.png",
+				destination: "/icon.png",
+			},
+			{
+				source: "/:locale/favicon.ico",
+				destination: "/favicon.ico",
+			},
+		];
+	},
 
 };
 
