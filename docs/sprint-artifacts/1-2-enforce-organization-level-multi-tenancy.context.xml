@@ -1,0 +1,194 @@
+<story-context id="story-1.2-multi-tenancy" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.2</storyId>
+    <title>Enforce Organization-Level Multi-Tenancy</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-25T20:10:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/1-2-enforce-organization-level-multi-tenancy.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>administrator</asA>
+    <iWant>all VTC ERP records to be partitioned by organisation</iWant>
+    <soThat>multiple VTC companies can safely share the same SaaS instance</soThat>
+    <tasks>
+      <task id="1">Create organizationId middleware with session extraction and membership validation</task>
+      <task id="2">Implement tenant-scoped Prisma utilities (withTenantCreate, withTenantFilter)</task>
+      <task id="3">Create VTC ERP API routes with tenancy: contacts, vehicles, quotes</task>
+      <task id="4">Handle cross-tenant access attempts with 404 responses</task>
+      <task id="5">Write integration tests for tenancy enforcement</task>
+      <task id="6">Validation and documentation</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Automatic organizationId injection on all VTC entity creation from session's activeOrganizationId</criterion>
+    <criterion id="AC2">Read filtering by organisation on all list and single-entity endpoints</criterion>
+    <criterion id="AC3">Cross-tenant access rejection with 404 response to avoid information leakage</criterion>
+    <criterion id="AC4">Integration tests covering contacts CRUD, vehicles CRUD, quotes CRUD with tenancy validation</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>VTC ERP Technical Specification</title>
+        <section>2. Core Tenancy &amp; CRM</section>
+        <snippet>All date/time fields are DateTime values interpreted as Europe/Paris business times. Contact model includes organizationId FK for multi-tenancy.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR31-FR41</section>
+        <snippet>All VTC ERP records must be scoped by organization. Multi-tenancy safety is required for all FRs.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 1.2</section>
+        <snippet>Enforce multi-tenant partitioning by organization. Reuse existing tenancy middleware/patterns from brownfield core.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/1-1-define-vtc-erp-prisma-models.md</path>
+        <title>Story 1.1 Completion</title>
+        <section>Completion Notes</section>
+        <snippet>All 22 VTC ERP models include organizationId FK with cascade delete. Indices added on organizationId.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>packages/api/src/middleware/auth.ts</path>
+        <kind>middleware</kind>
+        <symbol>authMiddleware</symbol>
+        <lines>1-23</lines>
+        <reason>Base authentication middleware to extend for organization context. Sets session and user in Hono context.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/middleware/admin.ts</path>
+        <kind>middleware</kind>
+        <symbol>adminMiddleware</symbol>
+        <lines>1-27</lines>
+        <reason>Example of role-based middleware pattern to follow for organization membership validation.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/organizations.ts</path>
+        <kind>router</kind>
+        <symbol>organizationsRouter</symbol>
+        <lines>97-105</lines>
+        <reason>Membership validation pattern to reuse: checks if user is member of organization before returning data.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/app.ts</path>
+        <kind>router</kind>
+        <symbol>appRouter</symbol>
+        <lines>23-33</lines>
+        <reason>Main app router where new vtcRouter will be registered.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Organization, Contact, Vehicle, Quote</symbol>
+        <lines>114-150, 329-367, 446-492, 942-1005</lines>
+        <reason>VTC ERP models with organizationId FK that need tenant-scoped CRUD operations.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/auth/auth.ts</path>
+        <kind>service</kind>
+        <symbol>Session type</symbol>
+        <reason>Session type includes activeOrganizationId used for tenant context.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <reason>Web framework for API routes and middleware</reason>
+      </node>
+      <node>
+        <package>@repo/database</package>
+        <reason>Prisma client with VTC ERP models</reason>
+      </node>
+      <node>
+        <package>@repo/auth</package>
+        <reason>Authentication service with session management</reason>
+      </node>
+      <node>
+        <package>zod</package>
+        <reason>Schema validation for request/response</reason>
+      </node>
+      <node>
+        <package>hono-openapi</package>
+        <reason>OpenAPI documentation for endpoints</reason>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>All VTC ERP API routes must use organization middleware to extract and validate organizationId</constraint>
+    <constraint>Never return 403 for cross-tenant access to avoid confirming record existence - use 404 instead</constraint>
+    <constraint>All Prisma queries must include organizationId in WHERE clauses for reads and in data for creates</constraint>
+    <constraint>Follow existing Hono middleware pattern from auth.ts and admin.ts</constraint>
+    <constraint>Use HTTPException from hono/http-exception for consistent error responses</constraint>
+    <constraint>Registration of new routes must preserve existing route order in app.ts</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>organizationMiddleware</name>
+      <kind>Hono middleware</kind>
+      <signature>createMiddleware&lt;{ Variables: { session, user, organizationId: string } }&gt;</signature>
+      <path>packages/api/src/middleware/organization.ts</path>
+    </interface>
+    <interface>
+      <name>withTenantCreate</name>
+      <kind>utility function</kind>
+      <signature>(data: T, organizationId: string) =&gt; T &amp; { organizationId: string }</signature>
+      <path>packages/api/src/lib/tenant-prisma.ts</path>
+    </interface>
+    <interface>
+      <name>withTenantFilter</name>
+      <kind>utility function</kind>
+      <signature>(where: T, organizationId: string) =&gt; T &amp; { organizationId: string }</signature>
+      <path>packages/api/src/lib/tenant-prisma.ts</path>
+    </interface>
+    <interface>
+      <name>VTC Contacts API</name>
+      <kind>REST endpoints</kind>
+      <signature>GET/POST /api/vtc/contacts, GET/PATCH/DELETE /api/vtc/contacts/:id</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+    </interface>
+    <interface>
+      <name>VTC Vehicles API</name>
+      <kind>REST endpoints</kind>
+      <signature>GET/POST /api/vtc/vehicles, GET /api/vtc/vehicles/:id</signature>
+      <path>packages/api/src/routes/vtc/vehicles.ts</path>
+    </interface>
+    <interface>
+      <name>VTC Quotes API</name>
+      <kind>REST endpoints</kind>
+      <signature>GET/POST /api/vtc/quotes, GET /api/vtc/quotes/:id</signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use existing testing patterns from the project. Integration tests should use real Prisma client with test database. Mock authentication by setting session context. Create isolated test organizations with unique slugs. Use beforeAll/afterAll for setup/teardown.</standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/</location>
+      <location>packages/api/src/middleware/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test that POST /vtc/contacts creates contact with correct organizationId from session</idea>
+      <idea acId="AC2">Test that GET /vtc/contacts returns only contacts from current organization</idea>
+      <idea acId="AC2">Test that GET /vtc/vehicles with org A does not return vehicles from org B</idea>
+      <idea acId="AC3">Test that GET /vtc/contacts/:id returns 404 for contact from different organization</idea>
+      <idea acId="AC3">Test that PATCH /vtc/contacts/:id with cross-tenant ID returns 404</idea>
+      <idea acId="AC4">Test unauthorized request (no session) returns 401</idea>
+      <idea acId="AC4">Test user not member of organization returns 403</idea>
+    </ideas>
+  </tests>
+</story-context>
