@@ -12,38 +12,39 @@ import {
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 
-// Validation schemas
+// Validation schemas with EUR documentation
 const createQuoteSchema = z.object({
-	contactId: z.string().min(1),
-	vehicleCategoryId: z.string().min(1),
-	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]),
-	tripType: z.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"]),
-	pickupAt: z.string().datetime(),
-	pickupAddress: z.string().min(1),
-	pickupLatitude: z.number().optional().nullable(),
-	pickupLongitude: z.number().optional().nullable(),
-	dropoffAddress: z.string().min(1),
-	dropoffLatitude: z.number().optional().nullable(),
-	dropoffLongitude: z.number().optional().nullable(),
-	passengerCount: z.number().int().positive(),
-	luggageCount: z.number().int().nonnegative().default(0),
-	suggestedPrice: z.number().positive(),
-	finalPrice: z.number().positive(),
-	internalCost: z.number().optional().nullable(),
-	marginPercent: z.number().optional().nullable(),
-	tripAnalysis: z.record(z.unknown()).optional().nullable(),
-	appliedRules: z.record(z.unknown()).optional().nullable(),
-	validUntil: z.string().datetime().optional().nullable(),
-	notes: z.string().optional().nullable(),
+	contactId: z.string().min(1).describe("Contact ID for the quote"),
+	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
+	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]).describe("Pricing mode: FIXED_GRID (Method 1) or DYNAMIC (Method 2)"),
+	tripType: z.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"]).describe("Type of trip"),
+	pickupAt: z.string().datetime().describe("Pickup date/time in Europe/Paris business time"),
+	pickupAddress: z.string().min(1).describe("Pickup address"),
+	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
+	pickupLongitude: z.number().optional().nullable().describe("Pickup longitude"),
+	dropoffAddress: z.string().min(1).describe("Dropoff address"),
+	dropoffLatitude: z.number().optional().nullable().describe("Dropoff latitude"),
+	dropoffLongitude: z.number().optional().nullable().describe("Dropoff longitude"),
+	passengerCount: z.number().int().positive().describe("Number of passengers"),
+	luggageCount: z.number().int().nonnegative().default(0).describe("Number of luggage pieces"),
+	suggestedPrice: z.number().positive().describe("Suggested price in EUR"),
+	finalPrice: z.number().positive().describe("Final price in EUR"),
+	internalCost: z.number().optional().nullable().describe("Internal cost in EUR (shadow calculation result)"),
+	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
+	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details: segments A/B/C, costs"),
+	appliedRules: z.record(z.unknown()).optional().nullable().describe("Applied pricing rules, multipliers, promotions"),
+	validUntil: z.string().datetime().optional().nullable().describe("Quote validity date in Europe/Paris business time"),
+	notes: z.string().optional().nullable().describe("Additional notes"),
 });
 
 const updateQuoteSchema = z.object({
 	status: z
 		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"])
-		.optional(),
-	finalPrice: z.number().positive().optional(),
-	notes: z.string().optional().nullable(),
-	validUntil: z.string().datetime().optional().nullable(),
+		.optional()
+		.describe("Quote lifecycle status"),
+	finalPrice: z.number().positive().optional().describe("Final price in EUR"),
+	notes: z.string().optional().nullable().describe("Additional notes"),
+	validUntil: z.string().datetime().optional().nullable().describe("Quote validity date in Europe/Paris business time"),
 });
 
 const listQuotesSchema = z.object({
