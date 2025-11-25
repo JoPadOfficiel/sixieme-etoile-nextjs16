@@ -9,18 +9,18 @@ export const config = {
 		// You need to define a label that is shown in the language selector and a currency that should be used for pricing with this locale
 		locales: {
 			en: {
-				currency: "USD",
+				currency: "EUR",
 				label: "English",
 			},
-			de: {
-				currency: "USD",
-				label: "Deutsch",
+			fr: {
+				currency: "EUR",
+				label: "Français",
 			},
 		},
 		// The default locale is used if no locale is provided
 		defaultLocale: "en",
 		// The default currency is used for pricing if no currency is provided
-		defaultCurrency: "USD",
+		defaultCurrency: "EUR",
 		// The name of the cookie that is used to determine the locale
 		localeCookieName: "NEXT_LOCALE",
 	},
