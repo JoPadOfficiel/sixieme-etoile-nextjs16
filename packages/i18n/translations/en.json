@@ -421,6 +421,30 @@
 				"organizationNameUpdated": "Your organization name has been updated.",
 				"organizationNotDeleted": "We were unable to delete your organization. Please try again later."
 			},
+			"integrations": {
+				"title": "Integrations",
+				"description": "Configure API keys for external integrations.",
+				"configured": "Configured",
+				"notConfigured": "Not configured",
+				"confirmDelete": "Are you sure you want to delete this API key?",
+				"googleMaps": {
+					"title": "Google Maps API Key",
+					"description": "Used for address autocomplete and distance calculations.",
+					"newKey": "Enter new API key"
+				},
+				"collectApi": {
+					"title": "CollectAPI Key",
+					"description": "Used for fuel price data retrieval.",
+					"newKey": "Enter new API key"
+				},
+				"notifications": {
+					"updated": "Integration settings updated successfully.",
+					"updateFailed": "Failed to update integration settings.",
+					"deleted": "API key deleted successfully.",
+					"deleteFailed": "Failed to delete API key.",
+					"noChanges": "No changes to save."
+				}
+			},
 			"subtitle": "Manage the settings of the organization.",
 			"title": "Organization"
 		},
@@ -662,6 +686,7 @@
 			"organization": {
 				"billing": "Billing",
 				"general": "General",
+				"integrations": "Integrations",
 				"members": "Members",
 				"title": "Organization"
 			}

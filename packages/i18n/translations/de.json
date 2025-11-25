@@ -410,6 +410,30 @@
 				"organizationNameUpdated": "Der Name deiner Organisation wurde aktualisiert.",
 				"organizationNotDeleted": "Wir konnten deine Organisation nicht löschen. Bitte versuche es später noch einmal."
 			},
+			"integrations": {
+				"title": "Integrationen",
+				"description": "Konfiguriere API-Schlüssel für externe Integrationen.",
+				"configured": "Konfiguriert",
+				"notConfigured": "Nicht konfiguriert",
+				"confirmDelete": "Bist du sicher, dass du diesen API-Schlüssel löschen möchtest?",
+				"googleMaps": {
+					"title": "Google Maps API-Schlüssel",
+					"description": "Wird für Adress-Autovervollständigung und Entfernungsberechnungen verwendet.",
+					"newKey": "Neuen API-Schlüssel eingeben"
+				},
+				"collectApi": {
+					"title": "CollectAPI-Schlüssel",
+					"description": "Wird für den Abruf von Kraftstoffpreisdaten verwendet.",
+					"newKey": "Neuen API-Schlüssel eingeben"
+				},
+				"notifications": {
+					"updated": "Integrationseinstellungen erfolgreich aktualisiert.",
+					"updateFailed": "Aktualisierung der Integrationseinstellungen fehlgeschlagen.",
+					"deleted": "API-Schlüssel erfolgreich gelöscht.",
+					"deleteFailed": "Löschen des API-Schlüssels fehlgeschlagen.",
+					"noChanges": "Keine Änderungen zum Speichern."
+				}
+			},
 			"subtitle": "Verwalte die Einstellungen der Organisation.",
 			"title": "Organisation"
 		},
@@ -651,6 +675,7 @@
 			"organization": {
 				"billing": "Abrechnung",
 				"general": "Allgemein",
+				"integrations": "Integrationen",
 				"members": "Mitglieder",
 				"title": "Organisation"
 			}

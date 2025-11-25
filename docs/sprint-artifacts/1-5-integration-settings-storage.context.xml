@@ -1,0 +1,279 @@
+<story-context id="story-1.5-integration-settings-storage" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.5</storyId>
+    <title>Integration Settings Storage for Google Maps &amp; CollectAPI</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-25T22:15:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-1.5</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>organisation admin</asA>
+    <iWant>to store API keys for Google Maps and CollectAPI in a secure settings model</iWant>
+    <soThat>operators can configure integrations from the UI instead of editing environment variables</soThat>
+    <tasks>
+      <task id="1.5.1">Create API routes for CRUD operations on OrganizationIntegrationSettings</task>
+      <task id="1.5.2">Implement key resolution service with org-specific first, env fallback</task>
+      <task id="1.5.3">Create Settings UI page at /dashboard/settings/integrations</task>
+      <task id="1.5.4">Implement key encryption/obfuscation for storage and display</task>
+      <task id="1.5.5">Add unit tests for key resolution logic</task>
+      <task id="1.5.6">Add integration tests for API endpoints</task>
+      <task id="1.5.7">Add Playwright tests for Settings UI</task>
+    </tasks>
+  </story>
+
+  <problem>
+    <statement>
+      Currently, API keys for external services (Google Maps, CollectAPI) can only be configured 
+      via environment variables, requiring DevOps intervention for each organization. This creates 
+      friction for multi-tenant deployments where each organization may have their own API keys.
+    </statement>
+    <impact>
+      - Organizations cannot self-service their integration configuration
+      - DevOps overhead for key management across tenants
+      - No visibility into which keys are configured per organization
+      - Security risk if env vars are shared across organizations
+    </impact>
+  </problem>
+
+  <objectives>
+    <objective id="O1">Enable organization admins to configure Google Maps and CollectAPI keys via UI</objective>
+    <objective id="O2">Implement secure storage with encryption/obfuscation at rest</objective>
+    <objective id="O3">Provide fallback to environment variables when no org-specific key exists</objective>
+    <objective id="O4">Never log or expose keys in plain text in responses</objective>
+    <objective id="O5">Restrict access to admin/owner roles only</objective>
+  </objectives>
+
+  <scope>
+    <inScope>
+      <item>API endpoints for OrganizationIntegrationSettings CRUD</item>
+      <item>Key resolution service (org-specific → env fallback)</item>
+      <item>Settings UI page for integration configuration</item>
+      <item>Key obfuscation in API responses (show only last 4 chars)</item>
+      <item>Role-based access control (admin/owner only)</item>
+      <item>Unit and integration tests</item>
+    </inScope>
+    <outOfScope>
+      <item>Full Integrations UI with status dashboards (Epic 9)</item>
+      <item>Actual Google Maps or CollectAPI integration implementation</item>
+      <item>Key rotation or expiration policies</item>
+      <item>Audit logging of key changes (future enhancement)</item>
+    </outOfScope>
+  </scope>
+
+  <constraints>
+    <constraint type="security">Keys must be encrypted or obfuscated at rest, never logged in plain text</constraint>
+    <constraint type="access-control">Only super-admin/org-admin roles can read or modify keys</constraint>
+    <constraint type="api-response">HTTP responses must redact keys (show only last 4 characters)</constraint>
+    <constraint type="fallback">Resolution order: org-specific DB key → environment variable</constraint>
+    <constraint type="multi-tenancy">Settings are scoped by organizationId</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="high">
+      <description>Plain text key exposure in logs or responses</description>
+      <mitigation>Implement key masking in all serialization paths, add tests to verify</mitigation>
+    </risk>
+    <risk severity="medium">
+      <description>Unauthorized access to key management</description>
+      <mitigation>Enforce role-based access at API layer, verify in tests</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Key resolution performance overhead</description>
+      <mitigation>Cache resolved keys per request context</mitigation>
+    </risk>
+  </risks>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>an organisation with access to /dashboard/settings/integrations</given>
+      <when>I enter or update Google Maps and CollectAPI keys in the form and save</when>
+      <then>an OrganizationIntegrationSettings record is created or updated with the keys and timestamps</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>an organisation with stored integration keys</given>
+      <when>the backend resolves integration keys for that organisation</when>
+      <then>it first checks the settings record and only falls back to environment variables when no org-specific key is present</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>stored API keys in the database</given>
+      <when>the keys are retrieved via API or displayed in UI</when>
+      <then>only the last 4 characters are shown, the rest is masked (e.g., ****...XXXX)</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>a user without admin/owner role</given>
+      <when>they attempt to access /dashboard/settings/integrations or the API endpoints</when>
+      <then>they receive a 403 Forbidden response</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>no org-specific key stored and an environment variable configured</given>
+      <when>the key resolution service is called</when>
+      <then>it returns the environment variable value</then>
+    </criterion>
+    <criterion id="AC6">
+      <given>no org-specific key and no environment variable</given>
+      <when>the key resolution service is called</when>
+      <then>it returns null or throws a clear error indicating missing configuration</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>VTC ERP Technical Specification</title>
+        <section>API Key Configuration (lines 217-239)</section>
+        <snippet>Introduce a settings model OrganizationIntegrationSettings with organizationId, googleMapsApiKey (encrypted), collectApiKey (encrypted), timestamps. Resolution: org-specific first, env fallback. Admin-only UI under /admin/integrations.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP Product Requirements Document</title>
+        <section>FR37-FR41 - Configuration &amp; Localisation</section>
+        <snippet>FR41: The system shall maintain a cache of fuel prices sourced from an external provider. Implies need for CollectAPI key configuration.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 1.5: Integration Settings Storage</section>
+        <snippet>Prerequisites: Stories 1.1 (settings model), 1.2 (organisation scoping). Keys must be encrypted or obfuscated at rest and never logged in plain text.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>OrganizationIntegrationSettings</symbol>
+        <lines>1161-1176</lines>
+        <reason>Model already exists with googleMapsApiKey and collectApiKey fields. Ready for use.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <lines>1-18</lines>
+        <reason>Existing VTC router to extend with integration settings routes.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>requireOrganization</symbol>
+        <lines>1-66</lines>
+        <reason>Existing middleware for organization scoping and role checks.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>TenantPrisma</symbol>
+        <lines>1-91</lines>
+        <reason>Tenant-scoped Prisma client pattern to follow.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="crypto" version="native" note="For key encryption/hashing" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/settings/integrations</name>
+      <kind>API endpoint</kind>
+      <signature>GET → { googleMapsApiKey: string | null, collectApiKey: string | null, hasGoogleMapsKey: boolean, hasCollectApiKey: boolean, updatedAt: string | null }</signature>
+      <path>packages/api/src/routes/vtc/integrations.ts</path>
+      <description>Get current integration settings with masked keys</description>
+    </interface>
+    <interface>
+      <name>PUT /api/vtc/settings/integrations</name>
+      <kind>API endpoint</kind>
+      <signature>PUT { googleMapsApiKey?: string, collectApiKey?: string } → { success: boolean, updatedAt: string }</signature>
+      <path>packages/api/src/routes/vtc/integrations.ts</path>
+      <description>Create or update integration settings</description>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/settings/integrations/:keyType</name>
+      <kind>API endpoint</kind>
+      <signature>DELETE keyType: 'googleMaps' | 'collectApi' → { success: boolean }</signature>
+      <path>packages/api/src/routes/vtc/integrations.ts</path>
+      <description>Remove a specific API key</description>
+    </interface>
+    <interface>
+      <name>resolveApiKey</name>
+      <kind>function</kind>
+      <signature>resolveApiKey(organizationId: string, keyType: 'googleMaps' | 'collectApi'): Promise&lt;string | null&gt;</signature>
+      <path>packages/api/src/lib/integration-keys.ts</path>
+      <description>Resolve API key with org-specific → env fallback logic</description>
+    </interface>
+    <interface>
+      <name>maskApiKey</name>
+      <kind>function</kind>
+      <signature>maskApiKey(key: string | null): string | null</signature>
+      <path>packages/api/src/lib/integration-keys.ts</path>
+      <description>Mask API key showing only last 4 characters</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <paragraph>Use Vitest for unit tests (packages/api). Test key resolution with various scenarios. Test masking function. For integration tests, use curl to verify API endpoints and check DB state via MCP postgres_vtc_sixiemme_etoile. Use Playwright MCP for UI tests.</paragraph>
+    </standards>
+    <locations>
+      <location>packages/api/src/lib/__tests__/integration-keys.test.ts (unit tests)</location>
+      <location>packages/api/src/routes/vtc/__tests__/integrations.test.ts (integration tests)</location>
+    </locations>
+    <ideas>
+      <idea criterionId="AC1">POST/PUT integration settings, verify DB record created/updated</idea>
+      <idea criterionId="AC2">Unit test resolveApiKey with org key present, with only env var, with neither</idea>
+      <idea criterionId="AC3">Unit test maskApiKey function, verify API response masking</idea>
+      <idea criterionId="AC4">Test API access with non-admin role, expect 403</idea>
+      <idea criterionId="AC5">Test fallback to env var when no org key</idea>
+      <idea criterionId="AC6">Test null return when no key configured anywhere</idea>
+    </ideas>
+  </tests>
+
+  <technicalNotes>
+    <note id="1">OrganizationIntegrationSettings model already exists in schema.prisma (lines 1161-1176)</note>
+    <note id="2">Use existing organization middleware for role-based access control</note>
+    <note id="3">For MVP, simple obfuscation is acceptable; full encryption can be added later</note>
+    <note id="4">Environment variables: GOOGLE_MAPS_API_KEY, COLLECT_API_KEY</note>
+    <note id="5">Keys should never appear in logs - add redaction to any logging</note>
+    <note id="6">Consider caching resolved keys per request to avoid repeated DB lookups</note>
+  </technicalNotes>
+
+  <relatedFRs>
+    <fr id="FR37">Admin configuration area for zones, routes, grids, forfaits, margins and multipliers</fr>
+    <fr id="FR38">Configure vehicle categories, cost parameters and regulatory rules</fr>
+    <fr id="FR41">Maintain cache of fuel prices from external provider (requires CollectAPI key)</fr>
+  </relatedFRs>
+
+  <previousStoryLearnings>
+    <learning storyId="1.2" title="Organization-Level Multi-Tenancy">
+      <point>Use requireOrganization middleware for org scoping</point>
+      <point>TenantPrisma pattern for scoped queries</point>
+      <point>Role checks via organization.role field</point>
+    </learning>
+    <learning storyId="1.3" title="EUR-Only Monetary Representation">
+      <point>Utility pattern in packages/api/src/lib/</point>
+      <point>Consistent function naming and JSDoc</point>
+    </learning>
+    <learning storyId="1.4" title="Europe/Paris Business Time">
+      <point>Test file location: packages/api/src/lib/__tests__/</point>
+      <point>Vitest configuration in packages/api/vitest.config.ts</point>
+    </learning>
+  </previousStoryLearnings>
+
+  <fileStructure>
+    <newFiles>
+      <file path="packages/api/src/lib/integration-keys.ts" description="Key resolution and masking utilities" />
+      <file path="packages/api/src/lib/__tests__/integration-keys.test.ts" description="Unit tests for key utilities" />
+      <file path="packages/api/src/routes/vtc/integrations.ts" description="Integration settings API routes" />
+      <file path="packages/api/src/routes/vtc/__tests__/integrations.test.ts" description="Integration tests for API" />
+      <file path="apps/web/app/dashboard/settings/integrations/page.tsx" description="Settings UI page" />
+    </newFiles>
+    <modifiedFiles>
+      <file path="packages/api/src/routes/vtc/router.ts" description="Add integrations routes" />
+    </modifiedFiles>
+  </fileStructure>
+</story-context>

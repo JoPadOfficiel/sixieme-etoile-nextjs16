@@ -4,7 +4,7 @@ import { OrganizationLogo } from "@saas/organizations/components/OrganizationLog
 import { SettingsMenu } from "@saas/settings/components/SettingsMenu";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
-import { CreditCardIcon, Settings2Icon, Users2Icon } from "lucide-react";
+import { CreditCardIcon, KeyIcon, Settings2Icon, Users2Icon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -44,6 +44,11 @@ export default async function SettingsLayout({
 					title: t("settings.menu.organization.members"),
 					href: `${organizationSettingsBasePath}/members`,
 					icon: <Users2Icon className="size-4 opacity-50" />,
+				},
+				{
+					title: t("settings.menu.organization.integrations"),
+					href: `${organizationSettingsBasePath}/integrations`,
+					icon: <KeyIcon className="size-4 opacity-50" />,
 				},
 				...(config.organizations.enableBilling
 					? [
