@@ -22,11 +22,11 @@ workflow_status:
   create-design: docs/bmad/ux-design-specification.md
 
   # Phase 2 - Solutioning
-  create-architecture: recommended
+  create-architecture: skipped
   create-epics-and-stories: docs/bmad/epics.md
-  test-design: recommended
+  test-design: completed
   validate-architecture: optional
-  implementation-readiness: required
+  implementation-readiness: docs/bmad/epics.md
 
   # Phase 3 - Implementation
   sprint-planning: required
