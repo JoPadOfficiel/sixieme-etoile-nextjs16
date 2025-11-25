@@ -40,7 +40,9 @@ export default async function Layout({ children }: PropsWithChildren) {
 		});
 	}
 
-	if (config.users.enableBilling) {
+	// Only prefetch user-level purchases if user billing is enabled
+	// Organization-level purchases are prefetched in the organization layout
+	if (config.users.enableBilling && !config.organizations.enableBilling) {
 		await queryClient.prefetchQuery({
 			queryKey: purchasesQueryKey(),
 			queryFn: () => getPurchases(),

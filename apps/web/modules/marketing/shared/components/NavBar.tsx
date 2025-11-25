@@ -166,25 +166,17 @@ export function NavBar() {
 
 						{config.ui.saas.enabled &&
 							(user ? (
-								<Button
-									key="dashboard"
-									className="hidden md:flex"
-									asChild
-									variant="secondary"
-								>
-									<NextLink href="/app">{t("common.menu.dashboard")}</NextLink>
-								</Button>
+								<NextLink key="dashboard" href="/app">
+									<Button className="hidden md:flex" variant="secondary">
+										{t("common.menu.dashboard")}
+									</Button>
+								</NextLink>
 							) : (
-								<Button
-									key="login"
-									className="hidden md:flex"
-									asChild
-									variant="secondary"
-								>
-									<NextLink href="/auth/login">
+								<NextLink key="login" href="/auth/login">
+									<Button className="hidden md:flex" variant="secondary">
 										{t("common.menu.login")}
-									</NextLink>
-								</Button>
+									</Button>
+								</NextLink>
 							))}
 					</div>
 				</div>

@@ -31,7 +31,8 @@ export default async function OrganizationLayout({
 		queryFn: () => organization,
 	});
 
-	if (config.users.enableBilling) {
+	// Prefetch organization purchases if organization billing is enabled
+	if (config.organizations.enableBilling) {
 		await queryClient.prefetchQuery({
 			queryKey: purchasesQueryKey(organization.id),
 			queryFn: () => getPurchases(organization.id),

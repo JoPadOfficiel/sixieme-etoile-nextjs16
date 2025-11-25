@@ -38,12 +38,12 @@ export default async function OrganizationFormPage({
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<div>
 				<div className="mb-2 flex justify-start">
-					<Button variant="link" size="sm" asChild className="px-0">
-						<Link href={backTo ?? getAdminPath("/organizations")}>
+					<Link href={backTo ?? getAdminPath("/organizations")}>
+						<Button variant="link" size="sm" className="px-0">
 							<ArrowLeftIcon className="mr-1.5 size-4" />
 							{t("admin.organizations.backToList")}
-						</Link>
-					</Button>
+						</Button>
+					</Link>
 				</div>
 				<OrganizationForm organizationId={id} />
 			</div>

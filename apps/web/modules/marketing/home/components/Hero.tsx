@@ -31,15 +31,15 @@ export function Hero() {
 			</p>
 
 			<div className="mt-6 flex flex-col items-center justify-center gap-3 md:flex-row">
-				<Button size="lg" variant="primary" asChild>
-					<Link href="/auth/login">
+				<Link href="/auth/login">
+					<Button size="lg" variant="default">
 						Get started
 						<ArrowRightIcon className="ml-2 size-4" />
-					</Link>
-				</Button>
-				<Button variant="outline" size="lg" asChild>
-					<LocaleLink href="/docs">Documentation</LocaleLink>
-				</Button>
+					</Button>
+				</Link>
+				<LocaleLink href="/docs">
+					<Button variant="outline" size="lg">Documentation</Button>
+				</LocaleLink>
 			</div>
 
 			<div className="mt-16 px-8 text-center">
