@@ -39,4 +39,6 @@ project_key: "file-system-local"
 tracking_system: "file-system"
 story_location: "docs/sprint-artifacts"
 
-development_status: {}
+development_status:
+  epic-1: contexted
+  1-1-define-vtc-erp-prisma-models: review

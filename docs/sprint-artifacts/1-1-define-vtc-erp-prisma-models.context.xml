@@ -1,0 +1,356 @@
+<story-context id="story-1.1-vtc-erp-prisma-models" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.1</storyId>
+    <title>Define VTC ERP Prisma Models</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-25T19:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-1.1</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>backend engineer</asA>
+    <iWant>a coherent set of Prisma models for contacts, fleet, pricing, quotes, invoices, fuel cache and settings</iWant>
+    <soThat>the VTC ERP can store all required data with clear relationships and multi-tenancy</soThat>
+    <tasks>
+      <task id="1.1.1">Review PRD sections FR17-FR24, FR25-FR30, FR31-FR36, FR37-FR41, FR55-FR60 for data model requirements</task>
+      <task id="1.1.2">Review Tech Spec sections 2-7 for detailed model definitions and field specifications</task>
+      <task id="1.1.3">Open packages/database/prisma/schema.prisma and identify existing SaaS core models and conventions</task>
+      <task id="1.1.4">Define all required enums (ContactType, ClientType, VehicleRegulatoryCategory, VehicleStatus, QuoteStatus, InvoiceStatus, PricingMode, TripType, AmountType, AdjustmentType, ZoneType, RouteDirection, FuelType, InvoiceLineType, etc.)</task>
+      <task id="1.1.5">Implement Core Tenancy and CRM model: Contact with organization scoping</task>
+      <task id="1.1.6">Implement Fleet and RSE models: VehicleCategory, OperatingBase, Vehicle, LicenseCategory, OrganizationLicenseRule, Driver, DriverLicense</task>
+      <task id="1.1.7">Implement Pricing and Zones models: PricingZone, ZoneRoute, ExcursionPackage, DispoPackage, OrganizationPricingSettings, AdvancedRate, SeasonalMultiplier, OptionalFee, Promotion, EmptyLegOpportunity</task>
+      <task id="1.1.8">Implement Quotes, Invoices and Documents models: Quote, Invoice, InvoiceLine, DocumentType, Document</task>
+      <task id="1.1.9">Implement Fuel and Integrations models: FuelPriceCache, OrganizationIntegrationSettings</task>
+      <task id="1.1.10">Add organizationId foreign key to all VTC ERP models requiring multi-tenancy</task>
+      <task id="1.1.11">Add relations to Organization model for all new VTC ERP models</task>
+      <task id="1.1.12">Add minimal indices and constraints (unique fields, foreign keys)</task>
+      <task id="1.1.13">Run prisma format on schema.prisma</task>
+      <task id="1.1.14">Run prisma generate to create Prisma client</task>
+      <task id="1.1.15">Run prisma migrate dev --name add-vtc-erp-schema</task>
+      <task id="1.1.16">Verify all new tables are created and existing core SaaS tables remain unchanged</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>the Technical Specification domain model (Tech Spec Sections 3-7)</given>
+      <when>I update packages/database/prisma/schema.prisma to add the VTC ERP models</when>
+      <then>the schema shall contain models for, at minimum: Contact, VehicleCategory, Vehicle, OperatingBase, Driver, DriverLicense, LicenseCategory, OrganizationLicenseRule, Quote, Invoice, InvoiceLine, PricingZone, ZoneRoute, ExcursionPackage, DispoPackage, OrganizationPricingSettings, AdvancedRate, SeasonalMultiplier, OptionalFee, Promotion, EmptyLegOpportunity, FuelPriceCache and OrganizationIntegrationSettings, each scoped by organizationId where applicable</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>the VTC ERP models are added to the schema</given>
+      <when>I run prisma format, prisma generate and prisma migrate dev</when>
+      <then>all commands succeed without errors and without altering existing core SaaS tables (User, Session, Account, Verification, Passkey, Organization, Member, Invitation, Purchase)</then>
+    </criterion>
+    <criterion id="AC3-gherkin">
+      <feature>VTC ERP Prisma schema for pricing, fleet, CRM and invoicing</feature>
+      <background>an existing Prisma schema containing the SaaS core models (User, Session, Account, Verification, Passkey, Organization, Member, Invitation, Purchase)</background>
+      <scenarios>
+        <scenario name="All required VTC ERP models are present">
+          <when>I open packages/database/prisma/schema.prisma</when>
+          <then>I can find model definitions for all 22 required VTC ERP entities</then>
+        </scenario>
+        <scenario name="Multi-tenancy is consistently enforced">
+          <when>I inspect any VTC ERP model that stores organisation-specific data</when>
+          <then>I see a non-nullable organizationId field linked to Organization.id</then>
+          <and>no VTC-specific model is shared across organisations without an explicit organisation scope</and>
+        </scenario>
+        <scenario name="Existing SaaS core tables remain intact">
+          <when>I run prisma migrate dev for the first VTC ERP migration</when>
+          <then>the migration completes successfully</then>
+          <and>the database still contains all existing core tables unchanged</and>
+          <and>no columns are removed or renamed from the core SaaS tables</and>
+        </scenario>
+        <scenario name="Tooling commands succeed">
+          <when>I run prisma format, prisma generate, and prisma migrate dev</when>
+          <then>all commands complete without errors</then>
+        </scenario>
+      </scenarios>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>VTC ERP Technical Specification</title>
+        <section>Technical Details (Sections 2-7)</section>
+        <snippet>Defines all VTC ERP domain models including Core Tenancy and CRM (Contact), Fleet and Regulatory (VehicleCategory, Vehicle, OperatingBase, Driver, DriverLicense, LicenseCategory, OrganizationLicenseRule), Pricing and Zones (PricingZone, ZoneRoute, ExcursionPackage, DispoPackage, OrganizationPricingSettings, AdvancedRate, SeasonalMultiplier, OptionalFee, Promotion, EmptyLegOpportunity), Quotes/Invoices/Documents, and Fuel/Integrations.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP Product Requirements Document</title>
+        <section>Functional Requirements FR17-FR60</section>
+        <snippet>Defines business requirements for fleet management (FR17-FR24), regulatory compliance (FR25-FR30), CRM and quote/invoice lifecycle (FR31-FR36), configuration (FR37-FR41), and advanced pricing (FR55-FR60) that drive the data model design.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Epic 1: VTC ERP Foundation and Data Model Setup</section>
+        <snippet>Story 1.1 establishes the Prisma data model foundation for all VTC ERP features. Prerequisites: None (first VTC ERP schema change after existing SaaS core).</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Screen Specifications (Section 8)</section>
+        <snippet>Defines UI screens that will consume the data models: Contacts/CRM (8.2), Quotes (8.3), Invoices (8.4), Vehicles (8.5), Drivers (8.6), Operating Bases (8.7), Dispatch (8.8), Settings-Pricing (8.9), Settings-Fleet (8.10), Settings-Integrations (8.11), Settings-Zones (8.12).</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>schema.prisma</symbol>
+        <lines>1-177</lines>
+        <reason>Existing Prisma schema with SaaS core models (User, Session, Account, Verification, Passkey, Organization, Member, Invitation, Purchase). VTC ERP models will be added here following existing conventions (id, createdAt, updatedAt, @@map for table names).</reason>
+      </artifact>
+      <artifact>
+        <path>packages/database/src/zod</path>
+        <kind>generated</kind>
+        <symbol>zod-prisma-types output</symbol>
+        <lines>N/A</lines>
+        <reason>Zod types are auto-generated from Prisma schema via zod-prisma-types generator. Will be regenerated after schema changes.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="prisma" version="workspace dependency" />
+        <package name="@prisma/client" version="workspace dependency" />
+        <package name="zod-prisma-types" version="generator" />
+      </ecosystem>
+      <ecosystem name="database">
+        <package name="postgresql" version="provider in schema" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="naming">Follow existing Prisma conventions: use PascalCase for model names, camelCase for fields, @@map("snake_case") for table names</constraint>
+    <constraint type="id-strategy">Use @id @default(cuid()) for primary keys to match existing models</constraint>
+    <constraint type="timestamps">Include createdAt DateTime @default(now()) and updatedAt DateTime @updatedAt on all models</constraint>
+    <constraint type="multi-tenancy">All VTC ERP models storing business data MUST include organizationId String with @relation to Organization</constraint>
+    <constraint type="currency">All monetary fields are EUR-only. Use Decimal type with appropriate precision (e.g., @db.Decimal(10, 2) for prices, @db.Decimal(10, 4) for rates)</constraint>
+    <constraint type="datetime">Use DateTime type without timezone annotations. Values are treated as Europe/Paris business times with no conversion.</constraint>
+    <constraint type="no-breaking-changes">Do NOT modify, rename, or remove any fields from existing SaaS core models (User, Session, Account, Verification, Passkey, Organization, Member, Invitation, Purchase)</constraint>
+    <constraint type="zero-hardcoding">RSE constraints, pricing parameters, and regulatory thresholds must be stored in configuration models (OrganizationLicenseRule, OrganizationPricingSettings), not as constants in code</constraint>
+    <constraint type="json-fields">Use Json type for flexible structured data: Quote.tripAnalysis, Quote.appliedRules, PricingZone.geometry, OptionalFee.autoApplyRules, EmptyLegOpportunity.pricingStrategy</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Organization model extension</name>
+      <kind>Prisma relation</kind>
+      <signature>Add relation fields to Organization: contacts Contact[], vehicleCategories VehicleCategory[], vehicles Vehicle[], etc.</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>Contact to Quote/Invoice relations</name>
+      <kind>Prisma relation</kind>
+      <signature>Contact has quotes Quote[] and invoices Invoice[]; Quote and Invoice have contactId with @relation to Contact</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>Vehicle to VehicleCategory/OperatingBase/LicenseCategory relations</name>
+      <kind>Prisma relation</kind>
+      <signature>Vehicle belongs to VehicleCategory, OperatingBase, and optionally requires a LicenseCategory</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>Driver to DriverLicense to LicenseCategory relations</name>
+      <kind>Prisma relation</kind>
+      <signature>Driver has driverLicenses DriverLicense[]; DriverLicense links Driver to LicenseCategory with validity dates</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>ZoneRoute to PricingZone relations</name>
+      <kind>Prisma relation</kind>
+      <signature>ZoneRoute has fromZoneId and toZoneId both referencing PricingZone</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>Invoice to InvoiceLine relation</name>
+      <kind>Prisma relation</kind>
+      <signature>Invoice has lines InvoiceLine[]; InvoiceLine has invoiceId with @relation to Invoice</signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <paragraph>Use the project's existing test framework. Schema validation is primarily done via Prisma tooling (prisma validate, prisma format). Integration tests for data access will be added in subsequent stories. For this story, success is measured by: (1) prisma format exits 0, (2) prisma generate exits 0, (3) prisma migrate dev creates migration successfully, (4) all 22 VTC ERP models appear in generated Prisma client types.</paragraph>
+    </standards>
+    <locations>
+      <location>packages/database/prisma/schema.prisma (schema validation)</location>
+      <location>packages/database/prisma/migrations/ (migration files)</location>
+    </locations>
+    <ideas>
+      <idea criterionId="AC1">Verify all 22 required models exist in schema.prisma by parsing the file or checking generated types</idea>
+      <idea criterionId="AC1">Verify each VTC ERP model has organizationId field with proper relation</idea>
+      <idea criterionId="AC2">Run prisma format and verify exit code 0</idea>
+      <idea criterionId="AC2">Run prisma generate and verify exit code 0</idea>
+      <idea criterionId="AC2">Run prisma migrate dev and verify migration created successfully</idea>
+      <idea criterionId="AC2">Verify existing core tables (user, session, account, verification, passkey, organization, member, invitation, purchase) are unchanged in migration SQL</idea>
+      <idea criterionId="AC3">Inspect migration SQL to confirm no DROP or ALTER on core tables</idea>
+    </ideas>
+  </tests>
+
+  <technicalNotes>
+    <note id="1">Follow naming and field structure from docs/bmad/tech-spec.md (Technical Details section 2-7)</note>
+    <note id="2">Ensure all VTC models that belong to a tenant include organizationId and appropriate foreign keys</note>
+    <note id="3">This story creates the structural basis required by all other epics; later stories will add constraints, indices and seed data where necessary</note>
+    <note id="4">Reuse existing timestamp conventions (createdAt, updatedAt) from core models</note>
+    <note id="5">Use Decimal type for all monetary values to avoid floating-point precision issues</note>
+    <note id="6">JSON fields (tripAnalysis, appliedRules, geometry) should use Prisma Json type</note>
+    <note id="7">Add @@index on organizationId for all models to optimize tenant-scoped queries</note>
+    <note id="8">Add @@unique constraints where logically required (e.g., promo code per org, vehicle registration per org)</note>
+  </technicalNotes>
+
+  <requiredModels>
+    <model name="Contact" category="Core Tenancy and CRM">
+      <purpose>Unifies private customers, corporate clients, and agencies</purpose>
+      <keyFields>id, organizationId, type (INDIVIDUAL|BUSINESS|AGENCY), displayName, firstName, lastName, email, phone, companyName, vatNumber, siret, billingAddress, isPartner, defaultClientType</keyFields>
+      <relations>organization, quotes, invoices</relations>
+    </model>
+    <model name="VehicleCategory" category="Fleet and Regulatory">
+      <purpose>Groups vehicles by commercial and regulatory category</purpose>
+      <keyFields>id, organizationId, name, code, regulatoryCategory (LIGHT|HEAVY), maxPassengers, maxLuggageVolume, priceMultiplier, defaultRatePerKm, defaultRatePerHour</keyFields>
+      <relations>organization, vehicles, zoneRoutes, excursionPackages, dispoPackages, quotes</relations>
+    </model>
+    <model name="OperatingBase" category="Fleet and Regulatory">
+      <purpose>Physical bases/garages for multi-base model</purpose>
+      <keyFields>id, organizationId, name, addressLine1, city, postalCode, countryCode, latitude, longitude</keyFields>
+      <relations>organization, vehicles</relations>
+    </model>
+    <model name="Vehicle" category="Fleet and Regulatory">
+      <purpose>Individual fleet vehicles</purpose>
+      <keyFields>id, organizationId, vehicleCategoryId, operatingBaseId, registrationNumber, internalName, passengerCapacity, luggageCapacity, consumptionLPer100Km, averageSpeedKmh, costPerKm, requiredLicenseCategoryId, status</keyFields>
+      <relations>organization, vehicleCategory, operatingBase, requiredLicenseCategory, emptyLegOpportunities</relations>
+    </model>
+    <model name="LicenseCategory" category="Fleet and Regulatory">
+      <purpose>Encodes license types (B, D, D_CMI, etc.)</purpose>
+      <keyFields>id, organizationId, code, name, description</keyFields>
+      <relations>organization, organizationRules, vehiclesRequiringThis, driverLicenses</relations>
+    </model>
+    <model name="OrganizationLicenseRule" category="Fleet and Regulatory">
+      <purpose>RSE limits per license type (zero-hardcoding)</purpose>
+      <keyFields>id, organizationId, licenseCategoryId, maxDailyDrivingHours, maxDailyAmplitudeHours, breakMinutesPerDrivingBlock, drivingBlockHoursForBreak, cappedAverageSpeedKmh</keyFields>
+      <relations>organization, licenseCategory</relations>
+    </model>
+    <model name="Driver" category="Fleet and Regulatory">
+      <purpose>Driver profiles with cost information</purpose>
+      <keyFields>id, organizationId, firstName, lastName, email, phone, employmentStatus, hourlyCost, isActive</keyFields>
+      <relations>organization, driverLicenses</relations>
+    </model>
+    <model name="DriverLicense" category="Fleet and Regulatory">
+      <purpose>Junction between Driver and LicenseCategory</purpose>
+      <keyFields>id, driverId, licenseCategoryId, licenseNumber, validFrom, validTo</keyFields>
+      <relations>driver, licenseCategory</relations>
+    </model>
+    <model name="PricingZone" category="Pricing and Zones">
+      <purpose>Geographic zones (central Paris, rings, satellites)</purpose>
+      <keyFields>id, organizationId, name, code, zoneType (POLYGON|RADIUS|POINT), geometry (Json), centerLatitude, centerLongitude, parentZoneId</keyFields>
+      <relations>organization, parentZone, childZones, fromRoutes, toRoutes</relations>
+    </model>
+    <model name="ZoneRoute" category="Pricing and Zones">
+      <purpose>Method 1 zone-to-zone fixed pricing for transfers</purpose>
+      <keyFields>id, organizationId, fromZoneId, toZoneId, vehicleCategoryId, direction (BIDIRECTIONAL|A_TO_B|B_TO_A), fixedPrice, isActive</keyFields>
+      <relations>organization, fromZone, toZone, vehicleCategory</relations>
+    </model>
+    <model name="ExcursionPackage" category="Pricing and Zones">
+      <purpose>Forfaits for excursions (Normandy, Loire Valley, etc.)</purpose>
+      <keyFields>id, organizationId, name, description, originZoneId, destinationZoneId, vehicleCategoryId, includedDurationHours, includedDistanceKm, price</keyFields>
+      <relations>organization, originZone, destinationZone, vehicleCategory</relations>
+    </model>
+    <model name="DispoPackage" category="Pricing and Zones">
+      <purpose>Forfaits de mise a disposition (hourly dispos)</purpose>
+      <keyFields>id, organizationId, name, description, vehicleCategoryId, includedDurationHours, includedDistanceKm, basePrice, overageRatePerKm, overageRatePerHour</keyFields>
+      <relations>organization, vehicleCategory</relations>
+    </model>
+    <model name="OrganizationPricingSettings" category="Pricing and Zones">
+      <purpose>Base commercial parameters per organisation</purpose>
+      <keyFields>id, organizationId, baseRatePerKm, baseRatePerHour, defaultMarginPercent, minimumFare, roundingRule</keyFields>
+      <relations>organization (one-to-one)</relations>
+    </model>
+    <model name="AdvancedRate" category="Pricing and Zones">
+      <purpose>Advanced modifiers (night, weekend, long-distance, zone-based)</purpose>
+      <keyFields>id, organizationId, name, appliesTo (NIGHT|WEEKEND|LONG_DISTANCE|ZONE_SCENARIO|HOLIDAY), startTime, endTime, daysOfWeek, minDistanceKm, maxDistanceKm, zoneId, adjustmentType, value, isActive</keyFields>
+      <relations>organization, zone</relations>
+    </model>
+    <model name="SeasonalMultiplier" category="Pricing and Zones">
+      <purpose>Seasonal or event-based multipliers</purpose>
+      <keyFields>id, organizationId, name, description, startDate, endDate, multiplier, priority, isActive</keyFields>
+      <relations>organization</relations>
+    </model>
+    <model name="OptionalFee" category="Pricing and Zones">
+      <purpose>Catalogue of optional fees (baby seat, waiting, cleaning)</purpose>
+      <keyFields>id, organizationId, name, description, amountType (FIXED|PERCENTAGE), amount, isTaxable, vatRate, autoApplyRules (Json), isActive</keyFields>
+      <relations>organization</relations>
+    </model>
+    <model name="Promotion" category="Pricing and Zones">
+      <purpose>Promo codes and discounts</purpose>
+      <keyFields>id, organizationId, code, description, discountType (FIXED|PERCENTAGE), value, validFrom, validTo, maxTotalUses, maxUsesPerContact, currentUses, isActive</keyFields>
+      <relations>organization</relations>
+    </model>
+    <model name="EmptyLegOpportunity" category="Pricing and Zones">
+      <purpose>Empty-leg segments that can be sold with special strategies</purpose>
+      <keyFields>id, organizationId, vehicleId, fromZoneId, toZoneId, windowStart, windowEnd, pricingStrategy (Json), isActive</keyFields>
+      <relations>organization, vehicle, fromZone, toZone</relations>
+    </model>
+    <model name="Quote" category="Quotes, Invoices and Documents">
+      <purpose>Central commercial object for pricing and feasibility</purpose>
+      <keyFields>id, organizationId, contactId, status (DRAFT|SENT|VIEWED|ACCEPTED|REJECTED|EXPIRED), pricingMode (FIXED_GRID|DYNAMIC), tripType (TRANSFER|EXCURSION|DISPO|OFF_GRID), pickupAt, pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, passengerCount, luggageCount, vehicleCategoryId, suggestedPrice, finalPrice, internalCost, marginPercent, tripAnalysis (Json), appliedRules (Json), validUntil, notes</keyFields>
+      <relations>organization, contact, vehicleCategory, invoice</relations>
+    </model>
+    <model name="Invoice" category="Quotes, Invoices and Documents">
+      <purpose>Immutable financial document derived from accepted quotes</purpose>
+      <keyFields>id, organizationId, quoteId, contactId, number, status (DRAFT|ISSUED|PAID|CANCELLED), issueDate, dueDate, totalExclVat, totalVat, totalInclVat, currency, commissionAmount, notes</keyFields>
+      <relations>organization, quote, contact, lines, documents</relations>
+    </model>
+    <model name="InvoiceLine" category="Quotes, Invoices and Documents">
+      <purpose>Line items for services, optional fees, discounts</purpose>
+      <keyFields>id, invoiceId, lineType (SERVICE|OPTIONAL_FEE|PROMOTION_ADJUSTMENT|OTHER), description, quantity, unitPriceExclVat, vatRate, totalExclVat, totalVat</keyFields>
+      <relations>invoice</relations>
+    </model>
+    <model name="DocumentType" category="Quotes, Invoices and Documents">
+      <purpose>Classify generated documents</purpose>
+      <keyFields>id, code (QUOTE_PDF|INVOICE_PDF|MISSION_ORDER|etc.), name, description</keyFields>
+      <relations>documents</relations>
+    </model>
+    <model name="Document" category="Quotes, Invoices and Documents">
+      <purpose>Store generated artefacts (PDFs, etc.)</purpose>
+      <keyFields>id, organizationId, documentTypeId, quoteId, invoiceId, storagePath, url</keyFields>
+      <relations>organization, documentType, quote, invoice</relations>
+    </model>
+    <model name="FuelPriceCache" category="Fuel and Integrations">
+      <purpose>Cache layer for fuel prices from CollectAPI</purpose>
+      <keyFields>id, countryCode, fuelType (GASOLINE|DIESEL|LPG), pricePerLitre, currency, latitude, longitude, source, fetchedAt</keyFields>
+      <relations>none (global cache)</relations>
+    </model>
+    <model name="OrganizationIntegrationSettings" category="Fuel and Integrations">
+      <purpose>Per-organisation integration settings and API keys</purpose>
+      <keyFields>id, organizationId, googleMapsApiKey, collectApiKey</keyFields>
+      <relations>organization (one-to-one)</relations>
+    </model>
+  </requiredModels>
+
+  <requiredEnums>
+    <enum name="ContactType" values="INDIVIDUAL, BUSINESS, AGENCY" />
+    <enum name="ClientType" values="PARTNER, PRIVATE" />
+    <enum name="VehicleRegulatoryCategory" values="LIGHT, HEAVY" />
+    <enum name="VehicleStatus" values="ACTIVE, MAINTENANCE, OUT_OF_SERVICE" />
+    <enum name="DriverEmploymentStatus" values="EMPLOYEE, CONTRACTOR, FREELANCE" />
+    <enum name="QuoteStatus" values="DRAFT, SENT, VIEWED, ACCEPTED, REJECTED, EXPIRED" />
+    <enum name="InvoiceStatus" values="DRAFT, ISSUED, PAID, CANCELLED" />
+    <enum name="PricingMode" values="FIXED_GRID, DYNAMIC" />
+    <enum name="TripType" values="TRANSFER, EXCURSION, DISPO, OFF_GRID" />
+    <enum name="AmountType" values="FIXED, PERCENTAGE" />
+    <enum name="AdjustmentType" values="PERCENTAGE, FIXED_AMOUNT" />
+    <enum name="ZoneType" values="POLYGON, RADIUS, POINT" />
+    <enum name="RouteDirection" values="BIDIRECTIONAL, A_TO_B, B_TO_A" />
+    <enum name="AdvancedRateAppliesTo" values="NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY" />
+    <enum name="FuelType" values="GASOLINE, DIESEL, LPG" />
+    <enum name="InvoiceLineType" values="SERVICE, OPTIONAL_FEE, PROMOTION_ADJUSTMENT, OTHER" />
+  </requiredEnums>
+</story-context>

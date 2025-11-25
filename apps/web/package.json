@@ -94,6 +94,9 @@
   },
   "name": "@repo/web",
   "private": true,
+  "prisma": {
+    "schema": "../../packages/database/prisma/schema.prisma"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbo",
@@ -101,7 +104,10 @@
     "lint": "eslint .",
     "shadcn-ui": "pnpm dlx shadcn@latest",
     "start": "next start",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prisma:generate": "dotenv -c -e ../../.env.local -- prisma generate",
+    "prisma:migrate": "dotenv -c -e ../../.env.local -- prisma migrate dev",
+    "prisma:studio": "dotenv -c -e ../../.env.local -- prisma studio"
   },
   "version": "0.0.0",
   "pnpm": {
