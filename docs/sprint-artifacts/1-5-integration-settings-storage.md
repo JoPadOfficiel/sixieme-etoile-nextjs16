@@ -1,6 +1,6 @@
 # Story 1.5: Integration Settings Storage for Google Maps & CollectAPI
 
-Status: in-progress
+Status: done
 
 ## Story
 
