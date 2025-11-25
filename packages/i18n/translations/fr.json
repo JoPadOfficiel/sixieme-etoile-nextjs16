@@ -811,5 +811,65 @@
 			"url": "url",
 			"uuid": "uuid"
 		}
+	},
+	"contacts": {
+		"title": "Contacts",
+		"description": "Gérez vos contacts et clients.",
+		"search": "Rechercher des contacts...",
+		"addContact": "Ajouter un contact",
+		"editContact": "Modifier le contact",
+		"addContactDescription": "Créer un nouveau contact dans votre organisation.",
+		"editContactDescription": "Mettre à jour les informations du contact.",
+		"empty": "Aucun contact pour le moment. Ajoutez votre premier contact pour commencer.",
+		"noResults": "Aucun contact trouvé correspondant à votre recherche.",
+		"loadError": "Échec du chargement des contacts. Veuillez réessayer.",
+		"partner": "Partenaire",
+		"private": "Privé",
+		"columns": {
+			"name": "Nom",
+			"type": "Type",
+			"company": "Entreprise",
+			"email": "Email",
+			"phone": "Téléphone",
+			"quotes": "Devis",
+			"invoices": "Factures"
+		},
+		"types": {
+			"individual": "Particulier",
+			"business": "Entreprise",
+			"agency": "Agence"
+		},
+		"form": {
+			"type": "Type de contact",
+			"displayName": "Nom affiché",
+			"isPartner": "Client partenaire",
+			"isPartnerDescription": "Les clients partenaires utilisent la tarification grille fixe (Méthode 1).",
+			"personInfo": "Informations personnelles",
+			"firstName": "Prénom",
+			"lastName": "Nom",
+			"companyInfo": "Informations entreprise",
+			"companyName": "Nom de l'entreprise",
+			"vatNumber": "Numéro de TVA",
+			"siret": "SIRET",
+			"billingAddress": "Adresse de facturation",
+			"contactInfo": "Coordonnées",
+			"email": "Email",
+			"phone": "Téléphone",
+			"notes": "Notes",
+			"create": "Créer le contact",
+			"update": "Mettre à jour le contact"
+		},
+		"notifications": {
+			"created": "Contact créé avec succès.",
+			"createFailed": "Échec de la création du contact. Veuillez réessayer.",
+			"updated": "Contact mis à jour avec succès.",
+			"updateFailed": "Échec de la mise à jour du contact. Veuillez réessayer.",
+			"deleted": "Contact supprimé avec succès.",
+			"deleteFailed": "Échec de la suppression du contact. Veuillez réessayer."
+		},
+		"pagination": {
+			"showing": "Affichage de {from} à {to} sur {total} contacts",
+			"page": "Page {current} sur {total}"
+		}
 	}
 }

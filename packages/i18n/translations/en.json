@@ -811,5 +811,65 @@
 			"url": "url",
 			"uuid": "uuid"
 		}
+	},
+	"contacts": {
+		"title": "Contacts",
+		"description": "Manage your contacts and clients.",
+		"search": "Search contacts...",
+		"addContact": "Add Contact",
+		"editContact": "Edit Contact",
+		"addContactDescription": "Create a new contact in your organization.",
+		"editContactDescription": "Update the contact information.",
+		"empty": "No contacts yet. Add your first contact to get started.",
+		"noResults": "No contacts found matching your search.",
+		"loadError": "Failed to load contacts. Please try again.",
+		"partner": "Partner",
+		"private": "Private",
+		"columns": {
+			"name": "Name",
+			"type": "Type",
+			"company": "Company",
+			"email": "Email",
+			"phone": "Phone",
+			"quotes": "Quotes",
+			"invoices": "Invoices"
+		},
+		"types": {
+			"individual": "Individual",
+			"business": "Business",
+			"agency": "Agency"
+		},
+		"form": {
+			"type": "Contact Type",
+			"displayName": "Display Name",
+			"isPartner": "Partner Client",
+			"isPartnerDescription": "Partner clients use fixed grid pricing (Method 1).",
+			"personInfo": "Person Information",
+			"firstName": "First Name",
+			"lastName": "Last Name",
+			"companyInfo": "Company Information",
+			"companyName": "Company Name",
+			"vatNumber": "VAT Number",
+			"siret": "SIRET",
+			"billingAddress": "Billing Address",
+			"contactInfo": "Contact Information",
+			"email": "Email",
+			"phone": "Phone",
+			"notes": "Notes",
+			"create": "Create Contact",
+			"update": "Update Contact"
+		},
+		"notifications": {
+			"created": "Contact created successfully.",
+			"createFailed": "Failed to create contact. Please try again.",
+			"updated": "Contact updated successfully.",
+			"updateFailed": "Failed to update contact. Please try again.",
+			"deleted": "Contact deleted successfully.",
+			"deleteFailed": "Failed to delete contact. Please try again."
+		},
+		"pagination": {
+			"showing": "Showing {from} to {to} of {total} contacts",
+			"page": "Page {current} of {total}"
+		}
 	}
 }
