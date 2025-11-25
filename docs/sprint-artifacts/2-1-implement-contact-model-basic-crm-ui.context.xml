@@ -1,0 +1,278 @@
+<story-context id="story-2.1-contact-model-basic-crm-ui" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2.1</storyId>
+    <title>Implement Contact Model &amp; Basic CRM UI</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-25T23:00:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-2.1</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>to manage contacts with partner vs private classification</iWant>
+    <soThat>I can quickly see how pricing and lifecycle should behave for each client</soThat>
+    <tasks>
+      <task id="2.1.1">Create API routes for CRUD operations on Contact</task>
+      <task id="2.1.2">Create Contacts list page at /dashboard/contacts</task>
+      <task id="2.1.3">Create Contact detail/edit drawer or page</task>
+      <task id="2.1.4">Implement partner vs private classification toggle</task>
+      <task id="2.1.5">Add unit tests for Contact API</task>
+      <task id="2.1.6">Add Playwright tests for CRM UI</task>
+    </tasks>
+  </story>
+
+  <problem>
+    <statement>
+      Currently, there is no user interface to manage client contacts in the VTC ERP system.
+      Operators need a way to create, view, edit, and classify contacts as partners or private
+      clients to enable proper pricing mode selection (Method 1 grids vs Method 2 dynamic).
+    </statement>
+    <impact>
+      - Operators cannot manage client data through the application
+      - No visibility into partner vs private classification
+      - Cannot link quotes and invoices to clients
+      - Pricing engine cannot determine which pricing method to apply
+    </impact>
+  </problem>
+
+  <objectives>
+    <objective id="O1">Enable operators to view a list of contacts with key information</objective>
+    <objective id="O2">Enable operators to create new contacts with person and company fields</objective>
+    <objective id="O3">Enable operators to edit existing contacts</objective>
+    <objective id="O4">Enable operators to classify contacts as partner or private</objective>
+    <objective id="O5">Display contact type, quotes count, and invoices count in the list</objective>
+    <objective id="O6">Ensure all contact operations are scoped by organization</objective>
+  </objectives>
+
+  <scope>
+    <inScope>
+      <item>Contact list page with columns: Name, Type, Company, Email, Phone, Quotes Count, Invoices Count</item>
+      <item>Contact create/edit form with person and company fields</item>
+      <item>Partner vs Private classification toggle</item>
+      <item>API endpoints for CRUD operations</item>
+      <item>Multi-tenancy enforcement (organizationId scoping)</item>
+      <item>Search and filter functionality</item>
+      <item>Unit and integration tests</item>
+    </inScope>
+    <outOfScope>
+      <item>Partner contract data and rate grid links (Story 2.2)</item>
+      <item>Reclassification with historical data preservation (Story 2.3)</item>
+      <item>Quote/Invoice linking UI (Story 2.4)</item>
+      <item>Commercial metrics and timeline (Story 2.5)</item>
+    </outOfScope>
+  </scope>
+
+  <constraints>
+    <constraint type="multi-tenancy">All contacts must be scoped by organizationId</constraint>
+    <constraint type="data-model">Contact model already exists in schema.prisma</constraint>
+    <constraint type="ui-consistency">Follow existing ShadCN UI patterns from the codebase</constraint>
+    <constraint type="api-pattern">Follow existing VTC router patterns in packages/api</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>UI complexity for handling both person and company fields</description>
+      <mitigation>Use conditional form sections based on contact type</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance with large contact lists</description>
+      <mitigation>Implement pagination and search from the start</mitigation>
+    </risk>
+  </risks>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>the Contact model from the Tech Spec</given>
+      <when>I open /dashboard/contacts</when>
+      <then>I see a list of contacts with columns: Name, Type (Partner/Private), Company, Email, Phone, Quotes Count, Invoices Count, Status</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>I click Add Contact or edit an existing contact</given>
+      <when>the contact drawer or page opens</when>
+      <then>I can capture person fields (first/last name, email, phone) and company fields (company name, VAT, billing address) as applicable, and choose a type/flag corresponding to partner vs private</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>I save a new or edited contact</given>
+      <when>the form is submitted</when>
+      <then>the record is persisted with organizationId and correctly sets its partner/private classification</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>I am authenticated as a user in Organization A</given>
+      <when>I view the contacts list</when>
+      <then>I only see contacts belonging to Organization A</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>the contacts list</given>
+      <when>I use the search field</when>
+      <then>the list filters by name, email, or company name</then>
+    </criterion>
+    <criterion id="AC6">
+      <given>a contact with quotes and invoices</given>
+      <when>I view the contacts list</when>
+      <then>I see the correct counts for quotes and invoices</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>VTC ERP Technical Specification</title>
+        <section>Core Tenancy &amp; CRM (lines 355-378)</section>
+        <snippet>Contact model with type (INDIVIDUAL/BUSINESS/AGENCY), displayName, person fields, company fields, isPartner flag, defaultClientType, and relations to quotes/invoices.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP Product Requirements Document</title>
+        <section>FR1-FR6 - Client Segmentation &amp; CRM</section>
+        <snippet>FR1: Support partner and private client types. FR2: Store contract data for partners. FR3: Store simplified profile for private clients. FR4: Pricing engine reads client type. FR5: Allow reclassification. FR6: Link quotes/invoices to clients.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 2.1: Implement Contact Model &amp; Basic CRM UI</section>
+        <snippet>Prerequisites: Stories 1.1-1.2 (data model + multi-tenancy). Implement list + detail UI in line with UX spec section 8.2.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Contact</symbol>
+        <lines>329-367</lines>
+        <reason>Model already exists with all required fields. Ready for use.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/contacts.ts</path>
+        <kind>router</kind>
+        <symbol>contactsRouter</symbol>
+        <lines>1-229</lines>
+        <reason>Existing contacts router with basic CRUD operations. Needs enhancement.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <lines>1-22</lines>
+        <reason>Main VTC router that includes contacts routes.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <lines>1-66</lines>
+        <reason>Existing middleware for organization scoping.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="@tanstack/react-query" version="existing" note="For data fetching in UI" />
+        <package name="zod" version="existing" note="For validation schemas" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/contacts</name>
+      <kind>API endpoint</kind>
+      <signature>GET ?search=string&amp;page=number&amp;limit=number → { data: Contact[], total: number, page: number }</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+      <description>List contacts with pagination and search</description>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/contacts/:id</name>
+      <kind>API endpoint</kind>
+      <signature>GET → Contact</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+      <description>Get a single contact by ID</description>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/contacts</name>
+      <kind>API endpoint</kind>
+      <signature>POST { ...contactData } → Contact</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+      <description>Create a new contact</description>
+    </interface>
+    <interface>
+      <name>PUT /api/vtc/contacts/:id</name>
+      <kind>API endpoint</kind>
+      <signature>PUT { ...contactData } → Contact</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+      <description>Update an existing contact</description>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/contacts/:id</name>
+      <kind>API endpoint</kind>
+      <signature>DELETE → { success: boolean }</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+      <description>Delete a contact</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <paragraph>Use Vitest for unit tests (packages/api). Test CRUD operations and multi-tenancy. Use Playwright MCP for UI tests. Use curl + DB verification for API endpoints.</paragraph>
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/contacts.test.ts (API tests)</location>
+      <location>apps/web/cypress/e2e/contacts.cy.ts (E2E tests)</location>
+    </locations>
+    <ideas>
+      <idea criterionId="AC1">Test contacts list page renders with correct columns</idea>
+      <idea criterionId="AC2">Test contact form opens and displays all fields</idea>
+      <idea criterionId="AC3">Test contact creation persists to database with correct organizationId</idea>
+      <idea criterionId="AC4">Test multi-tenancy: user cannot see contacts from other organizations</idea>
+      <idea criterionId="AC5">Test search filters contacts by name, email, company</idea>
+      <idea criterionId="AC6">Test quotes/invoices counts are displayed correctly</idea>
+    </ideas>
+  </tests>
+
+  <technicalNotes>
+    <note id="1">Contact model already exists in schema.prisma (lines 329-367)</note>
+    <note id="2">Contacts router already exists with basic CRUD (packages/api/src/routes/vtc/contacts.ts)</note>
+    <note id="3">Use existing organization middleware for multi-tenancy</note>
+    <note id="4">Follow ShadCN UI patterns for table, form, and drawer components</note>
+    <note id="5">Implement pagination with cursor or offset-based approach</note>
+    <note id="6">Include _count for quotes and invoices in list query</note>
+  </technicalNotes>
+
+  <relatedFRs>
+    <fr id="FR1">Support at least two client types – partner agencies/organisations and private/one-off customers</fr>
+    <fr id="FR2">For each partner client, store contract data including billing details, payment terms, assigned rate grid(s)</fr>
+    <fr id="FR3">For private clients, store a simplified profile focused on contact details and default preferences</fr>
+    <fr id="FR4">Pricing engine shall read the client type to determine pricing method</fr>
+    <fr id="FR6">Each quote and invoice shall be linked to a client record</fr>
+  </relatedFRs>
+
+  <previousStoryLearnings>
+    <learning storyId="1.2" title="Organization-Level Multi-Tenancy">
+      <point>Use organizationMiddleware for org scoping</point>
+      <point>TenantPrisma pattern for scoped queries</point>
+    </learning>
+    <learning storyId="1.5" title="Integration Settings Storage">
+      <point>Follow existing VTC router patterns</point>
+      <point>Use Hono with zod validation</point>
+      <point>Role-based access control patterns</point>
+    </learning>
+  </previousStoryLearnings>
+
+  <fileStructure>
+    <newFiles>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/contacts/page.tsx" description="Contacts list page" />
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/contacts/[contactId]/page.tsx" description="Contact detail page" />
+      <file path="apps/web/modules/saas/contacts/components/ContactsTable.tsx" description="Contacts table component" />
+      <file path="apps/web/modules/saas/contacts/components/ContactForm.tsx" description="Contact create/edit form" />
+      <file path="apps/web/modules/saas/contacts/components/ContactDrawer.tsx" description="Contact drawer for quick edit" />
+      <file path="packages/api/src/routes/vtc/__tests__/contacts.test.ts" description="API tests for contacts" />
+    </newFiles>
+    <modifiedFiles>
+      <file path="packages/api/src/routes/vtc/contacts.ts" description="Enhance with pagination, search, counts" />
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/layout.tsx" description="Add contacts link to navigation" />
+      <file path="packages/i18n/translations/en.json" description="Add contact-related translations" />
+      <file path="packages/i18n/translations/fr.json" description="Add contact-related translations" />
+    </modifiedFiles>
+  </fileStructure>
+</story-context>
