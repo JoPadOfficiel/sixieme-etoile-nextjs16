@@ -260,7 +260,7 @@ Functional requirements are grouped by capability area and numbered sequentially
 - **FR37:** An admin configuration area shall allow authorised users to manage zones, routes, grids, forfaits, margins and multipliers.
 - **FR38:** Admins shall be able to configure vehicle categories, cost parameters and mapped regulatory rules per licence type.
 - **FR39:** The system shall treat EUR as the base currency for pricing and ensure a consistent approach to currency representation in all financial records.
-- **FR40:** The system shall store operational timestamps in UTC in the database while presenting service times in the relevant local timezone (e.g. Europe/Paris) in the UI.
+- **FR40:** The system shall store operational timestamps as business times in the Europe/Paris timezone and present the exact same values in the UI, without any timezone conversion logic.
 - **FR41:** The system shall maintain a cache of fuel prices sourced from an external provider and ensure pricing calculations use cached values rather than real-time API calls.
 
 ### FR Group 7  Operator Cockpit & UX
