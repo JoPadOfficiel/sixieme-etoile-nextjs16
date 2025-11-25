@@ -33,7 +33,8 @@ export function IntegrationSettingsForm() {
       if (!response.ok) {
         throw new Error("Failed to fetch integration settings");
       }
-      return response.json() as Promise<IntegrationSettings>;
+      const json = await response.json() as { data: IntegrationSettings };
+      return json.data;
     },
   });
 
