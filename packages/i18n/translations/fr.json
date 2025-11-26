@@ -197,6 +197,19 @@
 		},
 		"tableOfContents": {
 			"title": "Sur cette page"
+		},
+		"actions": "Actions",
+		"delete": "Supprimer",
+		"deleting": "Suppression...",
+		"saving": "Enregistrement...",
+		"error": "Erreur",
+		"success": "Succès",
+		"previous": "Précédent",
+		"next": "Suivant",
+		"pageOf": "Page {page} sur {total}",
+		"status": {
+			"active": "Actif",
+			"inactive": "Inactif"
 		}
 	},
 	"contact": {
@@ -512,7 +525,73 @@
 		"title": "Tarifs",
 		"trialPeriod": "{days} {days, plural, one {jour} other {jours}} d'essai gratuit",
 		"year": "{count, plural, one {an} other {{count} ans}}",
-		"yearly": "Annuel"
+		"yearly": "Annuel",
+		"zones": {
+			"title": "Zones Tarifaires",
+			"description": "Définissez les zones géographiques pour les calculs de tarification.",
+			"name": "Nom",
+			"type": "Type",
+			"center": "Centre",
+			"parentZone": "Zone Parente",
+			"routesCount": "Routes",
+			"status": "Statut",
+			"addZone": "Ajouter une Zone",
+			"editZone": "Modifier la Zone",
+			"addZoneDescription": "Créez une nouvelle zone tarifaire pour votre organisation.",
+			"editZoneDescription": "Mettez à jour la configuration de la zone.",
+			"noZones": "Aucune zone définie. Ajoutez votre première zone pour commencer.",
+			"searchPlaceholder": "Rechercher des zones...",
+			"fetchError": "Échec du chargement des zones. Veuillez réessayer.",
+			"saveError": "Échec de l'enregistrement de la zone. Veuillez réessayer.",
+			"deleteError": "Échec de la suppression de la zone. Veuillez réessayer.",
+			"createSuccess": "Zone créée avec succès.",
+			"updateSuccess": "Zone mise à jour avec succès.",
+			"deleteSuccess": "Zone supprimée avec succès.",
+			"deleteConfirmTitle": "Supprimer la Zone",
+			"deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer la zone \"{name}\" ? Cette action est irréversible.",
+			"types": {
+				"POLYGON": "Polygone",
+				"RADIUS": "Rayon",
+				"POINT": "Point"
+			},
+			"form": {
+				"name": "Nom de la Zone",
+				"namePlaceholder": "ex: Paris Intra-Muros",
+				"code": "Code de la Zone",
+				"codeHelp": "Identifiant unique (majuscules, alphanumériques, underscores uniquement)",
+				"type": "Type de Zone",
+				"centerLatitude": "Latitude du Centre",
+				"centerLongitude": "Longitude du Centre",
+				"radiusKm": "Rayon (km)",
+				"geometry": "Géométrie (GeoJSON)",
+				"geometryHelp": "Entrez le polygone de la zone au format GeoJSON.",
+				"parentZone": "Zone Parente",
+				"noParent": "Pas de zone parente",
+				"isActive": "Active",
+				"isActiveHelp": "Les zones inactives ne sont pas utilisées dans les calculs de tarification.",
+				"create": "Créer la Zone",
+				"update": "Mettre à jour la Zone",
+				"dragMarker": "Glissez pour ajuster la position"
+			},
+			"map": {
+				"noApiKey": "Clé API Google Maps non configurée.",
+				"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations.",
+				"loadError": "Échec du chargement de Google Maps.",
+				"searchPlaceholder": "Rechercher un lieu...",
+				"search": "Rechercher",
+				"instructions": "Cliquez sur la carte pour définir le centre de la zone, ou recherchez un lieu. Glissez le marqueur pour ajuster.",
+				"drawingTools": "Outils de dessin",
+				"polygon": "Polygone",
+				"circle": "Cercle",
+				"rectangle": "Rectangle",
+				"drawPolygon": "Dessiner une zone polygonale",
+				"drawCircle": "Dessiner une zone circulaire",
+				"drawRectangle": "Dessiner une zone rectangulaire",
+				"clear": "Effacer",
+				"vertices": "Sommets",
+				"drawingInstructions": "Sélectionnez un outil de dessin et cliquez sur la carte pour dessiner votre zone. Vous pouvez modifier la forme en faisant glisser ses sommets ou ses bords."
+			}
+		}
 	},
 	"settings": {
 		"account": {

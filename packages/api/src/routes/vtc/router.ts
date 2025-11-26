@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { contactsRouter } from "./contacts";
 import { integrationsRouter } from "./integrations";
 import { partnerContractsRouter } from "./partner-contracts";
+import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { vehiclesRouter } from "./vehicles";
 
@@ -17,6 +18,7 @@ export const vtcRouter = new Hono()
 	.route("/", vehiclesRouter)
 	.route("/", quotesRouter)
 	.route("/", integrationsRouter)
-	.route("/", partnerContractsRouter);
+	.route("/", partnerContractsRouter)
+	.route("/", pricingZonesRouter);
 
 export type VtcRouter = typeof vtcRouter;

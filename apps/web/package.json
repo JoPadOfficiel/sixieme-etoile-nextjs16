@@ -76,6 +76,7 @@
     "@repo/tsconfig": "workspace:*",
     "@shikijs/rehype": "^1.2.2",
     "@types/cookie": "^0.6.0",
+    "@types/google.maps": "^3.58.1",
     "@types/js-cookie": "^3.0.4",
     "@types/mdx": "^2.0.13",
     "@types/node": "22.10.1",

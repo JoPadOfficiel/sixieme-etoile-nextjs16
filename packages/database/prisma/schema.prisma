@@ -695,6 +695,7 @@ model PricingZone {
   geometry        Json? // GeoJSON-like structure
   centerLatitude  Decimal? @db.Decimal(10, 7)
   centerLongitude Decimal? @db.Decimal(10, 7)
+  radiusKm        Decimal? @db.Decimal(10, 2) // For RADIUS type zones
 
   // Hierarchy
   parentZoneId String?

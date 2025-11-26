@@ -20,6 +20,7 @@ import {
   getIntegrationSettingsMasked,
   updateIntegrationSettings,
   deleteApiKey,
+  resolveApiKey,
   type IntegrationKeyType,
 } from "../../lib/integration-keys";
 import { organizationMiddleware } from "../../middleware/organization";
@@ -141,6 +142,41 @@ export const integrationsRouter = new Hono()
       return c.json({
         success: true,
         updatedAt: result.updatedAt.toISOString(),
+      });
+    }
+  )
+
+  // Get Google Maps API key (unmasked, for client-side use)
+  // This endpoint is accessible to all authenticated org members
+  .get(
+    "/google-maps-key",
+    describeRoute({
+      summary: "Get Google Maps API key",
+      description:
+        "Get the Google Maps API key for client-side map rendering. Returns the actual key (not masked).",
+      tags: ["VTC - Settings"],
+      responses: {
+        200: {
+          description: "Google Maps API key",
+        },
+        404: {
+          description: "No Google Maps API key configured",
+        },
+      },
+    }),
+    async (c) => {
+      const organizationId = c.get("organizationId");
+
+      const key = await resolveApiKey(organizationId, "googleMaps");
+
+      if (!key) {
+        throw new HTTPException(404, {
+          message: "Google Maps API key not configured",
+        });
+      }
+
+      return c.json({
+        key,
       });
     }
   )

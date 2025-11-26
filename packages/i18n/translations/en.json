@@ -197,6 +197,19 @@
 		},
 		"tableOfContents": {
 			"title": "On this page"
+		},
+		"actions": "Actions",
+		"delete": "Delete",
+		"deleting": "Deleting...",
+		"saving": "Saving...",
+		"error": "Error",
+		"success": "Success",
+		"previous": "Previous",
+		"next": "Next",
+		"pageOf": "Page {page} of {total}",
+		"status": {
+			"active": "Active",
+			"inactive": "Inactive"
 		}
 	},
 	"contact": {
@@ -512,7 +525,73 @@
 		"title": "Pricing",
 		"trialPeriod": "{days} {days, plural, one {day} other {days}} free trial",
 		"year": "{count, plural, one {year} other {{count} years}}",
-		"yearly": "Yearly"
+		"yearly": "Yearly",
+		"zones": {
+			"title": "Pricing Zones",
+			"description": "Define geographic zones for pricing calculations.",
+			"name": "Name",
+			"type": "Type",
+			"center": "Center",
+			"parentZone": "Parent Zone",
+			"routesCount": "Routes",
+			"status": "Status",
+			"addZone": "Add Zone",
+			"editZone": "Edit Zone",
+			"addZoneDescription": "Create a new pricing zone for your organization.",
+			"editZoneDescription": "Update the zone configuration.",
+			"noZones": "No zones defined yet. Add your first zone to get started.",
+			"searchPlaceholder": "Search zones...",
+			"fetchError": "Failed to load zones. Please try again.",
+			"saveError": "Failed to save zone. Please try again.",
+			"deleteError": "Failed to delete zone. Please try again.",
+			"createSuccess": "Zone created successfully.",
+			"updateSuccess": "Zone updated successfully.",
+			"deleteSuccess": "Zone deleted successfully.",
+			"deleteConfirmTitle": "Delete Zone",
+			"deleteConfirmDescription": "Are you sure you want to delete the zone \"{name}\"? This action cannot be undone.",
+			"types": {
+				"POLYGON": "Polygon",
+				"RADIUS": "Radius",
+				"POINT": "Point"
+			},
+			"form": {
+				"name": "Zone Name",
+				"namePlaceholder": "e.g., Paris Intra-Muros",
+				"code": "Zone Code",
+				"codeHelp": "Unique identifier (uppercase, alphanumeric, underscores only)",
+				"type": "Zone Type",
+				"centerLatitude": "Center Latitude",
+				"centerLongitude": "Center Longitude",
+				"radiusKm": "Radius (km)",
+				"geometry": "Geometry (GeoJSON)",
+				"geometryHelp": "Enter the zone polygon as GeoJSON format.",
+				"parentZone": "Parent Zone",
+				"noParent": "No parent zone",
+				"isActive": "Active",
+				"isActiveHelp": "Inactive zones are not used in pricing calculations.",
+				"create": "Create Zone",
+				"update": "Update Zone",
+				"dragMarker": "Drag to adjust position"
+			},
+			"map": {
+				"noApiKey": "Google Maps API key not configured.",
+				"configureInSettings": "Configure it in Organization Settings > Integrations.",
+				"loadError": "Failed to load Google Maps.",
+				"searchPlaceholder": "Search for a location...",
+				"search": "Search",
+				"instructions": "Click on the map to set the zone center, or search for a location. Drag the marker to adjust.",
+				"drawingTools": "Drawing tools",
+				"polygon": "Polygon",
+				"circle": "Circle",
+				"rectangle": "Rectangle",
+				"drawPolygon": "Draw a polygon zone",
+				"drawCircle": "Draw a circular zone",
+				"drawRectangle": "Draw a rectangular zone",
+				"clear": "Clear",
+				"vertices": "Vertices",
+				"drawingInstructions": "Select a drawing tool and click on the map to draw your zone. You can edit the shape by dragging its vertices or edges."
+			}
+		}
 	},
 	"settings": {
 		"account": {

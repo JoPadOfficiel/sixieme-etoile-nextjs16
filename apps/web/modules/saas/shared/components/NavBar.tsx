@@ -8,6 +8,7 @@ import { cn } from "@ui/lib";
 import {
 	ChevronRightIcon,
 	HomeIcon,
+	MapPinIcon,
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
@@ -45,6 +46,12 @@ export function NavBar() {
 						href: `${basePath}/contacts`,
 						icon: UsersIcon,
 						isActive: pathname.startsWith(`${basePath}/contacts`),
+					},
+					{
+						label: t("pricing.zones.title"),
+						href: `${basePath}/zones`,
+						icon: MapPinIcon,
+						isActive: pathname.startsWith(`${basePath}/zones`),
 					},
 					{
 						label: t("app.menu.organizationSettings"),

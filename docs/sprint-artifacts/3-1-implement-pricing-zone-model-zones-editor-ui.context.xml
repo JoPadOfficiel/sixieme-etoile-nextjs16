@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>3.1</story-id>
+    <story-name>Implement PricingZone Model & Zones Editor UI</story-name>
+    <epic>Epic 3 – Zone Engine & Partner Fixed Grids (Method 1)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Le système de pricing VTC repose sur un modèle de zones géographiques pour déterminer
+      les tarifs fixes (Method 1) entre zones. Actuellement, aucune infrastructure n'existe
+      pour définir ces zones (Paris Intra-Muros, Petite/Grande Couronne, CDG, Orly, Versailles, etc.).
+      
+      Sans zones définies, le pricing engine ne peut pas :
+      - Mapper les points de pickup/dropoff à des zones
+      - Appliquer les grilles tarifaires fixes pour les partenaires
+      - Calculer les multiplicateurs de zone pour le pricing dynamique
+    </description>
+    <business-impact>
+      - Impossibilité d'honorer les contrats partenaires avec prix fixes (Engagement Rule)
+      - Pas de tarification cohérente pour les transferts aéroports
+      - Risque de pricing manuel et erreurs
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Créer le modèle PricingZone et une interface d'administration permettant de définir
+      des zones géographiques (polygones, rayons, points) utilisées par le pricing engine.
+    </primary>
+    <secondary>
+      - Permettre la hiérarchie de zones (zone parente)
+      - Stocker les géométries en format compatible avec les calculs géospatiaux
+      - Préparer l'intégration avec Google Maps pour l'éditeur visuel
+      - Exposer une API CRUD complète pour les zones
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Modèle Prisma `PricingZone` avec geometry, center, hierarchy
+      - API REST CRUD : GET/POST/PATCH/DELETE /api/vtc/pricing/zones
+      - UI d'administration : liste des zones avec tableau
+      - UI d'édition : formulaire avec champs name, code, type, parent zone
+      - Placeholder pour l'éditeur de carte (Google Maps sera intégré progressivement)
+      - Validation : code unique par organisation, géométrie valide
+      - Tests unitaires et E2E
+    </in-scope>
+    <out-of-scope>
+      - Intégration complète Google Maps Drawing Tools (peut être simplifiée initialement)
+      - Calculs géospatiaux avancés (point-in-polygon) – future story
+      - ZoneRoute et grilles tarifaires (Story 3.2)
+      - Multiplicateurs de zone (Epic 4)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Prisma ne supporte pas nativement PostGIS ; stocker geometry en JSON
+      - Google Maps API key doit être configurée (Story 1.5 done)
+      - Multi-tenancy : toutes les zones scoped par organizationId
+    </technical>
+    <business>
+      - FR7 : Dual pricing modes (zones sont la base de Method 1)
+      - FR8 : Zones définies par polygones et/ou rayons
+      - FR37 : Admin configuration pour zones, routes, grids
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Complexité de l'éditeur de carte Google Maps</description>
+      <mitigation>Commencer avec un éditeur simplifié (coordonnées manuelles ou JSON), 
+      ajouter le dessin interactif dans une itération ultérieure.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Performance des calculs géospatiaux avec JSON</description>
+      <mitigation>Pour le MVP, utiliser des calculs simples (Haversine pour rayons).
+      PostGIS peut être ajouté plus tard si nécessaire.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given /app/[orgSlug]/settings/zones,
+      When I open the page,
+      Then I see a table of existing zones with columns: Name, Code, Type (Polygon/Radius/Point), 
+      Parent Zone, Routes Count, Actions (Edit/Delete).
+    </criterion>
+    <criterion id="AC2">
+      Given I click "Add Zone",
+      When the form opens,
+      Then I can enter: name, code, type (dropdown), center coordinates (lat/lng),
+      radius (if type=Radius), geometry JSON (if type=Polygon), and optional parent zone.
+    </criterion>
+    <criterion id="AC3">
+      Given I fill the zone form and submit,
+      When the zone is created,
+      Then a PricingZone record is persisted with organizationId, and the zone appears in the table.
+    </criterion>
+    <criterion id="AC4">
+      Given an existing zone,
+      When I edit and save changes,
+      Then the zone is updated in the database and the table reflects the changes.
+    </criterion>
+    <criterion id="AC5">
+      Given an existing zone with no routes referencing it,
+      When I delete the zone,
+      Then the zone is removed from the database.
+    </criterion>
+    <criterion id="AC6">
+      Given an existing zone referenced by routes,
+      When I attempt to delete it,
+      Then a warning is shown and deletion is blocked unless confirmed.
+    </criterion>
+    <criterion id="AC7">
+      Given the zones API,
+      When I call GET /api/vtc/pricing/zones,
+      Then I receive a paginated list of zones for the current organization.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 1.1 – Define VTC ERP Prisma Models (base schema)
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.2 – Enforce Organization-Level Multi-Tenancy
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.5 – Integration Settings Storage (Google Maps API key)
+    </dependency>
+    <dependency type="optional" status="pending">
+      Google Maps Drawing Tools integration (can be added incrementally)
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      PricingZone model fields (from Tech Spec):
+      - id, organizationId, name, code (unique per org)
+      - type: enum (POLYGON, RADIUS, POINT)
+      - geometry: Json (GeoJSON-like structure)
+      - centerLat, centerLng: Decimal
+      - radiusKm: Decimal? (for RADIUS type)
+      - parentZoneId: String? (self-reference for hierarchy)
+      - isActive: Boolean
+      - createdAt, updatedAt
+    </note>
+    <note>
+      API routes: /api/vtc/pricing/zones (CRUD)
+      UI route: /app/[orgSlug]/settings/zones
+    </note>
+    <note>
+      For MVP, the map editor can be a simple coordinate input or JSON textarea.
+      Interactive drawing can be added in a follow-up iteration.
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR7, FR8, FR37, Appendix A Section 2</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 3, Story 3.1</epic-reference>
+    <schema-reference>packages/database/prisma/schema.prisma – PricingZone (to be added)</schema-reference>
+  </artifacts>
+</story-context>
