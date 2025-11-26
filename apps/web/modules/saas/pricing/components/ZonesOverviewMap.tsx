@@ -34,9 +34,8 @@ export function ZonesOverviewMap({
 	const mapInstanceRef = useRef<google.maps.Map | null>(null);
 	const overlaysRef = useRef<Record<string, Overlay>>({});
 	const [isReady, setIsReady] = useState(false);
-	const createFromMapCallbackRef = useRef<
-		ZonesOverviewMapProps["onCreateFromMap"]
-	>();
+	const createFromMapCallbackRef =
+		useRef<ZonesOverviewMapProps["onCreateFromMap"]>();
 	const suppressNextMapClickRef = useRef(false);
 
 	// Keep latest callback in a ref so map listeners stay up to date
@@ -235,9 +234,7 @@ export function ZonesOverviewMap({
 			<Card className="flex h-[420px] items-center justify-center text-muted-foreground">
 				<div className="flex flex-col items-center gap-2 text-center">
 					<MapPinIcon className="h-10 w-10" />
-					<p className="text-sm">
-						{t("pricing.zones.map.noApiKey")}
-					</p>
+					<p className="text-sm">{t("pricing.zones.map.noApiKey")}</p>
 					<p className="text-xs">
 						{t("pricing.zones.map.configureInSettings")}
 					</p>

@@ -37,7 +37,7 @@ export function ZoneForm({
 	onCancel,
 	isSubmitting,
 	googleMapsApiKey,
- 	initialZoneType,
+	initialZoneType,
 	initialCenterLatitude,
 	initialCenterLongitude,
 	initialRadiusKm,
@@ -128,7 +128,7 @@ export function ZoneForm({
 					required
 					pattern="^[A-Z0-9_]+$"
 				/>
-				<p className="text-sm text-muted-foreground">
+				<p className="text-muted-foreground text-sm">
 					{t("pricing.zones.form.codeHelp")}
 				</p>
 			</div>
@@ -162,7 +162,9 @@ export function ZoneForm({
 			{/* Zone Drawing Map */}
 			<ZoneDrawingMap
 				zoneType={formData.zoneType}
-				geometry={geometry as { type: "Polygon"; coordinates: number[][][] } | null}
+				geometry={
+					geometry as { type: "Polygon"; coordinates: number[][][] } | null
+				}
 				centerLatitude={formData.centerLatitude ?? null}
 				centerLongitude={formData.centerLongitude ?? null}
 				radiusKm={formData.radiusKm ?? null}
@@ -215,7 +217,7 @@ export function ZoneForm({
 			<div className="flex items-center justify-between">
 				<div className="space-y-0.5">
 					<Label>{t("pricing.zones.form.isActive")}</Label>
-					<p className="text-sm text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						{t("pricing.zones.form.isActiveHelp")}
 					</p>
 				</div>
@@ -228,7 +230,7 @@ export function ZoneForm({
 			</div>
 
 			{/* Actions */}
-			<div className="flex justify-end gap-3 pt-4 border-t">
+			<div className="flex justify-end gap-3 border-t pt-4">
 				<Button type="button" variant="outline" onClick={onCancel}>
 					{t("common.confirmation.cancel")}
 				</Button>

@@ -34,7 +34,7 @@ export function ZoneDrawer({
 	onSubmit,
 	isSubmitting,
 	googleMapsApiKey,
- 	initialZoneType,
+	initialZoneType,
 	initialCenterLatitude,
 	initialCenterLongitude,
 	initialRadiusKm,
@@ -48,7 +48,7 @@ export function ZoneDrawer({
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="sm:max-w-lg overflow-y-auto">
+			<SheetContent className="overflow-y-auto sm:max-w-lg">
 				<SheetHeader>
 					<SheetTitle>
 						{isEditing

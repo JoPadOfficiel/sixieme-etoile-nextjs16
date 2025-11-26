@@ -24,7 +24,6 @@ interface GeoJSONPolygon {
 	coordinates: number[][][];
 }
 
-
 interface ZoneDrawingMapProps {
 	zoneType: ZoneType;
 	geometry: GeoJSONPolygon | null;
@@ -55,7 +54,9 @@ export function ZoneDrawingMap({
 	const t = useTranslations();
 	const mapRef = useRef<HTMLDivElement>(null);
 	const mapInstanceRef = useRef<google.maps.Map | null>(null);
-	const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
+	const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(
+		null,
+	);
 	const currentShapeRef = useRef<
 		google.maps.Polygon | google.maps.Circle | google.maps.Rectangle | null
 	>(null);
@@ -394,7 +395,12 @@ export function ZoneDrawingMap({
 			google.maps.event.addListener(path, "insert_at", () => {
 				onGeometryChange(polygonToGeoJSON(polygon));
 			});
-		} else if (zoneType === "RADIUS" && centerLatitude && centerLongitude && radiusKm) {
+		} else if (
+			zoneType === "RADIUS" &&
+			centerLatitude &&
+			centerLongitude &&
+			radiusKm
+		) {
 			const circle = new google.maps.Circle({
 				center: { lat: centerLatitude, lng: centerLongitude },
 				radius: radiusKm * 1000,
@@ -498,10 +504,10 @@ export function ZoneDrawingMap({
 		return (
 			<div className="rounded-lg border border-dashed p-8 text-center">
 				<MapPinIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-				<p className="mt-2 text-sm text-muted-foreground">
+				<p className="mt-2 text-muted-foreground text-sm">
 					{t(`pricing.zones.map.${error}`)}
 				</p>
-				<p className="mt-1 text-xs text-muted-foreground">
+				<p className="mt-1 text-muted-foreground text-xs">
 					{t("pricing.zones.map.configureInSettings")}
 				</p>
 			</div>
@@ -513,7 +519,7 @@ export function ZoneDrawingMap({
 			{/* Search bar */}
 			<div className="flex gap-2">
 				<div className="relative flex-1">
-					<SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<SearchIcon className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						ref={searchInputRef}
 						placeholder={t("pricing.zones.map.searchPlaceholder")}
@@ -530,7 +536,7 @@ export function ZoneDrawingMap({
 
 			{/* Drawing tools */}
 			<div className="flex items-center gap-2">
-				<Label className="text-sm font-medium">
+				<Label className="font-medium text-sm">
 					{t("pricing.zones.map.drawingTools")}:
 				</Label>
 				<div className="flex gap-1">
@@ -541,7 +547,7 @@ export function ZoneDrawingMap({
 						onClick={() => setDrawingMode("polygon")}
 						title={t("pricing.zones.map.drawPolygon")}
 					>
-						<PentagonIcon className="h-4 w-4 mr-1" />
+						<PentagonIcon className="mr-1 h-4 w-4" />
 						{t("pricing.zones.map.polygon")}
 					</Button>
 					<Button
@@ -551,7 +557,7 @@ export function ZoneDrawingMap({
 						onClick={() => setDrawingMode("circle")}
 						title={t("pricing.zones.map.drawCircle")}
 					>
-						<CircleIcon className="h-4 w-4 mr-1" />
+						<CircleIcon className="mr-1 h-4 w-4" />
 						{t("pricing.zones.map.circle")}
 					</Button>
 					<Button
@@ -561,7 +567,7 @@ export function ZoneDrawingMap({
 						onClick={() => setDrawingMode("rectangle")}
 						title={t("pricing.zones.map.drawRectangle")}
 					>
-						<SquareIcon className="h-4 w-4 mr-1" />
+						<SquareIcon className="mr-1 h-4 w-4" />
 						{t("pricing.zones.map.rectangle")}
 					</Button>
 					{hasShape && (
@@ -572,7 +578,7 @@ export function ZoneDrawingMap({
 							onClick={handleClearZone}
 							className="text-destructive hover:text-destructive"
 						>
-							<Trash2Icon className="h-4 w-4 mr-1" />
+							<Trash2Icon className="mr-1 h-4 w-4" />
 							{t("pricing.zones.map.clear")}
 						</Button>
 					)}
@@ -590,34 +596,42 @@ export function ZoneDrawingMap({
 			</div>
 
 			{/* Zone info */}
-			<div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+			<div className="flex flex-wrap gap-4 text-muted-foreground text-sm">
 				{centerLatitude !== null && centerLongitude !== null && (
 					<>
 						<span>
-							<Label className="text-xs">{t("pricing.zones.form.centerLatitude")}:</Label>{" "}
+							<Label className="text-xs">
+								{t("pricing.zones.form.centerLatitude")}:
+							</Label>{" "}
 							{Number(centerLatitude).toFixed(6)}
 						</span>
 						<span>
-							<Label className="text-xs">{t("pricing.zones.form.centerLongitude")}:</Label>{" "}
+							<Label className="text-xs">
+								{t("pricing.zones.form.centerLongitude")}:
+							</Label>{" "}
 							{Number(centerLongitude).toFixed(6)}
 						</span>
 					</>
 				)}
 				{zoneType === "RADIUS" && radiusKm !== null && radiusKm > 0 && (
 					<span>
-						<Label className="text-xs">{t("pricing.zones.form.radiusKm")}:</Label>{" "}
+						<Label className="text-xs">
+							{t("pricing.zones.form.radiusKm")}:
+						</Label>{" "}
 						{radiusKm} km
 					</span>
 				)}
 				{zoneType === "POLYGON" && geometry && (
 					<span>
-						<Label className="text-xs">{t("pricing.zones.map.vertices")}:</Label>{" "}
+						<Label className="text-xs">
+							{t("pricing.zones.map.vertices")}:
+						</Label>{" "}
 						{geometry.coordinates[0].length - 1}
 					</span>
 				)}
 			</div>
 
-			<p className="text-xs text-muted-foreground">
+			<p className="text-muted-foreground text-xs">
 				{t("pricing.zones.map.drawingInstructions")}
 			</p>
 		</div>

@@ -254,8 +254,8 @@ export function ZoneMapPicker({
 		return (
 			<div className="rounded-lg border border-dashed p-8 text-center">
 				<MapPinIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-				<p className="mt-2 text-sm text-muted-foreground">{error}</p>
-				<p className="mt-1 text-xs text-muted-foreground">
+				<p className="mt-2 text-muted-foreground text-sm">{error}</p>
+				<p className="mt-1 text-muted-foreground text-xs">
 					{t("pricing.zones.map.configureInSettings")}
 				</p>
 			</div>
@@ -267,7 +267,7 @@ export function ZoneMapPicker({
 			{/* Search bar */}
 			<div className="flex gap-2">
 				<div className="relative flex-1">
-					<SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<SearchIcon className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						ref={searchInputRef}
 						placeholder={t("pricing.zones.map.searchPlaceholder")}
@@ -294,7 +294,7 @@ export function ZoneMapPicker({
 
 			{/* Coordinates display */}
 			{centerLatitude !== null && centerLongitude !== null && (
-				<div className="flex gap-4 text-sm text-muted-foreground">
+				<div className="flex gap-4 text-muted-foreground text-sm">
 					<span>
 						<Label className="text-xs">Lat:</Label>{" "}
 						{Number(centerLatitude).toFixed(6)}
@@ -306,7 +306,7 @@ export function ZoneMapPicker({
 				</div>
 			)}
 
-			<p className="text-xs text-muted-foreground">
+			<p className="text-muted-foreground text-xs">
 				{t("pricing.zones.map.instructions")}
 			</p>
 		</div>
