@@ -604,6 +604,45 @@
 		"description": "Define fixed zone-to-zone routes with pricing per vehicle category.",
 		"addRoute": "Add Route",
 		"editRoute": "Edit Route",
+		"viewList": "List",
+		"viewMatrix": "Matrix",
+		"coverage": {
+			"title": "Grid Coverage",
+			"summary": "{configured} routes configured • {active} active • {zones} zones • {percent}% coverage",
+			"coverageLabel": "Coverage",
+			"zones": "Zones",
+			"routes": "Routes",
+			"active": "Active",
+			"byCategory": "By Category",
+			"routesConfigured": "routes"
+		},
+		"matrix": {
+			"title": "Coverage Matrix",
+			"noZones": "No zones configured. Create zones first to see the coverage matrix.",
+			"fromTo": "From \\ To",
+			"price": "Price",
+			"direction": "Direction",
+			"category": "Category",
+			"status": "Status",
+			"legend": {
+				"activeRoute": "Active route",
+				"inactiveRoute": "Inactive route",
+				"missingRoute": "Missing route (click to create)",
+				"bidirectional": "Bidirectional",
+				"oneWay": "One-way"
+			}
+		},
+		"scenarios": {
+			"intraZone": "Intra-Zone",
+			"radial": "Radial",
+			"circularSuburban": "Suburban",
+			"versailles": "Versailles"
+		},
+		"directions": {
+			"bidirectional": "Bidirectional",
+			"a_to_b": "A → B only",
+			"b_to_a": "B → A only"
+		},
 		"addRouteDescription": "Create a new zone-to-zone route with fixed pricing.",
 		"editRouteDescription": "Update the route configuration.",
 		"noRoutes": "No routes defined yet. Add your first route to get started.",

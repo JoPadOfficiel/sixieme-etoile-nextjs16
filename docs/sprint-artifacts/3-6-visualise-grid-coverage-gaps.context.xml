@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>3.6</story-id>
+    <story-name>Visualise Grid Coverage and Gaps</story-name>
+    <epic>Epic 3 – Zone Engine & Partner Fixed Grids (Method 1)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les Stories 3.1-3.5 ont implémenté le système complet de zones, routes et pricing engine.
+      Cependant, les administrateurs n'ont pas de vue d'ensemble pour :
+      
+      - Voir quelles combinaisons zone×zone×catégorie sont couvertes par des grilles
+      - Identifier rapidement les "gaps" (paires de zones sans route configurée)
+      - Vérifier que les scénarios importants du PRD sont bien couverts
+      - Filtrer efficacement les routes par zone de départ/arrivée ou catégorie
+      
+      Actuellement :
+      - La page Routes affiche une liste simple des routes
+      - Pas de filtrage avancé par zone ou catégorie
+      - Pas de visualisation matricielle de la couverture
+      - Impossible de voir les combinaisons manquantes
+      
+      Impact :
+      - Difficulté à auditer la couverture tarifaire
+      - Risque de manquer des routes importantes pour les partenaires
+      - Temps perdu à chercher manuellement les gaps
+    </description>
+    <business-impact>
+      - Perte de revenus potentiels sur des routes non configurées
+      - Risque de devis dynamiques là où une grille devrait exister
+      - Difficulté à négocier de nouveaux contrats partenaires
+      - Impossibilité de valider la conformité aux scénarios PRD
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Fournir une interface permettant aux administrateurs de visualiser la couverture 
+      des grilles tarifaires et d'identifier les combinaisons zone×zone×catégorie manquantes.
+    </primary>
+    <secondary>
+      - Ajouter des filtres avancés (zone départ, zone arrivée, catégorie véhicule, statut)
+      - Créer une vue matricielle zone×zone montrant les routes existantes
+      - Mettre en évidence les scénarios PRD importants (Intra-Zone, Radial, etc.)
+      - Permettre l'export ou l'impression de la matrice de couverture
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Filtres avancés sur la page Routes existante
+      - Vue matricielle de couverture zone×zone (optionnelle mais recommandée)
+      - Indicateurs visuels pour les scénarios PRD (badges, couleurs)
+      - Statistiques de couverture (X routes sur Y combinaisons possibles)
+      - Amélioration de l'UX de la table des routes
+    </in-scope>
+    <out-of-scope>
+      - Modification de la logique de pricing (déjà fait dans 3.4-3.5)
+      - Création automatique de routes manquantes
+      - Intégration avec les contrats partenaires (Epic 2 déjà fait)
+      - Reporting avancé ou analytics (Epic 9)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Réutiliser les composants UI existants (Table, Select, Badge)
+      - Performance : la matrice doit rester fluide même avec beaucoup de zones
+      - Multi-tenancy : toutes les données scoped par organizationId
+      - Responsive : la vue doit fonctionner sur desktop et tablette
+    </technical>
+    <business>
+      - FR7-FR12 : Configuration des grilles tarifaires
+      - FR37 : Administration des grilles
+      - Appendix A : Scénarios à mettre en évidence (Intra-Zone Central, Radial Transfers, 
+        Circular Suburban, Versailles exception)
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="low">
+      <description>Performance avec beaucoup de zones (matrice N×N)</description>
+      <mitigation>Limiter l'affichage aux zones actives, pagination si nécessaire, lazy loading.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Complexité UX de la matrice</description>
+      <mitigation>Proposer deux vues : liste filtrée (par défaut) et matrice (optionnelle).</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given the Routes/Grid screen (/settings/pricing/routes),
+      When I open the filters panel,
+      Then I can filter by: From Zone, To Zone, Vehicle Category, Status (active/inactive).
+    </criterion>
+    <criterion id="AC2">
+      Given the Routes table with filters applied,
+      When I select a specific From Zone,
+      Then only routes starting from that zone are displayed.
+    </criterion>
+    <criterion id="AC3">
+      Given the Routes screen,
+      When I view the coverage statistics,
+      Then I see a summary showing: total routes, active routes, zones covered, and coverage percentage.
+    </criterion>
+    <criterion id="AC4">
+      Given the Routes screen with a "Coverage Matrix" view toggle,
+      When I switch to matrix view,
+      Then I see a zone×zone grid where cells indicate if a route exists (with price) or is missing.
+    </criterion>
+    <criterion id="AC5">
+      Given the matrix or list view,
+      When a route matches a PRD scenario (Intra-Zone, Radial, Circular Suburban),
+      Then it is highlighted with a badge or icon indicating the scenario type.
+    </criterion>
+    <criterion id="AC6">
+      Given the coverage matrix,
+      When I click on an empty cell (missing route),
+      Then I can quickly create a new route for that zone pair.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 3.1 – Implement PricingZone Model & Zones Editor UI
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.2 – Implement ZoneRoute Model & Grid Routes Editor
+    </dependency>
+    <dependency type="optional" status="done">
+      Story 3.3 – Implement Excursion & Dispo Forfait Configuration
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Coverage Statistics API:
+      GET /api/vtc/pricing/routes/coverage
+      Response: {
+        totalZones: number,
+        activeZones: number,
+        totalPossibleRoutes: number, // N × N for N zones
+        configuredRoutes: number,
+        activeRoutes: number,
+        coveragePercent: number,
+        byCategory: { [categoryId]: { configured, active, total } }
+      }
+    </note>
+    <note>
+      Matrix Data Structure:
+      {
+        zones: [{ id, name, code }],
+        matrix: {
+          [fromZoneId]: {
+            [toZoneId]: {
+              hasRoute: boolean,
+              routeId?: string,
+              price?: number,
+              direction?: "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A",
+              isActive?: boolean
+            }
+          }
+        }
+      }
+    </note>
+    <note>
+      PRD Scenario Detection:
+      - Intra-Zone: fromZoneId === toZoneId
+      - Radial: one zone is "Paris" type, other is "Airport" type
+      - Circular Suburban: both zones are "Suburb" type
+      - Versailles: one zone is "Paris", other is "Versailles"
+      
+      Zone types could be inferred from zone codes or a new `zoneCategory` field.
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR7-FR12, FR37, Appendix A (Scenarios)</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 3, Story 3.6</epic-reference>
+    <ui-reference>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/routes/page.tsx</ui-reference>
+  </artifacts>
+</story-context>

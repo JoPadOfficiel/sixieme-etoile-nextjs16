@@ -1,3 +1,7 @@
+export { CoverageMatrix } from "./CoverageMatrix";
+export type { MatrixCell, MatrixData, MatrixZone, ScenarioType } from "./CoverageMatrix";
+export { CoverageStatsCard } from "./CoverageStatsCard";
+export type { CoverageStats } from "./CoverageStatsCard";
 export { DispoDrawer } from "./DispoDrawer";
 export { DispoForm } from "./DispoForm";
 export { DisposTable } from "./DisposTable";

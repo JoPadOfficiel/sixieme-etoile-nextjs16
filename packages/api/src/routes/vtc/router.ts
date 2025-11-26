@@ -7,6 +7,7 @@ import { partnerContractsRouter } from "./partner-contracts";
 import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
+import { routesCoverageRouter } from "./routes-coverage";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
 
@@ -25,6 +26,7 @@ export const vtcRouter = new Hono()
 	.route("/", partnerContractsRouter)
 	.route("/", pricingCalculateRouter)
 	.route("/", pricingZonesRouter)
+	.route("/", routesCoverageRouter)
 	.route("/", zoneRoutesRouter)
 	.route("/", excursionsRouter)
 	.route("/", disposRouter);

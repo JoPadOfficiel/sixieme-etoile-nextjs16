@@ -11,11 +11,22 @@ import {
 	AlertDialogTitle,
 } from "@ui/components/alert-dialog";
 import { Button } from "@ui/components/button";
+import { Tabs, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useToast } from "@ui/hooks/use-toast";
-import { PlusIcon } from "lucide-react";
+import { GridIcon, ListIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { RouteDrawer, RoutesTable } from "@saas/pricing/components";
+import {
+	CoverageMatrix,
+	CoverageStatsCard,
+	RouteDrawer,
+	RoutesTable,
+} from "@saas/pricing/components";
+import type {
+	CoverageStats,
+	MatrixCell,
+	MatrixData,
+} from "@saas/pricing/components";
 import type {
 	PricingZone,
 	VehicleCategory,
@@ -23,6 +34,8 @@ import type {
 	ZoneRouteFormData,
 	ZoneRoutesListResponse,
 } from "@saas/pricing/types";
+
+type ViewMode = "list" | "matrix";
 
 export default function SettingsPricingRoutesPage() {
 	const t = useTranslations();
@@ -36,6 +49,12 @@ export default function SettingsPricingRoutesPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	// Coverage data
+	const [coverageStats, setCoverageStats] = useState<CoverageStats | null>(null);
+	const [matrixData, setMatrixData] = useState<MatrixData | null>(null);
+	const [isCoverageLoading, setIsCoverageLoading] = useState(true);
+	const [viewMode, setViewMode] = useState<ViewMode>("list");
+
 	const [page, setPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
 	const [total, setTotal] = useState(0);
@@ -46,6 +65,10 @@ export default function SettingsPricingRoutesPage() {
 	const [toZoneId, setToZoneId] = useState("all");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
+
+	// Prefill for creating route from matrix
+	const [prefillFromZoneId, setPrefillFromZoneId] = useState<string | null>(null);
+	const [prefillToZoneId, setPrefillToZoneId] = useState<string | null>(null);
 
 	const [drawerOpen, setDrawerOpen] = useState(false);
 	const [editingRoute, setEditingRoute] = useState<ZoneRoute | null>(null);
@@ -127,14 +150,50 @@ export default function SettingsPricingRoutesPage() {
 		}
 	}, []);
 
+	const fetchCoverageStats = useCallback(async () => {
+		try {
+			const response = await fetch("/api/vtc/pricing/routes/coverage");
+			if (!response.ok) throw new Error("Failed to fetch coverage stats");
+			const data = await response.json();
+			setCoverageStats(data);
+		} catch (error) {
+			console.error("Error fetching coverage stats:", error);
+		}
+	}, []);
+
+	const fetchMatrixData = useCallback(async () => {
+		setIsCoverageLoading(true);
+		try {
+			const params = new URLSearchParams();
+			if (vehicleCategoryId !== "all") {
+				params.set("vehicleCategoryId", vehicleCategoryId);
+			}
+			const response = await fetch(`/api/vtc/pricing/routes/matrix?${params}`);
+			if (!response.ok) throw new Error("Failed to fetch matrix data");
+			const data = await response.json();
+			setMatrixData(data);
+		} catch (error) {
+			console.error("Error fetching matrix data:", error);
+		} finally {
+			setIsCoverageLoading(false);
+		}
+	}, [vehicleCategoryId]);
+
 	useEffect(() => {
 		fetchZones();
 		fetchVehicleCategories();
-	}, [fetchZones, fetchVehicleCategories]);
+		fetchCoverageStats();
+	}, [fetchZones, fetchVehicleCategories, fetchCoverageStats]);
 
 	useEffect(() => {
 		fetchRoutes();
 	}, [fetchRoutes]);
+
+	useEffect(() => {
+		if (viewMode === "matrix") {
+			fetchMatrixData();
+		}
+	}, [viewMode, fetchMatrixData]);
 
 	useEffect(() => {
 		setPage(1);
@@ -168,7 +227,9 @@ export default function SettingsPricingRoutesPage() {
 
 			setDrawerOpen(false);
 			setEditingRoute(null);
-			fetchRoutes();
+			setPrefillFromZoneId(null);
+			setPrefillToZoneId(null);
+			refreshAllData();
 		} catch (error) {
 			console.error("Error saving route:", error);
 			toast({
@@ -233,44 +294,102 @@ export default function SettingsPricingRoutesPage() {
 
 	const handleAddNew = () => {
 		setEditingRoute(null);
+		setPrefillFromZoneId(null);
+		setPrefillToZoneId(null);
 		setDrawerOpen(true);
+	};
+
+	const handleMatrixCellClick = (
+		fromZoneId: string,
+		toZoneId: string,
+		cell: MatrixCell | null,
+	) => {
+		if (cell?.hasRoute && cell.routeId) {
+			// Find and edit existing route
+			const route = routes.find((r) => r.id === cell.routeId);
+			if (route) {
+				handleEdit(route);
+			}
+		} else {
+			// Create new route with prefilled zones
+			setEditingRoute(null);
+			setPrefillFromZoneId(fromZoneId);
+			setPrefillToZoneId(toZoneId);
+			setDrawerOpen(true);
+		}
+	};
+
+	const refreshAllData = () => {
+		fetchRoutes();
+		fetchCoverageStats();
+		if (viewMode === "matrix") {
+			fetchMatrixData();
+		}
 	};
 
 	return (
 		<div className="space-y-6">
+			{/* Header */}
 			<div className="flex items-center justify-between">
 				<h2 className="font-semibold text-lg">{t("routes.title")}</h2>
-				<Button onClick={handleAddNew}>
-					<PlusIcon className="mr-2 size-4" />
-					{t("routes.addRoute")}
-				</Button>
+				<div className="flex items-center gap-2">
+					{/* View toggle */}
+					<Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+						<TabsList className="h-9">
+							<TabsTrigger value="list" className="gap-1 px-3">
+								<ListIcon className="size-4" />
+								{t("routes.viewList")}
+							</TabsTrigger>
+							<TabsTrigger value="matrix" className="gap-1 px-3">
+								<GridIcon className="size-4" />
+								{t("routes.viewMatrix")}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+					<Button onClick={handleAddNew}>
+						<PlusIcon className="mr-2 size-4" />
+						{t("routes.addRoute")}
+					</Button>
+				</div>
 			</div>
 
-			<RoutesTable
-				routes={routes}
-				zones={zones}
-				vehicleCategories={vehicleCategories}
-				isLoading={isLoading}
-				onEdit={handleEdit}
-				onDelete={handleDeleteClick}
-				search={search}
-				onSearchChange={setSearch}
-				fromZoneId={fromZoneId}
-				onFromZoneIdChange={setFromZoneId}
-				toZoneId={toZoneId}
-				onToZoneIdChange={setToZoneId}
-				vehicleCategoryId={vehicleCategoryId}
-				onVehicleCategoryIdChange={setVehicleCategoryId}
-				statusFilter={statusFilter}
-				onStatusFilterChange={setStatusFilter}
-				page={page}
-				totalPages={totalPages}
-				total={total}
-				onPageChange={setPage}
-			/>
+			{/* Coverage Stats */}
+			<CoverageStatsCard stats={coverageStats} isLoading={isCoverageLoading} />
+
+			{/* List or Matrix View */}
+			{viewMode === "list" ? (
+				<RoutesTable
+					routes={routes}
+					zones={zones}
+					vehicleCategories={vehicleCategories}
+					isLoading={isLoading}
+					onEdit={handleEdit}
+					onDelete={handleDeleteClick}
+					search={search}
+					onSearchChange={setSearch}
+					fromZoneId={fromZoneId}
+					onFromZoneIdChange={setFromZoneId}
+					toZoneId={toZoneId}
+					onToZoneIdChange={setToZoneId}
+					vehicleCategoryId={vehicleCategoryId}
+					onVehicleCategoryIdChange={setVehicleCategoryId}
+					statusFilter={statusFilter}
+					onStatusFilterChange={setStatusFilter}
+					page={page}
+					totalPages={totalPages}
+					total={total}
+					onPageChange={setPage}
+				/>
+			) : (
+				<CoverageMatrix
+					data={matrixData}
+					isLoading={isCoverageLoading}
+					onCellClick={handleMatrixCellClick}
+				/>
+			)}
 
 			<RouteDrawer
-				key={editingRoute?.id ?? "new"}
+				key={editingRoute?.id ?? `new-${prefillFromZoneId}-${prefillToZoneId}`}
 				open={drawerOpen}
 				onOpenChange={setDrawerOpen}
 				route={editingRoute}
@@ -278,6 +397,8 @@ export default function SettingsPricingRoutesPage() {
 				isLoading={isSubmitting}
 				zones={zones}
 				vehicleCategories={vehicleCategories}
+				prefillFromZoneId={prefillFromZoneId}
+				prefillToZoneId={prefillToZoneId}
 			/>
 
 			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

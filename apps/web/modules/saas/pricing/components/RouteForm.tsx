@@ -23,9 +23,13 @@ import type {
 } from "../types";
 
 // Helper to get initial form data from route
-const getInitialFormData = (route?: ZoneRoute | null): ZoneRouteFormData => ({
-	fromZoneId: route?.fromZone.id ?? "",
-	toZoneId: route?.toZone.id ?? "",
+const getInitialFormData = (
+	route?: ZoneRoute | null,
+	defaultFromZoneId?: string,
+	defaultToZoneId?: string,
+): ZoneRouteFormData => ({
+	fromZoneId: route?.fromZone.id ?? defaultFromZoneId ?? "",
+	toZoneId: route?.toZone.id ?? defaultToZoneId ?? "",
 	vehicleCategoryId: route?.vehicleCategory.id ?? "",
 	direction: route?.direction ?? "BIDIRECTIONAL",
 	fixedPrice: route?.fixedPrice ?? 0,
@@ -39,6 +43,8 @@ interface RouteFormProps {
 	isLoading?: boolean;
 	zones: PricingZone[];
 	vehicleCategories: VehicleCategory[];
+	defaultFromZoneId?: string;
+	defaultToZoneId?: string;
 }
 
 const DIRECTION_OPTIONS: {
@@ -70,11 +76,13 @@ export function RouteForm({
 	isLoading = false,
 	zones,
 	vehicleCategories,
+	defaultFromZoneId,
+	defaultToZoneId,
 }: RouteFormProps) {
 	const t = useTranslations();
 
 	const [formData, setFormData] = useState<ZoneRouteFormData>(() =>
-		getInitialFormData(route),
+		getInitialFormData(route, defaultFromZoneId, defaultToZoneId),
 	);
 
 	const [errors, setErrors] = useState<Record<string, string>>({});

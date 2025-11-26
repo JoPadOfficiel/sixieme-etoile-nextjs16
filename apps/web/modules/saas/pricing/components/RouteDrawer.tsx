@@ -24,6 +24,8 @@ interface RouteDrawerProps {
 	isLoading?: boolean;
 	zones: PricingZone[];
 	vehicleCategories: VehicleCategory[];
+	prefillFromZoneId?: string | null;
+	prefillToZoneId?: string | null;
 }
 
 export function RouteDrawer({
@@ -34,6 +36,8 @@ export function RouteDrawer({
 	isLoading = false,
 	zones,
 	vehicleCategories,
+	prefillFromZoneId,
+	prefillToZoneId,
 }: RouteDrawerProps) {
 	const t = useTranslations();
 
@@ -57,13 +61,15 @@ export function RouteDrawer({
 				</SheetHeader>
 				<div className="mt-6">
 					<RouteForm
-						key={route?.id ?? "new"}
+						key={route?.id ?? `new-${prefillFromZoneId}-${prefillToZoneId}`}
 						route={route}
 						onSubmit={handleSubmit}
 						onCancel={() => onOpenChange(false)}
 						isLoading={isLoading}
 						zones={zones}
 						vehicleCategories={vehicleCategories}
+						defaultFromZoneId={prefillFromZoneId ?? undefined}
+						defaultToZoneId={prefillToZoneId ?? undefined}
 					/>
 				</div>
 			</SheetContent>

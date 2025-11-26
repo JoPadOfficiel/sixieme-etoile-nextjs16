@@ -604,6 +604,45 @@
 		"description": "Définissez des routes zone-à-zone avec tarification fixe par catégorie de véhicule.",
 		"addRoute": "Ajouter une route",
 		"editRoute": "Modifier la route",
+		"viewList": "Liste",
+		"viewMatrix": "Matrice",
+		"coverage": {
+			"title": "Couverture des grilles",
+			"summary": "{configured} routes configurées • {active} actives • {zones} zones • {percent}% de couverture",
+			"coverageLabel": "Couverture",
+			"zones": "Zones",
+			"routes": "Routes",
+			"active": "Actives",
+			"byCategory": "Par catégorie",
+			"routesConfigured": "routes"
+		},
+		"matrix": {
+			"title": "Matrice de couverture",
+			"noZones": "Aucune zone configurée. Créez des zones pour voir la matrice de couverture.",
+			"fromTo": "De \\ Vers",
+			"price": "Prix",
+			"direction": "Direction",
+			"category": "Catégorie",
+			"status": "Statut",
+			"legend": {
+				"activeRoute": "Route active",
+				"inactiveRoute": "Route inactive",
+				"missingRoute": "Route manquante (cliquer pour créer)",
+				"bidirectional": "Bidirectionnel",
+				"oneWay": "Sens unique"
+			}
+		},
+		"scenarios": {
+			"intraZone": "Intra-Zone",
+			"radial": "Radial",
+			"circularSuburban": "Banlieue",
+			"versailles": "Versailles"
+		},
+		"directions": {
+			"bidirectional": "Bidirectionnel",
+			"a_to_b": "A → B uniquement",
+			"b_to_a": "B → A uniquement"
+		},
 		"addRouteDescription": "Créer une nouvelle route zone-à-zone avec tarification fixe.",
 		"editRouteDescription": "Mettre à jour la configuration de la route.",
 		"noRoutes": "Aucune route définie. Ajoutez votre première route pour commencer.",
