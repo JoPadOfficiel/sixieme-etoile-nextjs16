@@ -17,6 +17,7 @@ import { withTenantFilter } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import {
 	calculatePrice,
+	applyPriceOverride,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
@@ -24,6 +25,7 @@ import {
 	type OrganizationPricingSettings,
 	type PartnerContractData,
 	type PricingRequest,
+	type PricingResult,
 	type SeasonalMultiplierData,
 	type ZoneRouteAssignment,
 } from "../../services/pricing-engine";
@@ -46,6 +48,36 @@ const calculatePricingSchema = z.object({
 	pickupAt: z.string().optional(),
 	estimatedDurationMinutes: z.coerce.number().positive().optional(),
 	estimatedDistanceKm: z.coerce.number().positive().optional(),
+});
+
+// Story 4.4: Price override schema
+const priceOverrideSchema = z.object({
+	pricingResult: z.object({
+		pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]),
+		price: z.number(),
+		currency: z.literal("EUR"),
+		internalCost: z.number(),
+		margin: z.number(),
+		marginPercent: z.number(),
+		profitabilityIndicator: z.enum(["green", "orange", "red"]),
+		matchedGrid: z.object({
+			type: z.enum(["ZoneRoute", "ExcursionPackage", "DispoPackage"]),
+			id: z.string(),
+			name: z.string(),
+			fromZone: z.string().optional(),
+			toZone: z.string().optional(),
+		}).nullable(),
+		appliedRules: z.array(z.record(z.unknown())),
+		isContractPrice: z.boolean(),
+		fallbackReason: z.string().nullable(),
+		gridSearchDetails: z.record(z.unknown()).nullable(),
+		tripAnalysis: z.record(z.unknown()),
+		overrideApplied: z.boolean().optional(),
+		previousPrice: z.number().optional(),
+	}),
+	newPrice: z.number().positive("New price must be positive"),
+	reason: z.string().optional(),
+	minimumMarginPercent: z.number().optional(),
 });
 
 // ============================================================================
@@ -395,5 +427,57 @@ export const pricingCalculateRouter = new Hono()
 			}
 
 			return c.json(result);
+		},
+	)
+
+	// Story 4.4: Price override endpoint
+	.post(
+		"/override",
+		validator("json", priceOverrideSchema),
+		describeRoute({
+			summary: "Override pricing with live profitability feedback",
+			description:
+				"Apply a manual price override to a pricing result and recalculate profitability. " +
+				"Returns updated margin, marginPercent, and profitabilityIndicator with MANUAL_OVERRIDE tracking.",
+			tags: ["VTC - Pricing"],
+		}),
+		async (c) => {
+			const data = c.req.valid("json");
+
+			// Cast the validated pricingResult to PricingResult type
+			// The schema validation ensures the structure is correct
+			const pricingResult = data.pricingResult as unknown as PricingResult;
+
+			// Apply the price override
+			const overrideResult = applyPriceOverride(
+				pricingResult,
+				data.newPrice,
+				data.reason,
+				data.minimumMarginPercent,
+			);
+
+			// Handle validation failure
+			if (!overrideResult.success) {
+				const error = overrideResult.error;
+				return c.json(
+					{
+						error: error.errorCode,
+						message: error.errorMessage,
+						details: error.details,
+					},
+					400,
+				);
+			}
+
+			// Log contract price overrides for audit
+			if (pricingResult.isContractPrice) {
+				console.warn(
+					`[PRICING] Contract price overridden: ` +
+						`previousPrice=${pricingResult.price}, newPrice=${data.newPrice}, ` +
+						`reason=${data.reason || "not specified"}`,
+				);
+			}
+
+			return c.json(overrideResult.result);
 		},
 	);

@@ -1,0 +1,269 @@
+<story-context id="4-4-allow-operator-override-live-profitability-feedback" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4</storyId>
+    <title>Allow Operator Override with Live Profitability Feedback</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-26T17:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#Story 4.4</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>to override the suggested price while seeing updated profitability</iWant>
+    <soThat>I can adjust quotes within commercial and operational constraints</soThat>
+    <tasks>
+      <task id="1">Create price override recalculation function in pricing engine</task>
+      <task id="2">Add manualOverride tracking to appliedRules</task>
+      <task id="3">Create API endpoint for price override with live profitability</task>
+      <task id="4">Implement override constraints validation (minimum margin, role-based limits)</task>
+      <task id="5">Add unit tests for override functionality</task>
+      <task id="6">Add integration tests for API endpoint</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <title>Live Profitability Update on Override</title>
+      <given>a computed quote with suggested price, internal cost and margin</given>
+      <when>I manually edit the final selling price in the cockpit's Pricing column</when>
+      <then>the margin percentage and profitability indicator (green/orange/red) update immediately</then>
+      <and>the edited price is persisted as `finalPrice` distinct from `suggestedPrice`</and>
+    </criterion>
+    <criterion id="AC2">
+      <title>Override Constraints Enforcement</title>
+      <given>constraints on overrides (e.g. minimum margin or role-based limits)</given>
+      <when>an operator attempts to override the price</when>
+      <then>constraints are enforced with clear error messages when an override is not permitted</then>
+    </criterion>
+    <criterion id="AC3">
+      <title>Override Tracking in appliedRules</title>
+      <given>a price override is applied</given>
+      <when>the pricing result is returned</when>
+      <then>appliedRules contains a MANUAL_OVERRIDE entry with previousPrice, newPrice, and operator info</then>
+    </criterion>
+    <criterion id="AC4">
+      <title>Profitability Recalculation</title>
+      <given>a new finalPrice different from suggestedPrice</given>
+      <when>profitability is recalculated</when>
+      <then>margin = finalPrice - internalCost</then>
+      <and>marginPercent = (margin / finalPrice) × 100</and>
+      <and>profitabilityIndicator is correctly updated (green/orange/red)</and>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR16 - Operator Price Override</section>
+        <snippet>Operators shall be able to override the suggested selling price within permissions constraints, while seeing updated profitability feedback.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR24 - Profitability Indicator</section>
+        <snippet>The system shall compute and display a profitability indicator (green/orange/red) based on selling price vs internal cost, including margin percentage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR55 - Trip Transparency Module</section>
+        <snippet>The Trip Transparency module shall allow authorised users to adjust cost values manually while continuously recomputing the resulting margin and profitability indicator.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>5. Quotes, Invoices &amp; Documents - Quote model</section>
+        <snippet>Quote has suggestedPrice, finalPrice (EUR), internalCost (EUR), marginPercent. tripAnalysis stores shadow calc, appliedRules stores which grids, multipliers, promotions were used.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 4 - Dynamic Pricing &amp; Shadow Calculation</title>
+        <section>Story 4.4</section>
+        <snippet>Keep the calculation of margin in the pricing engine (not in the React component) to avoid discrepancies. Overrides should be tracked in appliedRules (e.g. flag manualOverride with previous value).</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/4-2-add-operational-cost-components-internal-cost.md</path>
+        <title>Story 4.2 - Operational Cost Components</title>
+        <section>Cost Breakdown and Margin Calculation</section>
+        <snippet>marginPercent = (price - internalCost) / price × 100. profitabilityIndicator: green (≥20%), orange (0-20%), red (&lt;0%).</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculateProfitabilityIndicator</symbol>
+        <lines>350-356</lines>
+        <reason>Existing function to calculate profitability indicator from margin percentage - must be reused for override recalculation</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>PricingResult</symbol>
+        <lines>127-143</lines>
+        <reason>Main pricing result interface - contains price, internalCost, margin, marginPercent, profitabilityIndicator, appliedRules</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>AppliedRule</symbol>
+        <lines>90-94</lines>
+        <reason>Base interface for applied rules - must extend for MANUAL_OVERRIDE type</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculatePrice</symbol>
+        <lines>1225-1506</lines>
+        <reason>Main pricing engine function - context for understanding how pricing result is built</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/pricing-calculate.ts</path>
+        <kind>route</kind>
+        <symbol>pricingCalculateRouter</symbol>
+        <lines>311-400</lines>
+        <reason>Existing pricing API route - will need new endpoint for price override</reason>
+      </artifact>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>model</kind>
+        <symbol>Quote</symbol>
+        <lines>1034-1097</lines>
+        <reason>Quote model with suggestedPrice, finalPrice, internalCost, marginPercent, appliedRules fields</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/__tests__/pricing-engine.test.ts</path>
+        <kind>test</kind>
+        <symbol>Profitability Indicator Tests</symbol>
+        <lines>440-600</lines>
+        <reason>Existing tests for profitability indicator - patterns to follow for override tests</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.x</version>
+        <usage>Request validation</usage>
+      </node>
+      <node>
+        <package>@repo/database</package>
+        <version>workspace</version>
+        <usage>Prisma client for database access</usage>
+      </node>
+      <node>
+        <package>vitest</package>
+        <version>^1.x</version>
+        <usage>Unit testing framework</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="C1">Margin calculation MUST remain in pricing engine, not in React components</constraint>
+    <constraint id="C2">Override must be tracked in appliedRules with MANUAL_OVERRIDE type</constraint>
+    <constraint id="C3">EUR-only currency - no FX conversion</constraint>
+    <constraint id="C4">Europe/Paris timezone for all datetime operations</constraint>
+    <constraint id="C5">Multi-tenancy: all operations scoped by organizationId</constraint>
+    <constraint id="C6">Backward compatibility: existing pricing API must continue to work</constraint>
+    <constraint id="C7">Grid pricing (FIXED_GRID) can also be overridden but Engagement Rule warning should be shown</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>recalculateProfitability</name>
+      <kind>function signature</kind>
+      <signature>
+function recalculateProfitability(
+  newPrice: number,
+  internalCost: number,
+  previousPrice: number,
+  appliedRules: AppliedRule[]
+): {
+  price: number;
+  margin: number;
+  marginPercent: number;
+  profitabilityIndicator: ProfitabilityIndicator;
+  appliedRules: AppliedRule[];
+}
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/pricing/override</name>
+      <kind>REST endpoint</kind>
+      <signature>
+POST /api/vtc/pricing/override
+Request Body:
+{
+  "quoteId"?: string,           // Optional: if updating existing quote
+  "pricingResult": PricingResult, // Current pricing result to override
+  "newPrice": number,           // New price in EUR
+  "reason"?: string             // Optional: reason for override
+}
+Response:
+{
+  ...PricingResult,             // Updated pricing result
+  "overrideApplied": true,
+  "previousPrice": number,
+  "priceChange": number,
+  "priceChangePercent": number
+}
+      </signature>
+      <path>packages/api/src/routes/vtc/pricing-calculate.ts</path>
+    </interface>
+    <interface>
+      <name>ManualOverrideRule</name>
+      <kind>interface</kind>
+      <signature>
+interface ManualOverrideRule extends AppliedRule {
+  type: "MANUAL_OVERRIDE";
+  previousPrice: number;
+  newPrice: number;
+  priceChange: number;
+  priceChangePercent: number;
+  reason?: string;
+  overriddenAt: string; // ISO datetime
+}
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Follow existing patterns in pricing-engine.test.ts.
+      Each acceptance criterion should have at least one test case.
+      Use descriptive test names referencing the AC.
+      Integration tests should use the actual API endpoint.
+      Mock database calls where appropriate for unit tests.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts</location>
+      <location>packages/api/src/routes/__tests__/pricing-calculate.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test that overriding price updates margin and profitability indicator correctly</idea>
+      <idea ac="AC1">Test that finalPrice is distinct from suggestedPrice after override</idea>
+      <idea ac="AC2">Test that minimum margin constraint blocks override below threshold</idea>
+      <idea ac="AC2">Test that error message is clear when override is rejected</idea>
+      <idea ac="AC3">Test that MANUAL_OVERRIDE rule is added to appliedRules</idea>
+      <idea ac="AC3">Test that previousPrice and newPrice are correctly recorded</idea>
+      <idea ac="AC4">Test margin calculation: margin = finalPrice - internalCost</idea>
+      <idea ac="AC4">Test marginPercent calculation: (margin / finalPrice) × 100</idea>
+      <idea ac="AC4">Test profitability indicator transitions: green→orange→red based on margin</idea>
+      <idea>Test idempotence: multiple overrides produce consistent results</idea>
+      <idea>Test grid pricing override with Engagement Rule warning</idea>
+    </ideas>
+  </tests>
+</story-context>

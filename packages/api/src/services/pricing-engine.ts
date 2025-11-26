@@ -140,6 +140,78 @@ export interface PricingResult {
 	gridSearchDetails: GridSearchDetails | null;
 	// New field for Story 4.2
 	tripAnalysis: TripAnalysis;
+	// New fields for Story 4.4 (optional, only present after override)
+	overrideApplied?: boolean;
+	previousPrice?: number;
+}
+
+// ============================================================================
+// Story 4.4: Manual Override Types
+// ============================================================================
+
+/**
+ * Manual override rule for tracking price adjustments (Story 4.4)
+ */
+export interface ManualOverrideRule extends AppliedRule {
+	type: "MANUAL_OVERRIDE";
+	previousPrice: number;
+	newPrice: number;
+	priceChange: number;
+	priceChangePercent: number;
+	reason?: string;
+	overriddenAt: string;
+	isContractPriceOverride?: boolean;
+}
+
+/**
+ * Input for profitability recalculation after price override
+ */
+export interface RecalculateProfitabilityInput {
+	newPrice: number;
+	internalCost: number;
+	previousPrice: number;
+	previousAppliedRules: AppliedRule[];
+	reason?: string;
+	isContractPrice?: boolean;
+}
+
+/**
+ * Result of profitability recalculation
+ */
+export interface RecalculateProfitabilityResult {
+	price: number;
+	margin: number;
+	marginPercent: number;
+	profitabilityIndicator: ProfitabilityIndicator;
+	appliedRules: AppliedRule[];
+	overrideApplied: boolean;
+	priceChange: number;
+	priceChangePercent: number;
+}
+
+/**
+ * Override validation error codes
+ */
+export type OverrideErrorCode = 
+	| "BELOW_MINIMUM_MARGIN"
+	| "EXCEEDS_ROLE_LIMIT"
+	| "INVALID_PRICE"
+	| "PRICE_TOO_LOW";
+
+/**
+ * Override validation result
+ */
+export interface OverrideValidationResult {
+	isValid: boolean;
+	errorCode?: OverrideErrorCode;
+	errorMessage?: string;
+	details?: {
+		requestedPrice: number;
+		internalCost: number;
+		resultingMargin: number;
+		resultingMarginPercent: number;
+		minimumMarginPercent?: number;
+	};
 }
 
 // ============================================================================
@@ -1653,4 +1725,174 @@ function buildGridResult(
 		gridSearchDetails: null,
 		tripAnalysis,
 	};
+}
+
+// ============================================================================
+// Story 4.4: Manual Override Functions
+// ============================================================================
+
+/**
+ * Validate a price override request
+ * Checks minimum margin constraints and price validity
+ * 
+ * @param newPrice - The new price to validate
+ * @param internalCost - The internal cost for margin calculation
+ * @param minimumMarginPercent - Optional minimum margin threshold (default: no minimum)
+ * @returns Validation result with error details if invalid
+ */
+export function validatePriceOverride(
+	newPrice: number,
+	internalCost: number,
+	minimumMarginPercent?: number,
+): OverrideValidationResult {
+	// Check for invalid price
+	if (newPrice <= 0) {
+		return {
+			isValid: false,
+			errorCode: "INVALID_PRICE",
+			errorMessage: "Price must be greater than zero",
+			details: {
+				requestedPrice: newPrice,
+				internalCost,
+				resultingMargin: newPrice - internalCost,
+				resultingMarginPercent: 0,
+			},
+		};
+	}
+
+	// Calculate resulting margin
+	const resultingMargin = Math.round((newPrice - internalCost) * 100) / 100;
+	const resultingMarginPercent = newPrice > 0 
+		? Math.round((resultingMargin / newPrice) * 100 * 100) / 100 
+		: 0;
+
+	// Check minimum margin constraint if specified
+	if (minimumMarginPercent !== undefined && resultingMarginPercent < minimumMarginPercent) {
+		return {
+			isValid: false,
+			errorCode: "BELOW_MINIMUM_MARGIN",
+			errorMessage: `Price override rejected: resulting margin (${resultingMarginPercent.toFixed(1)}%) is below minimum threshold (${minimumMarginPercent}%)`,
+			details: {
+				requestedPrice: newPrice,
+				internalCost,
+				resultingMargin,
+				resultingMarginPercent,
+				minimumMarginPercent,
+			},
+		};
+	}
+
+	return {
+		isValid: true,
+		details: {
+			requestedPrice: newPrice,
+			internalCost,
+			resultingMargin,
+			resultingMarginPercent,
+			minimumMarginPercent,
+		},
+	};
+}
+
+/**
+ * Recalculate profitability after a manual price override
+ * Updates margin, marginPercent, profitabilityIndicator and adds MANUAL_OVERRIDE rule
+ * 
+ * @param input - The recalculation input with new price and context
+ * @returns Updated profitability result with override tracking
+ */
+export function recalculateProfitability(
+	input: RecalculateProfitabilityInput,
+): RecalculateProfitabilityResult {
+	const { newPrice, internalCost, previousPrice, previousAppliedRules, reason, isContractPrice } = input;
+
+	// Calculate new margin
+	const margin = Math.round((newPrice - internalCost) * 100) / 100;
+	const marginPercent = newPrice > 0 
+		? Math.round((margin / newPrice) * 100 * 100) / 100 
+		: 0;
+
+	// Calculate price change
+	const priceChange = Math.round((newPrice - previousPrice) * 100) / 100;
+	const priceChangePercent = previousPrice > 0 
+		? Math.round((priceChange / previousPrice) * 100 * 100) / 100 
+		: 0;
+
+	// Create MANUAL_OVERRIDE rule
+	const overrideRule: ManualOverrideRule = {
+		type: "MANUAL_OVERRIDE",
+		description: isContractPrice 
+			? `Contract price overridden: ${previousPrice.toFixed(2)}€ → ${newPrice.toFixed(2)}€ (Warning: Engagement Rule bypassed)`
+			: `Price manually adjusted: ${previousPrice.toFixed(2)}€ → ${newPrice.toFixed(2)}€`,
+		previousPrice,
+		newPrice,
+		priceChange,
+		priceChangePercent,
+		reason,
+		overriddenAt: new Date().toISOString(),
+		isContractPriceOverride: isContractPrice,
+	};
+
+	// Filter out any previous MANUAL_OVERRIDE rules and add the new one
+	const filteredRules = previousAppliedRules.filter(rule => rule.type !== "MANUAL_OVERRIDE");
+	const appliedRules: AppliedRule[] = [...filteredRules, overrideRule];
+
+	return {
+		price: newPrice,
+		margin,
+		marginPercent,
+		profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
+		appliedRules,
+		overrideApplied: true,
+		priceChange,
+		priceChangePercent,
+	};
+}
+
+/**
+ * Apply a price override to a full PricingResult
+ * Combines validation and recalculation into a single operation
+ * 
+ * @param pricingResult - The original pricing result to override
+ * @param newPrice - The new price to apply
+ * @param reason - Optional reason for the override
+ * @param minimumMarginPercent - Optional minimum margin constraint
+ * @returns Updated PricingResult or validation error
+ */
+export function applyPriceOverride(
+	pricingResult: PricingResult,
+	newPrice: number,
+	reason?: string,
+	minimumMarginPercent?: number,
+): { success: true; result: PricingResult } | { success: false; error: OverrideValidationResult } {
+	// Validate the override
+	const validation = validatePriceOverride(newPrice, pricingResult.internalCost, minimumMarginPercent);
+	
+	if (!validation.isValid) {
+		return { success: false, error: validation };
+	}
+
+	// Recalculate profitability
+	const recalcResult = recalculateProfitability({
+		newPrice,
+		internalCost: pricingResult.internalCost,
+		previousPrice: pricingResult.price,
+		previousAppliedRules: pricingResult.appliedRules,
+		reason,
+		isContractPrice: pricingResult.isContractPrice,
+	});
+
+	// Build updated PricingResult
+	const updatedResult: PricingResult = {
+		...pricingResult,
+		price: recalcResult.price,
+		margin: recalcResult.margin,
+		marginPercent: recalcResult.marginPercent,
+		profitabilityIndicator: recalcResult.profitabilityIndicator,
+		appliedRules: recalcResult.appliedRules,
+		overrideApplied: true,
+		previousPrice: pricingResult.price,
+	};
+
+	return { success: true, result: updatedResult };
 }

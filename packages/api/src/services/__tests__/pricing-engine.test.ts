@@ -14,12 +14,18 @@ import {
 	calculateCostBreakdown,
 	calculateInternalCost,
 	DEFAULT_COST_PARAMETERS,
+	// Story 4.4: Manual override functions
+	validatePriceOverride,
+	recalculateProfitability,
+	applyPriceOverride,
 	type AdvancedRateData,
 	type AppliedMultiplierRule,
+	type AppliedRule,
 	type ContactData,
 	type DynamicBaseCalculationRule,
 	type OrganizationPricingSettings,
 	type PricingRequest,
+	type PricingResult,
 	type SeasonalMultiplierData,
 } from "../pricing-engine";
 
@@ -2529,6 +2535,286 @@ describe("pricing-engine", () => {
 
 				// Base: 90, Fixed fee: 90 + 15 = 105
 				expect(result.price).toBe(105);
+			});
+		});
+	});
+
+	// ============================================================================
+	// Story 4.4: Manual Override Tests
+	// ============================================================================
+
+	describe("Story 4.4: Manual Override with Live Profitability Feedback", () => {
+		describe("validatePriceOverride", () => {
+			it("should validate a valid price override (AC2)", () => {
+				const result = validatePriceOverride(75, 44.70);
+
+				expect(result.isValid).toBe(true);
+				expect(result.details?.requestedPrice).toBe(75);
+				expect(result.details?.internalCost).toBe(44.70);
+				expect(result.details?.resultingMargin).toBeCloseTo(30.30, 2);
+				expect(result.details?.resultingMarginPercent).toBeCloseTo(40.4, 1);
+			});
+
+			it("should reject invalid price (zero or negative) (AC2)", () => {
+				const result = validatePriceOverride(0, 44.70);
+
+				expect(result.isValid).toBe(false);
+				expect(result.errorCode).toBe("INVALID_PRICE");
+				expect(result.errorMessage).toBe("Price must be greater than zero");
+			});
+
+			it("should reject negative price (AC2)", () => {
+				const result = validatePriceOverride(-10, 44.70);
+
+				expect(result.isValid).toBe(false);
+				expect(result.errorCode).toBe("INVALID_PRICE");
+			});
+
+			it("should reject price below minimum margin threshold (AC2)", () => {
+				// Price 45, cost 44.70 → margin 0.30 → marginPercent 0.67%
+				const result = validatePriceOverride(45, 44.70, 10); // 10% minimum
+
+				expect(result.isValid).toBe(false);
+				expect(result.errorCode).toBe("BELOW_MINIMUM_MARGIN");
+				expect(result.errorMessage).toContain("below minimum threshold");
+				expect(result.details?.minimumMarginPercent).toBe(10);
+			});
+
+			it("should accept price at exactly minimum margin threshold (AC2)", () => {
+				// For 10% margin with cost 44.70: price = 44.70 / 0.90 = 49.67
+				const result = validatePriceOverride(50, 44.70, 10);
+
+				expect(result.isValid).toBe(true);
+				expect(result.details?.resultingMarginPercent).toBeGreaterThanOrEqual(10);
+			});
+		});
+
+		describe("recalculateProfitability", () => {
+			it("should recalculate margin correctly (AC4)", () => {
+				const result = recalculateProfitability({
+					newPrice: 75,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				// margin = 75 - 44.70 = 30.30
+				// marginPercent = 30.30 / 75 × 100 = 40.4%
+				expect(result.price).toBe(75);
+				expect(result.margin).toBeCloseTo(30.30, 2);
+				expect(result.marginPercent).toBeCloseTo(40.4, 1);
+			});
+
+			it("should update profitability indicator to green for high margin (AC4)", () => {
+				const result = recalculateProfitability({
+					newPrice: 100,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				// margin = 55.30, marginPercent = 55.3% → green
+				expect(result.profitabilityIndicator).toBe("green");
+			});
+
+			it("should update profitability indicator to orange for low margin (AC4)", () => {
+				const result = recalculateProfitability({
+					newPrice: 52,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				// margin = 7.30, marginPercent = 14.04% → orange (0-20%)
+				expect(result.marginPercent).toBeCloseTo(14.04, 1);
+				expect(result.profitabilityIndicator).toBe("orange");
+			});
+
+			it("should update profitability indicator to red for negative margin (AC4)", () => {
+				const result = recalculateProfitability({
+					newPrice: 40,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				// margin = -4.70, marginPercent = -11.75% → red
+				expect(result.margin).toBeCloseTo(-4.70, 2);
+				expect(result.marginPercent).toBeCloseTo(-11.75, 1);
+				expect(result.profitabilityIndicator).toBe("red");
+			});
+
+			it("should add MANUAL_OVERRIDE rule to appliedRules (AC3)", () => {
+				const result = recalculateProfitability({
+					newPrice: 75,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [{ type: "DYNAMIC_BASE_CALCULATION" }],
+					reason: "Customer discount",
+				});
+
+				const overrideRule = result.appliedRules.find((r: AppliedRule) => r.type === "MANUAL_OVERRIDE");
+				expect(overrideRule).toBeDefined();
+				expect(overrideRule?.previousPrice).toBe(90);
+				expect(overrideRule?.newPrice).toBe(75);
+				expect(overrideRule?.priceChange).toBe(-15);
+				expect(overrideRule?.priceChangePercent).toBeCloseTo(-16.67, 1);
+				expect(overrideRule?.reason).toBe("Customer discount");
+				expect(overrideRule?.overriddenAt).toBeDefined();
+			});
+
+			it("should calculate price change correctly (AC3)", () => {
+				const result = recalculateProfitability({
+					newPrice: 120,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				expect(result.priceChange).toBe(30);
+				expect(result.priceChangePercent).toBeCloseTo(33.33, 1);
+			});
+
+			it("should set overrideApplied flag (AC1)", () => {
+				const result = recalculateProfitability({
+					newPrice: 75,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [],
+				});
+
+				expect(result.overrideApplied).toBe(true);
+			});
+
+			it("should replace previous MANUAL_OVERRIDE rule (idempotence)", () => {
+				const previousOverrideRule = {
+					type: "MANUAL_OVERRIDE",
+					previousPrice: 100,
+					newPrice: 90,
+					priceChange: -10,
+					priceChangePercent: -10,
+					overriddenAt: "2025-11-26T10:00:00Z",
+				};
+
+				const result = recalculateProfitability({
+					newPrice: 75,
+					internalCost: 44.70,
+					previousPrice: 90,
+					previousAppliedRules: [
+						{ type: "DYNAMIC_BASE_CALCULATION" },
+						previousOverrideRule,
+					],
+				});
+
+				// Should only have one MANUAL_OVERRIDE rule
+				const overrideRules = result.appliedRules.filter((r: AppliedRule) => r.type === "MANUAL_OVERRIDE");
+				expect(overrideRules.length).toBe(1);
+				expect(overrideRules[0]?.newPrice).toBe(75);
+			});
+
+			it("should mark contract price override with warning (AC3)", () => {
+				const result = recalculateProfitability({
+					newPrice: 130,
+					internalCost: 44.70,
+					previousPrice: 150,
+					previousAppliedRules: [],
+					isContractPrice: true,
+				});
+
+				const overrideRule = result.appliedRules.find((r: AppliedRule) => r.type === "MANUAL_OVERRIDE");
+				expect(overrideRule?.description).toContain("Contract price overridden");
+				expect(overrideRule?.description).toContain("Engagement Rule bypassed");
+				expect(overrideRule?.isContractPriceOverride).toBe(true);
+			});
+		});
+
+		describe("applyPriceOverride", () => {
+			const basePricingResult: PricingResult = {
+				pricingMode: "DYNAMIC",
+				price: 90,
+				currency: "EUR",
+				internalCost: 44.70,
+				margin: 45.30,
+				marginPercent: 50.33,
+				profitabilityIndicator: "green",
+				matchedGrid: null,
+				appliedRules: [{ type: "DYNAMIC_BASE_CALCULATION" }],
+				isContractPrice: false,
+				fallbackReason: "PRIVATE_CLIENT",
+				gridSearchDetails: null,
+				tripAnalysis: { costBreakdown: { total: 44.70 } } as any,
+			};
+
+			it("should apply valid override and return updated PricingResult (AC1)", () => {
+				const result = applyPriceOverride(basePricingResult, 75, "Customer discount");
+
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.result.price).toBe(75);
+					expect(result.result.margin).toBeCloseTo(30.30, 2);
+					expect(result.result.marginPercent).toBeCloseTo(40.4, 1);
+					expect(result.result.profitabilityIndicator).toBe("green");
+					expect(result.result.overrideApplied).toBe(true);
+					expect(result.result.previousPrice).toBe(90);
+				}
+			});
+
+			it("should return validation error for invalid price (AC2)", () => {
+				const result = applyPriceOverride(basePricingResult, 0);
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					expect(result.error.errorCode).toBe("INVALID_PRICE");
+				}
+			});
+
+			it("should return validation error when below minimum margin (AC2)", () => {
+				const result = applyPriceOverride(basePricingResult, 45, undefined, 10);
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					expect(result.error.errorCode).toBe("BELOW_MINIMUM_MARGIN");
+				}
+			});
+
+			it("should preserve original PricingResult fields (AC1)", () => {
+				const result = applyPriceOverride(basePricingResult, 75);
+
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.result.pricingMode).toBe("DYNAMIC");
+					expect(result.result.currency).toBe("EUR");
+					expect(result.result.internalCost).toBe(44.70);
+					expect(result.result.matchedGrid).toBeNull();
+					expect(result.result.fallbackReason).toBe("PRIVATE_CLIENT");
+					expect(result.result.tripAnalysis).toBeDefined();
+				}
+			});
+
+			it("should handle grid pricing override (AC1)", () => {
+				const gridPricingResult: PricingResult = {
+					...basePricingResult,
+					pricingMode: "FIXED_GRID",
+					price: 150,
+					isContractPrice: true,
+					matchedGrid: {
+						type: "ZoneRoute",
+						id: "route-1",
+						name: "Paris → CDG",
+					},
+				};
+
+				const result = applyPriceOverride(gridPricingResult, 130, "Special discount");
+
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.result.price).toBe(130);
+					expect(result.result.isContractPrice).toBe(true);
+					expect(result.result.pricingMode).toBe("FIXED_GRID");
+					
+					const overrideRule = result.result.appliedRules.find((r: AppliedRule) => r.type === "MANUAL_OVERRIDE");
+					expect(overrideRule?.isContractPriceOverride).toBe(true);
+				}
 			});
 		});
 	});
