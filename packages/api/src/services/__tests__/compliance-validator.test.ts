@@ -688,3 +688,564 @@ describe("Edge Cases", () => {
 		expect(result.adjustedDurations.totalDrivingMinutes).toBeGreaterThan(84);
 	});
 });
+
+// ============================================================================
+// Story 5.4: Alternative Staffing & Scheduling Options
+// ============================================================================
+
+import {
+	generateAlternatives,
+	generateDoubleCrewAlternative,
+	generateRelayDriverAlternative,
+	generateMultiDayAlternative,
+	DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+	ALTERNATIVE_RSE_LIMITS,
+	type AlternativeCostParameters,
+	type AlternativesGenerationInput,
+} from "../compliance-validator";
+
+const defaultCostParameters: AlternativeCostParameters = {
+	driverHourlyCost: 25,
+	hotelCostPerNight: 100,
+	mealAllowancePerDay: 30,
+};
+
+describe("Story 5.4: Alternative Staffing & Scheduling Options", () => {
+	describe("generateAlternatives", () => {
+		it("should return no alternatives for compliant missions (AC7)", () => {
+			// 8 hours total - well within limits
+			const tripAnalysis = createTripAnalysis(60, 360, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			expect(result.hasAlternatives).toBe(false);
+			expect(result.alternatives).toHaveLength(0);
+			expect(result.message).toContain("compliant");
+		});
+
+		it("should return no alternatives for LIGHT vehicles", () => {
+			const tripAnalysis = createTripAnalysis(60, 720, 60); // 14h - would violate for HEAVY
+			const input = createValidationInput(tripAnalysis, "LIGHT");
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			expect(result.hasAlternatives).toBe(false);
+			// LIGHT vehicles are compliant (no RSE rules apply), so message says compliant
+			expect(result.message).toContain("compliant");
+		});
+
+		it("should generate alternatives for amplitude violation (AC1)", () => {
+			// 15 hours amplitude - exceeds 14h limit
+			const tripAnalysis = createTripAnalysis(60, 780, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			expect(result.hasAlternatives).toBe(true);
+			expect(result.alternatives.length).toBeGreaterThan(0);
+			expect(result.originalViolations.length).toBeGreaterThan(0);
+		});
+
+		it("should generate alternatives for driving time violation (AC1)", () => {
+			// 11 hours driving - exceeds 10h limit
+			const tripAnalysis = createTripAnalysis(60, 540, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			expect(result.hasAlternatives).toBe(true);
+			expect(result.alternatives.some(a => a.type === "RELAY_DRIVER")).toBe(true);
+		});
+
+		it("should sort alternatives by feasibility and cost", () => {
+			// 16 hours amplitude - exceeds 14h but within 18h double crew limit
+			const tripAnalysis = createTripAnalysis(60, 840, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			// Feasible alternatives should come first
+			const feasibleAlternatives = result.alternatives.filter(a => a.isFeasible);
+			const nonFeasibleAlternatives = result.alternatives.filter(a => !a.isFeasible);
+			
+			if (feasibleAlternatives.length > 0 && nonFeasibleAlternatives.length > 0) {
+				const firstFeasibleIndex = result.alternatives.findIndex(a => a.isFeasible);
+				const firstNonFeasibleIndex = result.alternatives.findIndex(a => !a.isFeasible);
+				expect(firstFeasibleIndex).toBeLessThan(firstNonFeasibleIndex);
+			}
+		});
+
+		it("should set recommended alternative to first feasible and compliant option", () => {
+			// 15 hours amplitude - DOUBLE_CREW should be recommended
+			const tripAnalysis = createTripAnalysis(60, 780, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			if (result.recommendedAlternative) {
+				const recommended = result.alternatives.find(
+					a => a.type === result.recommendedAlternative
+				);
+				expect(recommended?.isFeasible).toBe(true);
+				expect(recommended?.wouldBeCompliant).toBe(true);
+			}
+		});
+	});
+
+	describe("generateDoubleCrewAlternative", () => {
+		it("should return null for LIGHT vehicles", () => {
+			const tripAnalysis = createTripAnalysis(60, 780, 60);
+			const input = createValidationInput(tripAnalysis, "LIGHT");
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should return null when no amplitude violation", () => {
+			// 8 hours - no violation
+			const tripAnalysis = createTripAnalysis(60, 360, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should be feasible for amplitude between 14h and 18h (AC3)", () => {
+			// 15 hours amplitude - within double crew limit of 18h
+			const tripAnalysis = createTripAnalysis(60, 780, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.type).toBe("DOUBLE_CREW");
+			expect(result!.isFeasible).toBe(true);
+			expect(result!.adjustedSchedule.driversRequired).toBe(2);
+		});
+
+		it("should NOT be feasible for amplitude > 18h (AC3)", () => {
+			// 19 hours amplitude - exceeds double crew limit
+			const tripAnalysis = createTripAnalysis(60, 1020, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.isFeasible).toBe(false);
+			expect(result!.feasibilityReason).toContain("18");
+		});
+
+		it("should calculate extra driver cost correctly (AC2)", () => {
+			// Create a trip with amplitude that triggers violation
+			// Note: speed capping may adjust durations, so we check the cost formula is correct
+			const tripAnalysis = createTripAnalysis(60, 840, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Extra hours = amplitude - 8 (standard work day)
+			// The actual amplitude may be adjusted by speed capping
+			const amplitudeViolation = complianceResult.violations.find(v => v.type === "AMPLITUDE_EXCEEDED");
+			const actualAmplitude = amplitudeViolation?.actual ?? 0;
+			const expectedExtraHours = Math.max(0, actualAmplitude - 8);
+			const expectedCost = expectedExtraHours * 25;
+			expect(result!.additionalCost.breakdown.extraDriverCost).toBe(expectedCost);
+			expect(result!.additionalCost.total).toBe(expectedCost);
+			expect(result!.additionalCost.currency).toBe("EUR");
+		});
+
+		it("should include driving time violation in remaining violations", () => {
+			// 15h amplitude + 12h driving - both violations
+			const tripAnalysis = createTripAnalysis(120, 600, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateDoubleCrewAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Double crew doesn't help with driving time
+			expect(result!.remainingViolations.some(v => v.type === "DRIVING_TIME_EXCEEDED")).toBe(true);
+			expect(result!.wouldBeCompliant).toBe(false);
+		});
+	});
+
+	describe("generateRelayDriverAlternative", () => {
+		it("should return null for LIGHT vehicles", () => {
+			const tripAnalysis = createTripAnalysis(60, 600, 60);
+			const input = createValidationInput(tripAnalysis, "LIGHT");
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should return null when no driving time violation", () => {
+			// 8 hours driving - no violation
+			const tripAnalysis = createTripAnalysis(60, 360, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should be feasible when split driving is within limit (AC4)", () => {
+			// 12 hours driving - split = 6h each, within 10h limit
+			const tripAnalysis = createTripAnalysis(120, 480, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.type).toBe("RELAY_DRIVER");
+			expect(result!.isFeasible).toBe(true);
+			expect(result!.adjustedSchedule.driversRequired).toBe(2);
+			expect(result!.description).toContain("6.0h each");
+		});
+
+		it("should NOT be feasible when split driving still exceeds limit", () => {
+			// 24 hours driving - split = 12h each, exceeds 10h limit
+			const tripAnalysis = createTripAnalysis(180, 1080, 180);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.isFeasible).toBe(false);
+		});
+
+		it("should calculate extra driver cost correctly (AC2)", () => {
+			// 12 hours driving - second driver does 6 hours
+			const tripAnalysis = createTripAnalysis(120, 480, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Extra driver hours = 12 / 2 = 6 hours
+			// Cost = 6 * 25 = 150 EUR
+			expect(result!.additionalCost.breakdown.extraDriverCost).toBe(150);
+			expect(result!.additionalCost.total).toBe(150);
+		});
+
+		it("should include amplitude violation in remaining violations", () => {
+			// 12h driving + 16h amplitude - both violations
+			const tripAnalysis = createTripAnalysis(120, 720, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateRelayDriverAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Relay doesn't help with amplitude
+			expect(result!.remainingViolations.some(v => v.type === "AMPLITUDE_EXCEEDED")).toBe(true);
+			expect(result!.wouldBeCompliant).toBe(false);
+		});
+	});
+
+	describe("generateMultiDayAlternative", () => {
+		it("should return null for LIGHT vehicles", () => {
+			const tripAnalysis = createTripAnalysis(60, 1200, 60);
+			const input = createValidationInput(tripAnalysis, "LIGHT");
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should return null when no violations", () => {
+			const tripAnalysis = createTripAnalysis(60, 360, 60);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).toBeNull();
+		});
+
+		it("should calculate days required correctly (AC5)", () => {
+			// 20 hours amplitude - needs 2 days (20 / 14 = 1.43 → 2)
+			const tripAnalysis = createTripAnalysis(120, 960, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.type).toBe("MULTI_DAY");
+			expect(result!.adjustedSchedule.daysRequired).toBe(2);
+			expect(result!.adjustedSchedule.hotelNightsRequired).toBe(1);
+		});
+
+		it("should be feasible for up to 3 days", () => {
+			// Create a trip that needs 3 days (amplitude ~35-42h after speed capping)
+			// With speed capping at 85km/h, durations may be longer
+			const tripAnalysis = createTripAnalysis(120, 1560, 120); // ~30h raw, should be ~3 days
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Should be feasible (3 days or less)
+			expect(result!.adjustedSchedule.daysRequired).toBeLessThanOrEqual(3);
+			expect(result!.isFeasible).toBe(true);
+		});
+
+		it("should NOT be feasible for more than 3 days", () => {
+			// 50 hours amplitude - needs 4 days
+			const tripAnalysis = createTripAnalysis(180, 2640, 180);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.isFeasible).toBe(false);
+			expect(result!.feasibilityReason).toContain("exceeding maximum");
+		});
+
+		it("should calculate costs correctly with hotel and meals (AC2)", () => {
+			// 20 hours amplitude - 2 days, 1 hotel night
+			const tripAnalysis = createTripAnalysis(120, 960, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Hotel: 1 night * 100 = 100
+			expect(result!.additionalCost.breakdown.hotelCost).toBe(100);
+			// Meals: 2 days * 30 = 60
+			expect(result!.additionalCost.breakdown.mealAllowance).toBe(60);
+			// Extra driver: 1 extra day * 8h * 25 = 200
+			expect(result!.additionalCost.breakdown.extraDriverCost).toBe(200);
+			// Total: 100 + 60 + 200 = 360
+			expect(result!.additionalCost.total).toBe(360);
+		});
+
+		it("should include 11h daily rest in description", () => {
+			const tripAnalysis = createTripAnalysis(120, 960, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				defaultCostParameters,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			expect(result!.description).toContain("11h daily rest");
+		});
+	});
+
+	describe("Cost Parameters", () => {
+		it("should use custom cost parameters (AC8)", () => {
+			const customCostParams: AlternativeCostParameters = {
+				driverHourlyCost: 30,
+				hotelCostPerNight: 150,
+				mealAllowancePerDay: 40,
+			};
+
+			// 20 hours amplitude - 2 days
+			const tripAnalysis = createTripAnalysis(120, 960, 120);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateMultiDayAlternative(
+				complianceResult,
+				customCostParams,
+				defaultRSERules
+			);
+
+			expect(result).not.toBeNull();
+			// Hotel: 1 night * 150 = 150
+			expect(result!.additionalCost.breakdown.hotelCost).toBe(150);
+			// Meals: 2 days * 40 = 80
+			expect(result!.additionalCost.breakdown.mealAllowance).toBe(80);
+			// Extra driver: 1 extra day * 8h * 30 = 240
+			expect(result!.additionalCost.breakdown.extraDriverCost).toBe(240);
+			// Total: 150 + 80 + 240 = 470
+			expect(result!.additionalCost.total).toBe(470);
+		});
+
+		it("should have correct default cost parameters", () => {
+			expect(DEFAULT_ALTERNATIVE_COST_PARAMETERS.driverHourlyCost).toBe(25);
+			expect(DEFAULT_ALTERNATIVE_COST_PARAMETERS.hotelCostPerNight).toBe(100);
+			expect(DEFAULT_ALTERNATIVE_COST_PARAMETERS.mealAllowancePerDay).toBe(30);
+		});
+	});
+
+	describe("RSE Limits Constants", () => {
+		it("should have correct RSE limits for alternatives", () => {
+			expect(ALTERNATIVE_RSE_LIMITS.DOUBLE_CREW_AMPLITUDE_HOURS).toBe(18);
+			expect(ALTERNATIVE_RSE_LIMITS.MIN_DAILY_REST_HOURS).toBe(11);
+			expect(ALTERNATIVE_RSE_LIMITS.MAX_MULTI_DAY_DAYS).toBe(3);
+			expect(ALTERNATIVE_RSE_LIMITS.STANDARD_WORK_DAY_HOURS).toBe(8);
+		});
+	});
+
+	describe("Combined Violations", () => {
+		it("should generate multiple alternatives for combined violations", () => {
+			// 16h amplitude + 12h driving - both violations
+			const tripAnalysis = createTripAnalysis(180, 660, 180);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			expect(result.hasAlternatives).toBe(true);
+			// Should have DOUBLE_CREW, RELAY_DRIVER, and MULTI_DAY
+			expect(result.alternatives.some(a => a.type === "DOUBLE_CREW")).toBe(true);
+			expect(result.alternatives.some(a => a.type === "RELAY_DRIVER")).toBe(true);
+			expect(result.alternatives.some(a => a.type === "MULTI_DAY")).toBe(true);
+		});
+
+		it("should mark alternatives as non-compliant when they don't solve all violations", () => {
+			// 16h amplitude + 12h driving
+			const tripAnalysis = createTripAnalysis(180, 660, 180);
+			const input = createValidationInput(tripAnalysis);
+			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
+
+			const result = generateAlternatives({
+				complianceResult,
+				costParameters: defaultCostParameters,
+				rules: defaultRSERules,
+			});
+
+			// DOUBLE_CREW doesn't solve driving time
+			const doubleCrew = result.alternatives.find(a => a.type === "DOUBLE_CREW");
+			expect(doubleCrew?.wouldBeCompliant).toBe(false);
+
+			// RELAY_DRIVER doesn't solve amplitude
+			const relay = result.alternatives.find(a => a.type === "RELAY_DRIVER");
+			expect(relay?.wouldBeCompliant).toBe(false);
+
+			// MULTI_DAY should solve both
+			const multiDay = result.alternatives.find(a => a.type === "MULTI_DAY");
+			expect(multiDay?.wouldBeCompliant).toBe(true);
+		});
+	});
+});

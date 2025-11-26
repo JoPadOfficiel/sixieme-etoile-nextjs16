@@ -603,3 +603,473 @@ export function getComplianceSummary(result: ComplianceValidationResult): {
 		warningCount: 0,
 	};
 }
+
+// ============================================================================
+// Story 5.4: Alternative Staffing & Scheduling Options
+// ============================================================================
+
+/**
+ * Alternative types for non-compliant heavy-vehicle missions
+ */
+export type AlternativeType =
+	| "DOUBLE_CREW"      // Add second driver, extend amplitude to 18h
+	| "RELAY_DRIVER"     // Split driving between two drivers at handover point
+	| "MULTI_DAY";       // Convert to overnight mission with hotel stop
+
+/**
+ * Cost parameters for alternative calculations
+ */
+export interface AlternativeCostParameters {
+	driverHourlyCost: number;        // EUR/hour (default: 25)
+	hotelCostPerNight: number;       // EUR/night (default: 100)
+	mealAllowancePerDay: number;     // EUR/day (default: 30)
+}
+
+/**
+ * Default cost parameters (used when org-specific not available)
+ */
+export const DEFAULT_ALTERNATIVE_COST_PARAMETERS: AlternativeCostParameters = {
+	driverHourlyCost: 25,
+	hotelCostPerNight: 100,
+	mealAllowancePerDay: 30,
+};
+
+/**
+ * RSE limits for alternative calculations
+ */
+export const ALTERNATIVE_RSE_LIMITS = {
+	DOUBLE_CREW_AMPLITUDE_HOURS: 18,  // Max amplitude with double crew
+	MIN_DAILY_REST_HOURS: 11,         // Minimum daily rest period
+	MAX_MULTI_DAY_DAYS: 3,            // Maximum days for multi-day alternative
+	STANDARD_WORK_DAY_HOURS: 8,       // Standard driver work day
+};
+
+/**
+ * Cost breakdown for an alternative option
+ */
+export interface AlternativeCostBreakdown {
+	extraDriverCost: number;      // Additional driver hours × hourly rate
+	hotelCost: number;            // Overnight accommodation
+	mealAllowance: number;        // Driver meal allowance
+	otherCosts: number;           // Parking, etc.
+}
+
+/**
+ * Adjusted schedule for an alternative option
+ */
+export interface AlternativeAdjustedSchedule {
+	totalDrivingMinutes: number;
+	totalAmplitudeMinutes: number;
+	daysRequired: number;
+	driversRequired: number;
+	hotelNightsRequired: number;
+}
+
+/**
+ * Alternative option for a non-compliant mission
+ */
+export interface AlternativeOption {
+	type: AlternativeType;
+	title: string;
+	description: string;
+	
+	// Feasibility
+	isFeasible: boolean;
+	feasibilityReason?: string;
+	
+	// Cost impact
+	additionalCost: {
+		total: number;
+		currency: "EUR";
+		breakdown: AlternativeCostBreakdown;
+	};
+	
+	// Adjusted scheduling
+	adjustedSchedule: AlternativeAdjustedSchedule;
+	
+	// Compliance verification
+	wouldBeCompliant: boolean;
+	remainingViolations: ComplianceViolation[];
+}
+
+/**
+ * Input for alternative generation
+ */
+export interface AlternativesGenerationInput {
+	complianceResult: ComplianceValidationResult;
+	costParameters: AlternativeCostParameters;
+	rules: RSERules | null;
+}
+
+/**
+ * Result of alternative generation
+ */
+export interface AlternativesGenerationResult {
+	hasAlternatives: boolean;
+	alternatives: AlternativeOption[];
+	originalViolations: ComplianceViolation[];
+	recommendedAlternative?: AlternativeType;
+	message: string;
+}
+
+// ============================================================================
+// Alternative Generation Functions
+// ============================================================================
+
+/**
+ * Generate DOUBLE_CREW alternative for amplitude violations
+ * Double crew extends the amplitude limit from 14h to 18h
+ */
+export function generateDoubleCrewAlternative(
+	complianceResult: ComplianceValidationResult,
+	costParameters: AlternativeCostParameters,
+	rules: RSERules | null,
+): AlternativeOption | null {
+	// Only applicable for HEAVY vehicles with amplitude violations
+	if (complianceResult.regulatoryCategory !== "HEAVY") {
+		return null;
+	}
+
+	const amplitudeViolation = complianceResult.violations.find(
+		v => v.type === "AMPLITUDE_EXCEEDED"
+	);
+
+	if (!amplitudeViolation) {
+		return null;
+	}
+
+	const actualAmplitudeHours = amplitudeViolation.actual;
+	const doubleCrewLimit = ALTERNATIVE_RSE_LIMITS.DOUBLE_CREW_AMPLITUDE_HOURS;
+
+	// Check if double crew would solve the problem
+	const isFeasible = actualAmplitudeHours <= doubleCrewLimit;
+
+	// Calculate extra driver cost
+	// Second driver works the hours beyond standard work day
+	const standardWorkDay = ALTERNATIVE_RSE_LIMITS.STANDARD_WORK_DAY_HOURS;
+	const extraDriverHours = Math.max(0, actualAmplitudeHours - standardWorkDay);
+	const extraDriverCost = extraDriverHours * costParameters.driverHourlyCost;
+
+	// Check remaining violations if double crew is applied
+	const remainingViolations: ComplianceViolation[] = [];
+	
+	// Check driving time - double crew doesn't help with driving time
+	const drivingViolation = complianceResult.violations.find(
+		v => v.type === "DRIVING_TIME_EXCEEDED"
+	);
+	if (drivingViolation) {
+		remainingViolations.push(drivingViolation);
+	}
+
+	// If amplitude still exceeds 18h, add violation
+	if (!isFeasible) {
+		remainingViolations.push({
+			type: "AMPLITUDE_EXCEEDED",
+			message: `Amplitude (${actualAmplitudeHours}h) exceeds double crew limit (${doubleCrewLimit}h)`,
+			actual: actualAmplitudeHours,
+			limit: doubleCrewLimit,
+			unit: "hours",
+			severity: "BLOCKING",
+		});
+	}
+
+	return {
+		type: "DOUBLE_CREW",
+		title: "Double Crew",
+		description: `Add a second driver to extend amplitude limit from ${rules?.maxDailyAmplitudeHours ?? 14}h to ${doubleCrewLimit}h`,
+		isFeasible,
+		feasibilityReason: isFeasible 
+			? undefined 
+			: `Amplitude (${actualAmplitudeHours}h) exceeds ${doubleCrewLimit}h limit even with double crew`,
+		additionalCost: {
+			total: Math.round(extraDriverCost * 100) / 100,
+			currency: "EUR",
+			breakdown: {
+				extraDriverCost: Math.round(extraDriverCost * 100) / 100,
+				hotelCost: 0,
+				mealAllowance: 0,
+				otherCosts: 0,
+			},
+		},
+		adjustedSchedule: {
+			totalDrivingMinutes: complianceResult.adjustedDurations.totalDrivingMinutes,
+			totalAmplitudeMinutes: complianceResult.adjustedDurations.totalAmplitudeMinutes,
+			daysRequired: 1,
+			driversRequired: 2,
+			hotelNightsRequired: 0,
+		},
+		wouldBeCompliant: isFeasible && remainingViolations.length === 0,
+		remainingViolations,
+	};
+}
+
+/**
+ * Generate RELAY_DRIVER alternative for driving time violations
+ * Relay driver splits driving between two drivers
+ */
+export function generateRelayDriverAlternative(
+	complianceResult: ComplianceValidationResult,
+	costParameters: AlternativeCostParameters,
+	rules: RSERules | null,
+): AlternativeOption | null {
+	// Only applicable for HEAVY vehicles with driving time violations
+	if (complianceResult.regulatoryCategory !== "HEAVY") {
+		return null;
+	}
+
+	const drivingViolation = complianceResult.violations.find(
+		v => v.type === "DRIVING_TIME_EXCEEDED"
+	);
+
+	if (!drivingViolation) {
+		return null;
+	}
+
+	const actualDrivingHours = drivingViolation.actual;
+	const maxDrivingHours = rules?.maxDailyDrivingHours ?? 10;
+
+	// With relay, each driver does half the driving
+	const drivingPerDriver = actualDrivingHours / 2;
+	const isFeasible = drivingPerDriver <= maxDrivingHours;
+
+	// Calculate extra driver cost (second driver works half the driving time)
+	const extraDriverHours = drivingPerDriver;
+	const extraDriverCost = extraDriverHours * costParameters.driverHourlyCost;
+
+	// Check remaining violations
+	const remainingViolations: ComplianceViolation[] = [];
+
+	// Check amplitude - relay doesn't help with amplitude
+	const amplitudeViolation = complianceResult.violations.find(
+		v => v.type === "AMPLITUDE_EXCEEDED"
+	);
+	if (amplitudeViolation) {
+		remainingViolations.push(amplitudeViolation);
+	}
+
+	// If driving per driver still exceeds limit
+	if (!isFeasible) {
+		remainingViolations.push({
+			type: "DRIVING_TIME_EXCEEDED",
+			message: `Driving time per driver (${drivingPerDriver.toFixed(2)}h) still exceeds limit (${maxDrivingHours}h)`,
+			actual: drivingPerDriver,
+			limit: maxDrivingHours,
+			unit: "hours",
+			severity: "BLOCKING",
+		});
+	}
+
+	return {
+		type: "RELAY_DRIVER",
+		title: "Relay Driver",
+		description: `Split driving between two drivers (${drivingPerDriver.toFixed(1)}h each) with handover at midpoint`,
+		isFeasible,
+		feasibilityReason: isFeasible
+			? undefined
+			: `Even split (${drivingPerDriver.toFixed(2)}h per driver) exceeds ${maxDrivingHours}h limit`,
+		additionalCost: {
+			total: Math.round(extraDriverCost * 100) / 100,
+			currency: "EUR",
+			breakdown: {
+				extraDriverCost: Math.round(extraDriverCost * 100) / 100,
+				hotelCost: 0,
+				mealAllowance: 0,
+				otherCosts: 0,
+			},
+		},
+		adjustedSchedule: {
+			totalDrivingMinutes: complianceResult.adjustedDurations.totalDrivingMinutes,
+			totalAmplitudeMinutes: complianceResult.adjustedDurations.totalAmplitudeMinutes,
+			daysRequired: 1,
+			driversRequired: 2,
+			hotelNightsRequired: 0,
+		},
+		wouldBeCompliant: isFeasible && remainingViolations.length === 0,
+		remainingViolations,
+	};
+}
+
+/**
+ * Generate MULTI_DAY alternative for severe violations
+ * Converts to overnight mission with hotel stop
+ */
+export function generateMultiDayAlternative(
+	complianceResult: ComplianceValidationResult,
+	costParameters: AlternativeCostParameters,
+	rules: RSERules | null,
+): AlternativeOption | null {
+	// Only applicable for HEAVY vehicles with violations
+	if (complianceResult.regulatoryCategory !== "HEAVY") {
+		return null;
+	}
+
+	if (complianceResult.violations.length === 0) {
+		return null;
+	}
+
+	const totalAmplitudeHours = minutesToHours(
+		complianceResult.adjustedDurations.totalAmplitudeMinutes
+	);
+	const totalDrivingHours = minutesToHours(
+		complianceResult.adjustedDurations.totalDrivingMinutes
+	);
+
+	const maxDrivingHours = rules?.maxDailyDrivingHours ?? 10;
+	const maxAmplitudeHours = rules?.maxDailyAmplitudeHours ?? 14;
+	const minRestHours = ALTERNATIVE_RSE_LIMITS.MIN_DAILY_REST_HOURS;
+
+	// Calculate days required
+	// Each day can have max amplitude minus rest time for effective work
+	const effectiveWorkHoursPerDay = maxAmplitudeHours;
+	const daysRequired = Math.ceil(totalAmplitudeHours / effectiveWorkHoursPerDay);
+
+	// Check feasibility (max 3 days for reasonable alternative)
+	const isFeasible = daysRequired <= ALTERNATIVE_RSE_LIMITS.MAX_MULTI_DAY_DAYS;
+
+	// Calculate costs
+	const hotelNights = daysRequired - 1;
+	const hotelCost = hotelNights * costParameters.hotelCostPerNight;
+	const mealAllowance = daysRequired * costParameters.mealAllowancePerDay;
+	
+	// Additional driver cost for extra days
+	const standardWorkDay = ALTERNATIVE_RSE_LIMITS.STANDARD_WORK_DAY_HOURS;
+	const extraDays = daysRequired - 1;
+	const extraDriverCost = extraDays * standardWorkDay * costParameters.driverHourlyCost;
+
+	const totalCost = hotelCost + mealAllowance + extraDriverCost;
+
+	// Check remaining violations
+	const remainingViolations: ComplianceViolation[] = [];
+
+	// With multi-day, driving and amplitude are spread across days
+	const drivingPerDay = totalDrivingHours / daysRequired;
+	const amplitudePerDay = totalAmplitudeHours / daysRequired;
+
+	if (drivingPerDay > maxDrivingHours) {
+		remainingViolations.push({
+			type: "DRIVING_TIME_EXCEEDED",
+			message: `Daily driving (${drivingPerDay.toFixed(2)}h) exceeds limit (${maxDrivingHours}h) even with ${daysRequired} days`,
+			actual: drivingPerDay,
+			limit: maxDrivingHours,
+			unit: "hours",
+			severity: "BLOCKING",
+		});
+	}
+
+	if (amplitudePerDay > maxAmplitudeHours) {
+		remainingViolations.push({
+			type: "AMPLITUDE_EXCEEDED",
+			message: `Daily amplitude (${amplitudePerDay.toFixed(2)}h) exceeds limit (${maxAmplitudeHours}h) even with ${daysRequired} days`,
+			actual: amplitudePerDay,
+			limit: maxAmplitudeHours,
+			unit: "hours",
+			severity: "BLOCKING",
+		});
+	}
+
+	return {
+		type: "MULTI_DAY",
+		title: "Multi-Day Mission",
+		description: `Convert to ${daysRequired}-day mission with ${hotelNights} overnight stop${hotelNights > 1 ? 's' : ''} and ${minRestHours}h daily rest`,
+		isFeasible,
+		feasibilityReason: isFeasible
+			? undefined
+			: `Mission requires ${daysRequired} days, exceeding maximum ${ALTERNATIVE_RSE_LIMITS.MAX_MULTI_DAY_DAYS} days`,
+		additionalCost: {
+			total: Math.round(totalCost * 100) / 100,
+			currency: "EUR",
+			breakdown: {
+				extraDriverCost: Math.round(extraDriverCost * 100) / 100,
+				hotelCost: Math.round(hotelCost * 100) / 100,
+				mealAllowance: Math.round(mealAllowance * 100) / 100,
+				otherCosts: 0,
+			},
+		},
+		adjustedSchedule: {
+			totalDrivingMinutes: complianceResult.adjustedDurations.totalDrivingMinutes,
+			totalAmplitudeMinutes: complianceResult.adjustedDurations.totalAmplitudeMinutes,
+			daysRequired,
+			driversRequired: 1,
+			hotelNightsRequired: hotelNights,
+		},
+		wouldBeCompliant: isFeasible && remainingViolations.length === 0,
+		remainingViolations,
+	};
+}
+
+/**
+ * Generate all applicable alternatives for a non-compliant mission
+ */
+export function generateAlternatives(
+	input: AlternativesGenerationInput,
+): AlternativesGenerationResult {
+	const { complianceResult, costParameters, rules } = input;
+
+	// If already compliant, no alternatives needed
+	if (complianceResult.isCompliant) {
+		return {
+			hasAlternatives: false,
+			alternatives: [],
+			originalViolations: [],
+			message: "Mission is compliant, no alternatives needed",
+		};
+	}
+
+	// If not a heavy vehicle, no alternatives available
+	if (complianceResult.regulatoryCategory !== "HEAVY") {
+		return {
+			hasAlternatives: false,
+			alternatives: [],
+			originalViolations: complianceResult.violations,
+			message: "Alternatives only available for heavy vehicles",
+		};
+	}
+
+	const alternatives: AlternativeOption[] = [];
+
+	// Generate all possible alternatives
+	const doubleCrew = generateDoubleCrewAlternative(complianceResult, costParameters, rules);
+	if (doubleCrew) {
+		alternatives.push(doubleCrew);
+	}
+
+	const relayDriver = generateRelayDriverAlternative(complianceResult, costParameters, rules);
+	if (relayDriver) {
+		alternatives.push(relayDriver);
+	}
+
+	const multiDay = generateMultiDayAlternative(complianceResult, costParameters, rules);
+	if (multiDay) {
+		alternatives.push(multiDay);
+	}
+
+	// Sort alternatives:
+	// 1. Feasible first
+	// 2. Would be compliant first
+	// 3. Lowest cost first
+	alternatives.sort((a, b) => {
+		// Feasible first
+		if (a.isFeasible !== b.isFeasible) {
+			return a.isFeasible ? -1 : 1;
+		}
+		// Would be compliant first
+		if (a.wouldBeCompliant !== b.wouldBeCompliant) {
+			return a.wouldBeCompliant ? -1 : 1;
+		}
+		// Lowest cost first
+		return a.additionalCost.total - b.additionalCost.total;
+	});
+
+	// Find recommended alternative (first feasible and compliant)
+	const recommended = alternatives.find(a => a.isFeasible && a.wouldBeCompliant);
+
+	return {
+		hasAlternatives: alternatives.length > 0,
+		alternatives,
+		originalViolations: complianceResult.violations,
+		recommendedAlternative: recommended?.type,
+		message: alternatives.length > 0
+			? `${alternatives.length} alternative${alternatives.length > 1 ? 's' : ''} available`
+			: "No alternatives available for this violation pattern",
+	};
+}

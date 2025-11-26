@@ -1,7 +1,8 @@
 /**
- * Compliance API Routes (Story 5.3)
+ * Compliance API Routes (Story 5.3 + Story 5.4)
  *
  * Provides endpoints for validating heavy-vehicle missions against RSE rules
+ * and generating alternative staffing/scheduling options
  */
 
 import { db } from "@repo/database";
@@ -18,9 +19,12 @@ import { organizationMiddleware } from "../../middleware/organization";
 import {
 	validateHeavyVehicleCompliance,
 	getComplianceSummary,
+	generateAlternatives,
+	DEFAULT_ALTERNATIVE_COST_PARAMETERS,
 	type RSERules,
 	type ComplianceValidationInput,
 	type RegulatoryCategory,
+	type AlternativeCostParameters,
 } from "../../services/compliance-validator";
 import type { TripAnalysis } from "../../services/pricing-engine";
 
@@ -363,4 +367,113 @@ export const complianceRouter = new Hono()
 				total: rules.length,
 			});
 		},
+	)
+
+	// ============================================================================
+	// Story 5.4: Alternative Staffing & Scheduling Options
+	// ============================================================================
+
+	// Generate alternatives for a non-compliant mission
+	.post(
+		"/alternatives",
+		validator("json", validateComplianceSchema),
+		describeRoute({
+			summary: "Generate alternative staffing options",
+			description:
+				"Generate alternative staffing and scheduling options for a non-compliant heavy-vehicle mission. Returns options like double crew, relay driver, or multi-day mission with cost deltas.",
+			tags: ["VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const data = c.req.valid("json");
+
+			// Only process HEAVY vehicles
+			if (data.regulatoryCategory !== "HEAVY") {
+				return c.json({
+					hasAlternatives: false,
+					alternatives: [],
+					originalViolations: [],
+					message: "Alternatives only available for heavy vehicles",
+				});
+			}
+
+			// Load RSE rules
+			let rules: RSERules | null = null;
+
+			if (data.licenseCategoryId) {
+				rules = await loadRSERulesForLicenseCategory(
+					organizationId,
+					data.licenseCategoryId,
+				);
+			} else {
+				const result = await loadRSERulesForVehicleCategory(
+					organizationId,
+					data.vehicleCategoryId,
+				);
+				rules = result.rules;
+			}
+
+			// Build validation input
+			const input: ComplianceValidationInput = {
+				organizationId,
+				vehicleCategoryId: data.vehicleCategoryId,
+				regulatoryCategory: data.regulatoryCategory as RegulatoryCategory,
+				licenseCategoryId: data.licenseCategoryId,
+				tripAnalysis: data.tripAnalysis as unknown as TripAnalysis,
+				pickupAt: new Date(data.pickupAt),
+				estimatedDropoffAt: data.estimatedDropoffAt
+					? new Date(data.estimatedDropoffAt)
+					: undefined,
+			};
+
+			// First run compliance validation
+			const complianceResult = validateHeavyVehicleCompliance(input, rules);
+
+			// Load cost parameters from organization settings or use defaults
+			const costParameters = await loadAlternativeCostParameters(organizationId);
+
+			// Generate alternatives
+			const alternativesResult = generateAlternatives({
+				complianceResult,
+				costParameters,
+				rules,
+			});
+
+			return c.json(alternativesResult);
+		},
 	);
+
+// ============================================================================
+// Helper Functions for Story 5.4
+// ============================================================================
+
+/**
+ * Load alternative cost parameters from organization settings
+ * Falls back to defaults if not configured
+ * 
+ * Note: hotelCostPerNight and mealAllowancePerDay are not yet in the schema,
+ * so we use defaults for those. driverHourlyCost is available in OrganizationPricingSettings.
+ */
+async function loadAlternativeCostParameters(
+	organizationId: string,
+): Promise<AlternativeCostParameters> {
+	// Try to load from OrganizationPricingSettings
+	const settings = await db.organizationPricingSettings.findFirst({
+		where: { organizationId },
+	});
+
+	if (settings) {
+		return {
+			// driverHourlyCost is available in the schema
+			driverHourlyCost: settings.driverHourlyCost 
+				? Number(settings.driverHourlyCost) 
+				: DEFAULT_ALTERNATIVE_COST_PARAMETERS.driverHourlyCost,
+			// hotelCostPerNight and mealAllowancePerDay not yet in schema - use defaults
+			// TODO: Add these fields to OrganizationPricingSettings in a future migration
+			hotelCostPerNight: DEFAULT_ALTERNATIVE_COST_PARAMETERS.hotelCostPerNight,
+			mealAllowancePerDay: DEFAULT_ALTERNATIVE_COST_PARAMETERS.mealAllowancePerDay,
+		};
+	}
+
+	return DEFAULT_ALTERNATIVE_COST_PARAMETERS;
+}

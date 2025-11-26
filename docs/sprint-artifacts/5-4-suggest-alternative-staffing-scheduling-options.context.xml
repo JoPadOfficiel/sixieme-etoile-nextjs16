@@ -1,0 +1,334 @@
+<story-context id="5-4-suggest-alternative-staffing-scheduling-options" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5.4</storyId>
+    <title>Suggest Alternative Staffing &amp; Scheduling Options</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T21:45:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-4-suggest-alternative-staffing-scheduling-options.md</sourceStoryPath>
+  </metadata>
+
+  <problem>
+    <statement>
+      When a heavy-vehicle mission fails RSE compliance checks (driving time exceeded, amplitude exceeded), 
+      the system currently blocks the quote with an error but offers no actionable alternatives. 
+      Dispatchers must manually figure out solutions (double crew, relay driver, multi-day mission), 
+      which is time-consuming and error-prone.
+    </statement>
+    <businessImpact>
+      - Lost revenue from rejected missions that could be salvaged with alternative staffing
+      - Dispatcher frustration and increased cognitive load
+      - Longer quote turnaround times for complex missions
+      - Risk of proposing non-compliant alternatives manually
+    </businessImpact>
+  </problem>
+
+  <objectives>
+    <objective id="O1">Generate legally compliant alternative scenarios when a mission fails RSE checks</objective>
+    <objective id="O2">Calculate additional cost impact for each alternative option</objective>
+    <objective id="O3">Present alternatives in the cockpit/dispatch UI for operator selection</objective>
+    <objective id="O4">Allow operator to select an alternative and recompute pricing accordingly</objective>
+  </objectives>
+
+  <scope>
+    <inScope>
+      <item>Alternative generation service extending compliance-validator.ts</item>
+      <item>Three initial alternative patterns: double crew, relay driver, multi-day mission</item>
+      <item>Cost delta calculation for each alternative</item>
+      <item>API endpoint to request alternatives for a non-compliant mission</item>
+      <item>Integration with existing ComplianceValidationResult</item>
+    </inScope>
+    <outScope>
+      <item>Full UI implementation (Epic 6 will consume the API)</item>
+      <item>Automatic driver assignment (Epic 8)</item>
+      <item>Complex multi-stop itinerary alternatives</item>
+      <item>Real-time driver availability checking (future enhancement)</item>
+    </outScope>
+  </scope>
+
+  <story>
+    <asA>dispatcher</asA>
+    <iWant>the system to propose compliant alternatives when a heavy-vehicle mission is illegal as requested</iWant>
+    <soThat>I can still offer feasible options to clients</soThat>
+    <tasks>
+      <task id="1">Define AlternativeOption interface with type, description, cost delta, and adjusted durations</task>
+      <task id="2">Implement generateAlternatives() function in compliance-validator.ts</task>
+      <task id="3">Implement DOUBLE_CREW alternative (extends amplitude to 18h)</task>
+      <task id="4">Implement RELAY_DRIVER alternative (splits driving time)</task>
+      <task id="5">Implement MULTI_DAY alternative (converts to overnight mission with hotel stop)</task>
+      <task id="6">Calculate additional cost for each alternative (extra driver, hotel, meals)</task>
+      <task id="7">Add POST /vtc/compliance/alternatives endpoint</task>
+      <task id="8">Extend ComplianceValidationResult with alternatives field</task>
+      <task id="9">Write comprehensive Vitest tests for all alternative patterns</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Alternative Generation on Violation">
+      <given>a heavy-vehicle mission request that fails compliance checks</given>
+      <when>the validator runs</when>
+      <then>it generates at least one alternative scenario where possible (double crew, relay driver, multi-day mission)</then>
+    </criterion>
+    <criterion id="AC2" title="Cost Delta Calculation">
+      <given>an alternative scenario is generated</given>
+      <when>the alternative is computed</when>
+      <then>it includes an approximate additional cost for the option (extra driver cost, hotel cost, meal allowance)</then>
+    </criterion>
+    <criterion id="AC3" title="Double Crew Alternative">
+      <given>an AMPLITUDE_EXCEEDED violation (amplitude > 14h but <= 18h)</given>
+      <when>alternatives are generated</when>
+      <then>a DOUBLE_CREW option is proposed that extends max amplitude to 18h with additional driver cost</then>
+    </criterion>
+    <criterion id="AC4" title="Relay Driver Alternative">
+      <given>a DRIVING_TIME_EXCEEDED violation</given>
+      <when>alternatives are generated</when>
+      <then>a RELAY_DRIVER option is proposed that splits driving between two drivers with additional driver cost</then>
+    </criterion>
+    <criterion id="AC5" title="Multi-Day Alternative">
+      <given>a mission that cannot be completed in one day even with double crew</given>
+      <when>alternatives are generated</when>
+      <then>a MULTI_DAY option is proposed with hotel stop, overnight rest, and associated costs (hotel + meals)</then>
+    </criterion>
+    <criterion id="AC6" title="Alternatives Surfaced in API">
+      <given>a non-compliant mission</given>
+      <when>I call POST /vtc/compliance/alternatives</when>
+      <then>I receive a list of AlternativeOption objects with type, description, costDelta, and feasibility flag</then>
+    </criterion>
+    <criterion id="AC7" title="No Alternatives for Compliant Missions">
+      <given>a mission that passes all compliance checks</given>
+      <when>alternatives are requested</when>
+      <then>an empty alternatives array is returned (no alternatives needed)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR28, FR48 - Alternative Staffing Options</section>
+        <snippet>FR28: When regulations would be violated for a requested mission, the system shall propose compliant alternatives such as a second driver or relay driver where applicable. FR48: The system shall generate and present alternative, legally compliant staffing or scheduling options (double crew, relay driver, multi-day mission) together with the additional cost impact for each option.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>Appendix C - RSE Compliance Engine</section>
+        <snippet>Double Crew extends amplitude limit from 14h to 18h. Relay driver splits driving time between two drivers. Multi-day missions require hotel stop with "Decoucher" (sleepover fee) added as fixed cost.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 5.4</section>
+        <snippet>Suggest Alternative Staffing &amp; Scheduling Options - generate compliant alternatives when heavy-vehicle mission fails compliance, including cost deltas for each option.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>packages/api/src/services/compliance-validator.ts</path>
+        <kind>service</kind>
+        <symbol>validateHeavyVehicleCompliance, ComplianceValidationResult, ComplianceViolation</symbol>
+        <lines>1-606</lines>
+        <reason>Core compliance validator to extend with alternative generation</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/compliance-validator.ts</path>
+        <kind>interface</kind>
+        <symbol>RSERules, AdjustedDurations</symbol>
+        <lines>34-135</lines>
+        <reason>RSE rules structure needed for alternative calculations</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/compliance.ts</path>
+        <kind>route</kind>
+        <symbol>complianceRouter</symbol>
+        <lines>1-367</lines>
+        <reason>Existing compliance routes - add alternatives endpoint here</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>interface</kind>
+        <symbol>TripAnalysis, CostBreakdown, DriverCostComponent</symbol>
+        <lines>360-468</lines>
+        <reason>Cost structures for calculating alternative cost deltas</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/compliance-validator.test.ts</path>
+        <kind>test</kind>
+        <symbol>compliance validator tests</symbol>
+        <reason>Test patterns to follow for alternative generation tests</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <usage>API framework for alternatives endpoint</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.x</version>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>vitest</package>
+        <version>^2.x</version>
+        <usage>Unit testing framework</usage>
+      </node>
+      <node>
+        <package>@repo/database</package>
+        <version>workspace</version>
+        <usage>Prisma client for cost parameters</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="regulatory">Double crew extends amplitude to 18h maximum (EU RSE regulation)</constraint>
+    <constraint type="regulatory">Relay driver requires handover point and second driver availability</constraint>
+    <constraint type="regulatory">Multi-day missions require minimum 11h daily rest period</constraint>
+    <constraint type="architectural">Alternatives must be pure functions for testability</constraint>
+    <constraint type="architectural">Cost deltas must use organization's configured cost parameters</constraint>
+    <constraint type="multi-tenancy">All cost calculations must use organization-specific settings</constraint>
+    <constraint type="ux">Alternatives must be clearly labeled as suggestions requiring manual fine-tuning</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>AlternativeType</name>
+      <kind>TypeScript enum</kind>
+      <signature>
+export type AlternativeType = 
+  | "DOUBLE_CREW"      // Add second driver, extend amplitude to 18h
+  | "RELAY_DRIVER"     // Split driving between two drivers
+  | "MULTI_DAY";       // Convert to overnight mission with hotel stop
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>AlternativeOption</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+export interface AlternativeOption {
+  type: AlternativeType;
+  title: string;
+  description: string;
+  isFeasible: boolean;
+  feasibilityReason?: string;
+  
+  // Cost impact
+  additionalCost: {
+    total: number;
+    breakdown: {
+      extraDriverCost: number;      // Additional driver hours
+      hotelCost: number;            // Overnight accommodation
+      mealAllowance: number;        // Driver meal allowance
+      otherCosts: number;           // Parking, etc.
+    };
+  };
+  
+  // Adjusted compliance
+  adjustedDurations: {
+    totalDrivingMinutes: number;
+    totalAmplitudeMinutes: number;
+    daysRequired: number;
+    driversRequired: number;
+  };
+  
+  // Compliance check with this alternative
+  wouldBeCompliant: boolean;
+  remainingViolations: ComplianceViolation[];
+}
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>AlternativesGenerationInput</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+export interface AlternativesGenerationInput {
+  complianceResult: ComplianceValidationResult;
+  tripAnalysis: TripAnalysis;
+  costParameters: {
+    driverHourlyCost: number;
+    hotelCostPerNight: number;
+    mealAllowancePerDay: number;
+  };
+}
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>AlternativesGenerationResult</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+export interface AlternativesGenerationResult {
+  hasAlternatives: boolean;
+  alternatives: AlternativeOption[];
+  originalViolations: ComplianceViolation[];
+  recommendedAlternative?: AlternativeType;
+}
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>POST /vtc/compliance/alternatives</name>
+      <kind>REST endpoint</kind>
+      <signature>
+POST /vtc/compliance/alternatives
+Body: {
+  vehicleCategoryId: string;
+  regulatoryCategory: "HEAVY";
+  licenseCategoryId?: string;
+  tripAnalysis: TripAnalysis;
+  pickupAt: string; // ISO datetime
+  estimatedDropoffAt?: string;
+}
+Response: AlternativesGenerationResult
+      </signature>
+      <path>packages/api/src/routes/vtc/compliance.ts</path>
+    </interface>
+  </interfaces>
+
+  <costParameters>
+    <parameter name="driverHourlyCost" default="25" unit="EUR/hour">
+      Loaded salary cost per hour for additional driver
+    </parameter>
+    <parameter name="hotelCostPerNight" default="100" unit="EUR/night">
+      Standard hotel accommodation for overnight missions
+    </parameter>
+    <parameter name="mealAllowancePerDay" default="30" unit="EUR/day">
+      Driver meal allowance for multi-day missions
+    </parameter>
+    <parameter name="doubleCrewAmplitudeLimit" default="18" unit="hours">
+      Extended amplitude limit with double crew (EU RSE)
+    </parameter>
+    <parameter name="minDailyRestHours" default="11" unit="hours">
+      Minimum daily rest period for multi-day missions
+    </parameter>
+  </costParameters>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Follow existing test patterns in packages/api/src/services/__tests__/.
+      Tests should cover all alternative types with various violation scenarios.
+      Mock cost parameters for deterministic testing.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/compliance-validator.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/compliance.test.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test that violations trigger alternative generation</idea>
+      <idea acId="AC2">Test cost delta calculation with known parameters</idea>
+      <idea acId="AC3">Test DOUBLE_CREW: amplitude 15h → feasible with double crew at 18h limit</idea>
+      <idea acId="AC3">Test DOUBLE_CREW: amplitude 19h → not feasible even with double crew</idea>
+      <idea acId="AC4">Test RELAY_DRIVER: driving 12h → split into 2x6h with handover</idea>
+      <idea acId="AC5">Test MULTI_DAY: amplitude 20h → convert to 2-day mission with hotel</idea>
+      <idea acId="AC6">Test API endpoint returns structured alternatives</idea>
+      <idea acId="AC7">Test compliant mission returns empty alternatives array</idea>
+      <idea>Test edge case: multiple violations require combined alternatives</idea>
+      <idea>Test cost calculation uses organization-specific parameters</idea>
+    </ideas>
+  </tests>
+</story-context>
