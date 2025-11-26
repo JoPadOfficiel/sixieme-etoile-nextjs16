@@ -145,6 +145,8 @@ model Organization {
   documents                   Document[]
   integrationSettings         OrganizationIntegrationSettings?
   partnerContracts            PartnerContract[]
+  driverRSECounters           DriverRSECounter[]
+  complianceAuditLogs         ComplianceAuditLog[]
 
   @@unique([slug])
   @@map("organization")
@@ -591,6 +593,7 @@ model LicenseCategory {
   organizationRules     OrganizationLicenseRule[]
   vehiclesRequiringThis Vehicle[]
   driverLicenses        DriverLicense[]
+  driverRSECounters     DriverRSECounter[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -646,7 +649,9 @@ model Driver {
   updatedAt DateTime @updatedAt
 
   // Relations
-  driverLicenses DriverLicense[]
+  driverLicenses      DriverLicense[]
+  driverRSECounters   DriverRSECounter[]
+  complianceAuditLogs ComplianceAuditLog[]
 
   @@index([organizationId])
   @@index([isActive])
@@ -1272,4 +1277,77 @@ model OrganizationIntegrationSettings {
   updatedAt DateTime @updatedAt
 
   @@map("organization_integration_settings")
+}
+
+// ----------------------------------------------------------------------------
+// RSE COUNTERS & COMPLIANCE AUDIT (Story 5.5)
+// ----------------------------------------------------------------------------
+
+/// DriverRSECounter - Tracks RSE counters per driver, per day, per regulatory regime
+model DriverRSECounter {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Date (business date in Europe/Paris)
+  date DateTime @db.Date
+
+  // Regulatory regime
+  regulatoryCategory VehicleRegulatoryCategory
+  licenseCategoryId  String?
+  licenseCategory    LicenseCategory?          @relation(fields: [licenseCategoryId], references: [id])
+
+  // Counters (in minutes for precision)
+  drivingMinutes   Int @default(0)
+  amplitudeMinutes Int @default(0)
+  breakMinutes     Int @default(0)
+  restMinutes      Int @default(0)
+
+  // Work period tracking
+  workStartTime DateTime? // First activity start time
+  workEndTime   DateTime? // Last activity end time
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, driverId, date, regulatoryCategory])
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([date])
+  @@map("driver_rse_counter")
+}
+
+/// ComplianceAuditLog - Logs compliance decisions for audit purposes (FR30)
+model ComplianceAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  // Context
+  quoteId            String?
+  missionId          String?
+  vehicleCategoryId  String?
+  regulatoryCategory VehicleRegulatoryCategory
+
+  // Decision
+  decision   String // "APPROVED", "BLOCKED", "WARNING"
+  violations Json? // Array of ComplianceViolation
+  warnings   Json? // Array of ComplianceWarning
+  reason     String
+
+  // Counters snapshot at time of decision
+  countersSnapshot Json?
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([timestamp])
+  @@map("compliance_audit_log")
 }

@@ -1450,6 +1450,29 @@
 				"page": "Page {current} of {total}"
 			}
 		},
+		"compliance": {
+			"snapshotTitle": "Compliance Status",
+			"auditLogTitle": "Compliance History",
+			"noData": "No compliance data available for this date.",
+			"noAuditLogs": "No compliance decisions recorded yet.",
+			"regimeLight": "Light Vehicles",
+			"regimeHeavy": "Heavy Vehicles",
+			"drivingTime": "Driving Time",
+			"amplitude": "Work Amplitude",
+			"breaksTaken": "Breaks Taken",
+			"violations": "Violations",
+			"warnings": "Warnings",
+			"status": {
+				"ok": "OK",
+				"warning": "Warning",
+				"violation": "Violation"
+			},
+			"decision": {
+				"approved": "Approved",
+				"blocked": "Blocked",
+				"warning": "Warning"
+			}
+		},
 		"settings": {
 			"title": "Fleet & Regulatory Configuration",
 			"description": "Configure license categories and RSE compliance rules.",

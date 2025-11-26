@@ -10,6 +10,14 @@ import {
 	withTenantId,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import {
+	getDriverCounters,
+	getDriverCounterByRegime,
+	recordDrivingActivity,
+	getRecentAuditLogs,
+	getComplianceSnapshot,
+	type RegulatoryCategory,
+} from "../../services/rse-counter";
 
 // Validation schemas
 const createDriverSchema = z.object({
@@ -448,5 +456,243 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json({ success: true });
+		}
+	)
+
+	// ============================================================================
+	// RSE Counters Endpoints (Story 5.5)
+	// ============================================================================
+
+	// Get RSE counters for a driver on a specific date
+	.get(
+		"/:id/rse-counters",
+		validator(
+			"query",
+			z.object({
+				date: z.string().optional(), // ISO date string, defaults to today
+			})
+		),
+		describeRoute({
+			summary: "Get driver RSE counters",
+			description:
+				"Get RSE counters (driving time, amplitude, breaks) for a driver on a specific date",
+			tags: ["VTC - Fleet", "VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const { date: dateStr } = c.req.valid("query");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const date = dateStr ? new Date(dateStr) : new Date();
+			const counters = await getDriverCounters(db, organizationId, driverId, date);
+
+			return c.json({
+				date: date.toISOString().split("T")[0],
+				counters,
+			});
+		}
+	)
+
+	// Get RSE counter for a specific regime
+	.get(
+		"/:id/rse-counters/:regime",
+		validator(
+			"query",
+			z.object({
+				date: z.string().optional(),
+			})
+		),
+		describeRoute({
+			summary: "Get driver RSE counter by regime",
+			description:
+				"Get RSE counter for a specific regulatory regime (LIGHT or HEAVY)",
+			tags: ["VTC - Fleet", "VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const regime = c.req.param("regime").toUpperCase() as RegulatoryCategory;
+			const { date: dateStr } = c.req.valid("query");
+
+			if (regime !== "LIGHT" && regime !== "HEAVY") {
+				throw new HTTPException(400, {
+					message: "Invalid regime. Must be LIGHT or HEAVY",
+				});
+			}
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const date = dateStr ? new Date(dateStr) : new Date();
+			const counter = await getDriverCounterByRegime(
+				db,
+				organizationId,
+				driverId,
+				date,
+				regime
+			);
+
+			return c.json({
+				date: date.toISOString().split("T")[0],
+				regime,
+				counter,
+			});
+		}
+	)
+
+	// Record driving activity
+	.post(
+		"/:id/rse-counters/record",
+		validator(
+			"json",
+			z.object({
+				date: z.string().optional(), // ISO date string, defaults to today
+				regulatoryCategory: z.enum(["LIGHT", "HEAVY"]),
+				licenseCategoryId: z.string().optional(),
+				drivingMinutes: z.number().int().min(0),
+				amplitudeMinutes: z.number().int().min(0).optional(),
+				breakMinutes: z.number().int().min(0).optional(),
+				workStartTime: z.string().datetime().optional(),
+				workEndTime: z.string().datetime().optional(),
+			})
+		),
+		describeRoute({
+			summary: "Record driving activity",
+			description:
+				"Record driving activity for a driver, updating RSE counters",
+			tags: ["VTC - Fleet", "VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const data = c.req.valid("json");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const date = data.date ? new Date(data.date) : new Date();
+
+			const counter = await recordDrivingActivity(db, {
+				organizationId,
+				driverId,
+				date,
+				regulatoryCategory: data.regulatoryCategory,
+				licenseCategoryId: data.licenseCategoryId,
+				drivingMinutes: data.drivingMinutes,
+				amplitudeMinutes: data.amplitudeMinutes,
+				breakMinutes: data.breakMinutes,
+				workStartTime: data.workStartTime ? new Date(data.workStartTime) : undefined,
+				workEndTime: data.workEndTime ? new Date(data.workEndTime) : undefined,
+			});
+
+			return c.json(counter, 201);
+		}
+	)
+
+	// Get compliance snapshot for a driver
+	.get(
+		"/:id/compliance-snapshot",
+		validator(
+			"query",
+			z.object({
+				date: z.string().optional(),
+			})
+		),
+		describeRoute({
+			summary: "Get driver compliance snapshot",
+			description:
+				"Get a compliance snapshot including counters, limits, and status for both LIGHT and HEAVY regimes",
+			tags: ["VTC - Fleet", "VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const { date: dateStr } = c.req.valid("query");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const date = dateStr ? new Date(dateStr) : new Date();
+			const snapshot = await getComplianceSnapshot(db, organizationId, driverId, date);
+
+			return c.json(snapshot);
+		}
+	)
+
+	// Get compliance audit logs for a driver
+	.get(
+		"/:id/compliance-logs",
+		validator(
+			"query",
+			z.object({
+				limit: z.coerce.number().int().positive().max(100).default(10),
+			})
+		),
+		describeRoute({
+			summary: "Get driver compliance audit logs",
+			description:
+				"Get recent compliance audit logs for a driver (decisions, violations, warnings)",
+			tags: ["VTC - Fleet", "VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const { limit } = c.req.valid("query");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const logs = await getRecentAuditLogs(db, organizationId, driverId, limit);
+
+			return c.json({
+				data: logs,
+				meta: {
+					limit,
+					count: logs.length,
+				},
+			});
 		}
 	);

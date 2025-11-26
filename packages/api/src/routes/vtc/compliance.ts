@@ -27,6 +27,12 @@ import {
 	type AlternativeCostParameters,
 } from "../../services/compliance-validator";
 import type { TripAnalysis } from "../../services/pricing-engine";
+import {
+	checkCumulativeCompliance,
+	logComplianceDecision,
+	getDriverCounterByRegime,
+	type RegulatoryCategory as RSERegime,
+} from "../../services/rse-counter";
 
 // ============================================================================
 // Validation Schemas
@@ -440,6 +446,101 @@ export const complianceRouter = new Hono()
 			});
 
 			return c.json(alternativesResult);
+		},
+	)
+
+	// ============================================================================
+	// Story 5.5: Cumulative Compliance Check with Audit Logging
+	// ============================================================================
+
+	// Check cumulative compliance before assigning a mission to a driver
+	.post(
+		"/check-cumulative",
+		validator(
+			"json",
+			z.object({
+				driverId: z.string().min(1),
+				date: z.string().optional(), // ISO date, defaults to today
+				regulatoryCategory: z.enum(["LIGHT", "HEAVY"]),
+				licenseCategoryId: z.string().optional(),
+				additionalDrivingMinutes: z.number().int().min(0),
+				additionalAmplitudeMinutes: z.number().int().min(0).optional(),
+				// Optional context for audit logging
+				quoteId: z.string().optional(),
+				missionId: z.string().optional(),
+				vehicleCategoryId: z.string().optional(),
+				logDecision: z.boolean().default(false), // Whether to log the decision
+			})
+		),
+		describeRoute({
+			summary: "Check cumulative compliance",
+			description:
+				"Check if adding a new activity would cause cumulative RSE violations for a driver. Optionally logs the decision for audit purposes (FR30).",
+			tags: ["VTC - Compliance"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const data = c.req.valid("json");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(data.driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const date = data.date ? new Date(data.date) : new Date();
+			const additionalAmplitude = data.additionalAmplitudeMinutes ?? data.additionalDrivingMinutes;
+
+			// Check cumulative compliance
+			const result = await checkCumulativeCompliance(
+				db,
+				organizationId,
+				data.driverId,
+				date,
+				data.additionalDrivingMinutes,
+				additionalAmplitude,
+				data.regulatoryCategory as RSERegime,
+				data.licenseCategoryId,
+			);
+
+			// Determine decision
+			const decision = result.isCompliant
+				? result.warnings.length > 0
+					? "WARNING"
+					: "APPROVED"
+				: "BLOCKED";
+
+			// Log decision if requested
+			if (data.logDecision) {
+				await logComplianceDecision(db, {
+					organizationId,
+					driverId: data.driverId,
+					quoteId: data.quoteId,
+					missionId: data.missionId,
+					vehicleCategoryId: data.vehicleCategoryId,
+					regulatoryCategory: data.regulatoryCategory as RSERegime,
+					decision,
+					violations: result.violations,
+					warnings: result.warnings,
+					reason: result.isCompliant
+						? result.warnings.length > 0
+							? `Approved with warnings: ${result.warnings.map((w) => w.message).join("; ")}`
+							: "Cumulative compliance check passed"
+						: `Blocked: ${result.violations.map((v) => v.message).join("; ")}`,
+					countersSnapshot: result.projectedCounters,
+				});
+			}
+
+			return c.json({
+				...result,
+				decision,
+				decisionLogged: data.logDecision,
+			});
 		},
 	);
 

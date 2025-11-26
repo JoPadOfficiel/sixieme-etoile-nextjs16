@@ -295,3 +295,134 @@ export interface LicenseRuleFormData {
 	drivingBlockHoursForBreak: number;
 	cappedAverageSpeedKmh: number | null;
 }
+
+// ============================================================================
+// RSE Counters & Compliance (Story 5.5)
+// ============================================================================
+
+export type ComplianceDecision = "APPROVED" | "BLOCKED" | "WARNING";
+export type ComplianceStatus = "OK" | "WARNING" | "VIOLATION";
+
+// RSE Counter for a driver on a specific date and regime
+export interface DriverRSECounter {
+	id: string;
+	organizationId: string;
+	driverId: string;
+	date: string; // ISO date
+	regulatoryCategory: VehicleRegulatoryCategory;
+	licenseCategoryId: string | null;
+	drivingMinutes: number;
+	amplitudeMinutes: number;
+	breakMinutes: number;
+	restMinutes: number;
+	workStartTime: string | null;
+	workEndTime: string | null;
+	createdAt: string;
+	updatedAt: string;
+	licenseCategory?: LicenseCategory | null;
+}
+
+// Compliance violation
+export interface ComplianceViolation {
+	type: "DRIVING_TIME_EXCEEDED" | "AMPLITUDE_EXCEEDED" | "BREAK_REQUIRED" | "SPEED_LIMIT_EXCEEDED";
+	message: string;
+	actual: number;
+	limit: number;
+	unit: "hours" | "minutes" | "km/h";
+	severity: "BLOCKING";
+}
+
+// Compliance warning
+export interface ComplianceWarning {
+	type: "APPROACHING_LIMIT" | "BREAK_RECOMMENDED";
+	message: string;
+	actual: number;
+	limit: number;
+	percentOfLimit: number;
+}
+
+// RSE Rules
+export interface RSERules {
+	licenseCategoryId: string;
+	licenseCategoryCode: string;
+	maxDailyDrivingHours: number;
+	maxDailyAmplitudeHours: number;
+	breakMinutesPerDrivingBlock: number;
+	drivingBlockHoursForBreak: number;
+	cappedAverageSpeedKmh: number | null;
+}
+
+// Compliance audit log entry
+export interface ComplianceAuditLog {
+	id: string;
+	organizationId: string;
+	driverId: string;
+	timestamp: string;
+	quoteId: string | null;
+	missionId: string | null;
+	vehicleCategoryId: string | null;
+	regulatoryCategory: VehicleRegulatoryCategory;
+	decision: ComplianceDecision;
+	violations: ComplianceViolation[] | null;
+	warnings: ComplianceWarning[] | null;
+	reason: string;
+	countersSnapshot: DriverRSECounterData | null;
+}
+
+// Counter data (without Prisma metadata)
+export interface DriverRSECounterData {
+	drivingMinutes: number;
+	amplitudeMinutes: number;
+	breakMinutes: number;
+	restMinutes: number;
+	workStartTime?: string | null;
+	workEndTime?: string | null;
+}
+
+// Compliance snapshot for UI display
+export interface ComplianceSnapshot {
+	date: string;
+	counters: {
+		light: DriverRSECounter | null;
+		heavy: DriverRSECounter | null;
+	};
+	limits: {
+		light: RSERules | null;
+		heavy: RSERules | null;
+	};
+	status: {
+		light: ComplianceStatus;
+		heavy: ComplianceStatus;
+	};
+}
+
+// API Response types
+export interface RSECountersResponse {
+	date: string;
+	counters: DriverRSECounter[];
+}
+
+export interface RSECounterByRegimeResponse {
+	date: string;
+	regime: VehicleRegulatoryCategory;
+	counter: DriverRSECounter | null;
+}
+
+export interface ComplianceLogsResponse {
+	data: ComplianceAuditLog[];
+	meta: {
+		limit: number;
+		count: number;
+	};
+}
+
+export interface CumulativeComplianceResult {
+	isCompliant: boolean;
+	currentCounters: DriverRSECounterData;
+	projectedCounters: DriverRSECounterData;
+	violations: ComplianceViolation[];
+	warnings: ComplianceWarning[];
+	rules: RSERules | null;
+	decision: ComplianceDecision;
+	decisionLogged: boolean;
+}

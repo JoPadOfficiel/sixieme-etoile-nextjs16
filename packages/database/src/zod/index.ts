@@ -154,6 +154,10 @@ export const FuelPriceCacheScalarFieldEnumSchema = z.enum(['id','countryCode','l
 
 export const OrganizationIntegrationSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','googleMapsApiKey','collectApiKey','createdAt','updatedAt']);
 
+export const DriverRSECounterScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','date','regulatoryCategory','licenseCategoryId','drivingMinutes','amplitudeMinutes','breakMinutes','restMinutes','workStartTime','workEndTime','createdAt','updatedAt']);
+
+export const ComplianceAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','timestamp','quoteId','missionId','vehicleCategoryId','regulatoryCategory','decision','violations','warnings','reason','countersSnapshot']);
+
 export const SortOrderSchema = z.enum(['asc','desc']);
 
 export const NullableJsonNullValueInputSchema = z.enum(['DbNull','JsonNull',]).transform((value) => value === 'JsonNull' ? Prisma.JsonNull : value === 'DbNull' ? Prisma.DbNull : value);
@@ -1076,3 +1080,54 @@ export const OrganizationIntegrationSettingsSchema = z.object({
 })
 
 export type OrganizationIntegrationSettings = z.infer<typeof OrganizationIntegrationSettingsSchema>
+
+/////////////////////////////////////////
+// DRIVER RSE COUNTER SCHEMA
+/////////////////////////////////////////
+
+/**
+ * DriverRSECounter - Tracks RSE counters per driver, per day, per regulatory regime
+ */
+export const DriverRSECounterSchema = z.object({
+  regulatoryCategory: VehicleRegulatoryCategorySchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  driverId: z.string(),
+  date: z.coerce.date(),
+  licenseCategoryId: z.string().nullable(),
+  drivingMinutes: z.number().int(),
+  amplitudeMinutes: z.number().int(),
+  breakMinutes: z.number().int(),
+  restMinutes: z.number().int(),
+  workStartTime: z.coerce.date().nullable(),
+  workEndTime: z.coerce.date().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type DriverRSECounter = z.infer<typeof DriverRSECounterSchema>
+
+/////////////////////////////////////////
+// COMPLIANCE AUDIT LOG SCHEMA
+/////////////////////////////////////////
+
+/**
+ * ComplianceAuditLog - Logs compliance decisions for audit purposes (FR30)
+ */
+export const ComplianceAuditLogSchema = z.object({
+  regulatoryCategory: VehicleRegulatoryCategorySchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  driverId: z.string(),
+  timestamp: z.coerce.date(),
+  quoteId: z.string().nullable(),
+  missionId: z.string().nullable(),
+  vehicleCategoryId: z.string().nullable(),
+  decision: z.string(),
+  violations: JsonValueSchema.nullable(),
+  warnings: JsonValueSchema.nullable(),
+  reason: z.string(),
+  countersSnapshot: JsonValueSchema.nullable(),
+})
+
+export type ComplianceAuditLog = z.infer<typeof ComplianceAuditLogSchema>

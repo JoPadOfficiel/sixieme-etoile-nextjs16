@@ -1,0 +1,271 @@
+<story-context id="5-5-track-rse-counters-per-driver-licence-regime" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5.5</storyId>
+    <title>Track RSE Counters Per Driver &amp; Licence Regime</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-26T21:56:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>scheduler</asA>
+    <iWant>RSE counters (driving time, amplitude, breaks, rest) tracked per driver and licence regime</iWant>
+    <soThat>I can avoid cumulative violations across the planning horizon</soThat>
+    <tasks>
+      <task id="1">Create DriverRSECounter model in Prisma schema</task>
+      <task id="2">Create RSE counter service for tracking and querying counters</task>
+      <task id="3">Create RSE counter API routes (GET counters, POST record activity)</task>
+      <task id="4">Integrate counter updates with mission/quote assignment flow</task>
+      <task id="5">Create compliance audit log model and service</task>
+      <task id="6">Expose counters in Drivers UI (daily hours, amplitude, rest status)</task>
+      <task id="7">Write unit tests for counter service</task>
+      <task id="8">Write API tests for counter routes</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>a driver with multiple licences</given>
+      <when>they are assigned to missions throughout a day</when>
+      <then>the system tracks their driving and amplitude per relevant regulation regime (e.g. LIGHT vs HEAVY), and stores counters in a way that can be read by the validator and by the Drivers UI</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>historical decisions (violations prevented, borderline cases)</given>
+      <when>compliance checks run</when>
+      <then>they are logged with timestamps and reasons for audit (FR30)</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>a multi-licence driver operating under different rules the same day</given>
+      <when>they drive a LIGHT vehicle in the morning and a HEAVY vehicle in the afternoon</when>
+      <then>the system tracks service time separately for each regime without violating any legal counters (FR49)</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>the Drivers detail drawer</given>
+      <when>I open it</when>
+      <then>I see a compliance snapshot (today's hours, amplitude, rest status) and a list of recent validation decisions with reasons</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>RSE counters for a driver</given>
+      <when>queried via API</when>
+      <then>counters are scoped by organizationId (multi-tenancy enforced)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR Group 4 – Fleet &amp; Regulatory Compliance (FR25-FR30)</section>
+        <snippet>FR29: Track service time separately for each regulation regime per driver per day. FR30: Compliance checks and decisions shall be logged for audit purposes.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR Group 8 – Strategic Optimisation (FR47-FR49)</section>
+        <snippet>FR49: Multi-licence drivers can operate under different rules in the same day without violating any legal counters.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Fleet &amp; Regulatory Models</section>
+        <snippet>OrganizationLicenseRule stores RSE limits per licence type. Driver has driverLicenses for multi-licence support.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 5.5: Track RSE Counters Per Driver &amp; Licence Regime</section>
+        <snippet>Track RSE counters per driver and licence regime. Historical decisions logged for audit. Consider background jobs to reconcile counters.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/5-3-implement-heavy-vehicle-compliance-validator.md</path>
+        <title>Story 5.3 Implementation</title>
+        <section>Compliance Validator Service</section>
+        <snippet>ComplianceValidationResult with violations, warnings, adjustedDurations. RSERules interface. validateHeavyVehicleCompliance() function.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/5-4-suggest-alternative-staffing-scheduling-options.md</path>
+        <title>Story 5.4 Implementation</title>
+        <section>Alternative Generation</section>
+        <snippet>AlternativeType enum, AlternativeOption interface, generateAlternatives() function for non-compliant missions.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>packages/api/src/services/compliance-validator.ts</path>
+        <kind>service</kind>
+        <symbol>validateHeavyVehicleCompliance, RSERules, ComplianceValidationResult</symbol>
+        <lines>1-1076</lines>
+        <reason>Core compliance validation logic to integrate with RSE counter tracking</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/compliance.ts</path>
+        <kind>route</kind>
+        <symbol>complianceRouter</symbol>
+        <reason>Existing compliance API routes to extend with counter endpoints</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/drivers.ts</path>
+        <kind>route</kind>
+        <symbol>driversRouter</symbol>
+        <reason>Driver API routes to integrate counter data</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Driver, DriverLicense, OrganizationLicenseRule</symbol>
+        <lines>624-677</lines>
+        <reason>Existing driver models to extend with RSE counter model</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/fleet/components/DriverDrawer.tsx</path>
+        <kind>component</kind>
+        <symbol>DriverDrawer</symbol>
+        <reason>UI component to extend with compliance snapshot display</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/fleet/types.ts</path>
+        <kind>types</kind>
+        <symbol>Driver, DriverLicense</symbol>
+        <reason>Frontend types to extend with RSE counter types</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>@repo/database</package>
+        <version>workspace:*</version>
+        <purpose>Prisma client for database access</purpose>
+      </node>
+      <node>
+        <package>hono</package>
+        <version>^4.6.10</version>
+        <purpose>API framework for routes</purpose>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.23.8</version>
+        <purpose>Schema validation</purpose>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>All RSE thresholds must come from OrganizationLicenseRule, never hardcoded (FR26)</constraint>
+    <constraint>Multi-tenancy: all counters scoped by organizationId</constraint>
+    <constraint>Counters must support per-day, per-driver queries efficiently</constraint>
+    <constraint>Audit logs must include timestamps, reasons, and decision outcomes</constraint>
+    <constraint>Counter storage format must support both aggregated queries and derived-from-missions reconciliation</constraint>
+    <constraint>Follow existing API patterns from drivers.ts and compliance.ts</constraint>
+    <constraint>Use Europe/Paris business time for all date calculations (Story 1.4)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>DriverRSECounter</name>
+      <kind>Prisma model</kind>
+      <signature>
+        model DriverRSECounter {
+          id                String   @id @default(cuid())
+          organizationId    String
+          driverId          String
+          date              DateTime // Business date (Europe/Paris)
+          regulatoryCategory VehicleRegulatoryCategory
+          licenseCategoryId String?
+          
+          // Counters (in minutes for precision)
+          drivingMinutes    Int @default(0)
+          amplitudeMinutes  Int @default(0)
+          breakMinutes      Int @default(0)
+          restMinutes       Int @default(0)
+          
+          // Metadata
+          lastUpdatedAt     DateTime @updatedAt
+          
+          @@unique([organizationId, driverId, date, regulatoryCategory])
+        }
+      </signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>ComplianceAuditLog</name>
+      <kind>Prisma model</kind>
+      <signature>
+        model ComplianceAuditLog {
+          id                String   @id @default(cuid())
+          organizationId    String
+          driverId          String
+          timestamp         DateTime @default(now())
+          
+          // Context
+          quoteId           String?
+          missionId         String?
+          vehicleCategoryId String?
+          regulatoryCategory VehicleRegulatoryCategory
+          
+          // Decision
+          decision          String   // "APPROVED", "BLOCKED", "WARNING"
+          violations        Json?    // Array of ComplianceViolation
+          warnings          Json?    // Array of ComplianceWarning
+          reason            String
+          
+          // Counters at time of decision
+          countersSnapshot  Json?
+        }
+      </signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>RSECounterService</name>
+      <kind>service</kind>
+      <signature>
+        interface RSECounterService {
+          getDriverCounters(organizationId: string, driverId: string, date: Date): Promise&lt;DriverRSECounter[]&gt;
+          getDriverCountersByRegime(organizationId: string, driverId: string, date: Date, regime: RegulatoryCategory): Promise&lt;DriverRSECounter | null&gt;
+          recordDrivingActivity(input: RecordActivityInput): Promise&lt;DriverRSECounter&gt;
+          checkCumulativeCompliance(organizationId: string, driverId: string, date: Date, additionalMinutes: number, regime: RegulatoryCategory): Promise&lt;ComplianceValidationResult&gt;
+          logComplianceDecision(input: LogDecisionInput): Promise&lt;ComplianceAuditLog&gt;
+          getRecentAuditLogs(organizationId: string, driverId: string, limit?: number): Promise&lt;ComplianceAuditLog[]&gt;
+        }
+      </signature>
+      <path>packages/api/src/services/rse-counter.ts</path>
+    </interface>
+    <interface>
+      <name>RSE Counter API Routes</name>
+      <kind>REST endpoints</kind>
+      <signature>
+        GET /vtc/drivers/:driverId/rse-counters?date=YYYY-MM-DD
+        GET /vtc/drivers/:driverId/rse-counters/:regime?date=YYYY-MM-DD
+        POST /vtc/drivers/:driverId/rse-counters/record
+        GET /vtc/drivers/:driverId/compliance-logs?limit=10
+        POST /vtc/compliance/check-cumulative
+      </signature>
+      <path>packages/api/src/routes/vtc/drivers.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit and API tests. Follow existing patterns from compliance-validator.test.ts and drivers.test.ts. 
+      Tests should cover boundary conditions for RSE limits. Use mock Prisma client for unit tests.
+      API tests should verify multi-tenancy enforcement and proper error responses.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/rse-counter.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/drivers.test.ts (extend)</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test counter accumulation across multiple missions in a day</idea>
+      <idea acId="AC1">Test separate tracking for LIGHT vs HEAVY regimes</idea>
+      <idea acId="AC2">Test audit log creation with violation details</idea>
+      <idea acId="AC2">Test audit log includes counters snapshot</idea>
+      <idea acId="AC3">Test multi-licence driver with morning LIGHT + afternoon HEAVY</idea>
+      <idea acId="AC3">Test that LIGHT counters don't affect HEAVY limits and vice versa</idea>
+      <idea acId="AC4">Test API returns compliance snapshot with counters</idea>
+      <idea acId="AC4">Test API returns recent audit logs</idea>
+      <idea acId="AC5">Test counters are filtered by organizationId</idea>
+      <idea acId="AC5">Test cross-org access is blocked</idea>
+    </ideas>
+  </tests>
+</story-context>

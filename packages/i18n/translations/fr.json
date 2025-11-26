@@ -1450,6 +1450,29 @@
 				"page": "Page {current} sur {total}"
 			}
 		},
+		"compliance": {
+			"snapshotTitle": "État de conformité",
+			"auditLogTitle": "Historique de conformité",
+			"noData": "Aucune donnée de conformité disponible pour cette date.",
+			"noAuditLogs": "Aucune décision de conformité enregistrée.",
+			"regimeLight": "Véhicules légers",
+			"regimeHeavy": "Véhicules lourds",
+			"drivingTime": "Temps de conduite",
+			"amplitude": "Amplitude de travail",
+			"breaksTaken": "Pauses prises",
+			"violations": "Violations",
+			"warnings": "Avertissements",
+			"status": {
+				"ok": "OK",
+				"warning": "Avertissement",
+				"violation": "Violation"
+			},
+			"decision": {
+				"approved": "Approuvé",
+				"blocked": "Bloqué",
+				"warning": "Avertissement"
+			}
+		},
 		"settings": {
 			"title": "Configuration Flotte & Réglementation",
 			"description": "Configurez les catégories de permis et les règles de conformité RSE.",
