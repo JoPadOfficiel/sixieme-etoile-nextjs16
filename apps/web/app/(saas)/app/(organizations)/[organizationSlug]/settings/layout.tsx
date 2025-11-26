@@ -4,7 +4,17 @@ import { OrganizationLogo } from "@saas/organizations/components/OrganizationLog
 import { SettingsMenu } from "@saas/settings/components/SettingsMenu";
 import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
-import { CreditCardIcon, KeyIcon, Settings2Icon, Users2Icon } from "lucide-react";
+import {
+	CarIcon,
+	CreditCardIcon,
+	KeyIcon,
+	MapPinIcon,
+	PackageIcon,
+	RouteIcon,
+	Settings2Icon,
+	TagIcon,
+	Users2Icon,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -49,6 +59,32 @@ export default async function SettingsLayout({
 					title: t("settings.menu.organization.integrations"),
 					href: `${organizationSettingsBasePath}/integrations`,
 					icon: <KeyIcon className="size-4 opacity-50" />,
+				},
+				{
+					title: t("settings.menu.organization.pricing.title"),
+					icon: <TagIcon className="size-4 opacity-50" />,
+					subItems: [
+						{
+							title: t("settings.menu.organization.pricing.zones"),
+							href: `${organizationSettingsBasePath}/pricing/zones`,
+							icon: <MapPinIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.pricing.routes"),
+							href: `${organizationSettingsBasePath}/pricing/routes`,
+							icon: <RouteIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.pricing.excursions"),
+							href: `${organizationSettingsBasePath}/pricing/excursions`,
+							icon: <CarIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.pricing.dispos"),
+							href: `${organizationSettingsBasePath}/pricing/dispos`,
+							icon: <PackageIcon className="size-4 opacity-50" />,
+						},
+					],
 				},
 				...(config.organizations.enableBilling
 					? [
