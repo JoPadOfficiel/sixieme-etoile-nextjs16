@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { basesRouter } from "./bases";
+import { complianceRouter } from "./compliance";
 import { contactsRouter } from "./contacts";
 import { disposRouter } from "./dispos";
 import { driversRouter } from "./drivers";
@@ -24,6 +25,7 @@ import { zoneRoutesRouter } from "./zone-routes";
  */
 export const vtcRouter = new Hono()
 	.basePath("/vtc")
+	.route("/", complianceRouter)
 	.route("/", contactsRouter)
 	.route("/", vehiclesRouter)
 	.route("/", vehicleCategoriesRouter)

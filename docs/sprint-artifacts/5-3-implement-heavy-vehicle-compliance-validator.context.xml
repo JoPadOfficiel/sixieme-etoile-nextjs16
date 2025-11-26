@@ -1,0 +1,256 @@
+<story-context id="5-3-implement-heavy-vehicle-compliance-validator" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5.3</storyId>
+    <title>Implement Heavy-Vehicle Compliance Validator</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T21:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-3-implement-heavy-vehicle-compliance-validator.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>compliance officer</asA>
+    <iWant>a validator that checks heavy-vehicle missions against legal thresholds</iWant>
+    <soThat>non-compliant trips are blocked before confirmation</soThat>
+    <tasks>
+      <task id="1">Create HeavyVehicleComplianceValidator service with RSE rule checking</task>
+      <task id="2">Implement 10h daily driving limit validation</task>
+      <task id="3">Implement 14h amplitude limit validation</task>
+      <task id="4">Implement mandatory break injection (45min per 4h30 driving block)</task>
+      <task id="5">Implement capped average speed (85 km/h) for heavy vehicles</task>
+      <task id="6">Create compliance validation API endpoint</task>
+      <task id="7">Integrate validator with pricing engine shadow calculation</task>
+      <task id="8">Add blocking error responses for non-compliant missions</task>
+      <task id="9">Write comprehensive Vitest tests for all compliance rules</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="RSE Rule Loading">
+      <given>a quote involving a HEAVY vehicle category</given>
+      <when>the shadow calculation has produced segments A/B/C with durations</when>
+      <then>the validator checks at least: total driving time per day, total amplitude (start→end), injected breaks and mandatory rest, using the OrganizationLicenseRule thresholds for the driver's licence</then>
+    </criterion>
+    <criterion id="AC2" title="Blocking on Violation">
+      <given>any RSE rule is violated</given>
+      <when>validation runs</when>
+      <then>the quote or mission is marked non-compliant, a blocking error is raised (for quotes) and explicit error reasons are logged (FR47)</then>
+    </criterion>
+    <criterion id="AC3" title="10h Driving Limit">
+      <given>a heavy vehicle mission</given>
+      <when>total driving time (Segment A + B + C) exceeds 10 hours</when>
+      <then>the validator returns a DRIVING_TIME_EXCEEDED violation with explicit duration values</then>
+    </criterion>
+    <criterion id="AC4" title="14h Amplitude Limit">
+      <given>a heavy vehicle mission</given>
+      <when>total work amplitude (DropoffTime - PickupTime + ApproachTime + ReturnTime) exceeds 14 hours</when>
+      <then>the validator returns an AMPLITUDE_EXCEEDED violation with explicit time values</then>
+    </criterion>
+    <criterion id="AC5" title="Mandatory Breaks">
+      <given>a heavy vehicle mission with driving blocks</given>
+      <when>any driving block exceeds 4h30 without a break</when>
+      <then>the validator injects a 45min break buffer and recalculates total duration</then>
+    </criterion>
+    <criterion id="AC6" title="Capped Average Speed">
+      <given>a heavy vehicle</given>
+      <when>travel time is calculated</when>
+      <then>the system uses a capped average speed of 85 km/h (ignoring faster Google Maps estimates)</then>
+    </criterion>
+    <criterion id="AC7" title="Multi-Tenancy">
+      <given>RSE rules configured per organization</given>
+      <when>validation runs</when>
+      <then>the validator uses the OrganizationLicenseRule for the specific organization, not hardcoded values</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>Appendix C - Fleet Management &amp; Regulatory Compliance</section>
+        <snippet>Heavy vehicles (HEAVY) have strict RSE regulations: max 10h driving/day, max 14h amplitude, 45min break every 4h30, capped speed 85 km/h. Zero hardcoding - all thresholds stored in LicenseType in DB.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Section 3 - Fleet &amp; Regulatory Models</section>
+        <snippet>OrganizationLicenseRule stores: maxDailyDrivingHours, maxDailyAmplitudeHours, breakMinutesPerDrivingBlock, drivingBlockHoursForBreak, cappedAverageSpeedKmh per license category.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 5.3</section>
+        <snippet>Implement heavy-vehicle compliance validator that checks missions against legal thresholds (10h driving, 14h amplitude, breaks, capped speed) using OrganizationLicenseRule.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculateShadowSegments</symbol>
+        <lines>873-954</lines>
+        <reason>Shadow calculation produces segments A/B/C with durations - input for compliance validation</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>interface</kind>
+        <symbol>TripAnalysis, SegmentAnalysis</symbol>
+        <lines>700-765</lines>
+        <reason>Data structures containing segment durations to validate against RSE rules</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/vehicle-selection.ts</path>
+        <kind>service</kind>
+        <symbol>CandidateWithRouting</symbol>
+        <lines>49-89</lines>
+        <reason>Vehicle selection result with segment durations for compliance checking</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/license-rules.ts</path>
+        <kind>route</kind>
+        <symbol>licenseRulesRouter</symbol>
+        <lines>1-229</lines>
+        <reason>Existing API for RSE rules CRUD - validator will read these rules</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/vehicles.ts</path>
+        <kind>route</kind>
+        <symbol>vehiclesRouter</symbol>
+        <reason>Vehicle API with regulatoryCategory (LIGHT/HEAVY) - determines if validation needed</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>model</kind>
+        <symbol>OrganizationLicenseRule</symbol>
+        <lines>600-622</lines>
+        <reason>Prisma model storing RSE constraints per license category</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>model</kind>
+        <symbol>VehicleCategory</symbol>
+        <lines>480-510</lines>
+        <reason>Contains regulatoryCategory enum (LIGHT/HEAVY) to determine validation scope</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/shadow-calculation.test.ts</path>
+        <kind>test</kind>
+        <symbol>calculateShadowSegments tests</symbol>
+        <lines>1-639</lines>
+        <reason>Test patterns for shadow calculation - compliance tests should follow similar structure</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <usage>API framework for compliance endpoint</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.x</version>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>vitest</package>
+        <version>^2.x</version>
+        <usage>Unit testing framework</usage>
+      </node>
+      <node>
+        <package>@repo/database</package>
+        <version>workspace</version>
+        <usage>Prisma client for OrganizationLicenseRule queries</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="regulatory">All RSE thresholds must be read from OrganizationLicenseRule, never hardcoded (FR26)</constraint>
+    <constraint type="regulatory">Heavy vehicle speed must be capped at configured value (typically 85 km/h) regardless of Google Maps estimates</constraint>
+    <constraint type="architectural">Validator must be a pure function for testability - DB access only for loading rules</constraint>
+    <constraint type="architectural">Follow existing service patterns in packages/api/src/services/</constraint>
+    <constraint type="multi-tenancy">All queries must be scoped by organizationId</constraint>
+    <constraint type="integration">Validator must integrate with shadow calculation without breaking existing pricing flow</constraint>
+    <constraint type="error-handling">Violations must return structured error objects with explicit reasons for UI display</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>ComplianceValidationInput</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface ComplianceValidationInput {
+  organizationId: string;
+  vehicleCategoryId: string;
+  licenseCategoryId?: string;
+  tripAnalysis: TripAnalysis;
+  pickupAt: Date;
+  estimatedDropoffAt?: Date;
+}
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>ComplianceValidationResult</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface ComplianceValidationResult {
+  isCompliant: boolean;
+  violations: ComplianceViolation[];
+  warnings: ComplianceWarning[];
+  adjustedDurations?: {
+    totalDrivingMinutes: number;
+    totalAmplitudeMinutes: number;
+    injectedBreakMinutes: number;
+  };
+  rulesApplied: AppliedComplianceRule[];
+}
+
+interface ComplianceViolation {
+  type: 'DRIVING_TIME_EXCEEDED' | 'AMPLITUDE_EXCEEDED' | 'BREAK_REQUIRED' | 'SPEED_LIMIT_EXCEEDED';
+  message: string;
+  actual: number;
+  limit: number;
+  unit: 'hours' | 'minutes' | 'km/h';
+}
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>POST /vtc/compliance/validate</name>
+      <kind>REST endpoint</kind>
+      <signature>
+POST /vtc/compliance/validate
+Body: ComplianceValidationInput
+Response: ComplianceValidationResult
+      </signature>
+      <path>packages/api/src/routes/vtc/compliance.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Follow existing test patterns in packages/api/src/services/__tests__/.
+      Tests should cover all RSE rules with boundary conditions (exactly at limit, just over, just under).
+      Mock Prisma client for DB access. Use realistic test fixtures based on PRD Appendix C scenarios.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/compliance-validator.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/compliance.test.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test that validator loads correct OrganizationLicenseRule for given license category</idea>
+      <idea acId="AC2">Test that violations are returned with explicit error messages and values</idea>
+      <idea acId="AC3">Test 10h driving limit: 9h59m passes, 10h01m fails with DRIVING_TIME_EXCEEDED</idea>
+      <idea acId="AC4">Test 14h amplitude: 13h59m passes, 14h01m fails with AMPLITUDE_EXCEEDED</idea>
+      <idea acId="AC5">Test break injection: 4h30 driving block gets 45min break added</idea>
+      <idea acId="AC6">Test speed capping: 100km at 100km/h estimate becomes 100km at 85km/h = 70.6min</idea>
+      <idea acId="AC7">Test multi-tenancy: different orgs have different rules, correct one is applied</idea>
+      <idea>Test edge case: LIGHT vehicle skips heavy-vehicle validation entirely</idea>
+      <idea>Test edge case: missing OrganizationLicenseRule uses safe defaults or returns error</idea>
+      <idea>Test integration: validator called from pricing engine for HEAVY vehicles</idea>
+    </ideas>
+  </tests>
+</story-context>
