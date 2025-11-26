@@ -1259,5 +1259,123 @@
 				"allowCommercialSettings": "Allow you to configure commercial settings (billing, payment terms, commission)"
 			}
 		}
+	},
+	"fleet": {
+		"vehicles": {
+			"title": "Vehicles",
+			"description": "Manage your fleet vehicles.",
+			"search": "Search vehicles...",
+			"filterByStatus": "Filter by status",
+			"allStatuses": "All statuses",
+			"addVehicle": "Add Vehicle",
+			"editVehicle": "Edit Vehicle",
+			"addVehicleDescription": "Add a new vehicle to your fleet.",
+			"editVehicleDescription": "Update vehicle information.",
+			"empty": "No vehicles yet. Add your first vehicle to get started.",
+			"noResults": "No vehicles found matching your filters.",
+			"loadError": "Failed to load vehicles. Please try again.",
+			"columns": {
+				"vehicle": "Vehicle",
+				"registration": "Registration",
+				"category": "Category",
+				"status": "Status",
+				"base": "Base",
+				"seats": "Seats",
+				"luggage": "Luggage"
+			},
+			"status": {
+				"active": "Active",
+				"maintenance": "Maintenance",
+				"outOfService": "Out of Service"
+			},
+			"form": {
+				"category": "Vehicle Category",
+				"selectCategory": "Select a category",
+				"base": "Operating Base",
+				"selectBase": "Select a base",
+				"registration": "Registration Number",
+				"internalName": "Internal Name",
+				"internalNamePlaceholder": "e.g., Mercedes S-Class #1",
+				"vin": "VIN (Vehicle Identification Number)",
+				"passengerCapacity": "Passenger Capacity",
+				"luggageCapacity": "Luggage Capacity",
+				"luggageCapacityPlaceholder": "Number of bags",
+				"costParameters": "Cost Parameters",
+				"consumption": "Consumption (L/100km)",
+				"averageSpeed": "Average Speed (km/h)",
+				"costPerKm": "Cost per km (EUR)",
+				"status": "Status",
+				"notes": "Notes",
+				"create": "Create Vehicle",
+				"update": "Update Vehicle"
+			},
+			"notifications": {
+				"created": "Vehicle created successfully.",
+				"createFailed": "Failed to create vehicle. Please try again.",
+				"updated": "Vehicle updated successfully.",
+				"updateFailed": "Failed to update vehicle. Please try again.",
+				"deleted": "Vehicle deleted successfully.",
+				"deleteFailed": "Failed to delete vehicle. Please try again."
+			},
+			"pagination": {
+				"showing": "Showing {from} to {to} of {total} vehicles",
+				"page": "Page {current} of {total}"
+			}
+		},
+		"bases": {
+			"title": "Operating Bases",
+			"description": "Manage your operating bases and garages.",
+			"search": "Search bases...",
+			"addBase": "Add Base",
+			"editBase": "Edit Base",
+			"addBaseDescription": "Add a new operating base.",
+			"editBaseDescription": "Update base information.",
+			"empty": "No bases yet. Add your first operating base to get started.",
+			"noResults": "No bases found matching your search.",
+			"loadError": "Failed to load bases. Please try again.",
+			"columns": {
+				"name": "Name",
+				"address": "Address",
+				"city": "City",
+				"postalCode": "Postal Code",
+				"vehicles": "Vehicles",
+				"status": "Status"
+			},
+			"status": {
+				"active": "Active",
+				"inactive": "Inactive"
+			},
+			"form": {
+				"name": "Base Name",
+				"namePlaceholder": "e.g., Paris CDG Garage",
+				"addressSection": "Address",
+				"addressLine1": "Address Line 1",
+				"addressLine1Placeholder": "Street address",
+				"addressLine2": "Address Line 2",
+				"addressLine2Placeholder": "Apartment, suite, etc.",
+				"postalCode": "Postal Code",
+				"city": "City",
+				"coordinatesSection": "GPS Coordinates",
+				"latitude": "Latitude",
+				"longitude": "Longitude",
+				"coordinatesHelp": "Enter GPS coordinates for accurate routing calculations.",
+				"isActive": "Active",
+				"isActiveDescription": "Inactive bases won't be used for vehicle assignments.",
+				"create": "Create Base",
+				"update": "Update Base"
+			},
+			"notifications": {
+				"created": "Base created successfully.",
+				"createFailed": "Failed to create base. Please try again.",
+				"updated": "Base updated successfully.",
+				"updateFailed": "Failed to update base. Please try again.",
+				"deleted": "Base deleted successfully.",
+				"deleteFailed": "Failed to delete base. Please try again."
+			},
+			"pagination": {
+				"showing": "Showing {from} to {to} of {total} bases",
+				"page": "Page {current} of {total}"
+			}
+		}
 	}
 }

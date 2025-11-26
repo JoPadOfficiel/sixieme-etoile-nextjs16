@@ -1259,5 +1259,123 @@
 				"allowCommercialSettings": "Permettre de configurer les paramètres commerciaux (facturation, conditions de paiement, commission)"
 			}
 		}
+	},
+	"fleet": {
+		"vehicles": {
+			"title": "Véhicules",
+			"description": "Gérez les véhicules de votre flotte.",
+			"search": "Rechercher des véhicules...",
+			"filterByStatus": "Filtrer par statut",
+			"allStatuses": "Tous les statuts",
+			"addVehicle": "Ajouter un véhicule",
+			"editVehicle": "Modifier le véhicule",
+			"addVehicleDescription": "Ajouter un nouveau véhicule à votre flotte.",
+			"editVehicleDescription": "Mettre à jour les informations du véhicule.",
+			"empty": "Aucun véhicule. Ajoutez votre premier véhicule pour commencer.",
+			"noResults": "Aucun véhicule trouvé correspondant à vos filtres.",
+			"loadError": "Échec du chargement des véhicules. Veuillez réessayer.",
+			"columns": {
+				"vehicle": "Véhicule",
+				"registration": "Immatriculation",
+				"category": "Catégorie",
+				"status": "Statut",
+				"base": "Base",
+				"seats": "Places",
+				"luggage": "Bagages"
+			},
+			"status": {
+				"active": "Actif",
+				"maintenance": "En maintenance",
+				"outOfService": "Hors service"
+			},
+			"form": {
+				"category": "Catégorie de véhicule",
+				"selectCategory": "Sélectionner une catégorie",
+				"base": "Base d'exploitation",
+				"selectBase": "Sélectionner une base",
+				"registration": "Numéro d'immatriculation",
+				"internalName": "Nom interne",
+				"internalNamePlaceholder": "ex: Mercedes Classe S #1",
+				"vin": "VIN (Numéro d'identification du véhicule)",
+				"passengerCapacity": "Capacité passagers",
+				"luggageCapacity": "Capacité bagages",
+				"luggageCapacityPlaceholder": "Nombre de bagages",
+				"costParameters": "Paramètres de coût",
+				"consumption": "Consommation (L/100km)",
+				"averageSpeed": "Vitesse moyenne (km/h)",
+				"costPerKm": "Coût par km (EUR)",
+				"status": "Statut",
+				"notes": "Notes",
+				"create": "Créer le véhicule",
+				"update": "Mettre à jour le véhicule"
+			},
+			"notifications": {
+				"created": "Véhicule créé avec succès.",
+				"createFailed": "Échec de la création du véhicule. Veuillez réessayer.",
+				"updated": "Véhicule mis à jour avec succès.",
+				"updateFailed": "Échec de la mise à jour du véhicule. Veuillez réessayer.",
+				"deleted": "Véhicule supprimé avec succès.",
+				"deleteFailed": "Échec de la suppression du véhicule. Veuillez réessayer."
+			},
+			"pagination": {
+				"showing": "Affichage de {from} à {to} sur {total} véhicules",
+				"page": "Page {current} sur {total}"
+			}
+		},
+		"bases": {
+			"title": "Bases d'exploitation",
+			"description": "Gérez vos bases d'exploitation et garages.",
+			"search": "Rechercher des bases...",
+			"addBase": "Ajouter une base",
+			"editBase": "Modifier la base",
+			"addBaseDescription": "Ajouter une nouvelle base d'exploitation.",
+			"editBaseDescription": "Mettre à jour les informations de la base.",
+			"empty": "Aucune base. Ajoutez votre première base d'exploitation pour commencer.",
+			"noResults": "Aucune base trouvée correspondant à votre recherche.",
+			"loadError": "Échec du chargement des bases. Veuillez réessayer.",
+			"columns": {
+				"name": "Nom",
+				"address": "Adresse",
+				"city": "Ville",
+				"postalCode": "Code postal",
+				"vehicles": "Véhicules",
+				"status": "Statut"
+			},
+			"status": {
+				"active": "Active",
+				"inactive": "Inactive"
+			},
+			"form": {
+				"name": "Nom de la base",
+				"namePlaceholder": "ex: Garage Paris CDG",
+				"addressSection": "Adresse",
+				"addressLine1": "Adresse ligne 1",
+				"addressLine1Placeholder": "Adresse de rue",
+				"addressLine2": "Adresse ligne 2",
+				"addressLine2Placeholder": "Appartement, suite, etc.",
+				"postalCode": "Code postal",
+				"city": "Ville",
+				"coordinatesSection": "Coordonnées GPS",
+				"latitude": "Latitude",
+				"longitude": "Longitude",
+				"coordinatesHelp": "Entrez les coordonnées GPS pour des calculs d'itinéraire précis.",
+				"isActive": "Active",
+				"isActiveDescription": "Les bases inactives ne seront pas utilisées pour les affectations de véhicules.",
+				"create": "Créer la base",
+				"update": "Mettre à jour la base"
+			},
+			"notifications": {
+				"created": "Base créée avec succès.",
+				"createFailed": "Échec de la création de la base. Veuillez réessayer.",
+				"updated": "Base mise à jour avec succès.",
+				"updateFailed": "Échec de la mise à jour de la base. Veuillez réessayer.",
+				"deleted": "Base supprimée avec succès.",
+				"deleteFailed": "Échec de la suppression de la base. Veuillez réessayer."
+			},
+			"pagination": {
+				"showing": "Affichage de {from} à {to} sur {total} bases",
+				"page": "Page {current} sur {total}"
+			}
+		}
 	}
 }

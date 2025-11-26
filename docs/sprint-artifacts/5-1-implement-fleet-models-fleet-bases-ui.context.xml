@@ -1,0 +1,242 @@
+<story-context id="5-1-implement-fleet-models-fleet-bases-ui" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5.1</storyId>
+    <title>Implement Fleet Models &amp; Fleet/Bases UI</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T20:14:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-1-implement-fleet-models-fleet-bases-ui.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>fleet manager</asA>
+    <iWant>to manage vehicles and operating bases in the system</iWant>
+    <soThat>pricing and dispatch always know where vehicles are anchored and what they can do</soThat>
+    <tasks>
+      <task id="1">Create API routes for vehicles CRUD (list, get, create, update, delete)</task>
+      <task id="2">Create API routes for operating bases CRUD (list, get, create, update, delete)</task>
+      <task id="3">Create API routes for vehicle categories CRUD (list, get, create, update, delete)</task>
+      <task id="4">Implement Vehicles list page at /dashboard/vehicles</task>
+      <task id="5">Implement Vehicle form drawer for add/edit</task>
+      <task id="6">Implement Operating Bases page at /dashboard/fleet/bases with map + list</task>
+      <task id="7">Implement Base form drawer for add/edit</task>
+      <task id="8">Add translations for fleet module</task>
+      <task id="9">Write unit tests for API routes</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>the Vehicles screen /dashboard/vehicles</given>
+      <when>I open it</when>
+      <then>I see a table with at least: Vehicle (make/model), Licence Plate, Category (LIGHT/HEAVY, commercial class), Status, Base, Seats, Luggage capacity, Mileage, Tags (UX spec 8.5)</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>I click Add Vehicle</given>
+      <when>the drawer opens</when>
+      <then>I can set vehicle category, base, registration, capacity (passengers/luggage), consumption, average speed, cost per km and required licence category, and saving persists a Vehicle linked to a VehicleCategory and OperatingBase</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>the Bases screen /dashboard/fleet/bases</given>
+      <when>I open it</when>
+      <then>I see a map with base markers and a list of bases (name, address, type, linked vehicles count) as in UX spec 8.7, and I can add/edit bases with geocoded lat/lng</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>all fleet entities</given>
+      <when>created or queried</when>
+      <then>they are scoped by organizationId (multi-tenancy enforced)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR Group 3 – Routing, Base Selection &amp; Shadow Calculation (FR17-FR24)</section>
+        <snippet>FR17: The system shall model vehicles, drivers and garages/bases, with each vehicle linked to a default base. FR18: For each quote, the system shall identify candidate vehicles and bases that are compatible with requested capacity and availability.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR Group 4 – Fleet &amp; Regulatory Compliance (FR25-FR30)</section>
+        <snippet>FR25: The system shall classify vehicles into at least LIGHT and HEAVY regulatory categories. FR37-FR38: Admin configuration for vehicle categories, cost parameters and mapped regulatory rules per licence type.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Section 3 – Fleet &amp; Regulatory Models</section>
+        <snippet>VehicleCategory groups vehicles by commercial and regulatory category. OperatingBase represents physical bases/garages for multi-base model. Vehicle represents individual fleet vehicles with category, base, capacity, cost drivers, and status.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.5 Vehicles</section>
+        <snippet>Route: /dashboard/vehicles. Columns: Vehicle (make/model), Licence Plate, Category, Status (Active/In Maintenance/Out of Service), Base, Seats, Luggage capacity, Mileage, Tags. Filters: Status, Category, Base, Heavy/Light flag.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.7 Operating Bases / Garages</section>
+        <snippet>Route: /dashboard/fleet/bases. Map + List Layout: Top compact map with base markers, bottom table with columns Name, Type, Address, City, Linked Vehicles count, Notes, Actions. Base Form Drawer with Location, Operational Details, Notes sections.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>model</kind>
+        <symbol>VehicleCategory, OperatingBase, Vehicle</symbol>
+        <lines>454-573</lines>
+        <reason>Existing Prisma models for fleet entities - already defined, need API and UI</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/contacts.ts</path>
+        <kind>router</kind>
+        <symbol>contactsRouter</symbol>
+        <lines>1-273</lines>
+        <reason>Reference pattern for Hono API routes with tenant middleware, validation schemas, CRUD operations</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>withTenantFilter, withTenantCreate, withTenantId</symbol>
+        <reason>Multi-tenancy helpers to use in fleet routes</reason>
+      </file>
+      <file>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <reason>Organization middleware to apply to fleet routes</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/components/ContactsTable.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactsTable</symbol>
+        <lines>1-214</lines>
+        <reason>Reference pattern for data table with search, pagination, and row actions</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/components/ContactForm.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactForm</symbol>
+        <lines>1-348</lines>
+        <reason>Reference pattern for form with mutations, validation, and toast notifications</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/components/ContactDrawer.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactDrawer</symbol>
+        <lines>1-63</lines>
+        <reason>Reference pattern for Sheet/Drawer component wrapping forms</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/types.ts</path>
+        <kind>types</kind>
+        <symbol>Contact, ContactWithCounts, ContactsResponse</symbol>
+        <lines>1-90</lines>
+        <reason>Reference pattern for TypeScript interfaces for API responses</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/__tests__/contacts.test.ts</path>
+        <kind>test</kind>
+        <symbol>contacts.test</symbol>
+        <reason>Reference pattern for Vitest API route tests with mocked auth and db</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>hono-openapi</package>
+        <usage>OpenAPI documentation for routes</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Schema validation</usage>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching and caching</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons (Car, MapPin, Building, etc.)</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>shadcn/ui components (Table, Badge, Button, Sheet, Input, Select, etc.)</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>All fleet entities must be scoped by organizationId (multi-tenancy)</constraint>
+    <constraint>Follow existing Hono router patterns from contacts.ts</constraint>
+    <constraint>Use shadcn/ui components consistently with existing UI</constraint>
+    <constraint>Translations must be added to apps/web/messages/</constraint>
+    <constraint>API routes must use organizationMiddleware</constraint>
+    <constraint>Forms must use react-query mutations with toast notifications</constraint>
+    <constraint>Vehicle status enum: ACTIVE, MAINTENANCE, OUT_OF_SERVICE</constraint>
+    <constraint>VehicleRegulatoryCategory enum: LIGHT, HEAVY</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /vtc/vehicles</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /vtc/vehicles?page=1&amp;limit=20&amp;status=ACTIVE&amp;categoryId=xxx&amp;baseId=xxx&amp;search=xxx</signature>
+      <path>packages/api/src/routes/vtc/vehicles.ts</path>
+    </interface>
+    <interface>
+      <name>POST /vtc/vehicles</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /vtc/vehicles { vehicleCategoryId, operatingBaseId, registrationNumber, passengerCapacity, ... }</signature>
+      <path>packages/api/src/routes/vtc/vehicles.ts</path>
+    </interface>
+    <interface>
+      <name>GET /vtc/bases</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /vtc/bases?page=1&amp;limit=20&amp;search=xxx</signature>
+      <path>packages/api/src/routes/vtc/bases.ts</path>
+    </interface>
+    <interface>
+      <name>POST /vtc/bases</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /vtc/bases { name, addressLine1, city, postalCode, latitude, longitude, ... }</signature>
+      <path>packages/api/src/routes/vtc/bases.ts</path>
+    </interface>
+    <interface>
+      <name>GET /vtc/vehicle-categories</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /vtc/vehicle-categories?page=1&amp;limit=50</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit and integration tests. Follow existing test patterns from packages/api/src/routes/vtc/__tests__/contacts.test.ts. Mock auth.api.getSession and db calls. Test authentication (401), authorization (404 for wrong org), and CRUD operations.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/vehicles.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/bases.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/vehicle-categories.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test GET /vtc/vehicles returns paginated list with category and base included</idea>
+      <idea ac="AC1">Test GET /vtc/vehicles filters by status, categoryId, baseId</idea>
+      <idea ac="AC2">Test POST /vtc/vehicles creates vehicle with all required fields</idea>
+      <idea ac="AC2">Test POST /vtc/vehicles validates vehicleCategoryId and operatingBaseId belong to org</idea>
+      <idea ac="AC3">Test GET /vtc/bases returns list with vehicle counts</idea>
+      <idea ac="AC3">Test POST /vtc/bases creates base with geocoded coordinates</idea>
+      <idea ac="AC4">Test all endpoints return 401 for unauthenticated requests</idea>
+      <idea ac="AC4">Test all endpoints filter by organizationId</idea>
+    </ideas>
+  </tests>
+</story-context>

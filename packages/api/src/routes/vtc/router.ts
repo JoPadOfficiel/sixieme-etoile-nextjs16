@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { basesRouter } from "./bases";
 import { contactsRouter } from "./contacts";
 import { disposRouter } from "./dispos";
 import { excursionsRouter } from "./excursions";
@@ -8,6 +9,7 @@ import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { routesCoverageRouter } from "./routes-coverage";
+import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
 
@@ -21,6 +23,8 @@ export const vtcRouter = new Hono()
 	.basePath("/vtc")
 	.route("/", contactsRouter)
 	.route("/", vehiclesRouter)
+	.route("/", vehicleCategoriesRouter)
+	.route("/", basesRouter)
 	.route("/", quotesRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)

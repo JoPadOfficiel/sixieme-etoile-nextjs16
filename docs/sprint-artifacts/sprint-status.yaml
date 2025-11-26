@@ -41,26 +41,30 @@ story_location: "docs/sprint-artifacts"
 
 development_status:
   epic-1: contexted
-  epic-2: contexted
   1-1-define-vtc-erp-prisma-models: done
   1-2-enforce-organization-level-multi-tenancy: done
   1-3-implement-eur-only-monetary-representation: done
   1-4-implement-europe-paris-business-time-strategy: done
   1-5-integration-settings-storage: done
+  epic-2: contexted
   2-1-implement-contact-model-basic-crm-ui: done
   2-2-store-partner-contract-data-rate-grid-links: done
   2-3-allow-safe-reclassification-partner-private: done
+  epic-3: contexted
   3-1-implement-pricing-zone-model-zones-editor-ui: done
   3-2-implement-zone-route-model-grid-routes-editor: done
   3-3-implement-excursion-dispo-forfait-configuration: done
   3-4-apply-engagement-rule-partner-grid-trips: done
   3-5-fallback-dynamic-pricing-no-grid-match: done
   3-6-visualise-grid-coverage-gaps: done
+  epic-4: contexted
   4-1-implement-base-dynamic-price-calculation: done
   4-2-add-operational-cost-components-internal-cost: done
   4-3-apply-multipliers-target-margins: done
   4-4-allow-operator-override-live-profitability-feedback: done
-    4-5-implement-multi-base-candidate-selection-pre-filter: done
+  4-5-implement-multi-base-candidate-selection-pre-filter: done
   4-6-implement-shadow-calculation-segments-abc-tripanalysis-storage: done
   4-7-compute-expose-profitability-indicator: done
   4-8-use-fuel-price-cache-in-pricing-engine: done
+  epic-5: contexted
+  5-1-implement-fleet-models-fleet-bases-ui: done
