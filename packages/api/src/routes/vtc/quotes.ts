@@ -55,6 +55,12 @@ const listQuotesSchema = z.object({
 		.optional(),
 	contactId: z.string().optional(),
 	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]).optional(),
+	// Story 6.1: Additional filters for quotes list
+	search: z.string().optional().describe("Search in contact name, pickup/dropoff addresses"),
+	clientType: z.enum(["PARTNER", "PRIVATE"]).optional().describe("Filter by client type (partner or private)"),
+	vehicleCategoryId: z.string().optional().describe("Filter by vehicle category"),
+	dateFrom: z.string().datetime().optional().describe("Filter quotes with pickupAt >= dateFrom"),
+	dateTo: z.string().datetime().optional().describe("Filter quotes with pickupAt <= dateTo"),
 });
 
 export const quotesRouter = new Hono()
@@ -72,19 +78,46 @@ export const quotesRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, status, contactId, pricingMode } =
+			const { page, limit, status, contactId, pricingMode, search, clientType, vehicleCategoryId, dateFrom, dateTo } =
 				c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
-			const where = withTenantFilter(
-				{
-					...(status && { status }),
-					...(contactId && { contactId }),
-					...(pricingMode && { pricingMode }),
-				},
-				organizationId,
-			);
+			// Build where clause with all filters
+			const baseWhere: Prisma.QuoteWhereInput = {
+				...(status && { status }),
+				...(contactId && { contactId }),
+				...(pricingMode && { pricingMode }),
+				...(vehicleCategoryId && { vehicleCategoryId }),
+			};
+
+			// Story 6.1: Add search filter (contact name, addresses)
+			if (search) {
+				baseWhere.OR = [
+					{ contact: { displayName: { contains: search, mode: "insensitive" } } },
+					{ contact: { companyName: { contains: search, mode: "insensitive" } } },
+					{ pickupAddress: { contains: search, mode: "insensitive" } },
+					{ dropoffAddress: { contains: search, mode: "insensitive" } },
+				];
+			}
+
+			// Story 6.1: Add client type filter (partner/private)
+			if (clientType) {
+				baseWhere.contact = {
+					...((baseWhere.contact as Prisma.ContactWhereInput) || {}),
+					isPartner: clientType === "PARTNER",
+				};
+			}
+
+			// Story 6.1: Add date range filter
+			if (dateFrom || dateTo) {
+				baseWhere.pickupAt = {
+					...(dateFrom && { gte: new Date(dateFrom) }),
+					...(dateTo && { lte: new Date(dateTo) }),
+				};
+			}
+
+			const where = withTenantFilter(baseWhere, organizationId);
 
 			const [quotes, total] = await Promise.all([
 				db.quote.findMany({

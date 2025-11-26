@@ -1,0 +1,193 @@
+<story-context id="6-1-implement-quotes-list-with-status-profitability" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>6.1</storyId>
+    <title>Implement Quotes List with Status &amp; Profitability</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T23:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a quotes list with statuses and profitability indicators</iWant>
+    <soThat>I can quickly find and prioritise quotes to work on</soThat>
+    <tasks>
+      <task id="1">Create QuotesTable component with columns: Quote ID, Contact, Trip Summary, Date/Time, Vehicle Category, Status, Price (EUR), Margin %, Profitability Indicator</task>
+      <task id="2">Implement filtering by date range, status, client type, and vehicle category</task>
+      <task id="3">Add sorting and search functionality</task>
+      <task id="4">Create ProfitabilityIndicator component (green/orange/red with icon, label, tooltip)</task>
+      <task id="5">Integrate with existing quotes API endpoint</task>
+      <task id="6">Add pagination with consistent UX pattern from ContactsTable</task>
+      <task id="7">Create quotes page route at /dashboard/quotes</task>
+      <task id="8">Add row actions: View/Edit, Duplicate, Convert to Invoice, Cancel</task>
+      <task id="9">Write Vitest unit tests for ProfitabilityIndicator component</task>
+      <task id="10">Write Playwright E2E tests for quotes list functionality</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>/dashboard/quotes page</given>
+      <when>I open the page</when>
+      <then>I see a table with columns: Quote ID, Contact, Trip Summary, Date/Time, Vehicle Category, Status, Price (EUR), Margin %, Profitability Indicator (UX spec 8.3.1)</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>quotes list</given>
+      <when>I use filters</when>
+      <then>I can filter by date range, status, client type and vehicle category; sorting and search behave as expected</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>a quote with margin data</given>
+      <when>displayed in the list</when>
+      <then>Profitability Indicator shows green (≥20%), orange (0-20%), or red (≤0%) based on marginPercent</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>quotes list</given>
+      <when>I click a row action menu</when>
+      <then>I can View/Edit, Duplicate, Convert to Invoice (if ACCEPTED), or Cancel the quote</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR31-FR33 Quote Lifecycle, FR24 Profitability Indicator</section>
+        <snippet>Quotes shall follow a lifecycle with states Draft, Sent, Viewed, Accepted, Rejected, Expired. System shall compute profitability indicator (green/orange/red) based on selling price vs internal cost.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Quote Model, Pricing Engine</section>
+        <snippet>Quote model includes status, pricingMode, tripType, suggestedPrice, finalPrice, internalCost, marginPercent, tripAnalysis JSON. ProfitabilityIndicator type: green | orange | red.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.3.1 Quotes List, 6.1.6 Profitability Indicator</section>
+        <snippet>Columns: Quote ID, Contact, Trip Summary, Date/Time, Vehicle Category, Status, Price (EUR), Margin %, Profitability Indicator. Filters: Date range, Status, Client Type, Vehicle Category. Profitability uses Lucide icons + colored dot + text label + tooltip.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Epic 6 Story 6.1</section>
+        <snippet>Story 6.1 implements quotes list with statuses and profitability indicators. Prerequisites: Epic 2 (contacts), Epic 4 (profitability indicator), Epic 1 (time/currency).</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>packages/api/src/routes/vtc/quotes.ts</path>
+        <kind>API route</kind>
+        <symbol>quotesRouter</symbol>
+        <lines>1-294</lines>
+        <reason>Existing quotes API with list, get, create, update, delete endpoints. List endpoint returns quotes with contact and vehicleCategory includes.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>ProfitabilityIndicator, ProfitabilityIndicatorData</symbol>
+        <lines>21-22, 127-148</lines>
+        <reason>Defines ProfitabilityIndicator type (green/orange/red) and profitabilityData structure used in pricing results.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/contacts/components/ContactsTable.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactsTable</symbol>
+        <lines>1-214</lines>
+        <reason>Reference implementation for table pattern with search, pagination, filters, and row click handling. Use same patterns for QuotesTable.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Quote, QuoteStatus</symbol>
+        <lines>1045-1109, 224-232</lines>
+        <reason>Quote model with status enum, pricingMode, tripType, monetary fields, tripAnalysis JSON. QuoteStatus enum: DRAFT, SENT, VIEWED, ACCEPTED, REJECTED, EXPIRED.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/contacts/types.ts</path>
+        <kind>types</kind>
+        <symbol>ContactWithCounts, ContactsResponse</symbol>
+        <reason>Reference for response types pattern with pagination meta.</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <lines>1-47</lines>
+        <reason>VTC router already includes quotesRouter at /vtc/quotes path.</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching and caching for quotes list</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons for profitability indicator (ArrowUpRight, AlertTriangle, ArrowDownRight), status badges, and actions</usage>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <usage>Internationalization for labels and messages</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>shadcn/ui components: Table, Badge, Button, Input, Select, DropdownMenu</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Follow existing table pattern from ContactsTable.tsx for consistency</constraint>
+    <constraint>Use apiClient.vtc.quotes.$get for API calls (Hono RPC client)</constraint>
+    <constraint>All monetary values displayed in EUR with consistent formatting</constraint>
+    <constraint>Dates displayed in Europe/Paris timezone without conversion</constraint>
+    <constraint>Multi-tenancy enforced via organizationMiddleware on API</constraint>
+    <constraint>Profitability thresholds from OrganizationPricingSettings (greenMarginThreshold, orangeMarginThreshold)</constraint>
+    <constraint>Row actions must respect quote status (e.g., Convert to Invoice only for ACCEPTED)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/quotes</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/quotes?page=1&amp;limit=20&amp;status=DRAFT&amp;contactId=xxx&amp;pricingMode=DYNAMIC</signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+    <interface>
+      <name>QuotesResponse</name>
+      <kind>TypeScript interface</kind>
+      <signature>{ data: QuoteWithRelations[], meta: { page, limit, total, totalPages } }</signature>
+      <path>To be created in apps/web/modules/saas/quotes/types.ts</path>
+    </interface>
+    <interface>
+      <name>ProfitabilityIndicator</name>
+      <kind>React component</kind>
+      <signature>ProfitabilityIndicator({ marginPercent, greenThreshold?, orangeThreshold? })</signature>
+      <path>To be created in apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <paragraph>Use Vitest for unit tests of components and utilities. Use Playwright for E2E tests of user flows. Tests should cover all acceptance criteria. Follow existing test patterns in packages/api/src/routes/vtc/__tests__/.</paragraph>
+    </standards>
+    <locations>
+      <location>apps/web/modules/saas/quotes/__tests__/*.test.tsx</location>
+      <location>apps/web/modules/saas/shared/components/__tests__/*.test.tsx</location>
+      <location>apps/web/cypress/e2e/quotes/*.cy.ts (or Playwright equivalent)</location>
+    </locations>
+    <ideas>
+      <idea criterionId="AC1">Test that QuotesTable renders all required columns</idea>
+      <idea criterionId="AC2">Test filter interactions update query params and refetch data</idea>
+      <idea criterionId="AC3">Test ProfitabilityIndicator renders correct color/icon for margin values: -5% (red), 10% (orange), 25% (green)</idea>
+      <idea criterionId="AC4">Test row action menu shows correct options based on quote status</idea>
+      <idea>E2E: Navigate to /dashboard/quotes, verify table loads, apply filters, click row to navigate to detail</idea>
+    </ideas>
+  </tests>
+</story-context>

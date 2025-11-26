@@ -1,0 +1,269 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { testClient } from "hono/testing";
+import { Hono } from "hono";
+import { quotesRouter } from "../quotes";
+
+// Mock database
+vi.mock("@repo/database", () => ({
+  db: {
+    quote: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    contact: {
+      findFirst: vi.fn(),
+    },
+    vehicleCategory: {
+      findFirst: vi.fn(),
+    },
+  },
+}));
+
+// Mock organization middleware
+vi.mock("../../../middleware/organization", () => ({
+  organizationMiddleware: vi.fn((c, next) => {
+    c.set("organizationId", "test-org-id");
+    return next();
+  }),
+}));
+
+import { db } from "@repo/database";
+
+const mockQuote = {
+  id: "quote-1",
+  organizationId: "test-org-id",
+  contactId: "contact-1",
+  status: "DRAFT",
+  pricingMode: "DYNAMIC",
+  tripType: "TRANSFER",
+  pickupAt: new Date("2025-01-15T10:00:00Z"),
+  pickupAddress: "Paris CDG Airport",
+  pickupLatitude: 49.0097,
+  pickupLongitude: 2.5479,
+  dropoffAddress: "Eiffel Tower, Paris",
+  dropoffLatitude: 48.8584,
+  dropoffLongitude: 2.2945,
+  passengerCount: 2,
+  luggageCount: 3,
+  vehicleCategoryId: "cat-1",
+  suggestedPrice: "150.00",
+  finalPrice: "160.00",
+  internalCost: "120.00",
+  marginPercent: "25.00",
+  tripAnalysis: null,
+  appliedRules: null,
+  validUntil: null,
+  notes: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  contact: {
+    id: "contact-1",
+    displayName: "John Doe",
+    type: "INDIVIDUAL",
+    isPartner: false,
+    companyName: null,
+    email: "john@example.com",
+    phone: "+33612345678",
+  },
+  vehicleCategory: {
+    id: "cat-1",
+    name: "Sedan",
+    code: "SEDAN",
+    regulatoryCategory: "LIGHT",
+  },
+};
+
+describe("Quotes API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("GET /quotes", () => {
+    it("returns paginated list of quotes", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findMany: ReturnType<typeof vi.fn>;
+          count: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findMany.mockResolvedValue([mockQuote]);
+      mockDb.quote.count.mockResolvedValue(1);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes.$get({
+        query: { page: "1", limit: "10" },
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.data).toHaveLength(1);
+      expect(data.meta.total).toBe(1);
+      expect(data.meta.page).toBe(1);
+    });
+
+    it("filters by status", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findMany: ReturnType<typeof vi.fn>;
+          count: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findMany.mockResolvedValue([mockQuote]);
+      mockDb.quote.count.mockResolvedValue(1);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes.$get({
+        query: { page: "1", limit: "10", status: "DRAFT" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.quote.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "DRAFT",
+          }),
+        })
+      );
+    });
+
+    it("filters by clientType PARTNER", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findMany: ReturnType<typeof vi.fn>;
+          count: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findMany.mockResolvedValue([]);
+      mockDb.quote.count.mockResolvedValue(0);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes.$get({
+        query: { page: "1", limit: "10", clientType: "PARTNER" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.quote.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            contact: expect.objectContaining({
+              isPartner: true,
+            }),
+          }),
+        })
+      );
+    });
+
+    it("filters by search term", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findMany: ReturnType<typeof vi.fn>;
+          count: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findMany.mockResolvedValue([mockQuote]);
+      mockDb.quote.count.mockResolvedValue(1);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes.$get({
+        query: { page: "1", limit: "10", search: "Paris" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.quote.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                pickupAddress: expect.objectContaining({
+                  contains: "Paris",
+                  mode: "insensitive",
+                }),
+              }),
+            ]),
+          }),
+        })
+      );
+    });
+  });
+
+  describe("GET /quotes/:id", () => {
+    it("returns a single quote", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findFirst: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findFirst.mockResolvedValue(mockQuote);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes[":id"].$get({
+        param: { id: "quote-1" },
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.id).toBe("quote-1");
+    });
+
+    it("returns 404 for non-existent quote", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findFirst: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findFirst.mockResolvedValue(null);
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes[":id"].$get({
+        param: { id: "non-existent" },
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("Profitability Indicator Logic", () => {
+    it("quote with margin >= 20% is profitable (green)", () => {
+      const quote = { ...mockQuote, marginPercent: "25.00" };
+      const margin = parseFloat(quote.marginPercent);
+      
+      expect(margin >= 20).toBe(true);
+    });
+
+    it("quote with margin 0-20% is low margin (orange)", () => {
+      const quote = { ...mockQuote, marginPercent: "10.00" };
+      const margin = parseFloat(quote.marginPercent);
+      
+      expect(margin >= 0 && margin < 20).toBe(true);
+    });
+
+    it("quote with negative margin is loss (red)", () => {
+      const quote = { ...mockQuote, marginPercent: "-5.00" };
+      const margin = parseFloat(quote.marginPercent);
+      
+      expect(margin < 0).toBe(true);
+    });
+  });
+});

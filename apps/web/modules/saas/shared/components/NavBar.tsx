@@ -8,6 +8,7 @@ import { cn } from "@ui/lib";
 import {
 	CarIcon,
 	ChevronRightIcon,
+	FileTextIcon,
 	HomeIcon,
 	MapPinIcon,
 	SettingsIcon,
@@ -48,6 +49,12 @@ export function NavBar() {
 						href: `${basePath}/contacts`,
 						icon: UsersIcon,
 						isActive: pathname.startsWith(`${basePath}/contacts`),
+					},
+					{
+						label: t("quotes.title"),
+						href: `${basePath}/quotes`,
+						icon: FileTextIcon,
+						isActive: pathname.startsWith(`${basePath}/quotes`),
 					},
 					{
 						label: t("fleet.vehicles.title"),

@@ -1262,6 +1262,65 @@
 			}
 		}
 	},
+	"quotes": {
+		"title": "Devis",
+		"description": "Gérez vos devis et tarifications.",
+		"search": "Rechercher des devis...",
+		"addQuote": "Nouveau devis",
+		"empty": "Aucun devis. Créez votre premier devis pour commencer.",
+		"noResults": "Aucun devis trouvé correspondant à vos filtres.",
+		"loadError": "Échec du chargement des devis. Veuillez réessayer.",
+		"partner": "Partenaire",
+		"private": "Privé",
+		"columns": {
+			"id": "ID",
+			"contact": "Contact",
+			"tripSummary": "Trajet",
+			"dateTime": "Date/Heure",
+			"vehicleCategory": "Véhicule",
+			"status": "Statut",
+			"price": "Prix",
+			"margin": "Marge",
+			"profitability": "Rentabilité"
+		},
+		"status": {
+			"draft": "Brouillon",
+			"sent": "Envoyé",
+			"viewed": "Consulté",
+			"accepted": "Accepté",
+			"rejected": "Refusé",
+			"expired": "Expiré"
+		},
+		"filters": {
+			"status": "Statut",
+			"allStatuses": "Tous les statuts",
+			"clientType": "Type de client",
+			"all": "Tous les clients",
+			"partner": "Partenaires",
+			"private": "Privés"
+		},
+		"actions": {
+			"menu": "Actions",
+			"viewEdit": "Voir / Modifier",
+			"duplicate": "Dupliquer",
+			"convertToInvoice": "Convertir en facture",
+			"cancel": "Annuler le devis"
+		},
+		"pagination": {
+			"showing": "Affichage de {from} à {to} sur {total} devis",
+			"page": "Page {current} sur {total}"
+		},
+		"profitability": {
+			"profitable": "Rentable",
+			"profitableTooltip": "Ce devis a une marge saine",
+			"lowMargin": "Marge faible",
+			"lowMarginTooltip": "Ce devis a une marge faible mais positive",
+			"loss": "Perte",
+			"lossTooltip": "Ce devis est en dessous du coût",
+			"margin": "Marge",
+			"thresholds": "Vert ≥ {green}%, Orange ≥ {orange}%"
+		}
+	},
 	"fleet": {
 		"vehicles": {
 			"title": "Véhicules",

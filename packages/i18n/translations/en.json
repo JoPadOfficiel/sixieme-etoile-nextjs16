@@ -1262,6 +1262,65 @@
 			}
 		}
 	},
+	"quotes": {
+		"title": "Quotes",
+		"description": "Manage your quotes and pricing.",
+		"search": "Search quotes...",
+		"addQuote": "Add Quote",
+		"empty": "No quotes yet. Create your first quote to get started.",
+		"noResults": "No quotes found matching your filters.",
+		"loadError": "Failed to load quotes. Please try again.",
+		"partner": "Partner",
+		"private": "Private",
+		"columns": {
+			"id": "ID",
+			"contact": "Contact",
+			"tripSummary": "Trip",
+			"dateTime": "Date/Time",
+			"vehicleCategory": "Vehicle",
+			"status": "Status",
+			"price": "Price",
+			"margin": "Margin",
+			"profitability": "Profitability"
+		},
+		"status": {
+			"draft": "Draft",
+			"sent": "Sent",
+			"viewed": "Viewed",
+			"accepted": "Accepted",
+			"rejected": "Rejected",
+			"expired": "Expired"
+		},
+		"filters": {
+			"status": "Status",
+			"allStatuses": "All statuses",
+			"clientType": "Client type",
+			"all": "All clients",
+			"partner": "Partners",
+			"private": "Private"
+		},
+		"actions": {
+			"menu": "Actions",
+			"viewEdit": "View / Edit",
+			"duplicate": "Duplicate",
+			"convertToInvoice": "Convert to Invoice",
+			"cancel": "Cancel Quote"
+		},
+		"pagination": {
+			"showing": "Showing {from} to {to} of {total} quotes",
+			"page": "Page {current} of {total}"
+		},
+		"profitability": {
+			"profitable": "Profitable",
+			"profitableTooltip": "This quote has a healthy margin",
+			"lowMargin": "Low margin",
+			"lowMarginTooltip": "This quote has a low but positive margin",
+			"loss": "Loss",
+			"lossTooltip": "This quote is below cost",
+			"margin": "Margin",
+			"thresholds": "Green ≥ {green}%, Orange ≥ {orange}%"
+		}
+	},
 	"fleet": {
 		"vehicles": {
 			"title": "Vehicles",
