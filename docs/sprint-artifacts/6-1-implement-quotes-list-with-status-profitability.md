@@ -146,17 +146,27 @@ With Lucide icon + colored dot + label + tooltip showing exact margin %.
 - Profitability thresholds from OrganizationPricingSettings
 - All dates in Europe/Paris timezone (no conversion)
 
+### Implementation Status (27 Nov 2025)
+
+- ✅ Quotes list page (`/[organizationSlug]/quotes`) implemented with search, status filter, client type filter, pagination, row actions, profitability indicator and translations (EN/FR).
+- ✅ `ProfitabilityIndicator` shared component + `QuoteStatusBadge` created and already used in the table.
+- ✅ API `/api/vtc/quotes` extended with `search`, `clientType`, `vehicleCategoryId`, `dateFrom`, `dateTo` filters. UI currently consumes `search`, `status`, `clientType`; vehicle & date filters remain to wire in UI.
+- ⚠️ UI filters for date range and vehicle category are **not yet exposed** in `QuotesTable` (AC2 partially delivered).
+- ⚠️ Row actions (`duplicate`, `convertToInvoice`, `cancel`) are stubbed (console log) pending back-end endpoints.
+- ✅ Vitest coverage added for `quotesRouter` filters/profitability logic.
+- ✅ Manual verification via Next.js dev server + screenshot (`quotes-list-page.png`). Playwright scenario still to automate.
+
 ---
 
 ## Definition of Done
 
-- [ ] QuotesTable component implemented with all columns
-- [ ] ProfitabilityIndicator component created and reusable
-- [ ] Filters working (status, date range, client type, vehicle category)
-- [ ] Search working on contact name and addresses
-- [ ] Pagination working
-- [ ] Row actions implemented with proper status checks
-- [ ] Translations added (en, fr)
-- [ ] Vitest unit tests passing
-- [ ] Playwright E2E tests passing
+- [x] QuotesTable component implemented with all columns
+- [x] ProfitabilityIndicator component created and reusable
+- [ ] Filters working (status ✅, client type ✅, **date range ❌, vehicle category ❌**)
+- [x] Search working on contact name and addresses
+- [x] Pagination working
+- [ ] Row actions implemented with proper status checks (**stubs only, no API wiring**)
+- [x] Translations added (en, fr)
+- [x] Vitest unit tests passing (quotes API filters, profitability logic)
+- [ ] Playwright E2E tests passing (**manual validation only so far**)
 - [ ] Code reviewed and merged
