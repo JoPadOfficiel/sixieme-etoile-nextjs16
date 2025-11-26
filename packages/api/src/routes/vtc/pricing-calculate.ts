@@ -17,12 +17,14 @@ import { withTenantFilter } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import {
 	calculatePrice,
+	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
 	type ExcursionPackageAssignment,
 	type OrganizationPricingSettings,
 	type PartnerContractData,
 	type PricingRequest,
+	type SeasonalMultiplierData,
 	type ZoneRouteAssignment,
 } from "../../services/pricing-engine";
 
@@ -253,6 +255,55 @@ async function loadPricingSettings(
 	};
 }
 
+/**
+ * Load all active advanced rates for the organization (Story 4.3)
+ */
+async function loadAdvancedRates(organizationId: string): Promise<AdvancedRateData[]> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const rates = (await db.advancedRate.findMany({
+		where: withTenantFilter({ isActive: true }, organizationId),
+		orderBy: { priority: "desc" },
+	})) as any[];
+
+	return rates.map((rate) => ({
+		id: rate.id,
+		name: rate.name,
+		appliesTo: rate.appliesTo as "NIGHT" | "WEEKEND" | "LONG_DISTANCE" | "ZONE_SCENARIO" | "HOLIDAY",
+		startTime: rate.startTime,
+		endTime: rate.endTime,
+		daysOfWeek: rate.daysOfWeek,
+		minDistanceKm: rate.minDistanceKm ? Number(rate.minDistanceKm) : null,
+		maxDistanceKm: rate.maxDistanceKm ? Number(rate.maxDistanceKm) : null,
+		zoneId: rate.zoneId,
+		adjustmentType: rate.adjustmentType as "PERCENTAGE" | "FIXED_AMOUNT",
+		value: Number(rate.value),
+		priority: rate.priority,
+		isActive: rate.isActive,
+	}));
+}
+
+/**
+ * Load all active seasonal multipliers for the organization (Story 4.3)
+ */
+async function loadSeasonalMultipliers(organizationId: string): Promise<SeasonalMultiplierData[]> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const multipliers = (await db.seasonalMultiplier.findMany({
+		where: withTenantFilter({ isActive: true }, organizationId),
+		orderBy: { priority: "desc" },
+	})) as any[];
+
+	return multipliers.map((multiplier) => ({
+		id: multiplier.id,
+		name: multiplier.name,
+		description: multiplier.description,
+		startDate: new Date(multiplier.startDate),
+		endDate: new Date(multiplier.endDate),
+		multiplier: Number(multiplier.multiplier),
+		priority: multiplier.priority,
+		isActive: multiplier.isActive,
+	}));
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -301,10 +352,12 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
-			// Load zones and pricing settings
-			const [zones, pricingSettings] = await Promise.all([
+			// Load zones, pricing settings, and multipliers (Story 4.3)
+			const [zones, pricingSettings, advancedRates, seasonalMultipliers] = await Promise.all([
 				loadZones(organizationId),
 				loadPricingSettings(organizationId),
+				loadAdvancedRates(organizationId),
+				loadSeasonalMultipliers(organizationId),
 			]);
 
 			// Build pricing request
@@ -319,11 +372,13 @@ export const pricingCalculateRouter = new Hono()
 				estimatedDistanceKm: data.estimatedDistanceKm,
 			};
 
-			// Calculate price
+			// Calculate price (Story 4.3: now includes multipliers)
 			const result = calculatePrice(pricingRequest, {
 				contact,
 				zones,
 				pricingSettings,
+				advancedRates,
+				seasonalMultipliers,
 			});
 
 			// Log negative margin partner trips for analysis

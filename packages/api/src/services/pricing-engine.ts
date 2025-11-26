@@ -2,10 +2,14 @@
  * Pricing Engine Service
  * Implements the Engagement Rule for partner grid pricing (Method 1)
  * and fallback to dynamic pricing (Method 2)
+ * Story 4.3: Adds multiplier support (advanced rates + seasonal multipliers)
  */
 
 import type { GeoPoint, ZoneData } from "../lib/geo-utils";
 import { findZoneForPoint } from "../lib/geo-utils";
+
+// Europe/Paris timezone constant
+const PARIS_TZ = "Europe/Paris";
 
 // ============================================================================
 // Types
@@ -180,6 +184,77 @@ export interface OrganizationPricingSettings {
 	tollCostPerKm?: number;
 	wearCostPerKm?: number;
 	driverHourlyCost?: number;
+}
+
+// ============================================================================
+// Multiplier Types (Story 4.3)
+// ============================================================================
+
+export type AdvancedRateAppliesTo = "NIGHT" | "WEEKEND" | "LONG_DISTANCE" | "ZONE_SCENARIO" | "HOLIDAY";
+export type AdjustmentType = "PERCENTAGE" | "FIXED_AMOUNT";
+
+/**
+ * Advanced rate data from database
+ */
+export interface AdvancedRateData {
+	id: string;
+	name: string;
+	appliesTo: AdvancedRateAppliesTo;
+	startTime: string | null;  // HH:MM format
+	endTime: string | null;    // HH:MM format
+	daysOfWeek: string | null; // e.g. "1,2,3,4,5" for weekdays, "0,6" for weekend
+	minDistanceKm: number | null;
+	maxDistanceKm: number | null;
+	zoneId: string | null;
+	adjustmentType: AdjustmentType;
+	value: number;  // percentage or fixed amount in EUR
+	priority: number;
+	isActive: boolean;
+}
+
+/**
+ * Seasonal multiplier data from database
+ */
+export interface SeasonalMultiplierData {
+	id: string;
+	name: string;
+	description: string | null;
+	startDate: Date;
+	endDate: Date;
+	multiplier: number;  // e.g., 1.3 for 30% increase
+	priority: number;
+	isActive: boolean;
+}
+
+/**
+ * Context for evaluating multipliers
+ */
+export interface MultiplierContext {
+	pickupAt: Date | null;  // Trip pickup time (Europe/Paris business time)
+	distanceKm: number;
+	pickupZoneId: string | null;
+	dropoffZoneId: string | null;
+}
+
+/**
+ * Applied multiplier rule for transparency
+ */
+export interface AppliedMultiplierRule extends AppliedRule {
+	type: "ADVANCED_RATE" | "SEASONAL_MULTIPLIER";
+	ruleId: string;
+	ruleName: string;
+	adjustmentType: "PERCENTAGE" | "FIXED_AMOUNT" | "MULTIPLIER";
+	adjustmentValue: number;
+	priceBefore: number;
+	priceAfter: number;
+}
+
+/**
+ * Result of multiplier evaluation
+ */
+export interface MultiplierEvaluationResult {
+	adjustedPrice: number;
+	appliedRules: AppliedMultiplierRule[];
 }
 
 // ============================================================================
@@ -396,6 +471,319 @@ export function calculateInternalCost(
 export function estimateInternalCost(distanceKm: number): number {
 	const costPerKm = 2.5; // Rough estimate including fuel, driver, wear
 	return Math.round(distanceKm * costPerKm * 100) / 100;
+}
+
+// ============================================================================
+// Multiplier Evaluation Functions (Story 4.3)
+// ============================================================================
+
+/**
+ * Parse time string in HH:MM format to hours and minutes
+ */
+function parseTimeString(timeStr: string): { hours: number; minutes: number } {
+	const [hours, minutes] = timeStr.split(":").map(Number);
+	return { hours: hours ?? 0, minutes: minutes ?? 0 };
+}
+
+/**
+ * Get hour and minute from a Date in Europe/Paris timezone
+ * Since we store business times as-is (no TZ conversion), we just extract the values
+ */
+function getParisTime(date: Date): { hours: number; minutes: number; dayOfWeek: number } {
+	// The date is already in Europe/Paris business time (per Story 1.4)
+	// We just need to extract the components
+	return {
+		hours: date.getHours(),
+		minutes: date.getMinutes(),
+		dayOfWeek: date.getDay(), // 0 = Sunday, 6 = Saturday
+	};
+}
+
+/**
+ * Check if a time is within a time range (handles overnight ranges like 22:00-06:00)
+ * @param hours - Current hour (0-23)
+ * @param minutes - Current minutes (0-59)
+ * @param startTime - Start time in HH:MM format
+ * @param endTime - End time in HH:MM format
+ */
+export function isTimeInRange(
+	hours: number,
+	minutes: number,
+	startTime: string,
+	endTime: string,
+): boolean {
+	const start = parseTimeString(startTime);
+	const end = parseTimeString(endTime);
+	
+	const currentMinutes = hours * 60 + minutes;
+	const startMinutes = start.hours * 60 + start.minutes;
+	const endMinutes = end.hours * 60 + end.minutes;
+	
+	// Handle overnight range (e.g., 22:00 to 06:00)
+	if (startMinutes > endMinutes) {
+		// Time is in range if it's after start OR before end
+		return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+	}
+	
+	// Normal range (e.g., 09:00 to 18:00)
+	return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+}
+
+/**
+ * Check if a day of week is in the configured days string
+ * @param dayOfWeek - Day of week (0 = Sunday, 6 = Saturday)
+ * @param daysOfWeek - Comma-separated string of days (e.g., "0,6" for weekend)
+ */
+export function isDayInRange(dayOfWeek: number, daysOfWeek: string): boolean {
+	const days = daysOfWeek.split(",").map(d => parseInt(d.trim(), 10));
+	return days.includes(dayOfWeek);
+}
+
+/**
+ * Check if pickup time qualifies for NIGHT rate
+ * Night is typically 22:00-06:00 in Europe/Paris
+ */
+export function isNightTime(pickupAt: Date, startTime: string, endTime: string): boolean {
+	const { hours, minutes } = getParisTime(pickupAt);
+	return isTimeInRange(hours, minutes, startTime, endTime);
+}
+
+/**
+ * Check if pickup time qualifies for WEEKEND rate
+ * Weekend is Saturday (6) and Sunday (0)
+ */
+export function isWeekend(pickupAt: Date, daysOfWeek: string | null): boolean {
+	const { dayOfWeek } = getParisTime(pickupAt);
+	// Default weekend days if not specified
+	const weekendDays = daysOfWeek ?? "0,6";
+	return isDayInRange(dayOfWeek, weekendDays);
+}
+
+/**
+ * Check if distance qualifies for LONG_DISTANCE rate
+ */
+export function isLongDistance(
+	distanceKm: number,
+	minDistanceKm: number | null,
+	maxDistanceKm: number | null,
+): boolean {
+	if (minDistanceKm !== null && distanceKm < minDistanceKm) {
+		return false;
+	}
+	if (maxDistanceKm !== null && distanceKm > maxDistanceKm) {
+		return false;
+	}
+	return minDistanceKm !== null; // Only applies if minDistanceKm is set
+}
+
+/**
+ * Check if a date is within a date range (inclusive)
+ */
+export function isWithinDateRange(pickupAt: Date, startDate: Date, endDate: Date): boolean {
+	const pickup = pickupAt.getTime();
+	const start = startDate.getTime();
+	// End date is inclusive, so we add one day
+	const end = endDate.getTime() + 24 * 60 * 60 * 1000;
+	return pickup >= start && pickup < end;
+}
+
+/**
+ * Evaluate if an advanced rate applies to the given context
+ */
+export function evaluateAdvancedRate(
+	rate: AdvancedRateData,
+	context: MultiplierContext,
+): boolean {
+	// Skip inactive rates
+	if (!rate.isActive) {
+		return false;
+	}
+
+	// Check based on rate type
+	switch (rate.appliesTo) {
+		case "NIGHT":
+			if (!context.pickupAt || !rate.startTime || !rate.endTime) {
+				return false;
+			}
+			return isNightTime(context.pickupAt, rate.startTime, rate.endTime);
+
+		case "WEEKEND":
+			if (!context.pickupAt) {
+				return false;
+			}
+			return isWeekend(context.pickupAt, rate.daysOfWeek);
+
+		case "LONG_DISTANCE":
+			return isLongDistance(context.distanceKm, rate.minDistanceKm, rate.maxDistanceKm);
+
+		case "ZONE_SCENARIO":
+			// Zone-based rate: applies if pickup or dropoff matches the configured zone
+			if (!rate.zoneId) {
+				return false;
+			}
+			return context.pickupZoneId === rate.zoneId || context.dropoffZoneId === rate.zoneId;
+
+		case "HOLIDAY":
+			// Holiday rates would need a holiday calendar - for now, use time-based check
+			if (!context.pickupAt || !rate.startTime || !rate.endTime) {
+				return false;
+			}
+			return isNightTime(context.pickupAt, rate.startTime, rate.endTime);
+
+		default:
+			return false;
+	}
+}
+
+/**
+ * Apply an advanced rate adjustment to a price
+ */
+export function applyAdvancedRateAdjustment(
+	price: number,
+	rate: AdvancedRateData,
+): number {
+	if (rate.adjustmentType === "PERCENTAGE") {
+		// Percentage adjustment: value is the percentage (e.g., 20 for +20%)
+		return Math.round(price * (1 + rate.value / 100) * 100) / 100;
+	} else {
+		// Fixed amount adjustment
+		return Math.round((price + rate.value) * 100) / 100;
+	}
+}
+
+/**
+ * Evaluate and apply all applicable advanced rates
+ * Rates are applied in priority order (higher priority first)
+ */
+export function evaluateAdvancedRates(
+	basePrice: number,
+	context: MultiplierContext,
+	rates: AdvancedRateData[],
+): MultiplierEvaluationResult {
+	const appliedRules: AppliedMultiplierRule[] = [];
+	let currentPrice = basePrice;
+
+	// Sort by priority (higher first)
+	const sortedRates = [...rates].sort((a, b) => b.priority - a.priority);
+
+	for (const rate of sortedRates) {
+		if (evaluateAdvancedRate(rate, context)) {
+			const priceBefore = currentPrice;
+			currentPrice = applyAdvancedRateAdjustment(currentPrice, rate);
+
+			appliedRules.push({
+				type: "ADVANCED_RATE",
+				description: `Applied ${rate.appliesTo} rate: ${rate.name}`,
+				ruleId: rate.id,
+				ruleName: rate.name,
+				adjustmentType: rate.adjustmentType,
+				adjustmentValue: rate.value,
+				priceBefore,
+				priceAfter: currentPrice,
+			});
+		}
+	}
+
+	return {
+		adjustedPrice: currentPrice,
+		appliedRules,
+	};
+}
+
+/**
+ * Evaluate if a seasonal multiplier applies to the given pickup time
+ */
+export function evaluateSeasonalMultiplier(
+	multiplier: SeasonalMultiplierData,
+	pickupAt: Date,
+): boolean {
+	if (!multiplier.isActive) {
+		return false;
+	}
+	return isWithinDateRange(pickupAt, multiplier.startDate, multiplier.endDate);
+}
+
+/**
+ * Apply a seasonal multiplier to a price
+ */
+export function applySeasonalMultiplier(
+	price: number,
+	multiplier: SeasonalMultiplierData,
+): number {
+	return Math.round(price * multiplier.multiplier * 100) / 100;
+}
+
+/**
+ * Evaluate and apply all applicable seasonal multipliers
+ * Multipliers are applied in priority order (higher priority first)
+ */
+export function evaluateSeasonalMultipliers(
+	price: number,
+	pickupAt: Date | null,
+	multipliers: SeasonalMultiplierData[],
+): MultiplierEvaluationResult {
+	const appliedRules: AppliedMultiplierRule[] = [];
+	let currentPrice = price;
+
+	if (!pickupAt) {
+		return { adjustedPrice: currentPrice, appliedRules };
+	}
+
+	// Sort by priority (higher first)
+	const sortedMultipliers = [...multipliers].sort((a, b) => b.priority - a.priority);
+
+	for (const multiplier of sortedMultipliers) {
+		if (evaluateSeasonalMultiplier(multiplier, pickupAt)) {
+			const priceBefore = currentPrice;
+			currentPrice = applySeasonalMultiplier(currentPrice, multiplier);
+
+			appliedRules.push({
+				type: "SEASONAL_MULTIPLIER",
+				description: `Applied seasonal multiplier: ${multiplier.name}`,
+				ruleId: multiplier.id,
+				ruleName: multiplier.name,
+				adjustmentType: "MULTIPLIER",
+				adjustmentValue: multiplier.multiplier,
+				priceBefore,
+				priceAfter: currentPrice,
+			});
+		}
+	}
+
+	return {
+		adjustedPrice: currentPrice,
+		appliedRules,
+	};
+}
+
+/**
+ * Apply all multipliers to a base price (Story 4.3)
+ * Order: Advanced Rates → Seasonal Multipliers
+ */
+export function applyAllMultipliers(
+	basePrice: number,
+	context: MultiplierContext,
+	advancedRates: AdvancedRateData[],
+	seasonalMultipliers: SeasonalMultiplierData[],
+): MultiplierEvaluationResult {
+	const allAppliedRules: AppliedMultiplierRule[] = [];
+
+	// Step 1: Apply advanced rates
+	const advancedResult = evaluateAdvancedRates(basePrice, context, advancedRates);
+	allAppliedRules.push(...advancedResult.appliedRules);
+
+	// Step 2: Apply seasonal multipliers
+	const seasonalResult = evaluateSeasonalMultipliers(
+		advancedResult.adjustedPrice,
+		context.pickupAt,
+		seasonalMultipliers,
+	);
+	allAppliedRules.push(...seasonalResult.appliedRules);
+
+	return {
+		adjustedPrice: seasonalResult.adjustedPrice,
+		appliedRules: allAppliedRules,
+	};
 }
 
 // ============================================================================
@@ -802,6 +1190,9 @@ export interface PricingEngineContext {
 	contact: ContactData;
 	zones: ZoneData[];
 	pricingSettings: OrganizationPricingSettings;
+	// Story 4.3: Multipliers (optional for backward compatibility)
+	advancedRates?: AdvancedRateData[];
+	seasonalMultipliers?: SeasonalMultiplierData[];
 }
 
 /**
@@ -813,7 +1204,7 @@ export function calculatePrice(
 	context: PricingEngineContext,
 ): PricingResult {
 	const appliedRules: AppliedRule[] = [];
-	const { contact, zones, pricingSettings } = context;
+	const { contact, zones, pricingSettings, advancedRates = [], seasonalMultipliers = [] } = context;
 
 	// Default values for distance/duration estimation
 	const estimatedDistanceKm = request.estimatedDistanceKm ?? 30;
@@ -823,6 +1214,14 @@ export function calculatePrice(
 	let routesChecked: RouteCheckResult[] = [];
 	let excursionsChecked: ExcursionCheckResult[] = [];
 	let disposChecked: DispoCheckResult[] = [];
+
+	// Build multiplier context (Story 4.3)
+	const pickupAt = request.pickupAt ? new Date(request.pickupAt) : null;
+
+	// Map pickup/dropoff to zones early for multiplier context (Story 4.3)
+	// This is needed even for private clients to support ZONE_SCENARIO rates
+	const pickupZone = findZoneForPoint(request.pickup, zones);
+	const dropoffZone = findZoneForPoint(request.dropoff, zones);
 
 	// -------------------------------------------------------------------------
 	// Step 1: Check if contact is a partner
@@ -840,6 +1239,16 @@ export function calculatePrice(
 			appliedRules,
 			"PRIVATE_CLIENT",
 			null,
+			false,
+			// Story 4.3: Pass multiplier context with zone IDs
+			{
+				pickupAt,
+				distanceKm: estimatedDistanceKm,
+				pickupZoneId: pickupZone?.id ?? null,
+				dropoffZoneId: dropoffZone?.id ?? null,
+			},
+			advancedRates,
+			seasonalMultipliers,
 		);
 	}
 
@@ -860,15 +1269,22 @@ export function calculatePrice(
 			appliedRules,
 			"NO_CONTRACT",
 			null,
+			false,
+			// Story 4.3: Pass multiplier context
+			{
+				pickupAt,
+				distanceKm: estimatedDistanceKm,
+				pickupZoneId: null,
+				dropoffZoneId: null,
+			},
+			advancedRates,
+			seasonalMultipliers,
 		);
 	}
 
 	// -------------------------------------------------------------------------
-	// Step 3: Map pickup/dropoff to zones
+	// Step 3: Add zone mapping to applied rules (zones already mapped above)
 	// -------------------------------------------------------------------------
-	const pickupZone = findZoneForPoint(request.pickup, zones);
-	const dropoffZone = findZoneForPoint(request.dropoff, zones);
-
 	appliedRules.push({
 		type: "ZONE_MAPPING",
 		description: "Mapped coordinates to zones",
@@ -1053,11 +1469,22 @@ export function calculatePrice(
 		appliedRules,
 		fallbackReason,
 		gridSearchDetails,
+		false,
+		// Story 4.3: Pass multiplier context
+		{
+			pickupAt,
+			distanceKm: estimatedDistanceKm,
+			pickupZoneId: pickupZone?.id ?? null,
+			dropoffZoneId: dropoffZone?.id ?? null,
+		},
+		advancedRates,
+		seasonalMultipliers,
 	);
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3)
+ * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -1067,23 +1494,15 @@ function buildDynamicResult(
 	fallbackReason: FallbackReason,
 	gridSearchDetails: GridSearchDetails | null,
 	usingDefaultSettings: boolean = false,
+	// Story 4.3: Multiplier parameters
+	multiplierContext: MultiplierContext | null = null,
+	advancedRates: AdvancedRateData[] = [],
+	seasonalMultipliers: SeasonalMultiplierData[] = [],
 ): PricingResult {
 	// Calculate with full details
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
-	const price = calculation.priceWithMargin;
+	let price = calculation.priceWithMargin;
 	
-	// Calculate cost breakdown (Story 4.2)
-	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
-	const internalCost = costBreakdown.total;
-	const margin = Math.round((price - internalCost) * 100) / 100;
-	const marginPercent =
-		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
-
-	// Build tripAnalysis (Story 4.2)
-	const tripAnalysis: TripAnalysis = {
-		costBreakdown,
-	};
-
 	// Add enhanced calculation rule (Story 4.1 - AC3)
 	appliedRules.push({
 		type: "DYNAMIC_BASE_CALCULATION",
@@ -1098,6 +1517,35 @@ function buildDynamicResult(
 		},
 		usingDefaultSettings,
 	});
+
+	// Story 4.3: Apply multipliers if context is provided
+	if (multiplierContext && (advancedRates.length > 0 || seasonalMultipliers.length > 0)) {
+		const multiplierResult = applyAllMultipliers(
+			price,
+			multiplierContext,
+			advancedRates,
+			seasonalMultipliers,
+		);
+		
+		// Update price with multiplier-adjusted value
+		if (multiplierResult.appliedRules.length > 0) {
+			price = multiplierResult.adjustedPrice;
+			// Add all multiplier rules to the applied rules list
+			appliedRules.push(...multiplierResult.appliedRules);
+		}
+	}
+	
+	// Calculate cost breakdown (Story 4.2)
+	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	const internalCost = costBreakdown.total;
+	const margin = Math.round((price - internalCost) * 100) / 100;
+	const marginPercent =
+		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
+
+	// Build tripAnalysis (Story 4.2)
+	const tripAnalysis: TripAnalysis = {
+		costBreakdown,
+	};
 
 	// Add cost breakdown rule (Story 4.2)
 	appliedRules.push({

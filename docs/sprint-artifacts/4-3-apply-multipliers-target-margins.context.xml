@@ -1,0 +1,279 @@
+<story-context id="4-3-apply-multipliers-target-margins" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>3</storyId>
+    <title>Apply Multipliers and Target Margins</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T17:00:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-4.3</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>pricing manager</asA>
+    <iWant>configurable multipliers and target margins applied on top of base cost</iWant>
+    <soThat>the system can propose commercially viable prices in different contexts</soThat>
+    <tasks>
+      <task id="1">Create AdvancedRate service to fetch and evaluate advanced rate rules</task>
+      <task id="2">Create SeasonalMultiplier service to fetch and evaluate seasonal multipliers</task>
+      <task id="3">Implement rule evaluation logic with defined order of operations</task>
+      <task id="4">Integrate multipliers into pricing engine calculatePrice function</task>
+      <task id="5">Track applied rules in appliedRules context with before/after amounts</task>
+      <task id="6">Add unit tests for all multiplier scenarios</task>
+      <task id="7">Add integration tests for API endpoint</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Advanced Rate Modifiers Applied">
+      <given>configured advanced rates (night/weekend/long-distance rules) and seasonal multipliers</given>
+      <when>a dynamic quote is computed</when>
+      <then>the pricing engine applies all applicable rules in a defined order (base price → advanced rate modifiers → seasonal multiplier → margin), and the final suggested selling price is stored in the quote</then>
+    </criterion>
+    <criterion id="AC2" title="Applied Rules Transparency">
+      <given>a dynamic quote with multipliers applied</given>
+      <when>the pricing result is returned</when>
+      <then>the appliedRules context lists each rule (ID, type, adjustment, before/after amounts) so operators can understand how the price was constructed</then>
+    </criterion>
+    <criterion id="AC3" title="Night Rate Application">
+      <given>a trip with pickupAt between 22:00 and 06:00 (Europe/Paris)</given>
+      <when>an active NIGHT advanced rate exists</when>
+      <then>the night rate modifier is applied to the base price</then>
+    </criterion>
+    <criterion id="AC4" title="Weekend Rate Application">
+      <given>a trip with pickupAt on Saturday or Sunday</given>
+      <when>an active WEEKEND advanced rate exists</when>
+      <then>the weekend rate modifier is applied to the base price</then>
+    </criterion>
+    <criterion id="AC5" title="Long Distance Rate Application">
+      <given>a trip with distance exceeding minDistanceKm threshold</given>
+      <when>an active LONG_DISTANCE advanced rate exists</when>
+      <then>the long distance modifier is applied to the base price</then>
+    </criterion>
+    <criterion id="AC6" title="Seasonal Multiplier Application">
+      <given>a trip with pickupAt within a seasonal multiplier date range</given>
+      <when>an active seasonal multiplier exists</when>
+      <then>the seasonal multiplier is applied after advanced rates</then>
+    </criterion>
+    <criterion id="AC7" title="Priority-Based Rule Stacking">
+      <given>multiple applicable rules with different priorities</given>
+      <when>rules are evaluated</when>
+      <then>rules are applied in priority order (higher priority first)</then>
+    </criterion>
+    <criterion id="AC8" title="Idempotent Rule Evaluation">
+      <given>the same pricing request</given>
+      <when>calculatePrice is called multiple times</when>
+      <then>the result is identical (no double-application of multipliers)</then>
+    </criterion>
+    <criterion id="AC9" title="Grid Pricing Unaffected">
+      <given>a partner with grid pricing (FIXED_GRID mode)</given>
+      <when>multipliers exist</when>
+      <then>the grid price is NOT modified by multipliers (Engagement Rule preserved)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="FR15, FR58, FR59">
+        FR15: Configurable multipliers (zone, seasonal, event) and target margin settings.
+        FR58: Advanced rate modifiers (night, weekend, long-distance) with percentage or fixed adjustments.
+        FR59: Seasonal multipliers with date ranges and proportional handling for multi-day trips.
+      </doc>
+      <doc path="docs/bmad/tech-spec.md" title="Tech Spec" section="4. Pricing, Zones &amp; Grids">
+        AdvancedRate model: appliesTo enum (NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY), time conditions, distance thresholds, adjustmentType (PERCENTAGE, FIXED_AMOUNT), priority.
+        SeasonalMultiplier model: name, startDate, endDate, multiplier (Decimal 5,3), priority.
+      </doc>
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 4.3">
+        Order of operations: base price → advanced rate modifiers → seasonal multiplier → margin.
+        Avoid double-applying multipliers; use idempotent rule evaluation.
+        Unit tests with scenarios from Appendix A (night, weekend, events like Le Bourget).
+      </doc>
+      <doc path="docs/bmad/ux-design-specification.md" title="UX Spec" section="8.9 Settings → Pricing">
+        Advanced Rate Modifiers: list of rules (Condition, Trigger, Adjustment type/value, Status) with modal editor.
+        Seasonal Multipliers: summary cards + table (Name, Date range, Multiplier, Priority, Status).
+      </doc>
+      <doc path="docs/sprint-artifacts/4-1-implement-base-dynamic-price-calculation.md" title="Story 4.1">
+        Base price calculation: max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour).
+        DynamicBaseCalculationResult with inputs and intermediate values stored in appliedRules.
+      </doc>
+      <doc path="docs/sprint-artifacts/4-2-add-operational-cost-components-internal-cost.md" title="Story 4.2">
+        Cost breakdown (fuel, tolls, wear, driver, parking) stored in tripAnalysis.
+        Internal cost calculation independent of selling price.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="service" symbol="calculatePrice, calculateDynamicBasePrice, buildDynamicResult" lines="750-1130" reason="Main pricing engine - needs to integrate multiplier application after base price calculation">
+        Current flow: calculatePrice → buildDynamicResult → calculateDynamicBasePrice.
+        Multipliers should be applied between base price and margin application.
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="types" symbol="PricingResult, AppliedRule, OrganizationPricingSettings" lines="100-183" reason="Types to extend for multiplier tracking">
+        AppliedRule already supports arbitrary key-value pairs for rule details.
+        PricingResult.appliedRules will contain multiplier application records.
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts" kind="route" symbol="pricingCalculateRouter, loadPricingSettings" lines="221-345" reason="API endpoint that calls pricing engine - may need to load multipliers">
+        Currently loads zones and pricingSettings. Will need to also load AdvancedRates and SeasonalMultipliers.
+      </file>
+      <file path="packages/database/prisma/schema.prisma" kind="model" symbol="AdvancedRate, SeasonalMultiplier" lines="860-928" reason="Prisma models for multipliers - already defined">
+        AdvancedRate: appliesTo, startTime, endTime, daysOfWeek, minDistanceKm, maxDistanceKm, zoneId, adjustmentType, value, priority, isActive.
+        SeasonalMultiplier: name, startDate, endDate, multiplier, priority, isActive.
+      </file>
+      <file path="packages/database/src/zod/index.ts" kind="types" symbol="AdvancedRateSchema, SeasonalMultiplierSchema" lines="789-838" reason="Zod schemas for validation">
+        Generated from Prisma schema, includes all fields with proper types.
+      </file>
+      <file path="packages/api/src/services/__tests__/pricing-engine.test.ts" kind="test" symbol="describe pricing-engine" lines="70-110" reason="Existing tests to extend with multiplier scenarios">
+        Test patterns for dynamic pricing, grid pricing, profitability indicators.
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="@prisma/client" version="workspace" />
+        <package name="decimal.js" version="^10.4.3" note="For Decimal arithmetic with multipliers" />
+        <package name="date-fns" version="^3.6.0" note="For date/time comparisons in seasonal multipliers" />
+        <package name="date-fns-tz" version="^3.1.3" note="For Europe/Paris timezone handling" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="order_of_operations">
+      Multipliers MUST be applied in this exact order:
+      1. Base price (from calculateDynamicBasePrice)
+      2. Advanced rate modifiers (sorted by priority DESC)
+      3. Seasonal multipliers (sorted by priority DESC)
+      4. Target margin application
+    </constraint>
+    <constraint type="engagement_rule">
+      Grid prices (FIXED_GRID mode) MUST NOT be modified by any multipliers.
+      The Engagement Rule takes precedence over all pricing adjustments.
+    </constraint>
+    <constraint type="idempotence">
+      Rule evaluation MUST be idempotent - calling calculatePrice multiple times with the same input MUST produce identical results.
+    </constraint>
+    <constraint type="timezone">
+      All time comparisons for NIGHT/WEEKEND rules MUST use Europe/Paris timezone.
+      pickupAt is stored as business time in Europe/Paris.
+    </constraint>
+    <constraint type="decimal_precision">
+      All monetary calculations MUST use proper decimal arithmetic to avoid floating-point errors.
+      Multiplier values are stored as Decimal(5,3) - e.g., 1.300 for 30% increase.
+    </constraint>
+    <constraint type="transparency">
+      Every applied rule MUST be recorded in appliedRules with:
+      - type: rule type identifier
+      - ruleId: database ID of the rule
+      - ruleName: human-readable name
+      - adjustmentType: PERCENTAGE or FIXED_AMOUNT
+      - adjustmentValue: the raw value from the rule
+      - priceBefore: price before this rule
+      - priceAfter: price after this rule
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="AdvancedRateData" kind="type">
+      <signature>
+interface AdvancedRateData {
+  id: string;
+  name: string;
+  appliesTo: 'NIGHT' | 'WEEKEND' | 'LONG_DISTANCE' | 'ZONE_SCENARIO' | 'HOLIDAY';
+  startTime: string | null;  // HH:MM
+  endTime: string | null;    // HH:MM
+  daysOfWeek: string | null; // "1,2,3,4,5" or "6,7"
+  minDistanceKm: number | null;
+  maxDistanceKm: number | null;
+  zoneId: string | null;
+  adjustmentType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  value: number;
+  priority: number;
+  isActive: boolean;
+}
+      </signature>
+    </interface>
+    <interface name="SeasonalMultiplierData" kind="type">
+      <signature>
+interface SeasonalMultiplierData {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: Date;
+  endDate: Date;
+  multiplier: number;  // e.g., 1.3 for 30% increase
+  priority: number;
+  isActive: boolean;
+}
+      </signature>
+    </interface>
+    <interface name="MultiplierContext" kind="type">
+      <signature>
+interface MultiplierContext {
+  pickupAt: Date;           // Trip pickup time (Europe/Paris)
+  distanceKm: number;       // Trip distance
+  pickupZoneId: string | null;
+  dropoffZoneId: string | null;
+}
+      </signature>
+    </interface>
+    <interface name="AppliedMultiplierRule" kind="type">
+      <signature>
+interface AppliedMultiplierRule extends AppliedRule {
+  type: 'ADVANCED_RATE' | 'SEASONAL_MULTIPLIER';
+  ruleId: string;
+  ruleName: string;
+  adjustmentType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'MULTIPLIER';
+  adjustmentValue: number;
+  priceBefore: number;
+  priceAfter: number;
+}
+      </signature>
+    </interface>
+    <interface name="evaluateAdvancedRates" kind="function">
+      <signature>
+function evaluateAdvancedRates(
+  basePrice: number,
+  context: MultiplierContext,
+  rates: AdvancedRateData[]
+): { adjustedPrice: number; appliedRules: AppliedMultiplierRule[] }
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface name="evaluateSeasonalMultipliers" kind="function">
+      <signature>
+function evaluateSeasonalMultipliers(
+  price: number,
+  pickupAt: Date,
+  multipliers: SeasonalMultiplierData[]
+): { adjustedPrice: number; appliedRules: AppliedMultiplierRule[] }
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Tests should be co-located in __tests__ directories.
+      Follow existing patterns in pricing-engine.test.ts.
+      Each acceptance criterion should have at least one test case.
+      Use descriptive test names that reference the AC being tested.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts</location>
+      <location>packages/api/src/services/__tests__/multiplier-engine.test.ts (new)</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test that all rule types are applied in correct order with expected final price</idea>
+      <idea ac="AC2">Test that appliedRules contains all multiplier details with before/after amounts</idea>
+      <idea ac="AC3">Test night rate: pickup at 23:00 applies NIGHT modifier, pickup at 10:00 does not</idea>
+      <idea ac="AC4">Test weekend rate: Saturday pickup applies WEEKEND modifier, Monday does not</idea>
+      <idea ac="AC5">Test long distance: 150km trip applies LONG_DISTANCE, 30km trip does not</idea>
+      <idea ac="AC6">Test seasonal: pickup during "Le Bourget Air Show" period applies multiplier</idea>
+      <idea ac="AC7">Test priority: higher priority rule applied first when multiple rules match</idea>
+      <idea ac="AC8">Test idempotence: calling calculatePrice twice returns identical results</idea>
+      <idea ac="AC9">Test grid pricing: FIXED_GRID result has no multipliers applied to price</idea>
+      <idea ac="edge">Test no applicable rules: price unchanged, no multiplier rules in appliedRules</idea>
+      <idea ac="edge">Test inactive rules: inactive rules are not applied</idea>
+      <idea ac="edge">Test overlapping seasonal multipliers: highest priority wins</idea>
+    </ideas>
+  </tests>
+</story-context>

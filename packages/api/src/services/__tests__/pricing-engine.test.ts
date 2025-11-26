@@ -14,9 +14,12 @@ import {
 	calculateCostBreakdown,
 	calculateInternalCost,
 	DEFAULT_COST_PARAMETERS,
+	type AdvancedRateData,
+	type AppliedMultiplierRule,
 	type ContactData,
 	type OrganizationPricingSettings,
 	type PricingRequest,
+	type SeasonalMultiplierData,
 } from "../pricing-engine";
 
 // ============================================================================
@@ -1907,6 +1910,624 @@ describe("pricing-engine", () => {
 				expect(DEFAULT_COST_PARAMETERS.tollCostPerKm).toBe(0.15);
 				expect(DEFAULT_COST_PARAMETERS.wearCostPerKm).toBe(0.10);
 				expect(DEFAULT_COST_PARAMETERS.driverHourlyCost).toBe(25.0);
+			});
+		});
+	});
+
+	// ============================================================================
+	// Story 4.3: Multiplier Tests
+	// ============================================================================
+
+	describe("Multipliers (Story 4.3)", () => {
+		const privateContact: ContactData = {
+			id: "contact-private",
+			isPartner: false,
+			partnerContract: null,
+		};
+
+		// Night rate: 22:00-06:00, +20%
+		const nightRate: AdvancedRateData = {
+			id: "rate-night",
+			name: "Night Surcharge",
+			appliesTo: "NIGHT",
+			startTime: "22:00",
+			endTime: "06:00",
+			daysOfWeek: null,
+			minDistanceKm: null,
+			maxDistanceKm: null,
+			zoneId: null,
+			adjustmentType: "PERCENTAGE",
+			value: 20,
+			priority: 10,
+			isActive: true,
+		};
+
+		// Weekend rate: Saturday/Sunday, +15%
+		const weekendRate: AdvancedRateData = {
+			id: "rate-weekend",
+			name: "Weekend Surcharge",
+			appliesTo: "WEEKEND",
+			startTime: null,
+			endTime: null,
+			daysOfWeek: "0,6", // Sunday=0, Saturday=6
+			minDistanceKm: null,
+			maxDistanceKm: null,
+			zoneId: null,
+			adjustmentType: "PERCENTAGE",
+			value: 15,
+			priority: 5,
+			isActive: true,
+		};
+
+		// Long distance rate: >100km, -10% discount
+		const longDistanceRate: AdvancedRateData = {
+			id: "rate-long-distance",
+			name: "Long Distance Discount",
+			appliesTo: "LONG_DISTANCE",
+			startTime: null,
+			endTime: null,
+			daysOfWeek: null,
+			minDistanceKm: 100,
+			maxDistanceKm: null,
+			zoneId: null,
+			adjustmentType: "PERCENTAGE",
+			value: -10,
+			priority: 3,
+			isActive: true,
+		};
+
+		// Seasonal multiplier: Le Bourget Air Show
+		const leBourgetMultiplier: SeasonalMultiplierData = {
+			id: "seasonal-lebourget",
+			name: "Le Bourget Air Show",
+			description: "Annual air show at Le Bourget",
+			startDate: new Date("2025-06-14"),
+			endDate: new Date("2025-06-22"),
+			multiplier: 1.3,
+			priority: 10,
+			isActive: true,
+		};
+
+		describe("Night Rate (AC3)", () => {
+			it("should apply night rate for pickup at 23:00", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T23:00:00+01:00", // 23:00 Paris time
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				// Base price with margin: 30km × 2.5 = 75 × 1.2 (margin) = 90
+				// Night rate: 90 × 1.2 = 108
+				expect(result.price).toBe(108);
+				expect(result.appliedRules.some(r => r.type === "ADVANCED_RATE" && r.ruleName === "Night Surcharge")).toBe(true);
+			});
+
+			it("should NOT apply night rate for pickup at 10:00", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T10:00:00+01:00", // 10:00 Paris time
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				// Base price with margin: 90 (no night rate)
+				expect(result.price).toBe(90);
+				expect(result.appliedRules.some(r => r.type === "ADVANCED_RATE")).toBe(false);
+			});
+
+			it("should apply night rate for early morning pickup at 05:00", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T05:00:00+01:00", // 05:00 Paris time (still night)
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.price).toBe(108); // Night rate applied
+			});
+		});
+
+		describe("Weekend Rate (AC4)", () => {
+			it("should apply weekend rate for Saturday pickup", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-29T10:00:00+01:00", // Saturday
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [weekendRate],
+					seasonalMultipliers: [],
+				});
+
+				// Base: 90, Weekend: 90 × 1.15 = 103.5
+				expect(result.price).toBe(103.5);
+				expect(result.appliedRules.some(r => r.type === "ADVANCED_RATE" && r.ruleName === "Weekend Surcharge")).toBe(true);
+			});
+
+			it("should NOT apply weekend rate for Monday pickup", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-24T10:00:00+01:00", // Monday
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [weekendRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.price).toBe(90); // No weekend rate
+			});
+		});
+
+		describe("Long Distance Rate (AC5)", () => {
+			it("should apply long distance discount for 150km trip", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T10:00:00+01:00",
+					estimatedDistanceKm: 150,
+					estimatedDurationMinutes: 120,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [longDistanceRate],
+					seasonalMultipliers: [],
+				});
+
+				// Base: 150 × 2.5 = 375 × 1.2 = 450
+				// Long distance: 450 × 0.9 = 405
+				expect(result.price).toBe(405);
+				expect(result.appliedRules.some(r => r.type === "ADVANCED_RATE" && r.ruleName === "Long Distance Discount")).toBe(true);
+			});
+
+			it("should NOT apply long distance discount for 30km trip", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T10:00:00+01:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [longDistanceRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.price).toBe(90); // No discount
+			});
+		});
+
+		describe("Seasonal Multiplier (AC6)", () => {
+			it("should apply seasonal multiplier during Le Bourget Air Show", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-06-15T10:00:00+02:00", // During Le Bourget
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [],
+					seasonalMultipliers: [leBourgetMultiplier],
+				});
+
+				// Base: 90, Seasonal: 90 × 1.3 = 117
+				expect(result.price).toBe(117);
+				expect(result.appliedRules.some(r => r.type === "SEASONAL_MULTIPLIER" && r.ruleName === "Le Bourget Air Show")).toBe(true);
+			});
+
+			it("should NOT apply seasonal multiplier outside date range", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-07-15T10:00:00+02:00", // After Le Bourget
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [],
+					seasonalMultipliers: [leBourgetMultiplier],
+				});
+
+				expect(result.price).toBe(90); // No multiplier
+			});
+		});
+
+		describe("Priority-Based Rule Stacking (AC7)", () => {
+			it("should apply rules in priority order (higher first)", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-29T23:00:00+01:00", // Saturday night
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate, weekendRate], // Night has higher priority (10 vs 5)
+					seasonalMultipliers: [],
+				});
+
+				// Base: 90
+				// Night (priority 10): 90 × 1.2 = 108
+				// Weekend (priority 5): 108 × 1.15 = 124.2
+				expect(result.price).toBe(124.2);
+
+				// Check order in appliedRules
+				const advancedRules = result.appliedRules.filter(r => r.type === "ADVANCED_RATE");
+				expect(advancedRules.length).toBe(2);
+				expect(advancedRules[0].ruleName).toBe("Night Surcharge"); // Higher priority first
+				expect(advancedRules[1].ruleName).toBe("Weekend Surcharge");
+			});
+		});
+
+		describe("Order of Operations (AC1)", () => {
+			it("should apply advanced rates before seasonal multipliers", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-06-14T23:00:00+02:00", // Saturday night during Le Bourget
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate, weekendRate],
+					seasonalMultipliers: [leBourgetMultiplier],
+				});
+
+				// Base: 90
+				// Night: 90 × 1.2 = 108
+				// Weekend: 108 × 1.15 = 124.2
+				// Seasonal: 124.2 × 1.3 = 161.46
+				expect(result.price).toBeCloseTo(161.46, 2);
+
+				// Verify order in appliedRules
+				const ruleTypes = result.appliedRules
+					.filter(r => r.type === "ADVANCED_RATE" || r.type === "SEASONAL_MULTIPLIER")
+					.map(r => r.type);
+				expect(ruleTypes).toEqual(["ADVANCED_RATE", "ADVANCED_RATE", "SEASONAL_MULTIPLIER"]);
+			});
+		});
+
+		describe("Applied Rules Transparency (AC2)", () => {
+			it("should include all rule details in appliedRules", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T23:00:00+01:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate],
+					seasonalMultipliers: [],
+				});
+
+				const nightRuleApplied = result.appliedRules.find(
+					r => r.type === "ADVANCED_RATE" && r.ruleName === "Night Surcharge"
+				) as AppliedMultiplierRule;
+
+				expect(nightRuleApplied).toBeDefined();
+				expect(nightRuleApplied.ruleId).toBe("rate-night");
+				expect(nightRuleApplied.adjustmentType).toBe("PERCENTAGE");
+				expect(nightRuleApplied.adjustmentValue).toBe(20);
+				expect(nightRuleApplied.priceBefore).toBe(90);
+				expect(nightRuleApplied.priceAfter).toBe(108);
+			});
+		});
+
+		describe("Idempotent Rule Evaluation (AC8)", () => {
+			it("should return identical results for same input", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T23:00:00+01:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const context = {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate, weekendRate],
+					seasonalMultipliers: [leBourgetMultiplier],
+				};
+
+				const result1 = calculatePrice(request, context);
+				const result2 = calculatePrice(request, context);
+				const result3 = calculatePrice(request, context);
+
+				expect(result1.price).toBe(result2.price);
+				expect(result2.price).toBe(result3.price);
+				expect(result1.appliedRules.length).toBe(result2.appliedRules.length);
+			});
+		});
+
+		describe("Grid Pricing Unaffected (AC9)", () => {
+			it("should NOT apply multipliers to FIXED_GRID pricing", () => {
+				const partnerWithRoute: ContactData = {
+					id: "contact-partner",
+					isPartner: true,
+					partnerContract: {
+						id: "contract-1",
+						zoneRoutes: [
+							{
+								zoneRoute: {
+									id: "zone-route-1",
+									fromZoneId: "zone-paris",
+									toZoneId: "zone-cdg",
+									vehicleCategoryId: "vehicle-cat-1",
+									fixedPrice: 75.0,
+									direction: "BIDIRECTIONAL",
+									isActive: true,
+									fromZone: { id: "zone-paris", name: "Paris Center", code: "PAR-CTR" },
+									toZone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" },
+								},
+							},
+						],
+						excursionPackages: [],
+						dispoPackages: [],
+					},
+				};
+
+				const request: PricingRequest = {
+					contactId: partnerWithRoute.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-06-14T23:00:00+02:00", // Saturday night during Le Bourget
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithRoute,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate, weekendRate],
+					seasonalMultipliers: [leBourgetMultiplier],
+				});
+
+				// Grid price should be unchanged (Engagement Rule)
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(75.0);
+				expect(result.appliedRules.some(r => r.type === "ADVANCED_RATE")).toBe(false);
+				expect(result.appliedRules.some(r => r.type === "SEASONAL_MULTIPLIER")).toBe(false);
+			});
+		});
+
+		describe("Inactive Rules", () => {
+			it("should NOT apply inactive advanced rates", () => {
+				const inactiveNightRate: AdvancedRateData = {
+					...nightRate,
+					isActive: false,
+				};
+
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T23:00:00+01:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [inactiveNightRate],
+					seasonalMultipliers: [],
+				});
+
+				expect(result.price).toBe(90); // No night rate
+			});
+
+			it("should NOT apply inactive seasonal multipliers", () => {
+				const inactiveMultiplier: SeasonalMultiplierData = {
+					...leBourgetMultiplier,
+					isActive: false,
+				};
+
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-06-15T10:00:00+02:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [],
+					seasonalMultipliers: [inactiveMultiplier],
+				});
+
+				expect(result.price).toBe(90); // No multiplier
+			});
+		});
+
+		describe("No Applicable Rules", () => {
+			it("should return unchanged price when no rules apply", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T10:00:00+01:00", // Weekday daytime, no event
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [nightRate, weekendRate, longDistanceRate],
+					seasonalMultipliers: [leBourgetMultiplier],
+				});
+
+				expect(result.price).toBe(90); // Base price unchanged
+				expect(result.appliedRules.filter(r => r.type === "ADVANCED_RATE" || r.type === "SEASONAL_MULTIPLIER").length).toBe(0);
+			});
+		});
+
+		describe("Fixed Amount Adjustment", () => {
+			it("should apply fixed amount adjustment correctly", () => {
+				const fixedFeeRate: AdvancedRateData = {
+					id: "rate-fixed-fee",
+					name: "Airport Fee",
+					appliesTo: "ZONE_SCENARIO",
+					startTime: null,
+					endTime: null,
+					daysOfWeek: null,
+					minDistanceKm: null,
+					maxDistanceKm: null,
+					zoneId: "zone-cdg",
+					adjustmentType: "FIXED_AMOUNT",
+					value: 15, // +15 EUR
+					priority: 5,
+					isActive: true,
+				};
+
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 }, // Paris
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					pickupAt: "2025-11-26T10:00:00+01:00",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+					advancedRates: [fixedFeeRate],
+					seasonalMultipliers: [],
+				});
+
+				// Base: 90, Fixed fee: 90 + 15 = 105
+				expect(result.price).toBe(105);
 			});
 		});
 	});
