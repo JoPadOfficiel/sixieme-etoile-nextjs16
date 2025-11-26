@@ -96,7 +96,7 @@ describe("pricing-engine", () => {
 			expect(result.marginPercent).toBeGreaterThanOrEqual(0);
 			expect(["green", "orange"]).toContain(result.profitabilityIndicator);
 			expect(result.matchedGrid).toBeNull();
-			expect(result.appliedRules.some(r => r.type === "DYNAMIC_BASE_PRICE")).toBe(true);
+			expect(result.appliedRules.some(r => r.type === "DYNAMIC_BASE_CALCULATION")).toBe(true);
 		});
 
 		it("should calculate price based on distance and duration", () => {
@@ -231,7 +231,7 @@ describe("pricing-engine", () => {
 
 			expect(result.pricingMode).toBe("DYNAMIC");
 			expect(result.matchedGrid).toBeNull();
-			expect(result.appliedRules.some(r => r.type === "DYNAMIC_BASE_PRICE")).toBe(true);
+			expect(result.appliedRules.some(r => r.type === "DYNAMIC_BASE_CALCULATION")).toBe(true);
 		});
 
 		it("should fallback to dynamic pricing for zones outside contract", () => {
@@ -1336,6 +1336,251 @@ describe("pricing-engine", () => {
 
 			expect(result.pricingMode).toBe("DYNAMIC");
 			expect(result.gridSearchDetails?.routesChecked[0].rejectionReason).toBe("INACTIVE");
+		});
+	});
+
+	// ============================================================================
+	// Story 4.1: Base Dynamic Price Calculation Tests
+	// ============================================================================
+
+	describe("Dynamic Base Price Calculation (Story 4.1)", () => {
+		const privateContact: ContactData = {
+			id: "contact-private-4-1",
+			isPartner: false,
+			partnerContract: null,
+		};
+
+		describe("AC1: Distance-Based Price Wins", () => {
+			it("should use distance-based price when it exceeds duration-based price", () => {
+				// 30km, 45min trip
+				// distanceBasedPrice = 30 × 2.5 = 75
+				// durationBasedPrice = 0.75 × 45 = 33.75
+				// basePrice = max(75, 33.75) = 75
+				// priceWithMargin = 75 × 1.2 = 90
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				expect(result.price).toBe(90); // 75 × 1.2 = 90
+
+				// Check appliedRules contains DYNAMIC_BASE_CALCULATION with correct details
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				expect(calcRule).toBeDefined();
+				expect(calcRule?.calculation).toEqual({
+					distanceBasedPrice: 75,
+					durationBasedPrice: 33.75,
+					selectedMethod: "distance",
+					basePrice: 75,
+					priceWithMargin: 90,
+				});
+				expect(calcRule?.inputs).toEqual({
+					distanceKm: 30,
+					durationMinutes: 45,
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45,
+					targetMarginPercent: 20,
+				});
+			});
+		});
+
+		describe("AC2: Duration-Based Price Wins (Traffic)", () => {
+			it("should use duration-based price when it exceeds distance-based price", () => {
+				// 10km, 2h trip (traffic jam)
+				// distanceBasedPrice = 10 × 2.5 = 25
+				// durationBasedPrice = 2 × 45 = 90
+				// basePrice = max(25, 90) = 90
+				// priceWithMargin = 90 × 1.2 = 108
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 48.86, lng: 2.36 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 10,
+					estimatedDurationMinutes: 120, // 2 hours in traffic
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				expect(result.price).toBe(108); // 90 × 1.2 = 108
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				expect(calcRule).toBeDefined();
+				expect(calcRule?.calculation?.selectedMethod).toBe("duration");
+				expect(calcRule?.calculation?.distanceBasedPrice).toBe(25);
+				expect(calcRule?.calculation?.durationBasedPrice).toBe(90);
+				expect(calcRule?.calculation?.basePrice).toBe(90);
+			});
+		});
+
+		describe("AC3: Applied Rules Documentation", () => {
+			it("should include DYNAMIC_BASE_CALCULATION with all required fields", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 25,
+					estimatedDurationMinutes: 40,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				expect(calcRule).toBeDefined();
+
+				// Check inputs are present
+				expect(calcRule?.inputs).toHaveProperty("distanceKm");
+				expect(calcRule?.inputs).toHaveProperty("durationMinutes");
+				expect(calcRule?.inputs).toHaveProperty("baseRatePerKm");
+				expect(calcRule?.inputs).toHaveProperty("baseRatePerHour");
+				expect(calcRule?.inputs).toHaveProperty("targetMarginPercent");
+
+				// Check calculation details are present
+				expect(calcRule?.calculation).toHaveProperty("distanceBasedPrice");
+				expect(calcRule?.calculation).toHaveProperty("durationBasedPrice");
+				expect(calcRule?.calculation).toHaveProperty("selectedMethod");
+				expect(calcRule?.calculation).toHaveProperty("basePrice");
+				expect(calcRule?.calculation).toHaveProperty("priceWithMargin");
+
+				// Check description mentions selected method
+				expect(calcRule?.description).toContain("max(distance, duration)");
+			});
+		});
+
+		describe("AC4: Default Rates Fallback", () => {
+			it("should use default rates when organization has no pricing settings", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 20,
+					estimatedDurationMinutes: 30,
+				};
+
+				// Use default settings (same as DEFAULT_PRICING_SETTINGS)
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: {
+						baseRatePerKm: 2.5,
+						baseRatePerHour: 45.0,
+						targetMarginPercent: 20.0,
+					},
+				});
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				expect(calcRule?.inputs?.baseRatePerKm).toBe(2.5);
+				expect(calcRule?.inputs?.baseRatePerHour).toBe(45.0);
+			});
+		});
+
+		describe("Edge Cases", () => {
+			it("should handle equal distance and duration prices (distance wins)", () => {
+				// When prices are equal, distance method should be selected
+				// 18km, 24min → distance = 18 × 2.5 = 45, duration = 0.4 × 45 = 18
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 18,
+					estimatedDurationMinutes: 60, // 1 hour → 45 EUR
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				// 18 × 2.5 = 45, 1 × 45 = 45 → equal, distance wins
+				expect(calcRule?.calculation?.distanceBasedPrice).toBe(45);
+				expect(calcRule?.calculation?.durationBasedPrice).toBe(45);
+				expect(calcRule?.calculation?.selectedMethod).toBe("distance");
+			});
+
+			it("should handle very short trips", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 48.851, lng: 2.351 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 1,
+					estimatedDurationMinutes: 5,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				expect(result.price).toBeGreaterThan(0);
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				// 1 × 2.5 = 2.5, 5/60 × 45 = 3.75 → duration wins
+				expect(calcRule?.calculation?.distanceBasedPrice).toBe(2.5);
+				expect(calcRule?.calculation?.durationBasedPrice).toBe(3.75);
+				expect(calcRule?.calculation?.selectedMethod).toBe("duration");
+			});
+
+			it("should handle long highway trips", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 45.76, lng: 4.83 }, // Lyon
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 450,
+					estimatedDurationMinutes: 270, // 4.5 hours
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				// 450 × 2.5 = 1125, 4.5 × 45 = 202.5 → distance wins
+				expect(calcRule?.calculation?.distanceBasedPrice).toBe(1125);
+				expect(calcRule?.calculation?.durationBasedPrice).toBe(202.5);
+				expect(calcRule?.calculation?.selectedMethod).toBe("distance");
+				expect(calcRule?.calculation?.basePrice).toBe(1125);
+				expect(calcRule?.calculation?.priceWithMargin).toBe(1350); // 1125 × 1.2
+			});
 		});
 	});
 });

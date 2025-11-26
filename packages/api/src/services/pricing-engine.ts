@@ -508,11 +508,83 @@ export function matchDispoPackage(
 }
 
 // ============================================================================
-// Dynamic Pricing (Basic - will be expanded in Epic 4)
+// Dynamic Pricing (Story 4.1 - Base Dynamic Price Calculation)
 // ============================================================================
 
 /**
- * Calculate basic dynamic price
+ * Result of dynamic base price calculation with full details
+ * PRD Formula: basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
+ */
+export interface DynamicBaseCalculationResult {
+	distanceBasedPrice: number;
+	durationBasedPrice: number;
+	selectedMethod: "distance" | "duration";
+	basePrice: number;
+	priceWithMargin: number;
+	inputs: {
+		distanceKm: number;
+		durationMinutes: number;
+		baseRatePerKm: number;
+		baseRatePerHour: number;
+		targetMarginPercent: number;
+	};
+}
+
+/**
+ * Default pricing settings when organization has none configured
+ */
+export const DEFAULT_PRICING_SETTINGS: OrganizationPricingSettings = {
+	baseRatePerKm: 2.5,
+	baseRatePerHour: 45.0,
+	targetMarginPercent: 20.0,
+};
+
+/**
+ * Calculate dynamic base price with full calculation details
+ * PRD Formula: basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
+ * 
+ * @param distanceKm - Trip distance in kilometers
+ * @param durationMinutes - Trip duration in minutes
+ * @param settings - Organization pricing settings
+ * @returns Full calculation result with inputs and intermediate values
+ */
+export function calculateDynamicBasePrice(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+): DynamicBaseCalculationResult {
+	const durationHours = durationMinutes / 60;
+
+	// Calculate both price methods
+	const distanceBasedPrice = Math.round(distanceKm * settings.baseRatePerKm * 100) / 100;
+	const durationBasedPrice = Math.round(durationHours * settings.baseRatePerHour * 100) / 100;
+
+	// Select the higher price (PRD max formula)
+	const selectedMethod: "distance" | "duration" = 
+		distanceBasedPrice >= durationBasedPrice ? "distance" : "duration";
+	const basePrice = Math.max(distanceBasedPrice, durationBasedPrice);
+
+	// Apply target margin
+	const priceWithMargin = Math.round(basePrice * (1 + settings.targetMarginPercent / 100) * 100) / 100;
+
+	return {
+		distanceBasedPrice,
+		durationBasedPrice,
+		selectedMethod,
+		basePrice,
+		priceWithMargin,
+		inputs: {
+			distanceKm,
+			durationMinutes,
+			baseRatePerKm: settings.baseRatePerKm,
+			baseRatePerHour: settings.baseRatePerHour,
+			targetMarginPercent: settings.targetMarginPercent,
+		},
+	};
+}
+
+/**
+ * Calculate basic dynamic price (backward compatible)
  * Formula: max(distance * ratePerKm, duration * ratePerHour)
  */
 export function calculateDynamicPrice(
@@ -520,17 +592,7 @@ export function calculateDynamicPrice(
 	durationMinutes: number,
 	settings: OrganizationPricingSettings,
 ): number {
-	const durationHours = durationMinutes / 60;
-
-	const priceByDistance = distanceKm * settings.baseRatePerKm;
-	const priceByDuration = durationHours * settings.baseRatePerHour;
-
-	const basePrice = Math.max(priceByDistance, priceByDuration);
-
-	// Apply target margin
-	const priceWithMargin = basePrice * (1 + settings.targetMarginPercent / 100);
-
-	return Math.round(priceWithMargin * 100) / 100;
+	return calculateDynamicBasePrice(distanceKm, durationMinutes, settings).priceWithMargin;
 }
 
 // ============================================================================
@@ -826,7 +888,7 @@ export function calculatePrice(
 }
 
 /**
- * Build a dynamic pricing result
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1)
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -835,21 +897,29 @@ function buildDynamicResult(
 	appliedRules: AppliedRule[],
 	fallbackReason: FallbackReason,
 	gridSearchDetails: GridSearchDetails | null,
+	usingDefaultSettings: boolean = false,
 ): PricingResult {
-	const price = calculateDynamicPrice(distanceKm, durationMinutes, settings);
+	// Calculate with full details
+	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
+	const price = calculation.priceWithMargin;
 	const internalCost = estimateInternalCost(distanceKm);
 	const margin = price - internalCost;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
 
+	// Add enhanced calculation rule (Story 4.1 - AC3)
 	appliedRules.push({
-		type: "DYNAMIC_BASE_PRICE",
-		description: "Base price from distance/duration",
-		distanceKm,
-		durationMinutes,
-		ratePerKm: settings.baseRatePerKm,
-		ratePerHour: settings.baseRatePerHour,
-		calculatedPrice: price,
+		type: "DYNAMIC_BASE_CALCULATION",
+		description: `Base price calculated using max(distance, duration) formula - ${calculation.selectedMethod} method selected`,
+		inputs: calculation.inputs,
+		calculation: {
+			distanceBasedPrice: calculation.distanceBasedPrice,
+			durationBasedPrice: calculation.durationBasedPrice,
+			selectedMethod: calculation.selectedMethod,
+			basePrice: calculation.basePrice,
+			priceWithMargin: calculation.priceWithMargin,
+		},
+		usingDefaultSettings,
 	});
 
 	return {

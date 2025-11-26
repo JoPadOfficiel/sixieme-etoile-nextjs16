@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>4.1</story-id>
+    <story-name>Implement Base Dynamic Price Calculation</story-name>
+    <epic>Epic 4 – Dynamic Pricing &amp; Shadow Calculation (Method 2)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      La Story 3.5 a implémenté le fallback vers le pricing dynamique quand aucune grille ne correspond.
+      Cependant, le calcul du prix dynamique actuel est basique et ne suit pas complètement 
+      l'algorithme défini dans le PRD (Appendix A Section 3).
+      
+      Actuellement :
+      - Le pricing engine utilise une formule simplifiée pour le prix dynamique
+      - Les paramètres de l'organisation (baseRatePerKm, baseRatePerHour) ne sont pas 
+        pleinement exploités
+      - La formule PRD `max(distance × ratePerKm, duration × ratePerHour)` n'est pas implémentée
+      - Les détails du calcul (inputs, formule utilisée) ne sont pas suffisamment 
+        documentés dans appliedRules
+      
+      Impact :
+      - Prix dynamiques potentiellement incorrects ou incohérents
+      - Difficulté à auditer comment un prix a été calculé
+      - Non-conformité avec les spécifications PRD
+    </description>
+    <business-impact>
+      - Risque de sous-tarification ou sur-tarification des trajets dynamiques
+      - Perte de confiance des opérateurs dans les prix suggérés
+      - Difficulté à expliquer les prix aux clients
+      - Non-conformité avec la stratégie de pricing définie
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Implémenter le calcul du prix dynamique de base selon la formule PRD :
+      basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
+    </primary>
+    <secondary>
+      - Utiliser les OrganizationPricingSettings pour les taux de base
+      - Stocker les inputs et résultats intermédiaires dans appliedRules
+      - Intégrer avec l'API de routing pour obtenir distance/durée
+      - Maintenir la fonction pure et testable
+      - Préparer l'intégration avec les multipliers (Story 4.3)
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Implémentation de la formule PRD dans le pricing engine
+      - Lecture des OrganizationPricingSettings (baseRatePerKm, baseRatePerHour)
+      - Enrichissement des appliedRules avec DYNAMIC_BASE_CALCULATION
+      - Intégration avec les données de routing (distance, duration)
+      - Tests unitaires couvrant différents scénarios
+      - Mise à jour de l'API /api/vtc/pricing/calculate
+    </in-scope>
+    <out-of-scope>
+      - Multipliers et marges (Story 4.3)
+      - Coûts opérationnels (fuel, tolls, parking) (Story 4.2)
+      - Shadow calculation segments A/B/C (Story 4.6)
+      - UI du cockpit de devis (Epic 6)
+      - Appel réel à l'API Google Maps (mock pour l'instant)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Le pricing engine doit rester une fonction pure et testable
+      - Multi-tenancy : OrganizationPricingSettings scoped par organizationId
+      - Performance : le calcul doit être rapide (&lt;50ms)
+      - Rétrocompatibilité : l'API existante doit continuer à fonctionner
+      - Les valeurs monétaires sont en EUR avec 2 décimales
+    </technical>
+    <business>
+      - FR7 : Dual pricing modes (Method 1 = FIXED_GRID, Method 2 = DYNAMIC)
+      - FR12 : Base price from distance/duration
+      - FR13 : Formule max(distance, duration) pour éviter la sous-tarification
+      - Appendix A Section 3 : Dynamic Calculation Algorithm
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="low">
+      <description>OrganizationPricingSettings non configurés</description>
+      <mitigation>Utiliser des valeurs par défaut raisonnables (ex: 2.5€/km, 45€/h) et logger un warning.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Distance/durée non disponibles</description>
+      <mitigation>Retourner une erreur claire si les données de routing sont manquantes.</mitigation>
+    </risk>
+    <risk priority="medium">
+      <description>Régression sur les prix existants</description>
+      <mitigation>Tests de non-régression sur les scénarios de la Story 3.5.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given an organisation with OrganizationPricingSettings (baseRatePerKm=2.5, baseRatePerHour=45),
+      When a dynamic quote is calculated for a 30km, 45min trip,
+      Then the basePrice = max(30×2.5, 0.75×45) = max(75, 33.75) = 75 EUR.
+    </criterion>
+    <criterion id="AC2">
+      Given a trip where duration-based price exceeds distance-based price,
+      When a dynamic quote is calculated for a 10km, 2h trip (traffic),
+      Then the basePrice = max(10×2.5, 2×45) = max(25, 90) = 90 EUR.
+    </criterion>
+    <criterion id="AC3">
+      Given a dynamic quote calculation,
+      When the result is returned,
+      Then appliedRules includes a DYNAMIC_BASE_CALCULATION entry with:
+      - distanceKm, durationMinutes
+      - baseRatePerKm, baseRatePerHour
+      - distanceBasedPrice, durationBasedPrice
+      - selectedMethod ("distance" or "duration")
+      - basePrice
+    </criterion>
+    <criterion id="AC4">
+      Given an organisation without OrganizationPricingSettings,
+      When a dynamic quote is calculated,
+      Then default rates are used (baseRatePerKm=2.5, baseRatePerHour=45) and a warning is logged.
+    </criterion>
+    <criterion id="AC5">
+      Given a pricing request without distance/duration data,
+      When the pricing engine runs,
+      Then it returns an error with code "MISSING_ROUTING_DATA" and a clear message.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 1.1 – Define VTC ERP Prisma Models (OrganizationPricingSettings)
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.3 – Implement EUR-Only Monetary Representation
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.5 – Fallback to Dynamic Pricing When No Grid Match Exists
+    </dependency>
+    <dependency type="optional" status="pending">
+      Story 4.2 – Add Operational Cost Components (for internal cost)
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Formule PRD (Appendix A Section 3):
+      basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
+      
+      Rationale: Ensures minimum revenue for both short-distance/long-duration trips 
+      (e.g., traffic jams) and long-distance/short-duration trips (e.g., highway).
+    </note>
+    <note>
+      OrganizationPricingSettings fields to use:
+      - baseRatePerKm: Decimal (default 2.5)
+      - baseRatePerHour: Decimal (default 45.0)
+      - targetMarginPercent: Decimal (for future use in Story 4.3)
+    </note>
+    <note>
+      Enhanced appliedRules entry:
+      {
+        type: "DYNAMIC_BASE_CALCULATION",
+        description: "Base price calculated from distance/duration",
+        inputs: {
+          distanceKm: number,
+          durationMinutes: number,
+          baseRatePerKm: number,
+          baseRatePerHour: number
+        },
+        calculation: {
+          distanceBasedPrice: number,
+          durationBasedPrice: number,
+          selectedMethod: "distance" | "duration",
+          basePrice: number
+        }
+      }
+    </note>
+    <note>
+      PricingRequest should include:
+      - distanceKm: number (from routing API or mock)
+      - durationMinutes: number (from routing API or mock)
+      
+      If not provided, return error MISSING_ROUTING_DATA.
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR7, FR12, FR13, Appendix A Section 3</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 4, Story 4.1</epic-reference>
+    <code-reference>packages/api/src/services/pricing-engine.ts – Existing pricing engine</code-reference>
+    <code-reference>packages/database/prisma/schema.prisma – OrganizationPricingSettings</code-reference>
+  </artifacts>
+</story-context>
