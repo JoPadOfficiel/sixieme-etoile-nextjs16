@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { contactsRouter } from "./contacts";
 import { integrationsRouter } from "./integrations";
+import { partnerContractsRouter } from "./partner-contracts";
 import { quotesRouter } from "./quotes";
 import { vehiclesRouter } from "./vehicles";
 
@@ -15,6 +16,7 @@ export const vtcRouter = new Hono()
 	.route("/", contactsRouter)
 	.route("/", vehiclesRouter)
 	.route("/", quotesRouter)
-	.route("/", integrationsRouter);
+	.route("/", integrationsRouter)
+	.route("/", partnerContractsRouter);
 
 export type VtcRouter = typeof vtcRouter;

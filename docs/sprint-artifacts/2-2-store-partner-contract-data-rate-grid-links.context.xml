@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>2.2</story-id>
+    <story-name>Store Partner Contract Data & Rate Grid Links</story-name>
+    <epic>Epic 2 - CRM & Partner Contracts</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les contacts partenaires (agences, hôtels, comptes corporate) ont des contrats commerciaux
+      avec des conditions spécifiques : conditions de paiement, grilles tarifaires assignées,
+      et pourcentage de commission. Actuellement, le modèle Contact ne stocke pas ces données
+      contractuelles, ce qui empêche le moteur de pricing d'appliquer automatiquement les prix
+      grille (Method 1) pour les partenaires.
+    </description>
+    <business-impact>
+      - Impossibilité d'appliquer l'Engagement Rule (prix grille contractuel)
+      - Risque d'erreurs de facturation et de pricing manuel
+      - Perte de traçabilité des conditions commerciales
+      - Calculs de rentabilité incomplets (commissions non intégrées)
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Permettre le stockage et la gestion des données contractuelles des partenaires
+      (billing, payment terms, grilles assignées, commission) directement liées au Contact.
+    </primary>
+    <secondary>
+      - Exposer une section "Commercial settings" dans la vue détail d'un contact partenaire
+      - Préparer l'intégration avec le moteur de pricing pour Method 1
+      - Permettre le calcul des commissions pour Epic 7 (Invoicing)
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Création du modèle PartnerContract lié au Contact
+      - Champs : billing details, payment terms, commission percentage
+      - Relations vers les grilles (ZoneRoute, ExcursionPackage, DispoPackage)
+      - UI "Commercial settings" dans la vue détail Contact (pour isPartner=true)
+      - API CRUD pour PartnerContract
+      - Validation : seuls les contacts avec isPartner=true peuvent avoir un contrat
+    </in-scope>
+    <out-of-scope>
+      - Implémentation complète du moteur de pricing Method 1 (Epic 3/4)
+      - Calcul effectif des commissions sur factures (Epic 7)
+      - Gestion des grilles elles-mêmes (Epic 3)
+      - Historique des modifications de contrat
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Multi-tenancy : PartnerContract doit être scopé par organizationId
+      - Le Contact doit avoir isPartner=true pour avoir un PartnerContract
+      - Les références aux grilles sont optionnelles (peuvent être null)
+      - Commission en pourcentage (0-100), stockée en Decimal
+    </technical>
+    <business>
+      - FR2 : Stocker billing details, payment terms, grilles assignées, commission
+      - FR4 : Le pricing engine doit pouvoir lire la config pour déterminer Method 1 vs 2
+      - FR11 : Engagement Rule - prix grille appliqué sans modification
+      - FR36 : Commissions intégrées dans calculs de rentabilité
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Complexité des relations many-to-many avec les grilles</description>
+      <mitigation>Utiliser des tables de liaison explicites ou JSON pour les IDs de grilles assignées</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Incohérence si un contact perd son statut isPartner mais garde un contrat</description>
+      <mitigation>Cascade delete ou validation à la sauvegarde du Contact</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given un contact Partner dans le CRM,
+      When j'ouvre sa vue détail,
+      Then je vois une section "Commercial settings" avec les champs :
+        - Billing address (si différente du contact)
+        - Payment terms (ex: "30 days", "immediate")
+        - Commission percentage (0-100%)
+        - Assigned zone routes (multi-select)
+        - Assigned excursion packages (multi-select)
+        - Assigned dispo packages (multi-select)
+    </criterion>
+    <criterion id="AC2">
+      Given un contact Private (isPartner=false),
+      When j'ouvre sa vue détail,
+      Then je ne vois PAS la section "Commercial settings"
+    </criterion>
+    <criterion id="AC3">
+      Given je sauvegarde les commercial settings d'un partenaire,
+      When je recharge la page,
+      Then les données sont persistées et affichées correctement
+    </criterion>
+    <criterion id="AC4">
+      Given un PartnerContract avec des grilles assignées,
+      When le pricing engine (future story) interroge le contact,
+      Then il peut récupérer les IDs des grilles pour tenter Method 1
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 2.1 - Contact Model & Basic CRM UI
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.1 - VTC ERP Prisma Models (ZoneRoute, ExcursionPackage, DispoPackage existent)
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.2 - Multi-tenancy enforcement
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Option 1 (recommandée) : Créer un modèle PartnerContract séparé avec relation 1:1 vers Contact.
+      Avantages : séparation claire, évolutivité, pas de nullable fields sur Contact.
+    </note>
+    <note>
+      Option 2 : Étendre Contact avec des champs optionnels.
+      Inconvénient : pollution du modèle Contact, difficile à maintenir.
+    </note>
+    <note>
+      Pour les grilles assignées, utiliser des tables de liaison :
+      - PartnerContractZoneRoute
+      - PartnerContractExcursionPackage
+      - PartnerContractDispoPackage
+      Ou un champ JSON avec les IDs (plus simple mais moins relationnel).
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md - FR2, FR4, FR11, FR36</prd-reference>
+    <epic-reference>docs/bmad/epics.md - Epic 2, Story 2.2</epic-reference>
+    <tech-spec-reference>docs/bmad/tech-spec.md - Core Tenancy & CRM</tech-spec-reference>
+    <schema-reference>packages/database/prisma/schema.prisma - Contact, ZoneRoute, ExcursionPackage, DispoPackage</schema-reference>
+  </artifacts>
+</story-context>

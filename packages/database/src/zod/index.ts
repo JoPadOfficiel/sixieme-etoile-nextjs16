@@ -98,6 +98,14 @@ export const PurchaseScalarFieldEnumSchema = z.enum(['id','organizationId','user
 
 export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','defaultClientType','notes','createdAt','updatedAt']);
 
+export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
+
+export const PartnerContractZoneRouteScalarFieldEnumSchema = z.enum(['id','partnerContractId','zoneRouteId']);
+
+export const PartnerContractExcursionPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','excursionPackageId']);
+
+export const PartnerContractDispoPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','dispoPackageId']);
+
 export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','description','isActive','createdAt','updatedAt']);
 
 export const OperatingBaseScalarFieldEnumSchema = z.enum(['id','organizationId','name','addressLine1','addressLine2','city','postalCode','countryCode','latitude','longitude','isActive','createdAt','updatedAt']);
@@ -223,6 +231,10 @@ export type FuelTypeType = `${z.infer<typeof FuelTypeSchema>}`
 export const InvoiceLineTypeSchema = z.enum(['SERVICE','OPTIONAL_FEE','PROMOTION_ADJUSTMENT','OTHER']);
 
 export type InvoiceLineTypeType = `${z.infer<typeof InvoiceLineTypeSchema>}`
+
+export const PaymentTermsSchema = z.enum(['IMMEDIATE','DAYS_15','DAYS_30','DAYS_45','DAYS_60']);
+
+export type PaymentTermsType = `${z.infer<typeof PaymentTermsSchema>}`
 
 /////////////////////////////////////////
 // MODELS
@@ -419,6 +431,72 @@ export const ContactSchema = z.object({
 })
 
 export type Contact = z.infer<typeof ContactSchema>
+
+/////////////////////////////////////////
+// PARTNER CONTRACT SCHEMA
+/////////////////////////////////////////
+
+/**
+ * PartnerContract - Commercial settings for partner contacts
+ */
+export const PartnerContractSchema = z.object({
+  paymentTerms: PaymentTermsSchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  contactId: z.string(),
+  billingAddress: z.string().nullable(),
+  commissionPercent: z.instanceof(Prisma.Decimal, { message: "Field 'commissionPercent' must be a Decimal. Location: ['Models', 'PartnerContract']"}),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type PartnerContract = z.infer<typeof PartnerContractSchema>
+
+/////////////////////////////////////////
+// PARTNER CONTRACT ZONE ROUTE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Junction table: PartnerContract <-> ZoneRoute
+ */
+export const PartnerContractZoneRouteSchema = z.object({
+  id: z.string().cuid(),
+  partnerContractId: z.string(),
+  zoneRouteId: z.string(),
+})
+
+export type PartnerContractZoneRoute = z.infer<typeof PartnerContractZoneRouteSchema>
+
+/////////////////////////////////////////
+// PARTNER CONTRACT EXCURSION PACKAGE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Junction table: PartnerContract <-> ExcursionPackage
+ */
+export const PartnerContractExcursionPackageSchema = z.object({
+  id: z.string().cuid(),
+  partnerContractId: z.string(),
+  excursionPackageId: z.string(),
+})
+
+export type PartnerContractExcursionPackage = z.infer<typeof PartnerContractExcursionPackageSchema>
+
+/////////////////////////////////////////
+// PARTNER CONTRACT DISPO PACKAGE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Junction table: PartnerContract <-> DispoPackage
+ */
+export const PartnerContractDispoPackageSchema = z.object({
+  id: z.string().cuid(),
+  partnerContractId: z.string(),
+  dispoPackageId: z.string(),
+})
+
+export type PartnerContractDispoPackage = z.infer<typeof PartnerContractDispoPackageSchema>
 
 /////////////////////////////////////////
 // VEHICLE CATEGORY SCHEMA

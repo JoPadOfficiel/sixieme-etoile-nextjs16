@@ -870,6 +870,25 @@
 		"pagination": {
 			"showing": "Affichage de {from} à {to} sur {total} contacts",
 			"page": "Page {current} sur {total}"
+		},
+		"contract": {
+			"title": "Paramètres commerciaux",
+			"description": "Configurez la facturation, les conditions de paiement et la commission pour ce partenaire.",
+			"billingAddress": "Adresse de facturation",
+			"billingAddressPlaceholder": "Entrez l'adresse de facturation si différente de l'adresse du contact",
+			"paymentTerms": "Conditions de paiement",
+			"selectPaymentTerms": "Sélectionnez les conditions de paiement",
+			"commissionPercent": "Commission",
+			"commissionHelp": "Pourcentage de commission appliqué aux factures de ce partenaire.",
+			"notes": "Notes du contrat",
+			"notesPlaceholder": "Notes supplémentaires sur l'accord commercial",
+			"gridAssignmentsInfo": "Les affectations de grilles (routes de zone, excursions, dispos) peuvent être configurées dans la section Tarification.",
+			"zoneRoutes": "Routes de zone",
+			"excursionPackages": "Forfaits excursion",
+			"dispoPackages": "Forfaits mise à disposition",
+			"save": "Enregistrer le contrat",
+			"saved": "Contrat enregistré avec succès.",
+			"saveFailed": "Échec de l'enregistrement du contrat. Veuillez réessayer."
 		}
 	}
 }

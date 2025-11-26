@@ -870,6 +870,25 @@
 		"pagination": {
 			"showing": "Showing {from} to {to} of {total} contacts",
 			"page": "Page {current} of {total}"
+		},
+		"contract": {
+			"title": "Commercial Settings",
+			"description": "Configure billing, payment terms, and commission for this partner.",
+			"billingAddress": "Billing Address",
+			"billingAddressPlaceholder": "Enter billing address if different from contact address",
+			"paymentTerms": "Payment Terms",
+			"selectPaymentTerms": "Select payment terms",
+			"commissionPercent": "Commission",
+			"commissionHelp": "Commission percentage applied to invoices for this partner.",
+			"notes": "Contract Notes",
+			"notesPlaceholder": "Additional notes about the commercial agreement",
+			"gridAssignmentsInfo": "Grid assignments (zone routes, excursions, dispos) can be configured in the Pricing section.",
+			"zoneRoutes": "Zone Routes",
+			"excursionPackages": "Excursion Packages",
+			"dispoPackages": "Dispo Packages",
+			"save": "Save Contract",
+			"saved": "Contract saved successfully.",
+			"saveFailed": "Failed to save contract. Please try again."
 		}
 	}
 }

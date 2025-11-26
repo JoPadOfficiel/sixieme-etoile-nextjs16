@@ -9,6 +9,7 @@ import {
 } from "@ui/components/sheet";
 import { useTranslations } from "next-intl";
 import { ContactForm } from "./ContactForm";
+import { PartnerContractForm } from "./PartnerContractForm";
 import type { Contact } from "../types";
 
 interface ContactDrawerProps {
@@ -47,6 +48,13 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />
+          {/* Show partner contract form for existing partner contacts */}
+          {contact?.id && contact.isPartner && (
+            <PartnerContractForm
+              contactId={contact.id}
+              isPartner={contact.isPartner}
+            />
+          )}
         </div>
       </SheetContent>
     </Sheet>

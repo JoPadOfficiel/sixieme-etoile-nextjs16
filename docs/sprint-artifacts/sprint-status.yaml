@@ -41,9 +41,11 @@ story_location: "docs/sprint-artifacts"
 
 development_status:
   epic-1: contexted
+  epic-2: contexted
   1-1-define-vtc-erp-prisma-models: done
   1-2-enforce-organization-level-multi-tenancy: done
   1-3-implement-eur-only-monetary-representation: done
   1-4-implement-europe-paris-business-time-strategy: done
   1-5-integration-settings-storage: done
   2-1-implement-contact-model-basic-crm-ui: done
+  2-2-store-partner-contract-data-rate-grid-links: done

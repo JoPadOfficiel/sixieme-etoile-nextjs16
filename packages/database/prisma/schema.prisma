@@ -144,6 +144,7 @@ model Organization {
   invoices                    Invoice[]
   documents                   Document[]
   integrationSettings         OrganizationIntegrationSettings?
+  partnerContracts            PartnerContract[]
 
   @@unique([slug])
   @@map("organization")
@@ -300,6 +301,15 @@ enum InvoiceLineType {
   OTHER
 }
 
+/// Payment terms for partner contracts
+enum PaymentTerms {
+  IMMEDIATE
+  DAYS_15
+  DAYS_30
+  DAYS_45
+  DAYS_60
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -357,13 +367,84 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   // Relations
-  quotes   Quote[]
-  invoices Invoice[]
+  quotes          Quote[]
+  invoices        Invoice[]
+  partnerContract PartnerContract?
 
   @@index([organizationId])
   @@index([email])
   @@index([isPartner])
   @@map("contact")
+}
+
+/// PartnerContract - Commercial settings for partner contacts
+model PartnerContract {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Link to Contact (1:1)
+  contactId String  @unique
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Billing (optional override)
+  billingAddress String?
+
+  // Payment terms
+  paymentTerms PaymentTerms @default(DAYS_30)
+
+  // Commission
+  commissionPercent Decimal @default(0) @db.Decimal(5, 2) // 0.00 to 100.00
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Grid assignments (many-to-many)
+  zoneRoutes        PartnerContractZoneRoute[]
+  excursionPackages PartnerContractExcursionPackage[]
+  dispoPackages     PartnerContractDispoPackage[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@map("partner_contract")
+}
+
+/// Junction table: PartnerContract <-> ZoneRoute
+model PartnerContractZoneRoute {
+  id                String          @id @default(cuid())
+  partnerContractId String
+  partnerContract   PartnerContract @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  zoneRouteId       String
+  zoneRoute         ZoneRoute       @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerContractId, zoneRouteId])
+  @@map("partner_contract_zone_route")
+}
+
+/// Junction table: PartnerContract <-> ExcursionPackage
+model PartnerContractExcursionPackage {
+  id                 String           @id @default(cuid())
+  partnerContractId  String
+  partnerContract    PartnerContract  @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  excursionPackageId String
+  excursionPackage   ExcursionPackage @relation(fields: [excursionPackageId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerContractId, excursionPackageId])
+  @@map("partner_contract_excursion_package")
+}
+
+/// Junction table: PartnerContract <-> DispoPackage
+model PartnerContractDispoPackage {
+  id                String          @id @default(cuid())
+  partnerContractId String
+  partnerContract   PartnerContract @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  dispoPackageId    String
+  dispoPackage      DispoPackage    @relation(fields: [dispoPackageId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerContractId, dispoPackageId])
+  @@map("partner_contract_dispo_package")
 }
 
 // ----------------------------------------------------------------------------
@@ -658,9 +739,10 @@ model ZoneRoute {
   fixedPrice Decimal        @db.Decimal(10, 2) // EUR
 
   // Status
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  partnerContractZoneRoutes PartnerContractZoneRoute[]
 
   @@index([organizationId])
   @@index([fromZoneId, toZoneId])
@@ -696,9 +778,10 @@ model ExcursionPackage {
   price Decimal @db.Decimal(10, 2) // EUR
 
   // Status
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive                         Boolean                           @default(true)
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
+  partnerContractExcursionPackages PartnerContractExcursionPackage[]
 
   @@index([organizationId])
   @@index([vehicleCategoryId])
@@ -729,9 +812,10 @@ model DispoPackage {
   overageRatePerHour Decimal @db.Decimal(10, 2) // EUR per hour
 
   // Status
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive                     Boolean                       @default(true)
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  partnerContractDispoPackages PartnerContractDispoPackage[]
 
   @@index([organizationId])
   @@index([vehicleCategoryId])

@@ -1,6 +1,6 @@
 # Story 2.1: Implement Contact Model & Basic CRM UI
 
-Status: in-progress
+Status: done
 
 ## Story
 

@@ -37,3 +37,53 @@ export interface ContactsResponse {
     totalPages: number;
   };
 }
+
+/**
+ * Partner Contract types
+ */
+export type PaymentTerms = "IMMEDIATE" | "DAYS_15" | "DAYS_30" | "DAYS_45" | "DAYS_60";
+
+export interface ZoneRouteAssignment {
+  id: string;
+  fromZone: { id: string; name: string; code: string };
+  toZone: { id: string; name: string; code: string };
+  vehicleCategory: { id: string; name: string; code: string };
+  fixedPrice: string;
+}
+
+export interface PackageAssignment {
+  id: string;
+  name: string;
+  description: string | null;
+  price?: string;
+  basePrice?: string;
+}
+
+export interface PartnerContract {
+  id: string;
+  contactId: string;
+  billingAddress: string | null;
+  paymentTerms: PaymentTerms;
+  commissionPercent: string;
+  notes: string | null;
+  zoneRoutes: ZoneRouteAssignment[];
+  excursionPackages: PackageAssignment[];
+  dispoPackages: PackageAssignment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PartnerContractResponse {
+  data: PartnerContract | null;
+  isPartner: boolean;
+}
+
+export interface PartnerContractFormData {
+  billingAddress?: string | null;
+  paymentTerms: PaymentTerms;
+  commissionPercent: number;
+  notes?: string | null;
+  zoneRouteIds: string[];
+  excursionPackageIds: string[];
+  dispoPackageIds: string[];
+}
