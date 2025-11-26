@@ -170,15 +170,7 @@ function RegimeCounterCard({
 					{hasLimits && (
 						<Progress
 							value={drivingPercent}
-							className="h-2"
-							// @ts-expect-error - custom indicator color prop
-							indicatorClassName={
-								drivingPercent >= 100
-									? "bg-red-500"
-									: drivingPercent >= 90
-										? "bg-orange-500"
-										: "bg-green-500"
-							}
+							className={`h-2 ${drivingPercent >= 100 ? "[&>div]:bg-red-500" : drivingPercent >= 90 ? "[&>div]:bg-orange-500" : "[&>div]:bg-green-500"}`}
 						/>
 					)}
 				</div>
@@ -198,15 +190,7 @@ function RegimeCounterCard({
 					{hasLimits && (
 						<Progress
 							value={amplitudePercent}
-							className="h-2"
-							// @ts-expect-error - custom indicator color prop
-							indicatorClassName={
-								amplitudePercent >= 100
-									? "bg-red-500"
-									: amplitudePercent >= 90
-										? "bg-orange-500"
-										: "bg-green-500"
-							}
+							className={`h-2 ${amplitudePercent >= 100 ? "[&>div]:bg-red-500" : amplitudePercent >= 90 ? "[&>div]:bg-orange-500" : "[&>div]:bg-green-500"}`}
 						/>
 					)}
 				</div>

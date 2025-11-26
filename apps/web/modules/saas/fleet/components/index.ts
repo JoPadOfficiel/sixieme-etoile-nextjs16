@@ -7,3 +7,5 @@ export { BaseDrawer } from "./BaseDrawer";
 export { DriversTable } from "./DriversTable";
 export { DriverForm } from "./DriverForm";
 export { DriverDrawer } from "./DriverDrawer";
+export { ComplianceSnapshot } from "./ComplianceSnapshot";
+export { ComplianceAuditLogList } from "./ComplianceAuditLogList";
