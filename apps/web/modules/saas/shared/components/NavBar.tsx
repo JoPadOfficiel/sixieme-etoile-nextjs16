@@ -6,8 +6,10 @@ import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
 import { cn } from "@ui/lib";
 import {
+	CarIcon,
 	ChevronRightIcon,
 	HomeIcon,
+	MapPinIcon,
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
@@ -45,6 +47,18 @@ export function NavBar() {
 						href: `${basePath}/contacts`,
 						icon: UsersIcon,
 						isActive: pathname.startsWith(`${basePath}/contacts`),
+					},
+					{
+						label: t("fleet.vehicles.title"),
+						href: `${basePath}/vehicles`,
+						icon: CarIcon,
+						isActive: pathname.startsWith(`${basePath}/vehicles`),
+					},
+					{
+						label: t("fleet.bases.title"),
+						href: `${basePath}/fleet/bases`,
+						icon: MapPinIcon,
+						isActive: pathname.startsWith(`${basePath}/fleet`),
 					},
 					{
 						label: t("app.menu.organizationSettings"),
