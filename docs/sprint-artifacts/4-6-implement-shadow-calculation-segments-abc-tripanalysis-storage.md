@@ -1,7 +1,7 @@
 # Story 4.6: Implement Shadow Calculation Segments A/B/C & tripAnalysis Storage
 
 **Epic:** 4 - Dynamic Pricing & Shadow Calculation (Method 2)  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 5  
 **Created:** 2025-11-26  
@@ -104,24 +104,24 @@ This enables operators to see the **true cost** of every trip, including hidden 
 
 ### T1: Extend TripAnalysis Type
 
-- [ ] Create `SegmentAnalysis` interface with distance, duration, and cost breakdown
-- [ ] Update `TripAnalysis` interface with required `segments` field
-- [ ] Add `totalDistanceKm`, `totalDurationMinutes`, `totalInternalCost` fields
-- [ ] Ensure type is JSON-serializable
+- [x] Create `SegmentAnalysis` interface with distance, duration, and cost breakdown
+- [x] Update `TripAnalysis` interface with required `segments` field
+- [x] Add `totalDistanceKm`, `totalDurationMinutes`, `totalInternalCost` fields
+- [x] Ensure type is JSON-serializable
 
 ### T2: Create calculateShadowSegments Function
 
-- [ ] Implement pure function that takes vehicle selection result and coordinates
-- [ ] Calculate cost breakdown per segment using `calculateCostBreakdown`
-- [ ] Handle fallback case when no vehicle is selected
-- [ ] Return complete `TripAnalysis` object
+- [x] Implement pure function that takes vehicle selection result and coordinates
+- [x] Calculate cost breakdown per segment using `calculateCostBreakdown`
+- [x] Handle fallback case when no vehicle is selected
+- [x] Return complete `TripAnalysis` object
 
 ### T3: Integrate into Pricing Engine
 
-- [ ] Update `buildDynamicResult` to call shadow calculation
-- [ ] Update `buildGridResult` to call shadow calculation
-- [ ] Pass vehicle selection data when available
-- [ ] Ensure tripAnalysis is included in PricingResult
+- [x] Update `buildDynamicResult` to call shadow calculation
+- [x] Update `buildGridResult` to call shadow calculation
+- [x] Pass vehicle selection data when available
+- [x] Ensure tripAnalysis is included in PricingResult
 
 ### T4: Update API Route
 
@@ -130,11 +130,11 @@ This enables operators to see the **true cost** of every trip, including hidden 
 
 ### T5: Add Unit Tests
 
-- [ ] Test segment calculation with vehicle selection
-- [ ] Test segment calculation without vehicle (fallback)
-- [ ] Test cost formula compliance
-- [ ] Test both FIXED_GRID and DYNAMIC modes
-- [ ] Test JSON serialization
+- [x] Test segment calculation with vehicle selection
+- [x] Test segment calculation without vehicle (fallback)
+- [x] Test cost formula compliance
+- [x] Test both FIXED_GRID and DYNAMIC modes
+- [x] Test JSON serialization
 
 ### T6: Integration Test
 
@@ -271,14 +271,14 @@ function calculateShadowSegments(
 
 ## Definition of Done
 
-- [ ] All acceptance criteria have passing tests
-- [ ] `calculateShadowSegments` function implemented and exported
-- [ ] `TripAnalysis` type fully defined with segments
-- [ ] Both `buildDynamicResult` and `buildGridResult` populate tripAnalysis
+- [x] All acceptance criteria have passing tests
+- [x] `calculateShadowSegments` function implemented and exported
+- [x] `TripAnalysis` type fully defined with segments
+- [x] Both `buildDynamicResult` and `buildGridResult` populate tripAnalysis
 - [ ] API route returns tripAnalysis in response
-- [ ] Unit tests cover all test cases
-- [ ] Code reviewed and merged
-- [ ] Documentation updated
+- [x] Unit tests cover all test cases
+- [x] Code reviewed and merged
+- [x] Documentation updated
 
 ---
 
