@@ -185,6 +185,11 @@
 			"cancel": "Annuler",
 			"confirm": "Confirmer"
 		},
+		"cancel": "Annuler",
+		"save": "Enregistrer",
+		"edit": "Modifier",
+		"active": "Actif",
+		"inactive": "Inactif",
 		"menu": {
 			"blog": "Blog",
 			"changelog": "Nouveautés",

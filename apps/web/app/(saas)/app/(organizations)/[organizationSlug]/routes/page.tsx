@@ -107,15 +107,22 @@ export default function RoutesPage() {
 	}, []);
 
 	// Fetch vehicle categories for dropdowns
+	// TODO: Replace with actual API when vehicle categories API is implemented
 	const fetchVehicleCategories = useCallback(async () => {
 		try {
 			const response = await fetch("/api/vtc/vehicles/categories?limit=100");
-			if (!response.ok) throw new Error("Failed to fetch vehicle categories");
+			if (!response.ok) {
+				// API not yet implemented - use empty array for now
+				console.warn("Vehicle categories API not available yet");
+				setVehicleCategories([]);
+				return;
+			}
 
 			const data = await response.json();
 			setVehicleCategories(data.data || []);
 		} catch (error) {
-			console.error("Error fetching vehicle categories:", error);
+			console.warn("Vehicle categories API not available:", error);
+			setVehicleCategories([]);
 		}
 	}, []);
 
