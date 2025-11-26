@@ -52,3 +52,5 @@ development_status:
   2-3-allow-safe-reclassification-partner-private: done
   3-1-implement-pricing-zone-model-zones-editor-ui: done
   3-2-implement-zone-route-model-grid-routes-editor: done
+  3-3-implement-excursion-dispo-forfait-configuration: done
+  3-4-apply-engagement-rule-partner-grid-trips: done
