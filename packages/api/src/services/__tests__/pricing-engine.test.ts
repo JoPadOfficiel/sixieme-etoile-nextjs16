@@ -7,6 +7,13 @@ import { describe, expect, it } from "vitest";
 import type { ZoneData } from "../../lib/geo-utils";
 import {
 	calculatePrice,
+	calculateFuelCost,
+	calculateTollCost,
+	calculateWearCost,
+	calculateDriverCost,
+	calculateCostBreakdown,
+	calculateInternalCost,
+	DEFAULT_COST_PARAMETERS,
 	type ContactData,
 	type OrganizationPricingSettings,
 	type PricingRequest,
@@ -495,7 +502,14 @@ describe("pricing-engine", () => {
 								fromZoneId: "zone-paris",
 								toZoneId: "zone-cdg",
 								vehicleCategoryId: "vehicle-cat-1",
-								fixedPrice: 85.0, // Low margin (cost is 75€ for 30km at 2.5€/km)
+								// Story 4.2: With new cost calculation (30km, 45min):
+								// fuel: 30 × 0.08 × 1.80 = 4.32
+								// tolls: 30 × 0.15 = 4.50
+								// wear: 30 × 0.10 = 3.00
+								// driver: 0.75 × 25 = 18.75
+								// Total: 30.57€
+								// For 10% margin: price = 30.57 / 0.90 ≈ 34€
+								fixedPrice: 34.0, // Low margin (~10%)
 								direction: "BIDIRECTIONAL",
 								isActive: true,
 								fromZone: { id: "zone-paris", name: "Paris Center", code: "PAR-CTR" },
@@ -524,7 +538,7 @@ describe("pricing-engine", () => {
 				pricingSettings: defaultPricingSettings,
 			});
 
-			// With 85€ price and 75€ cost (30km * 2.5€/km), margin is ~11.76% (below 20% target)
+			// With 34€ price and ~30.57€ cost, margin is ~10% (below 20% target)
 			expect(result.pricingMode).toBe("FIXED_GRID");
 			expect(result.marginPercent).toBeGreaterThanOrEqual(0);
 			expect(result.marginPercent).toBeLessThan(20);
@@ -1580,6 +1594,319 @@ describe("pricing-engine", () => {
 				expect(calcRule?.calculation?.selectedMethod).toBe("distance");
 				expect(calcRule?.calculation?.basePrice).toBe(1125);
 				expect(calcRule?.calculation?.priceWithMargin).toBe(1350); // 1125 × 1.2
+			});
+		});
+	});
+
+	// ============================================================================
+	// Story 4.2: Operational Cost Components Tests
+	// ============================================================================
+
+	describe("Story 4.2: Operational Cost Components", () => {
+		describe("Individual Cost Calculations", () => {
+			it("should calculate fuel cost correctly", () => {
+				// Formula: distanceKm × (consumptionL100km / 100) × pricePerLiter
+				// 50km × (8.0 / 100) × 1.80 = 50 × 0.08 × 1.80 = 7.20
+				const result = calculateFuelCost(50, 8.0, 1.80);
+				
+				expect(result.amount).toBe(7.2);
+				expect(result.distanceKm).toBe(50);
+				expect(result.consumptionL100km).toBe(8.0);
+				expect(result.pricePerLiter).toBe(1.80);
+			});
+
+			it("should calculate toll cost correctly", () => {
+				// Formula: distanceKm × ratePerKm
+				// 50km × 0.15 = 7.50
+				const result = calculateTollCost(50, 0.15);
+				
+				expect(result.amount).toBe(7.5);
+				expect(result.distanceKm).toBe(50);
+				expect(result.ratePerKm).toBe(0.15);
+			});
+
+			it("should calculate wear cost correctly", () => {
+				// Formula: distanceKm × ratePerKm
+				// 50km × 0.10 = 5.00
+				const result = calculateWearCost(50, 0.10);
+				
+				expect(result.amount).toBe(5);
+				expect(result.distanceKm).toBe(50);
+				expect(result.ratePerKm).toBe(0.10);
+			});
+
+			it("should calculate driver cost correctly", () => {
+				// Formula: (durationMinutes / 60) × hourlyRate
+				// 60min × (25.0 / 60) = 1.0 × 25.0 = 25.00
+				const result = calculateDriverCost(60, 25.0);
+				
+				expect(result.amount).toBe(25);
+				expect(result.durationMinutes).toBe(60);
+				expect(result.hourlyRate).toBe(25.0);
+			});
+
+			it("should calculate driver cost for partial hours", () => {
+				// 90min = 1.5 hours → 1.5 × 25.0 = 37.50
+				const result = calculateDriverCost(90, 25.0);
+				
+				expect(result.amount).toBe(37.5);
+			});
+		});
+
+		describe("Complete Cost Breakdown", () => {
+			it("should calculate complete cost breakdown with default parameters", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+					// No cost parameters - should use defaults
+				};
+
+				const breakdown = calculateCostBreakdown(50, 60, settings);
+
+				// fuel: 50 × 0.08 × 1.80 = 7.20
+				expect(breakdown.fuel.amount).toBe(7.2);
+				// tolls: 50 × 0.15 = 7.50
+				expect(breakdown.tolls.amount).toBe(7.5);
+				// wear: 50 × 0.10 = 5.00
+				expect(breakdown.wear.amount).toBe(5);
+				// driver: 1.0 × 25.0 = 25.00
+				expect(breakdown.driver.amount).toBe(25);
+				// parking: 0 (default)
+				expect(breakdown.parking.amount).toBe(0);
+				// total: 7.20 + 7.50 + 5.00 + 25.00 + 0 = 44.70
+				expect(breakdown.total).toBe(44.7);
+			});
+
+			it("should calculate cost breakdown with custom parameters (AC3)", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+					// Custom cost parameters (e.g., for a van)
+					fuelConsumptionL100km: 10.0,
+					fuelPricePerLiter: 1.90,
+					tollCostPerKm: 0.20,
+					wearCostPerKm: 0.15,
+					driverHourlyCost: 30.0,
+				};
+
+				const breakdown = calculateCostBreakdown(50, 60, settings);
+
+				// fuel: 50 × 0.10 × 1.90 = 9.50
+				expect(breakdown.fuel.amount).toBe(9.5);
+				// tolls: 50 × 0.20 = 10.00
+				expect(breakdown.tolls.amount).toBe(10);
+				// wear: 50 × 0.15 = 7.50
+				expect(breakdown.wear.amount).toBe(7.5);
+				// driver: 1.0 × 30.0 = 30.00
+				expect(breakdown.driver.amount).toBe(30);
+				// total: 9.50 + 10.00 + 7.50 + 30.00 + 0 = 57.00
+				expect(breakdown.total).toBe(57);
+			});
+
+			it("should include parking cost when provided", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+				};
+
+				const breakdown = calculateCostBreakdown(50, 60, settings, 40, "Versailles parking");
+
+				expect(breakdown.parking.amount).toBe(40);
+				expect(breakdown.parking.description).toBe("Versailles parking");
+				// total should include parking
+				expect(breakdown.total).toBe(44.7 + 40); // 84.70
+			});
+		});
+
+		describe("Internal Cost Calculation", () => {
+			it("should calculate internal cost using cost breakdown", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+				};
+
+				const internalCost = calculateInternalCost(50, 60, settings);
+
+				// Should match the breakdown total
+				expect(internalCost).toBe(44.7);
+			});
+		});
+
+		describe("TripAnalysis in Pricing Result", () => {
+			const privateContact: ContactData = {
+				id: "contact-private",
+				isPartner: false,
+				partnerContract: null,
+			};
+
+			it("should include tripAnalysis with costBreakdown in dynamic pricing (AC2)", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 50,
+					estimatedDurationMinutes: 60,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				// Check tripAnalysis exists
+				expect(result.tripAnalysis).toBeDefined();
+				expect(result.tripAnalysis.costBreakdown).toBeDefined();
+
+				// Check cost breakdown components
+				const breakdown = result.tripAnalysis.costBreakdown;
+				expect(breakdown.fuel.amount).toBe(7.2);
+				expect(breakdown.tolls.amount).toBe(7.5);
+				expect(breakdown.wear.amount).toBe(5);
+				expect(breakdown.driver.amount).toBe(25);
+				expect(breakdown.total).toBe(44.7);
+
+				// Check internalCost matches breakdown total
+				expect(result.internalCost).toBe(44.7);
+			});
+
+			it("should include COST_BREAKDOWN in appliedRules", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 50,
+					estimatedDurationMinutes: 60,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				const costRule = result.appliedRules.find(r => r.type === "COST_BREAKDOWN");
+				expect(costRule).toBeDefined();
+				expect(costRule?.costBreakdown).toBeDefined();
+			});
+		});
+
+		describe("Margin Calculation (AC4)", () => {
+			const privateContact: ContactData = {
+				id: "contact-private",
+				isPartner: false,
+				partnerContract: null,
+			};
+
+			it("should calculate margin correctly with new internal cost", () => {
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 50,
+					estimatedDurationMinutes: 60,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				// Price = max(50×2.5, 1×45) × 1.2 = 125 × 1.2 = 150
+				// Internal cost = 44.70
+				// Margin = 150 - 44.70 = 105.30
+				// MarginPercent = 105.30 / 150 × 100 = 70.2%
+				expect(result.price).toBe(150);
+				expect(result.internalCost).toBe(44.7);
+				expect(result.margin).toBeCloseTo(105.3, 1);
+				expect(result.marginPercent).toBeCloseTo(70.2, 1);
+				expect(result.profitabilityIndicator).toBe("green");
+			});
+
+			it("should show orange indicator for low margin", () => {
+				// Use custom settings to create a low margin scenario
+				const lowMarginSettings: OrganizationPricingSettings = {
+					baseRatePerKm: 1.0, // Very low rate
+					baseRatePerHour: 20.0,
+					targetMarginPercent: 0, // No margin added
+				};
+
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 50,
+					estimatedDurationMinutes: 60,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: lowMarginSettings,
+				});
+
+				// Price = max(50×1.0, 1×20) = 50
+				// Internal cost = 44.70
+				// Margin = 50 - 44.70 = 5.30
+				// MarginPercent = 5.30 / 50 × 100 = 10.6%
+				expect(result.price).toBe(50);
+				expect(result.marginPercent).toBeCloseTo(10.6, 1);
+				expect(result.profitabilityIndicator).toBe("orange");
+			});
+
+			it("should show red indicator for negative margin", () => {
+				// Use custom settings to create a loss scenario
+				const lossSettings: OrganizationPricingSettings = {
+					baseRatePerKm: 0.5, // Very low rate
+					baseRatePerHour: 10.0,
+					targetMarginPercent: 0,
+				};
+
+				const request: PricingRequest = {
+					contactId: privateContact.id,
+					pickup: { lat: 48.85, lng: 2.35 },
+					dropoff: { lat: 49.01, lng: 2.55 },
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 50,
+					estimatedDurationMinutes: 60,
+				};
+
+				const result = calculatePrice(request, {
+					contact: privateContact,
+					zones,
+					pricingSettings: lossSettings,
+				});
+
+				// Price = max(50×0.5, 1×10) = 25
+				// Internal cost = 44.70
+				// Margin = 25 - 44.70 = -19.70
+				expect(result.price).toBe(25);
+				expect(result.margin).toBeLessThan(0);
+				expect(result.profitabilityIndicator).toBe("red");
+			});
+		});
+
+		describe("Default Cost Parameters", () => {
+			it("should have correct default values", () => {
+				expect(DEFAULT_COST_PARAMETERS.fuelConsumptionL100km).toBe(8.0);
+				expect(DEFAULT_COST_PARAMETERS.fuelPricePerLiter).toBe(1.80);
+				expect(DEFAULT_COST_PARAMETERS.tollCostPerKm).toBe(0.15);
+				expect(DEFAULT_COST_PARAMETERS.wearCostPerKm).toBe(0.10);
+				expect(DEFAULT_COST_PARAMETERS.driverHourlyCost).toBe(25.0);
 			});
 		});
 	});

@@ -220,19 +220,27 @@ async function loadZones(organizationId: string): Promise<ZoneData[]> {
 
 /**
  * Load or create default pricing settings for the organization
+ * Story 4.2: Now includes cost parameters for operational cost calculation
  */
 async function loadPricingSettings(
 	organizationId: string,
 ): Promise<OrganizationPricingSettings> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const settings = await db.organizationPricingSettings.findFirst({
 		where: { organizationId },
-	});
+	}) as any;
 
 	if (settings) {
 		return {
 			baseRatePerKm: Number(settings.baseRatePerKm),
 			baseRatePerHour: Number(settings.baseRatePerHour),
 			targetMarginPercent: Number(settings.defaultMarginPercent),
+			// Story 4.2: Cost parameters (optional, will use defaults if not set)
+			fuelConsumptionL100km: settings.fuelConsumptionL100km ? Number(settings.fuelConsumptionL100km) : undefined,
+			fuelPricePerLiter: settings.fuelPricePerLiter ? Number(settings.fuelPricePerLiter) : undefined,
+			tollCostPerKm: settings.tollCostPerKm ? Number(settings.tollCostPerKm) : undefined,
+			wearCostPerKm: settings.wearCostPerKm ? Number(settings.wearCostPerKm) : undefined,
+			driverHourlyCost: settings.driverHourlyCost ? Number(settings.driverHourlyCost) : undefined,
 		};
 	}
 
@@ -241,6 +249,7 @@ async function loadPricingSettings(
 		baseRatePerKm: 2.5,
 		baseRatePerHour: 45.0,
 		targetMarginPercent: 20.0,
+		// Cost parameters will use defaults from pricing-engine.ts
 	};
 }
 

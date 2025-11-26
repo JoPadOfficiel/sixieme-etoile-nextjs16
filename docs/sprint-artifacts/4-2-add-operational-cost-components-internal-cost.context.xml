@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>4.2</story-id>
+    <story-name>Add Operational Cost Components to Internal Cost</story-name>
+    <epic>Epic 4 – Dynamic Pricing &amp; Shadow Calculation (Method 2)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      La Story 4.1 a implémenté le calcul du prix dynamique de base (distance/durée).
+      Cependant, le coût interne actuel est une estimation simplifiée (distance × 2.5€/km)
+      qui ne reflète pas les coûts opérationnels réels.
+      
+      Actuellement :
+      - Le coût interne est calculé avec une formule simplifiée
+      - Pas de décomposition par composant (carburant, péages, usure, salaire)
+      - Pas de distinction entre les segments A/B/C
+      - Impossible d'afficher le détail des coûts dans Trip Transparency
+      - La marge affichée ne reflète pas la rentabilité réelle
+      
+      Impact :
+      - Décisions commerciales basées sur des marges incorrectes
+      - Risque d'accepter des courses à perte sans le savoir
+      - Impossibilité d'optimiser les coûts par composant
+      - Non-conformité avec les exigences PRD de transparence
+    </description>
+    <business-impact>
+      - Perte de rentabilité sur les courses mal évaluées
+      - Difficulté à négocier les tarifs partenaires
+      - Impossibilité d'identifier les postes de coût à optimiser
+      - Manque de confiance des opérateurs dans les indicateurs
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Enrichir le calcul du coût interne avec les composants opérationnels réels :
+      carburant, péages, parking, usure véhicule et coût chauffeur.
+    </primary>
+    <secondary>
+      - Décomposer les coûts par segment (A: approche, B: service, C: retour)
+      - Stocker le détail dans tripAnalysis pour Trip Transparency
+      - Utiliser des paramètres configurables par organisation
+      - Préparer l'intégration avec le modèle Vehicle (Epic 5)
+      - Maintenir la rétrocompatibilité avec l'API existante
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Calcul des composants de coût : fuel, tolls, parking, wear, driverCost
+      - Structure tripAnalysis avec breakdown par segment et composant
+      - Paramètres de coût dans OrganizationPricingSettings
+      - Mise à jour du pricing engine pour utiliser les nouveaux calculs
+      - Tests unitaires couvrant tous les scénarios
+      - Mise à jour de l'API /api/vtc/pricing/calculate
+    </in-scope>
+    <out-of-scope>
+      - UI Trip Transparency (Epic 6)
+      - Intégration API Google Maps pour péages réels (future)
+      - Intégration CollectAPI pour prix carburant réel (Epic 9)
+      - Modèle Vehicle avec consommation spécifique (Epic 5)
+      - Calcul des segments A/B/C avec routing réel (Story 4.6)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Le pricing engine doit rester performant (&lt;100ms)
+      - Multi-tenancy : paramètres scoped par organizationId
+      - Rétrocompatibilité : l'API existante doit continuer à fonctionner
+      - Les valeurs monétaires sont en EUR avec 2 décimales
+      - Structure tripAnalysis compatible avec future UI Trip Transparency
+    </technical>
+    <business>
+      - FR14 : Internal cost with fuel, tolls, parking, other costs
+      - FR22 : tripAnalysis with cost per segment and component
+      - FR55 : Profitability indicator based on real costs
+      - PRD Appendix : Cost Formula (fuel, wages, tolls, wear)
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="low">
+      <description>Paramètres de coût non configurés</description>
+      <mitigation>Utiliser des valeurs par défaut raisonnables basées sur le marché VTC Paris.</mitigation>
+    </risk>
+    <risk priority="medium">
+      <description>Complexité du calcul impactant la performance</description>
+      <mitigation>Garder les calculs simples, pas d'appels API externes dans cette story.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Régression sur les prix existants</description>
+      <mitigation>Le prix de vente n'est pas impacté, seul le coût interne change.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given a pricing request with distance 50km and duration 60min,
+      When the internal cost is calculated,
+      Then it includes: fuel cost (based on consumption and fuel price),
+      toll estimate, wear cost, and driver cost.
+    </criterion>
+    <criterion id="AC2">
+      Given a dynamic pricing result,
+      When the response is returned,
+      Then tripAnalysis includes a costBreakdown with:
+      - fuelCost, tollCost, wearCost, driverCost, parkingCost
+      - totalInternalCost
+      - Each component with amount and calculation details.
+    </criterion>
+    <criterion id="AC3">
+      Given an organisation with custom cost parameters,
+      When internal cost is calculated,
+      Then the custom parameters are used instead of defaults.
+    </criterion>
+    <criterion id="AC4">
+      Given a pricing result with internal cost and selling price,
+      When margin is calculated,
+      Then marginPercent = (price - internalCost) / price × 100
+      And profitabilityIndicator is correctly set (green/orange/red).
+    </criterion>
+    <criterion id="AC5">
+      Given a grid-based pricing result (FIXED_GRID mode),
+      When the response is returned,
+      Then tripAnalysis still includes costBreakdown for profitability analysis.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 1.1 – Define VTC ERP Prisma Models
+    </dependency>
+    <dependency type="required" status="done">
+      Story 1.3 – Implement EUR-Only Monetary Representation
+    </dependency>
+    <dependency type="required" status="done">
+      Story 4.1 – Implement Base Dynamic Price Calculation
+    </dependency>
+    <dependency type="optional" status="pending">
+      Story 5.1 – Implement Fleet Models (vehicle-specific consumption)
+    </dependency>
+    <dependency type="optional" status="pending">
+      Story 9.1/9.2 – Cost Configuration UI
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Cost Formula (PRD Appendix):
+      
+      internalCost = fuelCost + tollCost + wearCost + driverCost + parkingCost
+      
+      Where:
+      - fuelCost = distanceKm × (fuelConsumptionL100km / 100) × fuelPricePerLiter
+      - tollCost = estimated based on route (for now: distanceKm × tollCostPerKm)
+      - wearCost = distanceKm × wearCostPerKm
+      - driverCost = durationHours × driverHourlyCost
+      - parkingCost = fixed amount if applicable (e.g., Versailles)
+    </note>
+    <note>
+      Default Cost Parameters (Paris VTC market):
+      - fuelConsumptionL100km: 8.0 (average for berline/van)
+      - fuelPricePerLiter: 1.80 EUR
+      - tollCostPerKm: 0.15 EUR (average autoroute)
+      - wearCostPerKm: 0.10 EUR (maintenance, tires, depreciation)
+      - driverHourlyCost: 25.0 EUR (gross + charges)
+      - defaultParkingCost: 0 EUR (added when needed)
+    </note>
+    <note>
+      TripAnalysis Structure:
+      {
+        costBreakdown: {
+          fuel: { amount: number, distanceKm: number, consumptionL100km: number, pricePerLiter: number },
+          tolls: { amount: number, distanceKm: number, ratePerKm: number },
+          wear: { amount: number, distanceKm: number, ratePerKm: number },
+          driver: { amount: number, durationMinutes: number, hourlyRate: number },
+          parking: { amount: number, description: string },
+          total: number
+        },
+        segments: {
+          // For future Story 4.6 - Shadow Calculation
+          approach: { distanceKm: number, durationMinutes: number, cost: number },
+          service: { distanceKm: number, durationMinutes: number, cost: number },
+          return: { distanceKm: number, durationMinutes: number, cost: number }
+        }
+      }
+    </note>
+    <note>
+      OrganizationPricingSettings to extend:
+      - fuelConsumptionL100km: Decimal (default 8.0)
+      - fuelPricePerLiter: Decimal (default 1.80)
+      - tollCostPerKm: Decimal (default 0.15)
+      - wearCostPerKm: Decimal (default 0.10)
+      - driverHourlyCost: Decimal (default 25.0)
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR14, FR22, FR55</prd-reference>
+    <prd-reference>docs/VTC-Analyse-approfondie-Systeme-Pricing-Complexe.md – Cost Formula</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 4, Story 4.2</epic-reference>
+    <code-reference>packages/api/src/services/pricing-engine.ts – Existing pricing engine</code-reference>
+    <code-reference>packages/database/prisma/schema.prisma – OrganizationPricingSettings</code-reference>
+  </artifacts>
+</story-context>

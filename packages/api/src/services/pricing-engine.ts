@@ -111,6 +111,8 @@ export interface PricingResult {
 	// New fields for Story 3.5
 	fallbackReason: FallbackReason;
 	gridSearchDetails: GridSearchDetails | null;
+	// New field for Story 4.2
+	tripAnalysis: TripAnalysis;
 }
 
 // ============================================================================
@@ -172,6 +174,71 @@ export interface OrganizationPricingSettings {
 	baseRatePerKm: number;
 	baseRatePerHour: number;
 	targetMarginPercent: number;
+	// Cost parameters (Story 4.2)
+	fuelConsumptionL100km?: number;
+	fuelPricePerLiter?: number;
+	tollCostPerKm?: number;
+	wearCostPerKm?: number;
+	driverHourlyCost?: number;
+}
+
+// ============================================================================
+// Cost Breakdown Types (Story 4.2)
+// ============================================================================
+
+export interface FuelCostComponent {
+	amount: number;
+	distanceKm: number;
+	consumptionL100km: number;
+	pricePerLiter: number;
+}
+
+export interface TollCostComponent {
+	amount: number;
+	distanceKm: number;
+	ratePerKm: number;
+}
+
+export interface WearCostComponent {
+	amount: number;
+	distanceKm: number;
+	ratePerKm: number;
+}
+
+export interface DriverCostComponent {
+	amount: number;
+	durationMinutes: number;
+	hourlyRate: number;
+}
+
+export interface ParkingCostComponent {
+	amount: number;
+	description: string;
+}
+
+export interface CostBreakdown {
+	fuel: FuelCostComponent;
+	tolls: TollCostComponent;
+	wear: WearCostComponent;
+	driver: DriverCostComponent;
+	parking: ParkingCostComponent;
+	total: number;
+}
+
+export interface SegmentCost {
+	distanceKm: number;
+	durationMinutes: number;
+	cost: number;
+}
+
+export interface TripAnalysis {
+	costBreakdown: CostBreakdown;
+	// Future: segments for shadow calculation (Story 4.6)
+	segments?: {
+		approach?: SegmentCost;
+		service?: SegmentCost;
+		return?: SegmentCost;
+	};
 }
 
 // ============================================================================
@@ -191,7 +258,139 @@ export function calculateProfitabilityIndicator(
 }
 
 /**
- * Estimate internal cost (simplified for now, will be expanded in Epic 4)
+ * Default cost parameters for Paris VTC market (Story 4.2)
+ */
+export const DEFAULT_COST_PARAMETERS = {
+	fuelConsumptionL100km: 8.0,    // Liters per 100km (average berline/van)
+	fuelPricePerLiter: 1.80,       // EUR per liter (current diesel price)
+	tollCostPerKm: 0.15,           // EUR per km (average autoroute)
+	wearCostPerKm: 0.10,           // EUR per km (maintenance, tires, depreciation)
+	driverHourlyCost: 25.0,        // EUR per hour (gross + charges)
+};
+
+/**
+ * Calculate fuel cost
+ * Formula: distanceKm × (fuelConsumptionL100km / 100) × fuelPricePerLiter
+ */
+export function calculateFuelCost(
+	distanceKm: number,
+	consumptionL100km: number,
+	pricePerLiter: number,
+): FuelCostComponent {
+	const amount = Math.round(distanceKm * (consumptionL100km / 100) * pricePerLiter * 100) / 100;
+	return {
+		amount,
+		distanceKm,
+		consumptionL100km,
+		pricePerLiter,
+	};
+}
+
+/**
+ * Calculate toll cost
+ * Formula: distanceKm × tollCostPerKm
+ */
+export function calculateTollCost(
+	distanceKm: number,
+	ratePerKm: number,
+): TollCostComponent {
+	const amount = Math.round(distanceKm * ratePerKm * 100) / 100;
+	return {
+		amount,
+		distanceKm,
+		ratePerKm,
+	};
+}
+
+/**
+ * Calculate vehicle wear cost
+ * Formula: distanceKm × wearCostPerKm
+ */
+export function calculateWearCost(
+	distanceKm: number,
+	ratePerKm: number,
+): WearCostComponent {
+	const amount = Math.round(distanceKm * ratePerKm * 100) / 100;
+	return {
+		amount,
+		distanceKm,
+		ratePerKm,
+	};
+}
+
+/**
+ * Calculate driver cost
+ * Formula: (durationMinutes / 60) × driverHourlyCost
+ */
+export function calculateDriverCost(
+	durationMinutes: number,
+	hourlyRate: number,
+): DriverCostComponent {
+	const amount = Math.round((durationMinutes / 60) * hourlyRate * 100) / 100;
+	return {
+		amount,
+		durationMinutes,
+		hourlyRate,
+	};
+}
+
+/**
+ * Calculate complete cost breakdown (Story 4.2)
+ * Returns all cost components and total internal cost
+ */
+export function calculateCostBreakdown(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	parkingCost: number = 0,
+	parkingDescription: string = "",
+): CostBreakdown {
+	// Use settings or defaults
+	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
+	const fuelPricePerLiter = settings.fuelPricePerLiter ?? DEFAULT_COST_PARAMETERS.fuelPricePerLiter;
+	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
+	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
+	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
+
+	// Calculate each component
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelPricePerLiter);
+	const tolls = calculateTollCost(distanceKm, tollCostPerKm);
+	const wear = calculateWearCost(distanceKm, wearCostPerKm);
+	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
+	const parking: ParkingCostComponent = {
+		amount: parkingCost,
+		description: parkingDescription,
+	};
+
+	// Calculate total
+	const total = Math.round((fuel.amount + tolls.amount + wear.amount + driver.amount + parking.amount) * 100) / 100;
+
+	return {
+		fuel,
+		tolls,
+		wear,
+		driver,
+		parking,
+		total,
+	};
+}
+
+/**
+ * Estimate internal cost using detailed cost breakdown (Story 4.2)
+ * Replaces the simplified estimateInternalCost function
+ */
+export function calculateInternalCost(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+): number {
+	const breakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	return breakdown.total;
+}
+
+/**
+ * @deprecated Use calculateInternalCost instead (Story 4.2)
+ * Estimate internal cost (simplified - kept for backward compatibility)
  * Uses a rough estimate: cost = distance * 2.5 EUR/km
  */
 export function estimateInternalCost(distanceKm: number): number {
@@ -704,10 +903,6 @@ export function calculatePrice(
 		if (routeResult.matchedRoute) {
 			const matchedRoute = routeResult.matchedRoute;
 			const price = Number(matchedRoute.fixedPrice);
-			const internalCost = estimateInternalCost(estimatedDistanceKm);
-			const margin = price - internalCost;
-			const marginPercent =
-				price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
 
 			appliedRules.push({
 				type: "PARTNER_GRID_MATCH",
@@ -717,15 +912,12 @@ export function calculatePrice(
 				originalPrice: price,
 			});
 
-			return {
-				pricingMode: "FIXED_GRID",
+			return buildGridResult(
 				price,
-				currency: "EUR",
-				internalCost,
-				margin,
-				marginPercent,
-				profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
-				matchedGrid: {
+				estimatedDistanceKm,
+				estimatedDurationMinutes,
+				pricingSettings,
+				{
 					type: "ZoneRoute",
 					id: matchedRoute.id,
 					name: `${matchedRoute.fromZone.name} → ${matchedRoute.toZone.name}`,
@@ -733,10 +925,7 @@ export function calculatePrice(
 					toZone: matchedRoute.toZone.name,
 				},
 				appliedRules,
-				isContractPrice: true,
-				fallbackReason: null,
-				gridSearchDetails: null,
-			};
+			);
 		}
 	}
 
@@ -753,10 +942,6 @@ export function calculatePrice(
 		if (excursionResult.matchedExcursion) {
 			const matchedExcursion = excursionResult.matchedExcursion;
 			const price = Number(matchedExcursion.price);
-			const internalCost = estimateInternalCost(estimatedDistanceKm);
-			const margin = price - internalCost;
-			const marginPercent =
-				price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
 
 			appliedRules.push({
 				type: "PARTNER_GRID_MATCH",
@@ -766,15 +951,12 @@ export function calculatePrice(
 				originalPrice: price,
 			});
 
-			return {
-				pricingMode: "FIXED_GRID",
+			return buildGridResult(
 				price,
-				currency: "EUR",
-				internalCost,
-				margin,
-				marginPercent,
-				profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
-				matchedGrid: {
+				estimatedDistanceKm,
+				estimatedDurationMinutes,
+				pricingSettings,
+				{
 					type: "ExcursionPackage",
 					id: matchedExcursion.id,
 					name: matchedExcursion.name,
@@ -782,10 +964,7 @@ export function calculatePrice(
 					toZone: matchedExcursion.destinationZone?.name,
 				},
 				appliedRules,
-				isContractPrice: true,
-				fallbackReason: null,
-				gridSearchDetails: null,
-			};
+			);
 		}
 	}
 
@@ -800,10 +979,6 @@ export function calculatePrice(
 		if (dispoResult.matchedDispo) {
 			const matchedDispo = dispoResult.matchedDispo;
 			const price = Number(matchedDispo.basePrice);
-			const internalCost = estimateInternalCost(estimatedDistanceKm);
-			const margin = price - internalCost;
-			const marginPercent =
-				price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
 
 			appliedRules.push({
 				type: "PARTNER_GRID_MATCH",
@@ -813,24 +988,18 @@ export function calculatePrice(
 				originalPrice: price,
 			});
 
-			return {
-				pricingMode: "FIXED_GRID",
+			return buildGridResult(
 				price,
-				currency: "EUR",
-				internalCost,
-				margin,
-				marginPercent,
-				profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
-				matchedGrid: {
+				estimatedDistanceKm,
+				estimatedDurationMinutes,
+				pricingSettings,
+				{
 					type: "DispoPackage",
 					id: matchedDispo.id,
 					name: matchedDispo.name,
 				},
 				appliedRules,
-				isContractPrice: true,
-				fallbackReason: null,
-				gridSearchDetails: null,
-			};
+			);
 		}
 	}
 
@@ -888,7 +1057,7 @@ export function calculatePrice(
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2)
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -902,10 +1071,18 @@ function buildDynamicResult(
 	// Calculate with full details
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
 	const price = calculation.priceWithMargin;
-	const internalCost = estimateInternalCost(distanceKm);
-	const margin = price - internalCost;
+	
+	// Calculate cost breakdown (Story 4.2)
+	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	const internalCost = costBreakdown.total;
+	const margin = Math.round((price - internalCost) * 100) / 100;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
+
+	// Build tripAnalysis (Story 4.2)
+	const tripAnalysis: TripAnalysis = {
+		costBreakdown,
+	};
 
 	// Add enhanced calculation rule (Story 4.1 - AC3)
 	appliedRules.push({
@@ -922,6 +1099,20 @@ function buildDynamicResult(
 		usingDefaultSettings,
 	});
 
+	// Add cost breakdown rule (Story 4.2)
+	appliedRules.push({
+		type: "COST_BREAKDOWN",
+		description: "Internal cost calculated with operational components",
+		costBreakdown: {
+			fuel: costBreakdown.fuel.amount,
+			tolls: costBreakdown.tolls.amount,
+			wear: costBreakdown.wear.amount,
+			driver: costBreakdown.driver.amount,
+			parking: costBreakdown.parking.amount,
+			total: costBreakdown.total,
+		},
+	});
+
 	return {
 		pricingMode: "DYNAMIC",
 		price,
@@ -935,5 +1126,60 @@ function buildDynamicResult(
 		isContractPrice: false,
 		fallbackReason,
 		gridSearchDetails,
+		tripAnalysis,
+	};
+}
+
+/**
+ * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5)
+ */
+function buildGridResult(
+	price: number,
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	matchedGrid: MatchedGrid,
+	appliedRules: AppliedRule[],
+): PricingResult {
+	// Calculate cost breakdown for profitability analysis (Story 4.2 - AC5)
+	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	const internalCost = costBreakdown.total;
+	const margin = Math.round((price - internalCost) * 100) / 100;
+	const marginPercent =
+		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
+
+	// Build tripAnalysis
+	const tripAnalysis: TripAnalysis = {
+		costBreakdown,
+	};
+
+	// Add cost breakdown rule
+	appliedRules.push({
+		type: "COST_BREAKDOWN",
+		description: "Internal cost calculated for profitability analysis",
+		costBreakdown: {
+			fuel: costBreakdown.fuel.amount,
+			tolls: costBreakdown.tolls.amount,
+			wear: costBreakdown.wear.amount,
+			driver: costBreakdown.driver.amount,
+			parking: costBreakdown.parking.amount,
+			total: costBreakdown.total,
+		},
+	});
+
+	return {
+		pricingMode: "FIXED_GRID",
+		price,
+		currency: "EUR",
+		internalCost,
+		margin,
+		marginPercent,
+		profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
+		matchedGrid,
+		appliedRules,
+		isContractPrice: true,
+		fallbackReason: null,
+		gridSearchDetails: null,
+		tripAnalysis,
 	};
 }
