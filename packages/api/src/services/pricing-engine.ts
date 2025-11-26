@@ -16,6 +16,62 @@ export type GridType = "ZoneRoute" | "ExcursionPackage" | "DispoPackage";
 export type TripType = "transfer" | "excursion" | "dispo";
 export type ProfitabilityIndicator = "green" | "orange" | "red";
 
+// Fallback reason for dynamic pricing
+export type FallbackReason =
+	| "PRIVATE_CLIENT" // Contact is not a partner
+	| "NO_CONTRACT" // Partner has no active contract
+	| "NO_ZONE_MATCH" // Pickup or dropoff not in any configured zone
+	| "NO_ROUTE_MATCH" // No route matches zone pair + vehicle category
+	| "NO_EXCURSION_MATCH" // No excursion package matches
+	| "NO_DISPO_MATCH" // No dispo package matches
+	| null; // Not a fallback (grid matched)
+
+// Rejection reason for grid search
+export type RejectionReason =
+	| "ZONE_MISMATCH"
+	| "CATEGORY_MISMATCH"
+	| "DIRECTION_MISMATCH"
+	| "INACTIVE";
+
+// Route check result for search details
+export interface RouteCheckResult {
+	routeId: string;
+	routeName: string;
+	fromZone: string;
+	toZone: string;
+	vehicleCategory: string;
+	rejectionReason: RejectionReason;
+}
+
+// Excursion check result for search details
+export interface ExcursionCheckResult {
+	excursionId: string;
+	excursionName: string;
+	originZone: string | null;
+	destinationZone: string | null;
+	vehicleCategory: string;
+	rejectionReason: RejectionReason;
+}
+
+// Dispo check result for search details
+export interface DispoCheckResult {
+	dispoId: string;
+	dispoName: string;
+	vehicleCategory: string;
+	rejectionReason: RejectionReason;
+}
+
+// Grid search details for transparency
+export interface GridSearchDetails {
+	pickupZone: { id: string; name: string; code: string } | null;
+	dropoffZone: { id: string; name: string; code: string } | null;
+	vehicleCategoryId: string;
+	tripType: TripType;
+	routesChecked: RouteCheckResult[];
+	excursionsChecked: ExcursionCheckResult[];
+	disposChecked: DispoCheckResult[];
+}
+
 export interface PricingRequest {
 	contactId: string;
 	pickup: GeoPoint;
@@ -52,6 +108,9 @@ export interface PricingResult {
 	matchedGrid: MatchedGrid | null;
 	appliedRules: AppliedRule[];
 	isContractPrice: boolean;
+	// New fields for Story 3.5
+	fallbackReason: FallbackReason;
+	gridSearchDetails: GridSearchDetails | null;
 }
 
 // ============================================================================
@@ -145,23 +204,68 @@ export function estimateInternalCost(distanceKm: number): number {
 // ============================================================================
 
 /**
- * Match a zone route for a transfer
+ * Match result with search details
  */
-export function matchZoneRoute(
+export interface MatchZoneRouteResult {
+	matchedRoute: ZoneRouteAssignment["zoneRoute"] | null;
+	routesChecked: RouteCheckResult[];
+}
+
+/**
+ * Match a zone route for a transfer with detailed search results
+ */
+export function matchZoneRouteWithDetails(
 	fromZone: ZoneData | null,
 	toZone: ZoneData | null,
 	vehicleCategoryId: string,
 	contractRoutes: ZoneRouteAssignment[],
-): ZoneRouteAssignment["zoneRoute"] | null {
+): MatchZoneRouteResult {
+	const routesChecked: RouteCheckResult[] = [];
+
 	if (!fromZone || !toZone) {
-		return null;
+		// No zones to match against - still record what routes exist
+		for (const assignment of contractRoutes) {
+			const route = assignment.zoneRoute;
+			routesChecked.push({
+				routeId: route.id,
+				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+				fromZone: route.fromZone.name,
+				toZone: route.toZone.name,
+				vehicleCategory: route.vehicleCategoryId,
+				rejectionReason: "ZONE_MISMATCH",
+			});
+		}
+		return { matchedRoute: null, routesChecked };
 	}
 
 	for (const assignment of contractRoutes) {
 		const route = assignment.zoneRoute;
 
-		if (!route.isActive) continue;
-		if (route.vehicleCategoryId !== vehicleCategoryId) continue;
+		// Check if inactive
+		if (!route.isActive) {
+			routesChecked.push({
+				routeId: route.id,
+				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+				fromZone: route.fromZone.name,
+				toZone: route.toZone.name,
+				vehicleCategory: route.vehicleCategoryId,
+				rejectionReason: "INACTIVE",
+			});
+			continue;
+		}
+
+		// Check vehicle category
+		if (route.vehicleCategoryId !== vehicleCategoryId) {
+			routesChecked.push({
+				routeId: route.id,
+				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+				fromZone: route.fromZone.name,
+				toZone: route.toZone.name,
+				vehicleCategory: route.vehicleCategoryId,
+				rejectionReason: "CATEGORY_MISMATCH",
+			});
+			continue;
+		}
 
 		// Check direction
 		const matchesForward =
@@ -171,40 +275,141 @@ export function matchZoneRoute(
 
 		if (route.direction === "BIDIRECTIONAL") {
 			if (matchesForward || matchesReverse) {
-				return route;
+				return { matchedRoute: route, routesChecked };
 			}
+			routesChecked.push({
+				routeId: route.id,
+				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+				fromZone: route.fromZone.name,
+				toZone: route.toZone.name,
+				vehicleCategory: route.vehicleCategoryId,
+				rejectionReason: "ZONE_MISMATCH",
+			});
 		} else if (route.direction === "A_TO_B") {
 			if (matchesForward) {
-				return route;
+				return { matchedRoute: route, routesChecked };
+			}
+			if (matchesReverse) {
+				// Zones match but wrong direction
+				routesChecked.push({
+					routeId: route.id,
+					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+					fromZone: route.fromZone.name,
+					toZone: route.toZone.name,
+					vehicleCategory: route.vehicleCategoryId,
+					rejectionReason: "DIRECTION_MISMATCH",
+				});
+			} else {
+				routesChecked.push({
+					routeId: route.id,
+					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+					fromZone: route.fromZone.name,
+					toZone: route.toZone.name,
+					vehicleCategory: route.vehicleCategoryId,
+					rejectionReason: "ZONE_MISMATCH",
+				});
 			}
 		} else if (route.direction === "B_TO_A") {
 			if (matchesReverse) {
-				return route;
+				return { matchedRoute: route, routesChecked };
+			}
+			if (matchesForward) {
+				// Zones match but wrong direction
+				routesChecked.push({
+					routeId: route.id,
+					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+					fromZone: route.fromZone.name,
+					toZone: route.toZone.name,
+					vehicleCategory: route.vehicleCategoryId,
+					rejectionReason: "DIRECTION_MISMATCH",
+				});
+			} else {
+				routesChecked.push({
+					routeId: route.id,
+					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
+					fromZone: route.fromZone.name,
+					toZone: route.toZone.name,
+					vehicleCategory: route.vehicleCategoryId,
+					rejectionReason: "ZONE_MISMATCH",
+				});
 			}
 		}
 	}
 
-	return null;
+	return { matchedRoute: null, routesChecked };
 }
 
 /**
- * Match an excursion package
+ * Match a zone route for a transfer (backward compatible)
  */
-export function matchExcursionPackage(
+export function matchZoneRoute(
+	fromZone: ZoneData | null,
+	toZone: ZoneData | null,
+	vehicleCategoryId: string,
+	contractRoutes: ZoneRouteAssignment[],
+): ZoneRouteAssignment["zoneRoute"] | null {
+	return matchZoneRouteWithDetails(fromZone, toZone, vehicleCategoryId, contractRoutes).matchedRoute;
+}
+
+/**
+ * Match result with search details for excursions
+ */
+export interface MatchExcursionResult {
+	matchedExcursion: ExcursionPackageAssignment["excursionPackage"] | null;
+	excursionsChecked: ExcursionCheckResult[];
+}
+
+/**
+ * Match an excursion package with detailed search results
+ */
+export function matchExcursionPackageWithDetails(
 	originZone: ZoneData | null,
 	destinationZone: ZoneData | null,
 	vehicleCategoryId: string,
 	contractExcursions: ExcursionPackageAssignment[],
-): ExcursionPackageAssignment["excursionPackage"] | null {
+): MatchExcursionResult {
+	const excursionsChecked: ExcursionCheckResult[] = [];
+
 	for (const assignment of contractExcursions) {
 		const excursion = assignment.excursionPackage;
 
-		if (!excursion.isActive) continue;
-		if (excursion.vehicleCategoryId !== vehicleCategoryId) continue;
+		// Check if inactive
+		if (!excursion.isActive) {
+			excursionsChecked.push({
+				excursionId: excursion.id,
+				excursionName: excursion.name,
+				originZone: excursion.originZone?.name ?? null,
+				destinationZone: excursion.destinationZone?.name ?? null,
+				vehicleCategory: excursion.vehicleCategoryId,
+				rejectionReason: "INACTIVE",
+			});
+			continue;
+		}
+
+		// Check vehicle category
+		if (excursion.vehicleCategoryId !== vehicleCategoryId) {
+			excursionsChecked.push({
+				excursionId: excursion.id,
+				excursionName: excursion.name,
+				originZone: excursion.originZone?.name ?? null,
+				destinationZone: excursion.destinationZone?.name ?? null,
+				vehicleCategory: excursion.vehicleCategoryId,
+				rejectionReason: "CATEGORY_MISMATCH",
+			});
+			continue;
+		}
 
 		// Check origin zone match (if specified)
 		if (excursion.originZoneId) {
 			if (!originZone || excursion.originZoneId !== originZone.id) {
+				excursionsChecked.push({
+					excursionId: excursion.id,
+					excursionName: excursion.name,
+					originZone: excursion.originZone?.name ?? null,
+					destinationZone: excursion.destinationZone?.name ?? null,
+					vehicleCategory: excursion.vehicleCategoryId,
+					rejectionReason: "ZONE_MISMATCH",
+				});
 				continue;
 			}
 		}
@@ -212,34 +417,94 @@ export function matchExcursionPackage(
 		// Check destination zone match (if specified)
 		if (excursion.destinationZoneId) {
 			if (!destinationZone || excursion.destinationZoneId !== destinationZone.id) {
+				excursionsChecked.push({
+					excursionId: excursion.id,
+					excursionName: excursion.name,
+					originZone: excursion.originZone?.name ?? null,
+					destinationZone: excursion.destinationZone?.name ?? null,
+					vehicleCategory: excursion.vehicleCategoryId,
+					rejectionReason: "ZONE_MISMATCH",
+				});
 				continue;
 			}
 		}
 
 		// If we get here, it's a match
-		return excursion;
+		return { matchedExcursion: excursion, excursionsChecked };
 	}
 
-	return null;
+	return { matchedExcursion: null, excursionsChecked };
 }
 
 /**
- * Match a dispo package
+ * Match an excursion package (backward compatible)
+ */
+export function matchExcursionPackage(
+	originZone: ZoneData | null,
+	destinationZone: ZoneData | null,
+	vehicleCategoryId: string,
+	contractExcursions: ExcursionPackageAssignment[],
+): ExcursionPackageAssignment["excursionPackage"] | null {
+	return matchExcursionPackageWithDetails(originZone, destinationZone, vehicleCategoryId, contractExcursions).matchedExcursion;
+}
+
+/**
+ * Match result with search details for dispos
+ */
+export interface MatchDispoResult {
+	matchedDispo: DispoPackageAssignment["dispoPackage"] | null;
+	disposChecked: DispoCheckResult[];
+}
+
+/**
+ * Match a dispo package with detailed search results
+ */
+export function matchDispoPackageWithDetails(
+	vehicleCategoryId: string,
+	contractDispos: DispoPackageAssignment[],
+): MatchDispoResult {
+	const disposChecked: DispoCheckResult[] = [];
+
+	for (const assignment of contractDispos) {
+		const dispo = assignment.dispoPackage;
+
+		// Check if inactive
+		if (!dispo.isActive) {
+			disposChecked.push({
+				dispoId: dispo.id,
+				dispoName: dispo.name,
+				vehicleCategory: dispo.vehicleCategoryId,
+				rejectionReason: "INACTIVE",
+			});
+			continue;
+		}
+
+		// Check vehicle category
+		if (dispo.vehicleCategoryId !== vehicleCategoryId) {
+			disposChecked.push({
+				dispoId: dispo.id,
+				dispoName: dispo.name,
+				vehicleCategory: dispo.vehicleCategoryId,
+				rejectionReason: "CATEGORY_MISMATCH",
+			});
+			continue;
+		}
+
+		// Match found
+		return { matchedDispo: dispo, disposChecked };
+	}
+
+	return { matchedDispo: null, disposChecked };
+}
+
+/**
+ * Match a dispo package (backward compatible)
  */
 export function matchDispoPackage(
 	vehicleCategoryId: string,
 	contractDispos: DispoPackageAssignment[],
 ): DispoPackageAssignment["dispoPackage"] | null {
-	for (const assignment of contractDispos) {
-		const dispo = assignment.dispoPackage;
-
-		if (!dispo.isActive) continue;
-		if (dispo.vehicleCategoryId !== vehicleCategoryId) continue;
-
-		return dispo;
-	}
-
-	return null;
+	return matchDispoPackageWithDetails(vehicleCategoryId, contractDispos).matchedDispo;
 }
 
 // ============================================================================
@@ -293,6 +558,11 @@ export function calculatePrice(
 	const estimatedDistanceKm = request.estimatedDistanceKm ?? 30;
 	const estimatedDurationMinutes = request.estimatedDurationMinutes ?? 45;
 
+	// Initialize search details collector
+	let routesChecked: RouteCheckResult[] = [];
+	let excursionsChecked: ExcursionCheckResult[] = [];
+	let disposChecked: DispoCheckResult[] = [];
+
 	// -------------------------------------------------------------------------
 	// Step 1: Check if contact is a partner
 	// -------------------------------------------------------------------------
@@ -307,6 +577,8 @@ export function calculatePrice(
 			estimatedDurationMinutes,
 			pricingSettings,
 			appliedRules,
+			"PRIVATE_CLIENT",
+			null,
 		);
 	}
 
@@ -325,6 +597,8 @@ export function calculatePrice(
 			estimatedDurationMinutes,
 			pricingSettings,
 			appliedRules,
+			"NO_CONTRACT",
+			null,
 		);
 	}
 
@@ -343,20 +617,30 @@ export function calculatePrice(
 		dropoffZoneId: dropoffZone?.id ?? null,
 	});
 
+	// Build base search details
+	const baseSearchDetails: Omit<GridSearchDetails, "routesChecked" | "excursionsChecked" | "disposChecked"> = {
+		pickupZone: pickupZone ? { id: pickupZone.id, name: pickupZone.name, code: pickupZone.code } : null,
+		dropoffZone: dropoffZone ? { id: dropoffZone.id, name: dropoffZone.name, code: dropoffZone.code } : null,
+		vehicleCategoryId: request.vehicleCategoryId,
+		tripType: request.tripType,
+	};
+
 	// -------------------------------------------------------------------------
 	// Step 4: Try to match grids based on trip type
 	// -------------------------------------------------------------------------
 
 	// 4a: For transfers, try ZoneRoute first
 	if (request.tripType === "transfer") {
-		const matchedRoute = matchZoneRoute(
+		const routeResult = matchZoneRouteWithDetails(
 			pickupZone,
 			dropoffZone,
 			request.vehicleCategoryId,
 			contract.zoneRoutes,
 		);
+		routesChecked = routeResult.routesChecked;
 
-		if (matchedRoute) {
+		if (routeResult.matchedRoute) {
+			const matchedRoute = routeResult.matchedRoute;
 			const price = Number(matchedRoute.fixedPrice);
 			const internalCost = estimateInternalCost(estimatedDistanceKm);
 			const margin = price - internalCost;
@@ -388,20 +672,24 @@ export function calculatePrice(
 				},
 				appliedRules,
 				isContractPrice: true,
+				fallbackReason: null,
+				gridSearchDetails: null,
 			};
 		}
 	}
 
 	// 4b: For excursions, try ExcursionPackage
 	if (request.tripType === "excursion") {
-		const matchedExcursion = matchExcursionPackage(
+		const excursionResult = matchExcursionPackageWithDetails(
 			pickupZone,
 			dropoffZone,
 			request.vehicleCategoryId,
 			contract.excursionPackages,
 		);
+		excursionsChecked = excursionResult.excursionsChecked;
 
-		if (matchedExcursion) {
+		if (excursionResult.matchedExcursion) {
+			const matchedExcursion = excursionResult.matchedExcursion;
 			const price = Number(matchedExcursion.price);
 			const internalCost = estimateInternalCost(estimatedDistanceKm);
 			const margin = price - internalCost;
@@ -433,18 +721,22 @@ export function calculatePrice(
 				},
 				appliedRules,
 				isContractPrice: true,
+				fallbackReason: null,
+				gridSearchDetails: null,
 			};
 		}
 	}
 
 	// 4c: For dispos, try DispoPackage
 	if (request.tripType === "dispo") {
-		const matchedDispo = matchDispoPackage(
+		const dispoResult = matchDispoPackageWithDetails(
 			request.vehicleCategoryId,
 			contract.dispoPackages,
 		);
+		disposChecked = dispoResult.disposChecked;
 
-		if (matchedDispo) {
+		if (dispoResult.matchedDispo) {
+			const matchedDispo = dispoResult.matchedDispo;
 			const price = Number(matchedDispo.basePrice);
 			const internalCost = estimateInternalCost(estimatedDistanceKm);
 			const margin = price - internalCost;
@@ -474,6 +766,8 @@ export function calculatePrice(
 				},
 				appliedRules,
 				isContractPrice: true,
+				fallbackReason: null,
+				gridSearchDetails: null,
 			};
 		}
 	}
@@ -481,11 +775,42 @@ export function calculatePrice(
 	// -------------------------------------------------------------------------
 	// Step 5: No grid match - fallback to dynamic pricing
 	// -------------------------------------------------------------------------
+
+	// Determine fallback reason
+	let fallbackReason: FallbackReason;
+	if (!pickupZone || !dropoffZone) {
+		fallbackReason = "NO_ZONE_MATCH";
+	} else if (request.tripType === "transfer") {
+		fallbackReason = "NO_ROUTE_MATCH";
+	} else if (request.tripType === "excursion") {
+		fallbackReason = "NO_EXCURSION_MATCH";
+	} else {
+		fallbackReason = "NO_DISPO_MATCH";
+	}
+
+	// Build complete search details
+	const gridSearchDetails: GridSearchDetails = {
+		...baseSearchDetails,
+		routesChecked,
+		excursionsChecked,
+		disposChecked,
+	};
+
+	// Add search summary to applied rules
+	appliedRules.push({
+		type: "GRID_SEARCH_ATTEMPTED",
+		description: `Searched ${routesChecked.length} routes, ${excursionsChecked.length} excursions, ${disposChecked.length} dispos in partner contract, none matched`,
+		routesChecked: routesChecked.length,
+		excursionsChecked: excursionsChecked.length,
+		disposChecked: disposChecked.length,
+	});
+
 	appliedRules.push({
 		type: "NO_GRID_MATCH",
 		description: "No matching grid found for partner, using dynamic pricing",
-		checkedGrids: ["ZoneRoute", "ExcursionPackage", "DispoPackage"],
-		reason: `No route matches fromZone=${pickupZone?.code ?? "UNKNOWN"} toZone=${dropoffZone?.code ?? "UNKNOWN"}`,
+		reason: fallbackReason,
+		pickupZone: pickupZone?.code ?? "UNKNOWN",
+		dropoffZone: dropoffZone?.code ?? "UNKNOWN",
 		tripType: request.tripType,
 		vehicleCategoryId: request.vehicleCategoryId,
 	});
@@ -495,6 +820,8 @@ export function calculatePrice(
 		estimatedDurationMinutes,
 		pricingSettings,
 		appliedRules,
+		fallbackReason,
+		gridSearchDetails,
 	);
 }
 
@@ -506,6 +833,8 @@ function buildDynamicResult(
 	durationMinutes: number,
 	settings: OrganizationPricingSettings,
 	appliedRules: AppliedRule[],
+	fallbackReason: FallbackReason,
+	gridSearchDetails: GridSearchDetails | null,
 ): PricingResult {
 	const price = calculateDynamicPrice(distanceKm, durationMinutes, settings);
 	const internalCost = estimateInternalCost(distanceKm);
@@ -534,5 +863,7 @@ function buildDynamicResult(
 		matchedGrid: null,
 		appliedRules,
 		isContractPrice: false,
+		fallbackReason,
+		gridSearchDetails,
 	};
 }

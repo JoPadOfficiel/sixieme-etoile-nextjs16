@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>3.5</story-id>
+    <story-name>Fallback to Dynamic Pricing When No Grid Match Exists</story-name>
+    <epic>Epic 3 – Zone Engine & Partner Fixed Grids (Method 1)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      La Story 3.4 a implémenté le pricing engine avec l'Engagement Rule pour les partenaires.
+      Cependant, le fallback vers le pricing dynamique (Method 2) n'est pas encore suffisamment
+      transparent et documenté pour les opérateurs.
+      
+      Actuellement :
+      - Le pricing engine bascule en DYNAMIC quand aucune grille ne correspond
+      - Mais les raisons du fallback ne sont pas assez détaillées dans `appliedRules`
+      - Les scénarios spécifiques du PRD (Intra-Zone, Radial, Circular Suburban, Versailles) 
+        ne sont pas explicitement testés
+      - L'opérateur ne voit pas clairement quelles recherches ont été tentées
+      
+      Sans cette amélioration :
+      - Les opérateurs ne comprennent pas pourquoi un trajet partenaire n'utilise pas la grille
+      - Difficulté à identifier les lacunes dans la couverture des grilles
+      - Risque de confusion entre prix contractuel et prix dynamique
+    </description>
+    <business-impact>
+      - Perte de temps opérateur à comprendre pourquoi le prix est dynamique
+      - Risque d'erreurs de communication avec les partenaires
+      - Difficulté à auditer les décisions de pricing
+      - Impossibilité d'identifier les routes manquantes dans les contrats
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Améliorer la transparence du fallback dynamique en enrichissant les `appliedRules`
+      avec des informations détaillées sur les recherches effectuées et les raisons du fallback.
+    </primary>
+    <secondary>
+      - Documenter clairement le flow de décision dans le code
+      - Ajouter des tests pour les scénarios PRD (Intra-Zone, Radial, Circular Suburban, Versailles)
+      - Exposer les informations de fallback dans l'API de manière exploitable par l'UI
+      - Préparer l'intégration avec le cockpit de devis (Epic 6)
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Enrichissement des `appliedRules` avec détails de recherche
+      - Ajout d'un champ `fallbackReason` explicite dans la réponse
+      - Tests unitaires pour les scénarios PRD spécifiques
+      - Documentation du flow de décision
+      - Amélioration des messages de log pour le debugging
+    </in-scope>
+    <out-of-scope>
+      - UI du cockpit de devis (Epic 6)
+      - Calcul dynamique avancé avec multipliers (Epic 4.3)
+      - Shadow calculation complète (Epic 4.6)
+      - Configuration des seuils de profitabilité (Epic 9)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Le pricing engine doit rester une fonction pure et testable
+      - Multi-tenancy : toutes les requêtes scoped par organizationId
+      - Performance : le fallback ne doit pas ajouter de latence significative
+      - Rétrocompatibilité : l'API existante doit continuer à fonctionner
+    </technical>
+    <business>
+      - FR7 : Dual pricing modes clairement distingués
+      - FR12-FR16 : Règles de calcul dynamique
+      - Le fallback doit être déterministe et reproductible
+      - Les raisons du fallback doivent être compréhensibles par un opérateur non-technique
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="low">
+      <description>Surcharge d'informations dans appliedRules</description>
+      <mitigation>Structurer les informations en niveaux (summary, details) pour permettre un affichage progressif.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Régression sur le comportement existant</description>
+      <mitigation>Tests de non-régression sur tous les scénarios de la Story 3.4.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given a partner contact where no ZoneRoute matches the requested itinerary,
+      When the pricing engine runs,
+      Then the appliedRules includes a "GRID_SEARCH_ATTEMPTED" entry listing all routes checked and why each failed to match.
+    </criterion>
+    <criterion id="AC2">
+      Given a partner contact where no ExcursionPackage matches,
+      When the pricing engine runs for an excursion trip,
+      Then the appliedRules includes details about which excursion packages were checked and why they didn't match.
+    </criterion>
+    <criterion id="AC3">
+      Given a private (non-partner) contact,
+      When the pricing engine runs,
+      Then the appliedRules clearly indicates "PRIVATE_CLIENT" as the reason for dynamic pricing, without attempting grid search.
+    </criterion>
+    <criterion id="AC4">
+      Given any fallback to dynamic pricing,
+      When the response is returned,
+      Then it includes a human-readable "fallbackReason" field summarizing why dynamic pricing was used.
+    </criterion>
+    <criterion id="AC5">
+      Given the Intra-Zone Central scenario (Paris → Paris within same zone),
+      When tested with a partner having an intra-zone flat rate,
+      Then the pricing engine correctly matches the intra-zone route (same fromZone and toZone).
+    </criterion>
+    <criterion id="AC6">
+      Given the Radial Transfer scenario (Paris ↔ CDG),
+      When tested with a partner having a Paris-CDG route,
+      Then the pricing engine correctly matches in both directions (bidirectional).
+    </criterion>
+    <criterion id="AC7">
+      Given the Circular Suburban scenario (Suburb A → Suburb B, both outside Paris),
+      When tested with a partner without suburban routes,
+      Then the pricing engine falls back to dynamic with clear explanation.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 3.4 – Apply Engagement Rule for Partner Grid Trips (pricing engine base)
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.2 – Implement ZoneRoute Model & Grid Routes Editor
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.3 – Implement Excursion & Dispo Forfait Configuration
+    </dependency>
+    <dependency type="optional" status="pending">
+      Epic 4 – Dynamic Pricing (for advanced calculation)
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Enhanced appliedRules structure:
+      {
+        type: "GRID_SEARCH_ATTEMPTED",
+        description: "Searched partner contract grids for matching route",
+        searchDetails: {
+          pickupZone: { id, name, code } | null,
+          dropoffZone: { id, name, code } | null,
+          vehicleCategoryId: string,
+          tripType: string,
+          routesChecked: [
+            { routeId, fromZone, toZone, vehicleCategory, reason: "ZONE_MISMATCH" | "CATEGORY_MISMATCH" | "DIRECTION_MISMATCH" | "INACTIVE" }
+          ],
+          excursionsChecked: [...],
+          disposChecked: [...]
+        }
+      }
+    </note>
+    <note>
+      Fallback reason enum:
+      - PRIVATE_CLIENT: Contact is not a partner
+      - NO_CONTRACT: Partner has no active contract
+      - NO_ZONE_MATCH: Pickup or dropoff not in any configured zone
+      - NO_ROUTE_MATCH: No route matches the zone pair + vehicle category
+      - NO_EXCURSION_MATCH: No excursion package matches (for excursion trips)
+      - NO_DISPO_MATCH: No dispo package matches (for dispo trips)
+    </note>
+    <note>
+      PRD Scenarios to test:
+      1. Intra-Zone Central: Paris → Paris (same zone, flat rate)
+      2. Radial Transfer: Paris ↔ CDG (bidirectional route)
+      3. Circular Suburban: Suburb A → Suburb B (no route, fallback)
+      4. Versailles Exception: Paris → Versailles (specific route if exists)
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR7, FR12-FR16, Appendix A (Scenarios)</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 3, Story 3.5</epic-reference>
+    <code-reference>packages/api/src/services/pricing-engine.ts – Existing pricing engine</code-reference>
+  </artifacts>
+</story-context>
