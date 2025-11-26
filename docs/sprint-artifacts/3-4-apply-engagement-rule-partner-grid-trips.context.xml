@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>3.4</story-id>
+    <story-name>Apply Engagement Rule for Partner Grid Trips</story-name>
+    <epic>Epic 3 – Zone Engine & Partner Fixed Grids (Method 1)</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les zones géographiques (Story 3.1), les routes zone-à-zone (Story 3.2) et les forfaits 
+      excursions/dispos (Story 3.3) sont maintenant implémentés. Cependant, il n'existe pas encore 
+      de logique automatique pour appliquer ces grilles tarifaires aux devis des partenaires.
+      
+      L'**Engagement Rule** (Règle d'Engagement) est un principe fondamental du PRD :
+      - Pour les partenaires B2B liés par un contrat avec grille tarifaire, le prix convenu 
+        dans la grille DOIT être appliqué automatiquement lorsqu'une correspondance existe.
+      - Ce prix contractuel ne peut PAS être modifié par les vérifications de profitabilité.
+      - Même si un trajet est déficitaire, le prix de la grille est honoré (engagement commercial).
+      
+      Sans cette règle :
+      - Les opérateurs doivent manuellement chercher et appliquer les prix de grille
+      - Risque d'erreurs de pricing sur les trajets partenaires récurrents
+      - Impossibilité de garantir les engagements contractuels
+      - Perte de confiance des partenaires B2B
+    </description>
+    <business-impact>
+      - Risque de rupture contractuelle avec les partenaires
+      - Perte de temps opérateur sur des recherches manuelles de tarifs
+      - Incohérences de pricing entre opérateurs
+      - Impossibilité d'auditer le respect des engagements tarifaires
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Implémenter un moteur de pricing qui détecte automatiquement les correspondances de grille 
+      (ZoneRoute, ExcursionPackage, DispoPackage) pour les contacts partenaires et applique le 
+      prix contractuel sans possibilité de modification par les checks de profitabilité.
+    </primary>
+    <secondary>
+      - Afficher clairement dans l'UI que le prix est "contractuel" (badge "Contract price")
+      - Calculer et afficher la profitabilité réelle (même si rouge/négative)
+      - Logger les trajets partenaires déficitaires pour analyse ultérieure
+      - Préparer l'intégration avec le cockpit de devis (Epic 6)
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Service de pricing engine avec logique de détection de grille
+      - Algorithme de matching : Contact partenaire → Contrat → Grilles assignées → Route/Forfait correspondant
+      - API endpoint pour calculer le prix d'un trajet avec mode de pricing (FIXED_GRID vs DYNAMIC)
+      - Retour du prix, du mode de pricing, des règles appliquées et de la profitabilité
+      - Tests unitaires couvrant les scénarios du PRD (Intra-Zone, Radial, Circular Suburban, Versailles)
+      - Logging des trajets déficitaires pour les partenaires
+    </in-scope>
+    <out-of-scope>
+      - UI du cockpit de devis (Epic 6)
+      - Calcul dynamique complet (Epic 4 - seulement le fallback basique)
+      - Shadow calculation complète (Epic 4.6)
+      - Dispatch et assignation véhicule/chauffeur (Epic 8)
+      - Reporting des trajets déficitaires (Epic 9)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Le pricing engine doit être une fonction pure et testable
+      - Multi-tenancy : toutes les requêtes scoped par organizationId
+      - Les relations existantes : Contact → PartnerContract → PartnerContractZoneRoute/ExcursionPackage/DispoPackage
+      - Le matching doit être déterministe et reproductible
+      - Performance : le matching doit être rapide (< 100ms pour les cas courants)
+    </technical>
+    <business>
+      - FR7 : Dual pricing modes (Method 1 = grille fixe, Method 2 = dynamique)
+      - FR11 : Engagement Rule - prix de grille toujours appliqué pour les partenaires
+      - FR24 : Profitability indicator toujours affiché
+      - FR4 : Le pricing engine lit le type de client et la configuration attachée
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="high">
+      <description>Matching incorrect de zone (pickup/dropoff mal mappés)</description>
+      <mitigation>Tests exhaustifs avec coordonnées réelles des zones parisiennes. Validation point-in-polygon robuste.</mitigation>
+    </risk>
+    <risk priority="medium">
+      <description>Performance dégradée si beaucoup de zones/routes à parcourir</description>
+      <mitigation>Indexation des routes par fromZoneId/toZoneId. Filtrage précoce par vehicleCategoryId.</mitigation>
+    </risk>
+    <risk priority="medium">
+      <description>Confusion opérateur si le prix affiché diffère de l'attendu</description>
+      <mitigation>Retourner les "appliedRules" détaillées expliquant pourquoi ce prix a été choisi.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given a partner contact with an attached contract that includes ZoneRoutes,
+      When a pricing request is made with pickup/dropoff coordinates that match a configured route,
+      Then the pricing engine returns pricingMode = "FIXED_GRID" and the price from the matching ZoneRoute.
+    </criterion>
+    <criterion id="AC2">
+      Given a partner contact with an attached contract that includes ExcursionPackages,
+      When a pricing request is made that matches an excursion (by zones and vehicle category),
+      Then the pricing engine returns pricingMode = "FIXED_GRID" and the price from the matching ExcursionPackage.
+    </criterion>
+    <criterion id="AC3">
+      Given a partner contact with an attached contract that includes DispoPackages,
+      When a pricing request is made for a "mise à disposition" matching a dispo package,
+      Then the pricing engine returns pricingMode = "FIXED_GRID" and the basePrice from the matching DispoPackage.
+    </criterion>
+    <criterion id="AC4">
+      Given a matched grid price that results in negative margin (internal cost > selling price),
+      When the pricing engine computes the result,
+      Then the grid price is still returned (not modified), and the profitability indicator shows "red" with the actual margin percentage.
+    </criterion>
+    <criterion id="AC5">
+      Given a partner contact where no grid match exists for the requested itinerary,
+      When the pricing engine runs,
+      Then it returns pricingMode = "DYNAMIC" and falls back to basic dynamic pricing (or placeholder for Epic 4).
+    </criterion>
+    <criterion id="AC6">
+      Given a private (non-partner) contact,
+      When a pricing request is made,
+      Then the pricing engine skips grid matching entirely and returns pricingMode = "DYNAMIC".
+    </criterion>
+    <criterion id="AC7">
+      Given any pricing result,
+      When the response is returned,
+      Then it includes an "appliedRules" array explaining the matching logic (grid ID, why matched, or why fallback).
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 2.2 – Store Partner Contract Data & Rate Grid Links
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.1 – Implement PricingZone Model & Zones Editor UI
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.2 – Implement ZoneRoute Model & Grid Routes Editor
+    </dependency>
+    <dependency type="required" status="done">
+      Story 3.3 – Implement Excursion & Dispo Forfait Configuration
+    </dependency>
+    <dependency type="optional" status="pending">
+      Epic 4 – Dynamic Pricing (for complete fallback implementation)
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      Pricing Engine Flow:
+      1. Receive pricing request: { contactId, pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleCategoryId, ... }
+      2. Load contact with isPartner flag
+      3. If isPartner:
+         a. Load PartnerContract with assigned grids (ZoneRoutes, ExcursionPackages, DispoPackages)
+         b. Map pickup/dropoff to PricingZones (point-in-polygon or radius check)
+         c. Search for matching ZoneRoute (fromZone, toZone, vehicleCategory)
+         d. If match found → return FIXED_GRID price
+         e. Search for matching ExcursionPackage (originZone, destinationZone, vehicleCategory)
+         f. If match found → return FIXED_GRID price
+         g. Search for matching DispoPackage (vehicleCategory, if dispo request)
+         h. If match found → return FIXED_GRID basePrice
+      4. If no match or not partner → return DYNAMIC (placeholder price for now)
+    </note>
+    <note>
+      Point-in-Polygon Algorithm:
+      - Use ray casting algorithm for polygon zones
+      - Use Haversine distance for radius zones
+      - Cache zone geometries per organization for performance
+    </note>
+    <note>
+      API Route: POST /api/vtc/pricing/calculate
+      Request: { contactId, pickup: {lat, lng}, dropoff: {lat, lng}, vehicleCategoryId, tripType?: "transfer" | "excursion" | "dispo", ... }
+      Response: { pricingMode, price, internalCost?, margin?, profitabilityIndicator, appliedRules[], matchedGrid? }
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR7, FR11, FR24, Appendix A (Engagement Rule, Logic Tree)</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 3, Story 3.4</epic-reference>
+    <schema-reference>packages/database/prisma/schema.prisma – Contact, PartnerContract, ZoneRoute, ExcursionPackage, DispoPackage, PricingZone</schema-reference>
+  </artifacts>
+</story-context>

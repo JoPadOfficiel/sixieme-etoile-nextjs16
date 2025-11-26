@@ -4,6 +4,7 @@ import { disposRouter } from "./dispos";
 import { excursionsRouter } from "./excursions";
 import { integrationsRouter } from "./integrations";
 import { partnerContractsRouter } from "./partner-contracts";
+import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { vehiclesRouter } from "./vehicles";
@@ -22,6 +23,7 @@ export const vtcRouter = new Hono()
 	.route("/", quotesRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)
+	.route("/", pricingCalculateRouter)
 	.route("/", pricingZonesRouter)
 	.route("/", zoneRoutesRouter)
 	.route("/", excursionsRouter)
