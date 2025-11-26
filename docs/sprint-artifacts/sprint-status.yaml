@@ -68,3 +68,4 @@ development_status:
   4-8-use-fuel-price-cache-in-pricing-engine: done
   epic-5: contexted
   5-1-implement-fleet-models-fleet-bases-ui: done
+  5-2-implement-drivers-licence-categories-rse-rules: done

@@ -183,7 +183,9 @@
 	"common": {
 		"confirmation": {
 			"cancel": "Cancel",
-			"confirm": "Confirm"
+			"confirm": "Confirm",
+			"save": "Save",
+			"create": "Create"
 		},
 		"cancel": "Cancel",
 		"save": "Save",
@@ -1375,6 +1377,144 @@
 			"pagination": {
 				"showing": "Showing {from} to {to} of {total} bases",
 				"page": "Page {current} of {total}"
+			}
+		},
+		"drivers": {
+			"title": "Drivers",
+			"description": "Manage your drivers and their licenses.",
+			"search": "Search drivers...",
+			"filterByStatus": "Filter by status",
+			"allDrivers": "All drivers",
+			"addDriver": "Add Driver",
+			"editDriver": "Edit Driver",
+			"addDriverDescription": "Add a new driver to your organization.",
+			"editDriverDescription": "Update driver information and licenses.",
+			"empty": "No drivers yet. Add your first driver to get started.",
+			"noResults": "No drivers found matching your filters.",
+			"noLicenses": "No licenses",
+			"loadError": "Failed to load drivers. Please try again.",
+			"columns": {
+				"name": "Name",
+				"licenses": "Licenses",
+				"employmentStatus": "Employment",
+				"hourlyCost": "Hourly Cost",
+				"contact": "Contact",
+				"status": "Status"
+			},
+			"status": {
+				"active": "Active",
+				"inactive": "Inactive"
+			},
+			"employmentStatus": {
+				"employee": "Employee",
+				"contractor": "Contractor",
+				"freelance": "Freelance"
+			},
+			"form": {
+				"personalInfo": "Personal Information",
+				"firstName": "First Name",
+				"lastName": "Last Name",
+				"email": "Email",
+				"phone": "Phone",
+				"employmentInfo": "Employment Information",
+				"employmentStatus": "Employment Status",
+				"hourlyCost": "Hourly Cost (EUR)",
+				"isActive": "Active",
+				"notes": "Notes",
+				"licenses": "Licenses",
+				"addLicense": "Add License",
+				"newLicense": "New License",
+				"licenseCategory": "License Category",
+				"selectCategory": "Select a category",
+				"licenseNumber": "License Number",
+				"validFrom": "Valid From",
+				"validTo": "Valid To",
+				"saveLicense": "Save License",
+				"create": "Create Driver",
+				"update": "Update Driver"
+			},
+			"notifications": {
+				"created": "Driver created successfully.",
+				"createFailed": "Failed to create driver. Please try again.",
+				"updated": "Driver updated successfully.",
+				"updateFailed": "Failed to update driver. Please try again.",
+				"deleted": "Driver deleted successfully.",
+				"deleteFailed": "Failed to delete driver. Please try again.",
+				"licenseAdded": "License added successfully.",
+				"licenseAddFailed": "Failed to add license. Please try again.",
+				"licenseRemoved": "License removed successfully.",
+				"licenseRemoveFailed": "Failed to remove license. Please try again."
+			},
+			"pagination": {
+				"showing": "Showing {from} to {to} of {total} drivers",
+				"page": "Page {current} of {total}"
+			}
+		},
+		"settings": {
+			"title": "Fleet & Regulatory Configuration",
+			"description": "Configure license categories and RSE compliance rules.",
+			"tabs": {
+				"licenseCategories": "License Categories",
+				"rseRules": "RSE Rules"
+			},
+			"licenseCategories": {
+				"title": "License Categories",
+				"description": "Define license categories for drivers and vehicle requirements.",
+				"add": "Add Category",
+				"edit": "Edit Category",
+				"dialogDescription": "Configure a license category for your organization.",
+				"empty": "No license categories yet. Add your first category to get started.",
+				"columns": {
+					"code": "Code",
+					"name": "Name",
+					"description": "Description",
+					"drivers": "Drivers",
+					"vehicles": "Vehicles"
+				},
+				"form": {
+					"code": "Category Code",
+					"name": "Category Name",
+					"description": "Description"
+				}
+			},
+			"rseRules": {
+				"title": "RSE Compliance Rules",
+				"description": "Configure regulatory constraints per license category (driving hours, amplitude, breaks).",
+				"add": "Add Rule",
+				"edit": "Edit Rule",
+				"dialogDescription": "Configure RSE compliance thresholds for a license category.",
+				"empty": "No RSE rules configured yet. Add rules to enforce regulatory compliance.",
+				"columns": {
+					"licenseCategory": "License Category",
+					"maxDriving": "Max Driving",
+					"maxAmplitude": "Max Amplitude",
+					"breakRules": "Break Rules",
+					"speedCap": "Speed Cap"
+				},
+				"form": {
+					"licenseCategory": "License Category",
+					"selectCategory": "Select a category",
+					"maxDailyDriving": "Max Daily Driving (hours)",
+					"maxDailyAmplitude": "Max Daily Amplitude (hours)",
+					"breakMinutes": "Break Duration (minutes)",
+					"drivingBlockHours": "Driving Block (hours)",
+					"cappedSpeed": "Capped Average Speed (km/h)",
+					"cappedSpeedPlaceholder": "Leave empty for no cap"
+				}
+			},
+			"notifications": {
+				"categoryCreated": "License category created successfully.",
+				"categoryCreateFailed": "Failed to create license category.",
+				"categoryUpdated": "License category updated successfully.",
+				"categoryUpdateFailed": "Failed to update license category.",
+				"categoryDeleted": "License category deleted successfully.",
+				"categoryDeleteFailed": "Failed to delete license category.",
+				"ruleCreated": "RSE rule created successfully.",
+				"ruleCreateFailed": "Failed to create RSE rule.",
+				"ruleUpdated": "RSE rule updated successfully.",
+				"ruleUpdateFailed": "Failed to update RSE rule.",
+				"ruleDeleted": "RSE rule deleted successfully.",
+				"ruleDeleteFailed": "Failed to delete RSE rule."
 			}
 		}
 	}

@@ -183,7 +183,9 @@
 	"common": {
 		"confirmation": {
 			"cancel": "Annuler",
-			"confirm": "Confirmer"
+			"confirm": "Confirmer",
+			"save": "Enregistrer",
+			"create": "Créer"
 		},
 		"cancel": "Annuler",
 		"save": "Enregistrer",
@@ -1375,6 +1377,144 @@
 			"pagination": {
 				"showing": "Affichage de {from} à {to} sur {total} bases",
 				"page": "Page {current} sur {total}"
+			}
+		},
+		"drivers": {
+			"title": "Conducteurs",
+			"description": "Gérez vos conducteurs et leurs permis.",
+			"search": "Rechercher des conducteurs...",
+			"filterByStatus": "Filtrer par statut",
+			"allDrivers": "Tous les conducteurs",
+			"addDriver": "Ajouter un conducteur",
+			"editDriver": "Modifier le conducteur",
+			"addDriverDescription": "Ajouter un nouveau conducteur à votre organisation.",
+			"editDriverDescription": "Mettre à jour les informations du conducteur et ses permis.",
+			"empty": "Aucun conducteur. Ajoutez votre premier conducteur pour commencer.",
+			"noResults": "Aucun conducteur trouvé correspondant à vos filtres.",
+			"noLicenses": "Aucun permis",
+			"loadError": "Échec du chargement des conducteurs. Veuillez réessayer.",
+			"columns": {
+				"name": "Nom",
+				"licenses": "Permis",
+				"employmentStatus": "Statut",
+				"hourlyCost": "Coût horaire",
+				"contact": "Contact",
+				"status": "Statut"
+			},
+			"status": {
+				"active": "Actif",
+				"inactive": "Inactif"
+			},
+			"employmentStatus": {
+				"employee": "Salarié",
+				"contractor": "Prestataire",
+				"freelance": "Indépendant"
+			},
+			"form": {
+				"personalInfo": "Informations personnelles",
+				"firstName": "Prénom",
+				"lastName": "Nom",
+				"email": "Email",
+				"phone": "Téléphone",
+				"employmentInfo": "Informations d'emploi",
+				"employmentStatus": "Statut d'emploi",
+				"hourlyCost": "Coût horaire (EUR)",
+				"isActive": "Actif",
+				"notes": "Notes",
+				"licenses": "Permis",
+				"addLicense": "Ajouter un permis",
+				"newLicense": "Nouveau permis",
+				"licenseCategory": "Catégorie de permis",
+				"selectCategory": "Sélectionner une catégorie",
+				"licenseNumber": "Numéro de permis",
+				"validFrom": "Valide à partir du",
+				"validTo": "Valide jusqu'au",
+				"saveLicense": "Enregistrer le permis",
+				"create": "Créer le conducteur",
+				"update": "Mettre à jour le conducteur"
+			},
+			"notifications": {
+				"created": "Conducteur créé avec succès.",
+				"createFailed": "Échec de la création du conducteur. Veuillez réessayer.",
+				"updated": "Conducteur mis à jour avec succès.",
+				"updateFailed": "Échec de la mise à jour du conducteur. Veuillez réessayer.",
+				"deleted": "Conducteur supprimé avec succès.",
+				"deleteFailed": "Échec de la suppression du conducteur. Veuillez réessayer.",
+				"licenseAdded": "Permis ajouté avec succès.",
+				"licenseAddFailed": "Échec de l'ajout du permis. Veuillez réessayer.",
+				"licenseRemoved": "Permis supprimé avec succès.",
+				"licenseRemoveFailed": "Échec de la suppression du permis. Veuillez réessayer."
+			},
+			"pagination": {
+				"showing": "Affichage de {from} à {to} sur {total} conducteurs",
+				"page": "Page {current} sur {total}"
+			}
+		},
+		"settings": {
+			"title": "Configuration Flotte & Réglementation",
+			"description": "Configurez les catégories de permis et les règles de conformité RSE.",
+			"tabs": {
+				"licenseCategories": "Catégories de permis",
+				"rseRules": "Règles RSE"
+			},
+			"licenseCategories": {
+				"title": "Catégories de permis",
+				"description": "Définissez les catégories de permis pour les conducteurs et les exigences véhicules.",
+				"add": "Ajouter une catégorie",
+				"edit": "Modifier la catégorie",
+				"dialogDescription": "Configurez une catégorie de permis pour votre organisation.",
+				"empty": "Aucune catégorie de permis. Ajoutez votre première catégorie pour commencer.",
+				"columns": {
+					"code": "Code",
+					"name": "Nom",
+					"description": "Description",
+					"drivers": "Conducteurs",
+					"vehicles": "Véhicules"
+				},
+				"form": {
+					"code": "Code de catégorie",
+					"name": "Nom de catégorie",
+					"description": "Description"
+				}
+			},
+			"rseRules": {
+				"title": "Règles de conformité RSE",
+				"description": "Configurez les contraintes réglementaires par catégorie de permis (heures de conduite, amplitude, pauses).",
+				"add": "Ajouter une règle",
+				"edit": "Modifier la règle",
+				"dialogDescription": "Configurez les seuils de conformité RSE pour une catégorie de permis.",
+				"empty": "Aucune règle RSE configurée. Ajoutez des règles pour appliquer la conformité réglementaire.",
+				"columns": {
+					"licenseCategory": "Catégorie de permis",
+					"maxDriving": "Conduite max",
+					"maxAmplitude": "Amplitude max",
+					"breakRules": "Règles de pause",
+					"speedCap": "Vitesse plafond"
+				},
+				"form": {
+					"licenseCategory": "Catégorie de permis",
+					"selectCategory": "Sélectionner une catégorie",
+					"maxDailyDriving": "Conduite quotidienne max (heures)",
+					"maxDailyAmplitude": "Amplitude quotidienne max (heures)",
+					"breakMinutes": "Durée de pause (minutes)",
+					"drivingBlockHours": "Bloc de conduite (heures)",
+					"cappedSpeed": "Vitesse moyenne plafonnée (km/h)",
+					"cappedSpeedPlaceholder": "Laisser vide pour aucun plafond"
+				}
+			},
+			"notifications": {
+				"categoryCreated": "Catégorie de permis créée avec succès.",
+				"categoryCreateFailed": "Échec de la création de la catégorie de permis.",
+				"categoryUpdated": "Catégorie de permis mise à jour avec succès.",
+				"categoryUpdateFailed": "Échec de la mise à jour de la catégorie de permis.",
+				"categoryDeleted": "Catégorie de permis supprimée avec succès.",
+				"categoryDeleteFailed": "Échec de la suppression de la catégorie de permis.",
+				"ruleCreated": "Règle RSE créée avec succès.",
+				"ruleCreateFailed": "Échec de la création de la règle RSE.",
+				"ruleUpdated": "Règle RSE mise à jour avec succès.",
+				"ruleUpdateFailed": "Échec de la mise à jour de la règle RSE.",
+				"ruleDeleted": "Règle RSE supprimée avec succès.",
+				"ruleDeleteFailed": "Échec de la suppression de la règle RSE."
 			}
 		}
 	}

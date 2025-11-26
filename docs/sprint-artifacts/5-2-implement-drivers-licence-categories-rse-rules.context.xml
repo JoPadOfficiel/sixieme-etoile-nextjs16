@@ -1,0 +1,268 @@
+<story-context id="5-2-implement-drivers-licence-categories-rse-rules" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5.2</storyId>
+    <title>Implement Drivers, Licence Categories &amp; RSE Rules</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-26T20:55:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-2-implement-drivers-licence-categories-rse-rules.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>HR/compliance manager</asA>
+    <iWant>to manage drivers, their licences and RSE rules per licence category</iWant>
+    <soThat>heavy-vehicle constraints can be enforced correctly</soThat>
+    <tasks>
+      <task id="T1">Create License Categories API (packages/api/src/routes/vtc/license-categories.ts) - CRUD endpoints with multi-tenancy</task>
+      <task id="T2">Create Organization License Rules API (packages/api/src/routes/vtc/license-rules.ts) - CRUD for RSE rules per license type</task>
+      <task id="T3">Create Drivers API (packages/api/src/routes/vtc/drivers.ts) - CRUD with driver licenses management</task>
+      <task id="T4">Register new routes in VTC router (packages/api/src/routes/vtc/router.ts)</task>
+      <task id="T5">Create Driver types (apps/web/modules/saas/fleet/types.ts) - Driver, DriverLicense, LicenseCategory, OrganizationLicenseRule interfaces</task>
+      <task id="T6">Create Drivers Page (apps/web/app/(saas)/app/(organizations)/[organizationSlug]/drivers/page.tsx)</task>
+      <task id="T7">Create DriversTable component with compliance indicators</task>
+      <task id="T8">Create DriverDrawer component with license management</task>
+      <task id="T9">Create Settings Fleet page for regulatory rules (apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/fleet/page.tsx)</task>
+      <task id="T10">Add sidebar navigation entry for Drivers</task>
+      <task id="T11">Add translations for drivers module (EN/FR)</task>
+      <task id="T12">Write Vitest API tests for drivers, license-categories, license-rules</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>the Drivers screen at /dashboard/drivers (or /app/[organizationSlug]/drivers)</given>
+      <when>I open the screen</when>
+      <then>I see a table or cards with Name, Licence Categories, Primary Base, Availability, Daily amplitude used, Driving time used and key compliance indicators (UX spec 8.6)</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>I add or edit a driver</given>
+      <when>the drawer opens</when>
+      <then>I can set personal details, hourly cost and attach one or more DriverLicense entries (licence category, number, validity dates)</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>the Settings Fleet page at /dashboard/settings/fleet (or /app/[organizationSlug]/settings/fleet)</given>
+      <when>I edit regulatory rules for a licence type</when>
+      <then>I can set max daily driving hours, max amplitude, break rules and capped average speed, which are stored in OrganizationLicenseRule per FR26</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>all driver and license entities</given>
+      <when>created or queried</when>
+      <then>they are scoped by organizationId (multi-tenancy enforced)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR Group 4 – Fleet &amp; Regulatory Compliance (FR25–FR30)</section>
+        <snippet>The system shall classify vehicles into LIGHT and HEAVY regulatory categories. Regulatory constraints (max driving time, amplitude, breaks) shall be stored in configuration by license type, not hard-coded. Drivers with multiple licenses must be supported.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>Appendix C – Fleet Management &amp; Regulatory Compliance</section>
+        <snippet>RSE Compliance Engine: 10h driving limit, 14h amplitude limit, 45min break every 4h30, capped average speed 85km/h for heavy vehicles. Multi-license support for drivers.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Section 3 – Fleet &amp; Regulatory Models</section>
+        <snippet>Defines LicenseCategory, OrganizationLicenseRule, Driver, and DriverLicense models with RSE constraints (maxDailyDrivingHours, maxDailyAmplitudeHours, breakMinutesPerDrivingBlock, drivingBlockHoursForBreak, cappedAverageSpeedKmh).</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.6 Drivers</section>
+        <snippet>Route: /dashboard/drivers. Columns: Name, Licence Categories, Primary Base, Availability, Daily amplitude used, Driving time used. Driver Detail Drawer: Personal info, Licences list with validity dates, Compliance snapshot, Future missions list.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.10 Settings – Fleet &amp; Regulatory Configuration</section>
+        <snippet>Route: /dashboard/settings/fleet. Sections: Vehicle Categories, Cost Parameters, Regulatory Rules per licence type (max daily driving time, max amplitude, mandatory breaks, required rest).</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Epic 5 – Fleet &amp; RSE Compliance Engine</section>
+        <snippet>Story 5.2: Implement Drivers, Licence Categories &amp; RSE Rules. Related FRs: FR25–FR26, FR29, FR38, FR47–FR49.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Driver, DriverLicense, LicenseCategory, OrganizationLicenseRule</symbol>
+        <lines>575-677</lines>
+        <reason>Prisma models already defined for drivers, licenses, and RSE rules. Implementation must use these exact models.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/vehicles.ts</path>
+        <kind>route</kind>
+        <symbol>vehiclesRouter</symbol>
+        <lines>1-279</lines>
+        <reason>Reference pattern for CRUD API routes with multi-tenancy, validation schemas, and Hono router structure.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/bases.ts</path>
+        <kind>route</kind>
+        <symbol>basesRouter</symbol>
+        <reason>Reference pattern for fleet entity API routes.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <lines>1-39</lines>
+        <reason>Main VTC router where new drivers, license-categories, and license-rules routes must be registered.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>withTenantCreate, withTenantFilter, withTenantId</symbol>
+        <reason>Multi-tenancy helpers used in all VTC routes.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <reason>Middleware that extracts organizationId from session, required for all VTC routes.</reason>
+      </file>
+      <file>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/vehicles/page.tsx</path>
+        <kind>page</kind>
+        <symbol>VehiclesPage</symbol>
+        <lines>1-43</lines>
+        <reason>Reference pattern for fleet pages with table and drawer components.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/fleet/types.ts</path>
+        <kind>types</kind>
+        <reason>Fleet types file where Driver, DriverLicense, LicenseCategory, OrganizationLicenseRule interfaces must be added.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/fleet/components/index.ts</path>
+        <kind>barrel</kind>
+        <reason>Component exports where DriversTable and DriverDrawer must be exported.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/__tests__/vehicles.test.ts</path>
+        <kind>test</kind>
+        <symbol>Vehicles API tests</symbol>
+        <lines>1-611</lines>
+        <reason>Reference pattern for Vitest API tests with mocked auth, db, and multi-tenancy validation.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>hono</package>
+        <version>^4.x</version>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>hono-openapi</package>
+        <usage>OpenAPI documentation for routes</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Schema validation for API inputs</usage>
+      </node>
+      <node>
+        <package>@repo/database</package>
+        <usage>Prisma client for database operations</usage>
+      </node>
+      <node>
+        <package>vitest</package>
+        <usage>Testing framework</usage>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <usage>Internationalization for translations</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons for UI components</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="C1">All routes must use organizationMiddleware for multi-tenancy</constraint>
+    <constraint id="C2">RSE rules (maxDailyDrivingHours, maxDailyAmplitudeHours, etc.) must be configurable per organization and license type, never hardcoded</constraint>
+    <constraint id="C3">Follow existing patterns from vehicles.ts and bases.ts for API structure</constraint>
+    <constraint id="C4">Use withTenantCreate, withTenantFilter, withTenantId helpers for all Prisma operations</constraint>
+    <constraint id="C5">Driver licenses must support multiple licenses per driver (multi-license support per FR29)</constraint>
+    <constraint id="C6">All monetary values in EUR, all times in Europe/Paris business time</constraint>
+    <constraint id="C7">UI must follow UX spec 8.6 for Drivers page layout and 8.10 for Settings Fleet</constraint>
+    <constraint id="C8">Compliance indicators must use Lucide icons (ShieldCheck, AlertTriangle, XCircle) per UX spec 6.1.6</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>License Categories API</name>
+      <kind>REST endpoints</kind>
+      <signature>
+        GET /vtc/license-categories - List license categories
+        GET /vtc/license-categories/:id - Get single license category
+        POST /vtc/license-categories - Create license category
+        PATCH /vtc/license-categories/:id - Update license category
+        DELETE /vtc/license-categories/:id - Delete license category
+      </signature>
+      <path>packages/api/src/routes/vtc/license-categories.ts</path>
+    </interface>
+    <interface>
+      <name>Organization License Rules API</name>
+      <kind>REST endpoints</kind>
+      <signature>
+        GET /vtc/license-rules - List RSE rules
+        GET /vtc/license-rules/:id - Get single rule
+        POST /vtc/license-rules - Create RSE rule for license category
+        PATCH /vtc/license-rules/:id - Update RSE rule
+        DELETE /vtc/license-rules/:id - Delete RSE rule
+      </signature>
+      <path>packages/api/src/routes/vtc/license-rules.ts</path>
+    </interface>
+    <interface>
+      <name>Drivers API</name>
+      <kind>REST endpoints</kind>
+      <signature>
+        GET /vtc/drivers - List drivers with licenses and compliance data
+        GET /vtc/drivers/:id - Get single driver with licenses
+        POST /vtc/drivers - Create driver
+        PATCH /vtc/drivers/:id - Update driver
+        DELETE /vtc/drivers/:id - Delete driver
+        POST /vtc/drivers/:id/licenses - Add license to driver
+        DELETE /vtc/drivers/:id/licenses/:licenseId - Remove license from driver
+      </signature>
+      <path>packages/api/src/routes/vtc/drivers.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for API unit tests. Mock @repo/auth and @repo/database modules. Test multi-tenancy enforcement, CRUD operations, validation, and error handling. Follow the pattern established in vehicles.test.ts.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/drivers.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/license-categories.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/license-rules.test.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test GET /vtc/drivers returns drivers with licenses and compliance indicators</idea>
+      <idea acId="AC1">Test drivers list is filtered by organizationId</idea>
+      <idea acId="AC2">Test POST /vtc/drivers creates driver with personal details and hourly cost</idea>
+      <idea acId="AC2">Test POST /vtc/drivers/:id/licenses adds license to driver</idea>
+      <idea acId="AC2">Test license validity dates are validated</idea>
+      <idea acId="AC3">Test POST /vtc/license-rules creates RSE rule with all required fields</idea>
+      <idea acId="AC3">Test PATCH /vtc/license-rules/:id updates RSE thresholds</idea>
+      <idea acId="AC3">Test unique constraint on (organizationId, licenseCategoryId) for rules</idea>
+      <idea acId="AC4">Test all endpoints reject requests without valid organization context</idea>
+      <idea acId="AC4">Test cross-organization access is prevented</idea>
+    </ideas>
+  </tests>
+</story-context>

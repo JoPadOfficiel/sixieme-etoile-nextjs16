@@ -5,6 +5,7 @@
 // Enums matching Prisma schema
 export type VehicleRegulatoryCategory = "LIGHT" | "HEAVY";
 export type VehicleStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+export type DriverEmploymentStatus = "EMPLOYEE" | "CONTRACTOR" | "FREELANCE";
 
 // Vehicle Category
 export interface VehicleCategory {
@@ -77,13 +78,107 @@ export interface BasesResponse {
 	};
 }
 
-// License Category (for vehicle requirements)
+// License Category (for vehicle requirements and driver licenses)
 export interface LicenseCategory {
 	id: string;
 	organizationId: string;
 	code: string;
 	name: string;
 	description: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface LicenseCategoryWithCount extends LicenseCategory {
+	_count: {
+		driverLicenses: number;
+		vehiclesRequiringThis: number;
+		organizationRules: number;
+	};
+}
+
+export interface LicenseCategoriesResponse {
+	data: LicenseCategoryWithCount[];
+	meta: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
+// Organization License Rule (RSE constraints per license type)
+export interface OrganizationLicenseRule {
+	id: string;
+	organizationId: string;
+	licenseCategoryId: string;
+	maxDailyDrivingHours: string; // Decimal as string
+	maxDailyAmplitudeHours: string; // Decimal as string
+	breakMinutesPerDrivingBlock: number;
+	drivingBlockHoursForBreak: string; // Decimal as string
+	cappedAverageSpeedKmh: number | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface OrganizationLicenseRuleWithCategory extends OrganizationLicenseRule {
+	licenseCategory: LicenseCategory;
+}
+
+export interface LicenseRulesResponse {
+	data: OrganizationLicenseRuleWithCategory[];
+	meta: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
+// Driver License (junction between Driver and LicenseCategory)
+export interface DriverLicense {
+	id: string;
+	driverId: string;
+	licenseCategoryId: string;
+	licenseNumber: string;
+	validFrom: string;
+	validTo: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface DriverLicenseWithCategory extends DriverLicense {
+	licenseCategory: LicenseCategory;
+}
+
+// Driver
+export interface Driver {
+	id: string;
+	organizationId: string;
+	firstName: string;
+	lastName: string;
+	email: string | null;
+	phone: string | null;
+	employmentStatus: DriverEmploymentStatus;
+	hourlyCost: string | null; // Decimal as string
+	isActive: boolean;
+	notes: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface DriverWithLicenses extends Driver {
+	driverLicenses: DriverLicenseWithCategory[];
+}
+
+export interface DriversResponse {
+	data: DriverWithLicenses[];
+	meta: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
 }
 
 // Vehicle
@@ -163,4 +258,40 @@ export interface VehicleFormData {
 	requiredLicenseCategoryId: string | null;
 	status: VehicleStatus;
 	notes: string | null;
+}
+
+// Driver form data
+export interface DriverFormData {
+	firstName: string;
+	lastName: string;
+	email: string | null;
+	phone: string | null;
+	employmentStatus: DriverEmploymentStatus;
+	hourlyCost: number | null;
+	isActive: boolean;
+	notes: string | null;
+}
+
+export interface DriverLicenseFormData {
+	licenseCategoryId: string;
+	licenseNumber: string;
+	validFrom: Date;
+	validTo: Date | null;
+}
+
+// License Category form data
+export interface LicenseCategoryFormData {
+	code: string;
+	name: string;
+	description: string | null;
+}
+
+// Organization License Rule form data (RSE constraints)
+export interface LicenseRuleFormData {
+	licenseCategoryId: string;
+	maxDailyDrivingHours: number;
+	maxDailyAmplitudeHours: number;
+	breakMinutesPerDrivingBlock: number;
+	drivingBlockHoursForBreak: number;
+	cappedAverageSpeedKmh: number | null;
 }

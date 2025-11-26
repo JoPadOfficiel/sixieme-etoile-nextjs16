@@ -13,6 +13,7 @@ import {
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
+	UserIcon,
 	UsersIcon,
 	Wand2Icon,
 } from "lucide-react";
@@ -58,7 +59,13 @@ export function NavBar() {
 						label: t("fleet.bases.title"),
 						href: `${basePath}/fleet/bases`,
 						icon: MapPinIcon,
-						isActive: pathname.startsWith(`${basePath}/fleet`),
+						isActive: pathname.startsWith(`${basePath}/fleet/bases`),
+					},
+					{
+						label: t("fleet.drivers.title"),
+						href: `${basePath}/drivers`,
+						icon: UserIcon,
+						isActive: pathname.startsWith(`${basePath}/drivers`),
 					},
 					{
 						label: t("app.menu.organizationSettings"),
