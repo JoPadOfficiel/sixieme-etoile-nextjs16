@@ -10,7 +10,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@ui/components/tooltip";
-import { cn } from "@ui/lib/utils";
+import { cn } from "@ui/lib";
 import {
 	ArrowLeftRightIcon,
 	ArrowRightIcon,
