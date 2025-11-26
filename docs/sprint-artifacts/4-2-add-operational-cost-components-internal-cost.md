@@ -1,6 +1,6 @@
 # Story 4.2: Add Operational Cost Components to Internal Cost
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -48,47 +48,47 @@ Status: ready-for-dev
 
 ### Task 1: Extend OrganizationPricingSettings
 
-- [ ] Add fuelConsumptionL100km field (default 8.0)
-- [ ] Add fuelPricePerLiter field (default 1.80)
-- [ ] Add tollCostPerKm field (default 0.15)
-- [ ] Add wearCostPerKm field (default 0.10)
-- [ ] Add driverHourlyCost field (default 25.0)
+- [x] Add fuelConsumptionL100km field (default 8.0)
+- [x] Add fuelPricePerLiter field (default 1.80)
+- [x] Add tollCostPerKm field (default 0.15)
+- [x] Add wearCostPerKm field (default 0.10)
+- [x] Add driverHourlyCost field (default 25.0)
 
 ### Task 2: Create Cost Calculation Functions
 
-- [ ] Create `calculateFuelCost()` function
-- [ ] Create `calculateTollCost()` function
-- [ ] Create `calculateWearCost()` function
-- [ ] Create `calculateDriverCost()` function
-- [ ] Create `calculateTotalInternalCost()` function
+- [x] Create `calculateFuelCost()` function
+- [x] Create `calculateTollCost()` function
+- [x] Create `calculateWearCost()` function
+- [x] Create `calculateDriverCost()` function
+- [x] Create `calculateTotalInternalCost()` function
 
 ### Task 3: Define TripAnalysis Structure
 
-- [ ] Define CostBreakdown interface
-- [ ] Define CostComponent interface
-- [ ] Add tripAnalysis to PricingResult
+- [x] Define CostBreakdown interface
+- [x] Define CostComponent interface
+- [x] Add tripAnalysis to PricingResult
 
 ### Task 4: Update Pricing Engine
 
-- [ ] Integrate cost calculation in `calculatePrice()`
-- [ ] Generate costBreakdown for both DYNAMIC and FIXED_GRID modes
-- [ ] Update margin calculation to use new internal cost
+- [x] Integrate cost calculation in `calculatePrice()`
+- [x] Generate costBreakdown for both DYNAMIC and FIXED_GRID modes
+- [x] Update margin calculation to use new internal cost
 
 ### Task 5: Update API Response
 
-- [ ] Include tripAnalysis in pricing response
-- [ ] Ensure backward compatibility
+- [x] Include tripAnalysis in pricing response
+- [x] Ensure backward compatibility
 
 ### Task 6: Unit Tests
 
-- [ ] Test fuel cost calculation
-- [ ] Test toll cost calculation
-- [ ] Test wear cost calculation
-- [ ] Test driver cost calculation
-- [ ] Test total internal cost
-- [ ] Test custom parameters
-- [ ] Test margin calculation
-- [ ] Test grid pricing with cost analysis
+- [x] Test fuel cost calculation
+- [x] Test toll cost calculation
+- [x] Test wear cost calculation
+- [x] Test driver cost calculation
+- [x] Test total internal cost
+- [x] Test custom parameters
+- [x] Test margin calculation
+- [x] Test grid pricing with cost analysis
 
 ## Data Types
 
