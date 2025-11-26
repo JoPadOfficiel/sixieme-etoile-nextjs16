@@ -545,6 +545,7 @@
 			"addZoneDescription": "Create a new pricing zone for your organization.",
 			"editZoneDescription": "Update the zone configuration.",
 			"noZones": "No zones defined yet. Add your first zone to get started.",
+			"search": "Search zones...",
 			"searchPlaceholder": "Search zones...",
 			"fetchError": "Failed to load zones. Please try again.",
 			"saveError": "Failed to save zone. Please try again.",
@@ -664,6 +665,158 @@
 		},
 		"pagination": {
 			"showing": "Showing {count} of {total} routes",
+			"page": "Page {page} of {totalPages}"
+		}
+	},
+	"excursions": {
+		"title": "Excursions",
+		"description": "Configure excursion packages with fixed pricing for tours and day trips.",
+		"addExcursion": "Add Excursion",
+		"editExcursion": "Edit Excursion",
+		"addExcursionDescription": "Create a new excursion package with fixed pricing.",
+		"editExcursionDescription": "Update the excursion package configuration.",
+		"noExcursions": "No excursion packages defined yet. Add your first excursion to get started.",
+		"noZones": "No zones specified",
+		"searchPlaceholder": "Search excursions...",
+		"passengers": "pax",
+		"createSuccess": "Excursion package created successfully.",
+		"updateSuccess": "Excursion package updated successfully.",
+		"deleteSuccess": "Excursion package deleted successfully.",
+		"deleteConfirmTitle": "Delete Excursion Package",
+		"deleteConfirmDescription": "Are you sure you want to delete {name}? This action cannot be undone.",
+		"confirmDelete": {
+			"title": "Delete Excursion Package",
+			"message": "Are you sure you want to delete this excursion package? This action cannot be undone.",
+			"confirm": "Delete"
+		},
+		"filters": {
+			"originZone": "Origin Zone",
+			"destinationZone": "Destination Zone",
+			"vehicleCategory": "Vehicle Category",
+			"status": "Status",
+			"allZones": "All Zones",
+			"allCategories": "All Categories",
+			"allStatus": "All Status",
+			"active": "Active",
+			"inactive": "Inactive"
+		},
+		"table": {
+			"name": "Name",
+			"zones": "Zones",
+			"vehicleCategory": "Vehicle",
+			"included": "Included",
+			"price": "Price",
+			"status": "Status",
+			"actions": "Actions"
+		},
+		"form": {
+			"name": "Package Name",
+			"namePlaceholder": "e.g., Paris Day Tour",
+			"description": "Description",
+			"descriptionPlaceholder": "Describe the excursion package...",
+			"originZone": "Origin Zone",
+			"selectOriginZone": "Select origin zone",
+			"destinationZone": "Destination Zone",
+			"selectDestinationZone": "Select destination zone",
+			"noZone": "No zone (flexible)",
+			"vehicleCategory": "Vehicle Category",
+			"selectVehicleCategory": "Select vehicle category",
+			"passengers": "pax",
+			"includedDuration": "Included Duration (hours)",
+			"durationHelp": "Number of hours included in the package price",
+			"includedDistance": "Included Distance (km)",
+			"distanceHelp": "Number of kilometers included in the package price",
+			"price": "Package Price",
+			"active": "Active",
+			"activeDescription": "Inactive packages are not available for booking.",
+			"createExcursion": "Create Excursion"
+		},
+		"errors": {
+			"nameRequired": "Package name is required",
+			"vehicleCategoryRequired": "Vehicle category is required",
+			"durationPositive": "Duration must be positive",
+			"distancePositive": "Distance must be positive",
+			"pricePositive": "Price must be positive",
+			"fetchFailed": "Failed to load excursion packages. Please try again.",
+			"saveFailed": "Failed to save excursion package. Please try again.",
+			"deleteFailed": "Failed to delete excursion package. Please try again."
+		},
+		"pagination": {
+			"showing": "Showing {count} of {total} excursions",
+			"page": "Page {page} of {totalPages}"
+		}
+	},
+	"dispos": {
+		"title": "Mise à Disposition",
+		"description": "Configure hourly disposal packages with base pricing and overage rates.",
+		"addDispo": "Add Dispo Package",
+		"editDispo": "Edit Dispo Package",
+		"addDispoDescription": "Create a new disposal package with base pricing and overage rates.",
+		"editDispoDescription": "Update the disposal package configuration.",
+		"noDispos": "No disposal packages defined yet. Add your first package to get started.",
+		"searchPlaceholder": "Search packages...",
+		"passengers": "pax",
+		"createSuccess": "Disposal package created successfully.",
+		"updateSuccess": "Disposal package updated successfully.",
+		"deleteSuccess": "Disposal package deleted successfully.",
+		"deleteConfirmTitle": "Delete Disposal Package",
+		"deleteConfirmDescription": "Are you sure you want to delete {name}? This action cannot be undone.",
+		"confirmDelete": {
+			"title": "Delete Disposal Package",
+			"message": "Are you sure you want to delete this disposal package? This action cannot be undone.",
+			"confirm": "Delete"
+		},
+		"filters": {
+			"vehicleCategory": "Vehicle Category",
+			"status": "Status",
+			"allCategories": "All Categories",
+			"allStatus": "All Status",
+			"active": "Active",
+			"inactive": "Inactive"
+		},
+		"table": {
+			"name": "Name",
+			"vehicleCategory": "Vehicle",
+			"included": "Included",
+			"basePrice": "Base Price",
+			"overageRates": "Overage Rates",
+			"status": "Status",
+			"actions": "Actions"
+		},
+		"form": {
+			"name": "Package Name",
+			"namePlaceholder": "e.g., Half-Day Disposal",
+			"description": "Description",
+			"descriptionPlaceholder": "Describe the disposal package...",
+			"vehicleCategory": "Vehicle Category",
+			"selectVehicleCategory": "Select vehicle category",
+			"passengers": "pax",
+			"includedDuration": "Included Duration (hours)",
+			"durationHelp": "Number of hours included in the base price",
+			"includedDistance": "Included Distance (km)",
+			"distanceHelp": "Number of kilometers included in the base price",
+			"basePrice": "Base Price",
+			"overageRates": "Overage Rates",
+			"overageRatesHelp": "Rates applied when exceeding included duration or distance",
+			"overageRatePerKm": "Rate per extra km",
+			"overageRatePerHour": "Rate per extra hour",
+			"active": "Active",
+			"activeDescription": "Inactive packages are not available for booking.",
+			"createDispo": "Create Package"
+		},
+		"errors": {
+			"nameRequired": "Package name is required",
+			"vehicleCategoryRequired": "Vehicle category is required",
+			"durationPositive": "Duration must be positive",
+			"distancePositive": "Distance must be positive",
+			"basePricePositive": "Base price must be positive",
+			"overageRateNonNegative": "Overage rate must be non-negative",
+			"fetchFailed": "Failed to load disposal packages. Please try again.",
+			"saveFailed": "Failed to save disposal package. Please try again.",
+			"deleteFailed": "Failed to delete disposal package. Please try again."
+		},
+		"pagination": {
+			"showing": "Showing {count} of {total} packages",
 			"page": "Page {page} of {totalPages}"
 		}
 	},
@@ -841,6 +994,13 @@
 				"general": "General",
 				"integrations": "Integrations",
 				"members": "Members",
+				"pricing": {
+					"title": "Pricing",
+					"zones": "Zones",
+					"routes": "Routes",
+					"excursions": "Excursions",
+					"dispos": "Disposals"
+				},
 				"title": "Organization"
 			}
 		},

@@ -545,6 +545,7 @@
 			"addZoneDescription": "Créez une nouvelle zone tarifaire pour votre organisation.",
 			"editZoneDescription": "Mettez à jour la configuration de la zone.",
 			"noZones": "Aucune zone définie. Ajoutez votre première zone pour commencer.",
+			"search": "Rechercher des zones...",
 			"searchPlaceholder": "Rechercher des zones...",
 			"fetchError": "Échec du chargement des zones. Veuillez réessayer.",
 			"saveError": "Échec de l'enregistrement de la zone. Veuillez réessayer.",
@@ -664,6 +665,158 @@
 		},
 		"pagination": {
 			"showing": "Affichage de {count} sur {total} routes",
+			"page": "Page {page} sur {totalPages}"
+		}
+	},
+	"excursions": {
+		"title": "Excursions",
+		"description": "Configurez les forfaits excursion avec tarification fixe pour les tours et sorties.",
+		"addExcursion": "Ajouter une excursion",
+		"editExcursion": "Modifier l'excursion",
+		"addExcursionDescription": "Créer un nouveau forfait excursion avec tarification fixe.",
+		"editExcursionDescription": "Mettre à jour la configuration du forfait excursion.",
+		"noExcursions": "Aucun forfait excursion défini. Ajoutez votre première excursion pour commencer.",
+		"noZones": "Aucune zone spécifiée",
+		"searchPlaceholder": "Rechercher des excursions...",
+		"passengers": "pax",
+		"createSuccess": "Forfait excursion créé avec succès.",
+		"updateSuccess": "Forfait excursion mis à jour avec succès.",
+		"deleteSuccess": "Forfait excursion supprimé avec succès.",
+		"deleteConfirmTitle": "Supprimer le forfait excursion",
+		"deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer {name} ? Cette action est irréversible.",
+		"confirmDelete": {
+			"title": "Supprimer le forfait excursion",
+			"message": "Êtes-vous sûr de vouloir supprimer ce forfait excursion ? Cette action est irréversible.",
+			"confirm": "Supprimer"
+		},
+		"filters": {
+			"originZone": "Zone d'origine",
+			"destinationZone": "Zone de destination",
+			"vehicleCategory": "Catégorie de véhicule",
+			"status": "Statut",
+			"allZones": "Toutes les zones",
+			"allCategories": "Toutes les catégories",
+			"allStatus": "Tous les statuts",
+			"active": "Actif",
+			"inactive": "Inactif"
+		},
+		"table": {
+			"name": "Nom",
+			"zones": "Zones",
+			"vehicleCategory": "Véhicule",
+			"included": "Inclus",
+			"price": "Prix",
+			"status": "Statut",
+			"actions": "Actions"
+		},
+		"form": {
+			"name": "Nom du forfait",
+			"namePlaceholder": "ex: Tour de Paris",
+			"description": "Description",
+			"descriptionPlaceholder": "Décrivez le forfait excursion...",
+			"originZone": "Zone d'origine",
+			"selectOriginZone": "Sélectionner la zone d'origine",
+			"destinationZone": "Zone de destination",
+			"selectDestinationZone": "Sélectionner la zone de destination",
+			"noZone": "Aucune zone (flexible)",
+			"vehicleCategory": "Catégorie de véhicule",
+			"selectVehicleCategory": "Sélectionner la catégorie de véhicule",
+			"passengers": "pax",
+			"includedDuration": "Durée incluse (heures)",
+			"durationHelp": "Nombre d'heures incluses dans le prix du forfait",
+			"includedDistance": "Distance incluse (km)",
+			"distanceHelp": "Nombre de kilomètres inclus dans le prix du forfait",
+			"price": "Prix du forfait",
+			"active": "Actif",
+			"activeDescription": "Les forfaits inactifs ne sont pas disponibles à la réservation.",
+			"createExcursion": "Créer l'excursion"
+		},
+		"errors": {
+			"nameRequired": "Le nom du forfait est requis",
+			"vehicleCategoryRequired": "La catégorie de véhicule est requise",
+			"durationPositive": "La durée doit être positive",
+			"distancePositive": "La distance doit être positive",
+			"pricePositive": "Le prix doit être positif",
+			"fetchFailed": "Échec du chargement des forfaits excursion. Veuillez réessayer.",
+			"saveFailed": "Échec de l'enregistrement du forfait excursion. Veuillez réessayer.",
+			"deleteFailed": "Échec de la suppression du forfait excursion. Veuillez réessayer."
+		},
+		"pagination": {
+			"showing": "Affichage de {count} sur {total} excursions",
+			"page": "Page {page} sur {totalPages}"
+		}
+	},
+	"dispos": {
+		"title": "Mise à Disposition",
+		"description": "Configurez les forfaits de mise à disposition avec tarification de base et dépassements.",
+		"addDispo": "Ajouter un forfait",
+		"editDispo": "Modifier le forfait",
+		"addDispoDescription": "Créer un nouveau forfait de mise à disposition avec tarification de base et dépassements.",
+		"editDispoDescription": "Mettre à jour la configuration du forfait de mise à disposition.",
+		"noDispos": "Aucun forfait de mise à disposition défini. Ajoutez votre premier forfait pour commencer.",
+		"searchPlaceholder": "Rechercher des forfaits...",
+		"passengers": "pax",
+		"createSuccess": "Forfait de mise à disposition créé avec succès.",
+		"updateSuccess": "Forfait de mise à disposition mis à jour avec succès.",
+		"deleteSuccess": "Forfait de mise à disposition supprimé avec succès.",
+		"deleteConfirmTitle": "Supprimer le forfait",
+		"deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer {name} ? Cette action est irréversible.",
+		"confirmDelete": {
+			"title": "Supprimer le forfait",
+			"message": "Êtes-vous sûr de vouloir supprimer ce forfait de mise à disposition ? Cette action est irréversible.",
+			"confirm": "Supprimer"
+		},
+		"filters": {
+			"vehicleCategory": "Catégorie de véhicule",
+			"status": "Statut",
+			"allCategories": "Toutes les catégories",
+			"allStatus": "Tous les statuts",
+			"active": "Actif",
+			"inactive": "Inactif"
+		},
+		"table": {
+			"name": "Nom",
+			"vehicleCategory": "Véhicule",
+			"included": "Inclus",
+			"basePrice": "Prix de base",
+			"overageRates": "Tarifs dépassement",
+			"status": "Statut",
+			"actions": "Actions"
+		},
+		"form": {
+			"name": "Nom du forfait",
+			"namePlaceholder": "ex: Demi-journée",
+			"description": "Description",
+			"descriptionPlaceholder": "Décrivez le forfait de mise à disposition...",
+			"vehicleCategory": "Catégorie de véhicule",
+			"selectVehicleCategory": "Sélectionner la catégorie de véhicule",
+			"passengers": "pax",
+			"includedDuration": "Durée incluse (heures)",
+			"durationHelp": "Nombre d'heures incluses dans le prix de base",
+			"includedDistance": "Distance incluse (km)",
+			"distanceHelp": "Nombre de kilomètres inclus dans le prix de base",
+			"basePrice": "Prix de base",
+			"overageRates": "Tarifs de dépassement",
+			"overageRatesHelp": "Tarifs appliqués en cas de dépassement de la durée ou distance incluse",
+			"overageRatePerKm": "Tarif par km supplémentaire",
+			"overageRatePerHour": "Tarif par heure supplémentaire",
+			"active": "Actif",
+			"activeDescription": "Les forfaits inactifs ne sont pas disponibles à la réservation.",
+			"createDispo": "Créer le forfait"
+		},
+		"errors": {
+			"nameRequired": "Le nom du forfait est requis",
+			"vehicleCategoryRequired": "La catégorie de véhicule est requise",
+			"durationPositive": "La durée doit être positive",
+			"distancePositive": "La distance doit être positive",
+			"basePricePositive": "Le prix de base doit être positif",
+			"overageRateNonNegative": "Le tarif de dépassement doit être positif ou nul",
+			"fetchFailed": "Échec du chargement des forfaits. Veuillez réessayer.",
+			"saveFailed": "Échec de l'enregistrement du forfait. Veuillez réessayer.",
+			"deleteFailed": "Échec de la suppression du forfait. Veuillez réessayer."
+		},
+		"pagination": {
+			"showing": "Affichage de {count} sur {total} forfaits",
 			"page": "Page {page} sur {totalPages}"
 		}
 	},
@@ -841,6 +994,13 @@
 				"general": "Général",
 				"integrations": "Intégrations",
 				"members": "Membres",
+				"pricing": {
+					"title": "Tarification",
+					"zones": "Zones",
+					"routes": "Routes",
+					"excursions": "Excursions",
+					"dispos": "Mises à disposition"
+				},
 				"title": "Organisation"
 			}
 		},
