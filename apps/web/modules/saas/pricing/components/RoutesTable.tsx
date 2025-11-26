@@ -27,7 +27,12 @@ import {
 	Trash2Icon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { PricingZone, RouteDirection, VehicleCategory, ZoneRoute } from "../types";
+import type {
+	PricingZone,
+	RouteDirection,
+	VehicleCategory,
+	ZoneRoute,
+} from "../types";
 
 interface RoutesTableProps {
 	routes: ZoneRoute[];
@@ -118,8 +123,8 @@ export function RoutesTable({
 			{/* Filters */}
 			<div className="flex flex-wrap gap-3">
 				{/* Search */}
-				<div className="relative flex-1 min-w-[200px]">
-					<SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+				<div className="relative min-w-[200px] flex-1">
+					<SearchIcon className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
 					<Input
 						placeholder={t("routes.searchPlaceholder")}
 						value={search}
@@ -159,12 +164,17 @@ export function RoutesTable({
 				</Select>
 
 				{/* Vehicle Category Filter */}
-				<Select value={vehicleCategoryId} onValueChange={onVehicleCategoryIdChange}>
+				<Select
+					value={vehicleCategoryId}
+					onValueChange={onVehicleCategoryIdChange}
+				>
 					<SelectTrigger className="w-[180px]">
 						<SelectValue placeholder={t("routes.filters.vehicleCategory")} />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="all">{t("routes.filters.allCategories")}</SelectItem>
+						<SelectItem value="all">
+							{t("routes.filters.allCategories")}
+						</SelectItem>
 						{sortedCategories.map((category) => (
 							<SelectItem key={category.id} value={category.id}>
 								{category.name}
@@ -181,7 +191,9 @@ export function RoutesTable({
 					<SelectContent>
 						<SelectItem value="all">{t("routes.filters.allStatus")}</SelectItem>
 						<SelectItem value="active">{t("routes.filters.active")}</SelectItem>
-						<SelectItem value="inactive">{t("routes.filters.inactive")}</SelectItem>
+						<SelectItem value="inactive">
+							{t("routes.filters.inactive")}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
@@ -195,9 +207,13 @@ export function RoutesTable({
 							<TableHead>{t("routes.table.toZone")}</TableHead>
 							<TableHead>{t("routes.table.vehicleCategory")}</TableHead>
 							<TableHead>{t("routes.table.direction")}</TableHead>
-							<TableHead className="text-right">{t("routes.table.fixedPrice")}</TableHead>
+							<TableHead className="text-right">
+								{t("routes.table.fixedPrice")}
+							</TableHead>
 							<TableHead>{t("routes.table.status")}</TableHead>
-							<TableHead className="w-[100px]">{t("routes.table.actions")}</TableHead>
+							<TableHead className="w-[100px]">
+								{t("routes.table.actions")}
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -209,7 +225,10 @@ export function RoutesTable({
 							</TableRow>
 						) : routes.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+								<TableCell
+									colSpan={7}
+									className="h-24 text-center text-muted-foreground"
+								>
 									{t("routes.noRoutes")}
 								</TableCell>
 							</TableRow>
@@ -219,7 +238,7 @@ export function RoutesTable({
 									<TableCell>
 										<div className="flex flex-col">
 											<span className="font-medium">{route.fromZone.name}</span>
-											<span className="text-xs text-muted-foreground">
+											<span className="text-muted-foreground text-xs">
 												{route.fromZone.code}
 											</span>
 										</div>
@@ -227,7 +246,7 @@ export function RoutesTable({
 									<TableCell>
 										<div className="flex flex-col">
 											<span className="font-medium">{route.toZone.name}</span>
-											<span className="text-xs text-muted-foreground">
+											<span className="text-muted-foreground text-xs">
 												{route.toZone.code}
 											</span>
 										</div>
@@ -235,15 +254,18 @@ export function RoutesTable({
 									<TableCell>
 										<div className="flex flex-col">
 											<span>{route.vehicleCategory.name}</span>
-											<span className="text-xs text-muted-foreground">
-												{route.vehicleCategory.maxPassengers} {t("routes.passengers")}
+											<span className="text-muted-foreground text-xs">
+												{route.vehicleCategory.maxPassengers}{" "}
+												{t("routes.passengers")}
 											</span>
 										</div>
 									</TableCell>
 									<TableCell>
 										<div className="flex items-center gap-2">
 											<DirectionIcon direction={route.direction} />
-											<span className="text-sm">{getDirectionLabel(route.direction)}</span>
+											<span className="text-sm">
+												{getDirectionLabel(route.direction)}
+											</span>
 										</div>
 									</TableCell>
 									<TableCell className="text-right font-medium">
@@ -251,7 +273,9 @@ export function RoutesTable({
 									</TableCell>
 									<TableCell>
 										<Badge variant={route.isActive ? "default" : "secondary"}>
-											{route.isActive ? t("common.active") : t("common.inactive")}
+											{route.isActive
+												? t("common.active")
+												: t("common.inactive")}
 										</Badge>
 									</TableCell>
 									<TableCell>
@@ -285,7 +309,7 @@ export function RoutesTable({
 			{/* Pagination */}
 			{totalPages > 1 && (
 				<div className="flex items-center justify-between">
-					<p className="text-sm text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						{t("routes.pagination.showing", { count: routes.length, total })}
 					</p>
 					<div className="flex items-center gap-2">

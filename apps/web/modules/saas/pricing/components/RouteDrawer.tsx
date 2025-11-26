@@ -8,7 +8,12 @@ import {
 	SheetTitle,
 } from "@ui/components/sheet";
 import { useTranslations } from "next-intl";
-import type { PricingZone, VehicleCategory, ZoneRoute, ZoneRouteFormData } from "../types";
+import type {
+	PricingZone,
+	VehicleCategory,
+	ZoneRoute,
+	ZoneRouteFormData,
+} from "../types";
 import { RouteForm } from "./RouteForm";
 
 interface RouteDrawerProps {
@@ -39,7 +44,7 @@ export function RouteDrawer({
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="sm:max-w-lg overflow-y-auto">
+			<SheetContent className="overflow-y-auto sm:max-w-lg">
 				<SheetHeader>
 					<SheetTitle>
 						{route ? t("routes.editRoute") : t("routes.addRoute")}

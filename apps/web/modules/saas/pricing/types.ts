@@ -105,3 +105,97 @@ export interface ZoneRoutesListResponse {
 		totalPages: number;
 	};
 }
+
+// Excursion Package types
+export interface ExcursionPackage {
+	id: string;
+	organizationId: string;
+	name: string;
+	description: string | null;
+	originZone: {
+		id: string;
+		name: string;
+		code: string;
+		zoneType: ZoneType;
+		centerLatitude: number | null;
+		centerLongitude: number | null;
+		radiusKm: number | null;
+	} | null;
+	destinationZone: {
+		id: string;
+		name: string;
+		code: string;
+		zoneType: ZoneType;
+		centerLatitude: number | null;
+		centerLongitude: number | null;
+		radiusKm: number | null;
+	} | null;
+	vehicleCategory: VehicleCategory;
+	includedDurationHours: number;
+	includedDistanceKm: number;
+	price: number;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ExcursionPackageFormData {
+	name: string;
+	description?: string | null;
+	originZoneId?: string | null;
+	destinationZoneId?: string | null;
+	vehicleCategoryId: string;
+	includedDurationHours: number;
+	includedDistanceKm: number;
+	price: number;
+	isActive: boolean;
+}
+
+export interface ExcursionPackagesListResponse {
+	data: ExcursionPackage[];
+	meta: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
+// Dispo Package types
+export interface DispoPackage {
+	id: string;
+	organizationId: string;
+	name: string;
+	description: string | null;
+	vehicleCategory: VehicleCategory;
+	includedDurationHours: number;
+	includedDistanceKm: number;
+	basePrice: number;
+	overageRatePerKm: number;
+	overageRatePerHour: number;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface DispoPackageFormData {
+	name: string;
+	description?: string | null;
+	vehicleCategoryId: string;
+	includedDurationHours: number;
+	includedDistanceKm: number;
+	basePrice: number;
+	overageRatePerKm: number;
+	overageRatePerHour: number;
+	isActive: boolean;
+}
+
+export interface DispoPackagesListResponse {
+	data: DispoPackage[];
+	meta: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}

@@ -41,7 +41,11 @@ interface RouteFormProps {
 	vehicleCategories: VehicleCategory[];
 }
 
-const DIRECTION_OPTIONS: { value: RouteDirection; labelKey: string; icon: React.ReactNode }[] = [
+const DIRECTION_OPTIONS: {
+	value: RouteDirection;
+	labelKey: string;
+	icon: React.ReactNode;
+}[] = [
 	{
 		value: "BIDIRECTIONAL",
 		labelKey: "routes.direction.bidirectional",
@@ -90,7 +94,11 @@ export function RouteForm({
 		if (formData.fixedPrice <= 0) {
 			newErrors.fixedPrice = t("routes.errors.fixedPricePositive");
 		}
-		if (formData.fromZoneId && formData.toZoneId && formData.fromZoneId === formData.toZoneId) {
+		if (
+			formData.fromZoneId &&
+			formData.toZoneId &&
+			formData.fromZoneId === formData.toZoneId
+		) {
 			newErrors.toZoneId = t("routes.errors.sameZone");
 		}
 
@@ -124,7 +132,10 @@ export function RouteForm({
 						setFormData((prev) => ({ ...prev, fromZoneId: value }))
 					}
 				>
-					<SelectTrigger id="fromZoneId" className={errors.fromZoneId ? "border-destructive" : ""}>
+					<SelectTrigger
+						id="fromZoneId"
+						className={errors.fromZoneId ? "border-destructive" : ""}
+					>
 						<SelectValue placeholder={t("routes.form.selectFromZone")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -132,14 +143,16 @@ export function RouteForm({
 							<SelectItem key={zone.id} value={zone.id}>
 								<span className="flex items-center gap-2">
 									<span>{zone.name}</span>
-									<span className="text-xs text-muted-foreground">({zone.code})</span>
+									<span className="text-muted-foreground text-xs">
+										({zone.code})
+									</span>
 								</span>
 							</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
 				{errors.fromZoneId && (
-					<p className="text-sm text-destructive">{errors.fromZoneId}</p>
+					<p className="text-destructive text-sm">{errors.fromZoneId}</p>
 				)}
 			</div>
 
@@ -152,7 +165,10 @@ export function RouteForm({
 						setFormData((prev) => ({ ...prev, toZoneId: value }))
 					}
 				>
-					<SelectTrigger id="toZoneId" className={errors.toZoneId ? "border-destructive" : ""}>
+					<SelectTrigger
+						id="toZoneId"
+						className={errors.toZoneId ? "border-destructive" : ""}
+					>
 						<SelectValue placeholder={t("routes.form.selectToZone")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -160,20 +176,24 @@ export function RouteForm({
 							<SelectItem key={zone.id} value={zone.id}>
 								<span className="flex items-center gap-2">
 									<span>{zone.name}</span>
-									<span className="text-xs text-muted-foreground">({zone.code})</span>
+									<span className="text-muted-foreground text-xs">
+										({zone.code})
+									</span>
 								</span>
 							</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
 				{errors.toZoneId && (
-					<p className="text-sm text-destructive">{errors.toZoneId}</p>
+					<p className="text-destructive text-sm">{errors.toZoneId}</p>
 				)}
 			</div>
 
 			{/* Vehicle Category */}
 			<div className="space-y-2">
-				<Label htmlFor="vehicleCategoryId">{t("routes.form.vehicleCategory")} *</Label>
+				<Label htmlFor="vehicleCategoryId">
+					{t("routes.form.vehicleCategory")} *
+				</Label>
 				<Select
 					value={formData.vehicleCategoryId}
 					onValueChange={(value) =>
@@ -191,7 +211,7 @@ export function RouteForm({
 							<SelectItem key={category.id} value={category.id}>
 								<span className="flex items-center gap-2">
 									<span>{category.name}</span>
-									<span className="text-xs text-muted-foreground">
+									<span className="text-muted-foreground text-xs">
 										({category.maxPassengers} {t("routes.form.passengers")})
 									</span>
 								</span>
@@ -200,7 +220,7 @@ export function RouteForm({
 					</SelectContent>
 				</Select>
 				{errors.vehicleCategoryId && (
-					<p className="text-sm text-destructive">{errors.vehicleCategoryId}</p>
+					<p className="text-destructive text-sm">{errors.vehicleCategoryId}</p>
 				)}
 			</div>
 
@@ -210,7 +230,10 @@ export function RouteForm({
 				<Select
 					value={formData.direction}
 					onValueChange={(value) =>
-						setFormData((prev) => ({ ...prev, direction: value as RouteDirection }))
+						setFormData((prev) => ({
+							...prev,
+							direction: value as RouteDirection,
+						}))
 					}
 				>
 					<SelectTrigger id="direction">
@@ -231,7 +254,9 @@ export function RouteForm({
 
 			{/* Fixed Price */}
 			<div className="space-y-2">
-				<Label htmlFor="fixedPrice">{t("routes.form.fixedPrice")} (EUR) *</Label>
+				<Label htmlFor="fixedPrice">
+					{t("routes.form.fixedPrice")} (EUR) *
+				</Label>
 				<Input
 					id="fixedPrice"
 					type="number"
@@ -248,7 +273,7 @@ export function RouteForm({
 					placeholder="85.00"
 				/>
 				{errors.fixedPrice && (
-					<p className="text-sm text-destructive">{errors.fixedPrice}</p>
+					<p className="text-destructive text-sm">{errors.fixedPrice}</p>
 				)}
 			</div>
 
@@ -256,7 +281,7 @@ export function RouteForm({
 			<div className="flex items-center justify-between rounded-lg border p-4">
 				<div className="space-y-0.5">
 					<Label htmlFor="isActive">{t("routes.form.active")}</Label>
-					<p className="text-sm text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						{t("routes.form.activeDescription")}
 					</p>
 				</div>
@@ -270,8 +295,13 @@ export function RouteForm({
 			</div>
 
 			{/* Actions */}
-			<div className="flex justify-end gap-3 pt-4 border-t">
-				<Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+			<div className="flex justify-end gap-3 border-t pt-4">
+				<Button
+					type="button"
+					variant="outline"
+					onClick={onCancel}
+					disabled={isLoading}
+				>
 					{t("common.cancel")}
 				</Button>
 				<Button type="submit" disabled={isLoading}>
