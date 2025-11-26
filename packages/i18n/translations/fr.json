@@ -593,6 +593,75 @@
 			}
 		}
 	},
+	"routes": {
+		"title": "Routes",
+		"description": "Définissez des routes zone-à-zone avec tarification fixe par catégorie de véhicule.",
+		"addRoute": "Ajouter une route",
+		"editRoute": "Modifier la route",
+		"addRouteDescription": "Créer une nouvelle route zone-à-zone avec tarification fixe.",
+		"editRouteDescription": "Mettre à jour la configuration de la route.",
+		"noRoutes": "Aucune route définie. Ajoutez votre première route pour commencer.",
+		"searchPlaceholder": "Rechercher des routes...",
+		"passengers": "pax",
+		"createSuccess": "Route créée avec succès.",
+		"updateSuccess": "Route mise à jour avec succès.",
+		"deleteSuccess": "Route supprimée avec succès.",
+		"deleteConfirmTitle": "Supprimer la route",
+		"deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer la route de {fromZone} à {toZone} ? Cette action est irréversible.",
+		"direction": {
+			"bidirectional": "Bidirectionnel",
+			"aToB": "A → B",
+			"bToA": "B → A"
+		},
+		"table": {
+			"fromZone": "Zone de départ",
+			"toZone": "Zone d'arrivée",
+			"vehicleCategory": "Catégorie de véhicule",
+			"direction": "Direction",
+			"fixedPrice": "Prix fixe",
+			"status": "Statut",
+			"actions": "Actions"
+		},
+		"filters": {
+			"fromZone": "Zone de départ",
+			"toZone": "Zone d'arrivée",
+			"vehicleCategory": "Catégorie de véhicule",
+			"status": "Statut",
+			"allZones": "Toutes les zones",
+			"allCategories": "Toutes les catégories",
+			"allStatus": "Tous les statuts",
+			"active": "Actif",
+			"inactive": "Inactif"
+		},
+		"form": {
+			"fromZone": "Zone de départ",
+			"toZone": "Zone d'arrivée",
+			"selectFromZone": "Sélectionner la zone d'origine",
+			"selectToZone": "Sélectionner la zone de destination",
+			"vehicleCategory": "Catégorie de véhicule",
+			"selectVehicleCategory": "Sélectionner la catégorie de véhicule",
+			"passengers": "passagers",
+			"direction": "Direction",
+			"fixedPrice": "Prix fixe",
+			"active": "Actif",
+			"activeDescription": "Les routes inactives ne sont pas utilisées dans les calculs de tarification.",
+			"createRoute": "Créer la route"
+		},
+		"errors": {
+			"fromZoneRequired": "La zone d'origine est requise",
+			"toZoneRequired": "La zone de destination est requise",
+			"vehicleCategoryRequired": "La catégorie de véhicule est requise",
+			"fixedPricePositive": "Le prix fixe doit être positif",
+			"sameZone": "Les zones d'origine et de destination doivent être différentes",
+			"fetchFailed": "Échec du chargement des routes. Veuillez réessayer.",
+			"saveFailed": "Échec de l'enregistrement de la route. Veuillez réessayer.",
+			"deleteFailed": "Échec de la suppression de la route. Veuillez réessayer."
+		},
+		"pagination": {
+			"showing": "Affichage de {count} sur {total} routes",
+			"page": "Page {page} sur {totalPages}"
+		}
+	},
 	"settings": {
 		"account": {
 			"avatar": {

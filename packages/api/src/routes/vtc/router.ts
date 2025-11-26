@@ -5,6 +5,7 @@ import { partnerContractsRouter } from "./partner-contracts";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { vehiclesRouter } from "./vehicles";
+import { zoneRoutesRouter } from "./zone-routes";
 
 /**
  * VTC ERP Router
@@ -19,6 +20,7 @@ export const vtcRouter = new Hono()
 	.route("/", quotesRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)
-	.route("/", pricingZonesRouter);
+	.route("/", pricingZonesRouter)
+	.route("/", zoneRoutesRouter);
 
 export type VtcRouter = typeof vtcRouter;

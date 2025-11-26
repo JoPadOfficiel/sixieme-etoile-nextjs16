@@ -593,6 +593,75 @@
 			}
 		}
 	},
+	"routes": {
+		"title": "Routes",
+		"description": "Define fixed zone-to-zone routes with pricing per vehicle category.",
+		"addRoute": "Add Route",
+		"editRoute": "Edit Route",
+		"addRouteDescription": "Create a new zone-to-zone route with fixed pricing.",
+		"editRouteDescription": "Update the route configuration.",
+		"noRoutes": "No routes defined yet. Add your first route to get started.",
+		"searchPlaceholder": "Search routes...",
+		"passengers": "pax",
+		"createSuccess": "Route created successfully.",
+		"updateSuccess": "Route updated successfully.",
+		"deleteSuccess": "Route deleted successfully.",
+		"deleteConfirmTitle": "Delete Route",
+		"deleteConfirmDescription": "Are you sure you want to delete the route from {fromZone} to {toZone}? This action cannot be undone.",
+		"direction": {
+			"bidirectional": "Bidirectional",
+			"aToB": "A → B",
+			"bToA": "B → A"
+		},
+		"table": {
+			"fromZone": "From Zone",
+			"toZone": "To Zone",
+			"vehicleCategory": "Vehicle Category",
+			"direction": "Direction",
+			"fixedPrice": "Fixed Price",
+			"status": "Status",
+			"actions": "Actions"
+		},
+		"filters": {
+			"fromZone": "From Zone",
+			"toZone": "To Zone",
+			"vehicleCategory": "Vehicle Category",
+			"status": "Status",
+			"allZones": "All zones",
+			"allCategories": "All categories",
+			"allStatus": "All status",
+			"active": "Active",
+			"inactive": "Inactive"
+		},
+		"form": {
+			"fromZone": "From Zone",
+			"toZone": "To Zone",
+			"selectFromZone": "Select origin zone",
+			"selectToZone": "Select destination zone",
+			"vehicleCategory": "Vehicle Category",
+			"selectVehicleCategory": "Select vehicle category",
+			"passengers": "passengers",
+			"direction": "Direction",
+			"fixedPrice": "Fixed Price",
+			"active": "Active",
+			"activeDescription": "Inactive routes are not used in pricing calculations.",
+			"createRoute": "Create Route"
+		},
+		"errors": {
+			"fromZoneRequired": "Origin zone is required",
+			"toZoneRequired": "Destination zone is required",
+			"vehicleCategoryRequired": "Vehicle category is required",
+			"fixedPricePositive": "Fixed price must be positive",
+			"sameZone": "Origin and destination zones must be different",
+			"fetchFailed": "Failed to load routes. Please try again.",
+			"saveFailed": "Failed to save route. Please try again.",
+			"deleteFailed": "Failed to delete route. Please try again."
+		},
+		"pagination": {
+			"showing": "Showing {count} of {total} routes",
+			"page": "Page {page} of {totalPages}"
+		}
+	},
 	"settings": {
 		"account": {
 			"avatar": {

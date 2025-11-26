@@ -9,6 +9,7 @@ import {
 	ChevronRightIcon,
 	HomeIcon,
 	MapPinIcon,
+	RouteIcon,
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
@@ -52,6 +53,12 @@ export function NavBar() {
 						href: `${basePath}/zones`,
 						icon: MapPinIcon,
 						isActive: pathname.startsWith(`${basePath}/zones`),
+					},
+					{
+						label: t("routes.title"),
+						href: `${basePath}/routes`,
+						icon: RouteIcon,
+						isActive: pathname.startsWith(`${basePath}/routes`),
 					},
 					{
 						label: t("app.menu.organizationSettings"),
