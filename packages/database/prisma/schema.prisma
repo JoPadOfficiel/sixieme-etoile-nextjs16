@@ -836,6 +836,13 @@ model OrganizationPricingSettings {
   // Margin settings
   defaultMarginPercent Decimal @db.Decimal(5, 2) // e.g. 20.00 for 20%
 
+  // Story 4.7: Profitability indicator thresholds (configurable)
+  // Green threshold: margin >= this value is "green" (profitable)
+  greenMarginThreshold  Decimal @default(20.00) @db.Decimal(5, 2) // Default 20%
+  // Orange threshold: margin >= this value (but < green) is "orange" (low margin)
+  // Below this threshold is "red" (loss)
+  orangeMarginThreshold Decimal @default(0.00) @db.Decimal(5, 2) // Default 0%
+
   // Minimum fare
   minimumFare Decimal @db.Decimal(10, 2) // EUR
 

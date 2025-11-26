@@ -65,6 +65,7 @@ const calculatePricingSchema = z.object({
 });
 
 // Story 4.4: Price override schema
+// Story 4.7: Added profitabilityData to schema
 const priceOverrideSchema = z.object({
 	pricingResult: z.object({
 		pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]),
@@ -74,6 +75,17 @@ const priceOverrideSchema = z.object({
 		margin: z.number(),
 		marginPercent: z.number(),
 		profitabilityIndicator: z.enum(["green", "orange", "red"]),
+		// Story 4.7: Full profitability data for UI
+		profitabilityData: z.object({
+			indicator: z.enum(["green", "orange", "red"]),
+			marginPercent: z.number(),
+			thresholds: z.object({
+				greenThreshold: z.number(),
+				orangeThreshold: z.number(),
+			}),
+			label: z.string(),
+			description: z.string(),
+		}).optional(),
 		matchedGrid: z.object({
 			type: z.enum(["ZoneRoute", "ExcursionPackage", "DispoPackage"]),
 			id: z.string(),
@@ -289,6 +301,9 @@ async function loadPricingSettings(
 			tollCostPerKm: settings.tollCostPerKm ? Number(settings.tollCostPerKm) : undefined,
 			wearCostPerKm: settings.wearCostPerKm ? Number(settings.wearCostPerKm) : undefined,
 			driverHourlyCost: settings.driverHourlyCost ? Number(settings.driverHourlyCost) : undefined,
+			// Story 4.7: Profitability thresholds (optional, will use defaults if not set)
+			greenMarginThreshold: settings.greenMarginThreshold ? Number(settings.greenMarginThreshold) : undefined,
+			orangeMarginThreshold: settings.orangeMarginThreshold ? Number(settings.orangeMarginThreshold) : undefined,
 		};
 	}
 
@@ -297,7 +312,7 @@ async function loadPricingSettings(
 		baseRatePerKm: 2.5,
 		baseRatePerHour: 45.0,
 		targetMarginPercent: 20.0,
-		// Cost parameters will use defaults from pricing-engine.ts
+		// Cost parameters and profitability thresholds will use defaults from pricing-engine.ts
 	};
 }
 

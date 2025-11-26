@@ -18,6 +18,13 @@ import {
 	validatePriceOverride,
 	recalculateProfitability,
 	applyPriceOverride,
+	// Story 4.7: Profitability indicator functions
+	calculateProfitabilityIndicator,
+	getProfitabilityIndicatorData,
+	getProfitabilityLabel,
+	getProfitabilityDescription,
+	getThresholdsFromSettings,
+	DEFAULT_PROFITABILITY_THRESHOLDS,
 	type AdvancedRateData,
 	type AppliedMultiplierRule,
 	type AppliedRule,
@@ -26,6 +33,7 @@ import {
 	type OrganizationPricingSettings,
 	type PricingRequest,
 	type PricingResult,
+	type ProfitabilityThresholds,
 	type SeasonalMultiplierData,
 } from "../pricing-engine";
 
@@ -2737,6 +2745,14 @@ describe("pricing-engine", () => {
 				margin: 45.30,
 				marginPercent: 50.33,
 				profitabilityIndicator: "green",
+				// Story 4.7: Add profitabilityData to test fixture
+				profitabilityData: {
+					indicator: "green",
+					marginPercent: 50.33,
+					thresholds: DEFAULT_PROFITABILITY_THRESHOLDS,
+					label: "Profitable",
+					description: "Margin: 50.3% (≥20% target)",
+				},
 				matchedGrid: null,
 				appliedRules: [{ type: "DYNAMIC_BASE_CALCULATION" }],
 				isContractPrice: false,
@@ -2815,6 +2831,190 @@ describe("pricing-engine", () => {
 					const overrideRule = result.result.appliedRules.find((r: AppliedRule) => r.type === "MANUAL_OVERRIDE");
 					expect(overrideRule?.isContractPriceOverride).toBe(true);
 				}
+			});
+		});
+	});
+
+	// ============================================================================
+	// Story 4.7: Profitability Indicator Tests
+	// ============================================================================
+
+	describe("Story 4.7: Profitability Indicator", () => {
+		describe("calculateProfitabilityIndicator", () => {
+			describe("with default thresholds", () => {
+				it("should return 'green' for margin >= 20% (AC1)", () => {
+					expect(calculateProfitabilityIndicator(20)).toBe("green");
+					expect(calculateProfitabilityIndicator(25)).toBe("green");
+					expect(calculateProfitabilityIndicator(50)).toBe("green");
+					expect(calculateProfitabilityIndicator(100)).toBe("green");
+				});
+
+				it("should return 'orange' for 0% <= margin < 20% (AC1)", () => {
+					expect(calculateProfitabilityIndicator(0)).toBe("orange");
+					expect(calculateProfitabilityIndicator(10)).toBe("orange");
+					expect(calculateProfitabilityIndicator(19)).toBe("orange");
+					expect(calculateProfitabilityIndicator(19.99)).toBe("orange");
+				});
+
+				it("should return 'red' for margin < 0% (AC1)", () => {
+					expect(calculateProfitabilityIndicator(-1)).toBe("red");
+					expect(calculateProfitabilityIndicator(-10)).toBe("red");
+					expect(calculateProfitabilityIndicator(-50)).toBe("red");
+					expect(calculateProfitabilityIndicator(-0.01)).toBe("red");
+				});
+
+				it("should handle edge cases at threshold boundaries (AC1)", () => {
+					// Exactly at green threshold
+					expect(calculateProfitabilityIndicator(20)).toBe("green");
+					// Just below green threshold
+					expect(calculateProfitabilityIndicator(19.999)).toBe("orange");
+					// Exactly at orange threshold
+					expect(calculateProfitabilityIndicator(0)).toBe("orange");
+					// Just below orange threshold
+					expect(calculateProfitabilityIndicator(-0.001)).toBe("red");
+				});
+			});
+
+			describe("with custom thresholds (AC3)", () => {
+				const customThresholds: ProfitabilityThresholds = {
+					greenThreshold: 30,
+					orangeThreshold: 10,
+				};
+
+				it("should use custom green threshold", () => {
+					expect(calculateProfitabilityIndicator(30, customThresholds)).toBe("green");
+					expect(calculateProfitabilityIndicator(29, customThresholds)).toBe("orange");
+					expect(calculateProfitabilityIndicator(50, customThresholds)).toBe("green");
+				});
+
+				it("should use custom orange threshold", () => {
+					expect(calculateProfitabilityIndicator(10, customThresholds)).toBe("orange");
+					expect(calculateProfitabilityIndicator(9, customThresholds)).toBe("red");
+					expect(calculateProfitabilityIndicator(20, customThresholds)).toBe("orange");
+				});
+
+				it("should classify correctly with custom thresholds", () => {
+					// Green: >= 30%
+					expect(calculateProfitabilityIndicator(35, customThresholds)).toBe("green");
+					// Orange: >= 10% and < 30%
+					expect(calculateProfitabilityIndicator(15, customThresholds)).toBe("orange");
+					// Red: < 10%
+					expect(calculateProfitabilityIndicator(5, customThresholds)).toBe("red");
+					expect(calculateProfitabilityIndicator(-5, customThresholds)).toBe("red");
+				});
+			});
+		});
+
+		describe("getProfitabilityLabel", () => {
+			it("should return correct labels for each state", () => {
+				expect(getProfitabilityLabel("green")).toBe("Profitable");
+				expect(getProfitabilityLabel("orange")).toBe("Low margin");
+				expect(getProfitabilityLabel("red")).toBe("Loss");
+			});
+		});
+
+		describe("getProfitabilityDescription", () => {
+			it("should return correct description for green state (AC4)", () => {
+				const description = getProfitabilityDescription("green", 25.5, DEFAULT_PROFITABILITY_THRESHOLDS);
+				expect(description).toContain("25.5%");
+				expect(description).toContain("≥20%");
+				expect(description).toContain("target");
+			});
+
+			it("should return correct description for orange state (AC4)", () => {
+				const description = getProfitabilityDescription("orange", 10.0, DEFAULT_PROFITABILITY_THRESHOLDS);
+				expect(description).toContain("10.0%");
+				expect(description).toContain("below");
+				expect(description).toContain("20%");
+			});
+
+			it("should return correct description for red state (AC4)", () => {
+				const description = getProfitabilityDescription("red", -5.0, DEFAULT_PROFITABILITY_THRESHOLDS);
+				expect(description).toContain("-5.0%");
+				expect(description).toContain("loss");
+			});
+		});
+
+		describe("getProfitabilityIndicatorData", () => {
+			it("should return complete data structure for UI (AC2, AC4)", () => {
+				const data = getProfitabilityIndicatorData(25.5);
+
+				expect(data.indicator).toBe("green");
+				expect(data.marginPercent).toBe(25.5);
+				expect(data.thresholds).toEqual(DEFAULT_PROFITABILITY_THRESHOLDS);
+				expect(data.label).toBe("Profitable");
+				expect(data.description).toContain("25.5%");
+			});
+
+			it("should use custom thresholds when provided (AC3)", () => {
+				const customThresholds: ProfitabilityThresholds = {
+					greenThreshold: 30,
+					orangeThreshold: 10,
+				};
+
+				const data = getProfitabilityIndicatorData(25, customThresholds);
+
+				expect(data.indicator).toBe("orange"); // 25% < 30% green threshold
+				expect(data.thresholds).toEqual(customThresholds);
+				expect(data.label).toBe("Low margin");
+			});
+
+			it("should round marginPercent to 2 decimal places", () => {
+				const data = getProfitabilityIndicatorData(25.555555);
+				expect(data.marginPercent).toBe(25.56);
+			});
+		});
+
+		describe("getThresholdsFromSettings", () => {
+			it("should extract thresholds from organization settings (AC3)", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+					greenMarginThreshold: 25,
+					orangeMarginThreshold: 5,
+				};
+
+				const thresholds = getThresholdsFromSettings(settings);
+
+				expect(thresholds.greenThreshold).toBe(25);
+				expect(thresholds.orangeThreshold).toBe(5);
+			});
+
+			it("should use defaults when thresholds not configured (AC3)", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+					// No threshold fields
+				};
+
+				const thresholds = getThresholdsFromSettings(settings);
+
+				expect(thresholds.greenThreshold).toBe(DEFAULT_PROFITABILITY_THRESHOLDS.greenThreshold);
+				expect(thresholds.orangeThreshold).toBe(DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold);
+			});
+
+			it("should handle partial threshold configuration", () => {
+				const settings: OrganizationPricingSettings = {
+					baseRatePerKm: 2.5,
+					baseRatePerHour: 45.0,
+					targetMarginPercent: 20.0,
+					greenMarginThreshold: 30,
+					// orangeMarginThreshold not set
+				};
+
+				const thresholds = getThresholdsFromSettings(settings);
+
+				expect(thresholds.greenThreshold).toBe(30);
+				expect(thresholds.orangeThreshold).toBe(DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold);
+			});
+		});
+
+		describe("DEFAULT_PROFITABILITY_THRESHOLDS", () => {
+			it("should have PRD-compliant default values", () => {
+				expect(DEFAULT_PROFITABILITY_THRESHOLDS.greenThreshold).toBe(20);
+				expect(DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold).toBe(0);
 			});
 		});
 	});

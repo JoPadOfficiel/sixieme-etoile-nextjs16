@@ -1,0 +1,199 @@
+<story-context id="4-7-compute-expose-profitability-indicator" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>7</storyId>
+    <title>Compute &amp; Expose Profitability Indicator</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T18:52:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-7-compute-expose-profitability-indicator.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a clear profitability indicator for each quote and mission</iWant>
+    <soThat>I can immediately see whether a trip is acceptable, borderline or loss-making</soThat>
+    <tasks>
+      <task id="1">Add configurable margin thresholds to OrganizationPricingSettings</task>
+      <task id="2">Enhance calculateProfitabilityIndicator to use configurable thresholds</task>
+      <task id="3">Create ProfitabilityIndicator React component with color, icon, label and tooltip</task>
+      <task id="4">Expose profitability data in pricing API response</task>
+      <task id="5">Add unit tests for profitability calculation with various thresholds</task>
+      <task id="6">Document profitability indicator usage across screens</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>a quote with final selling price and internal cost</given>
+      <when>the pricing engine computes margin</when>
+      <then>it classifies the quote into at least three bands (Green/Orange/Red) based on configured target margin thresholds and stores both marginPercent and a symbolic state</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>the Quotes list, Create Quote screen, Quote detail and Dispatch mission list</given>
+      <when>I view them</when>
+      <then>they all display the profitability indicator consistently using the Profitability Indicator component (colour + icon + label + tooltip with % and thresholds)</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>organization pricing settings</given>
+      <when>admin configures margin thresholds</when>
+      <then>the profitability indicator uses these configured values instead of hardcoded defaults (≥20% green, 0-20% orange, ≤0% red)</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>a profitability indicator component</given>
+      <when>user hovers over it</when>
+      <then>a tooltip displays the exact margin percentage and the threshold values used for classification</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR24 - Profitability Indicator</section>
+        <snippet>The system shall compute and display a profitability indicator (e.g. green/orange/red) based on selling price vs internal cost, including margin percentage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>Appendix B - Profitability Indicator</section>
+        <snippet>Green (🟢): Margin > Target (e.g., 20%). Orange (🟠): Positive Margin but low (0-20%). Red (🔴): Negative Margin (Loss).</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>OrganizationPricingSettings</section>
+        <snippet>defaultMarginPercent field stores the target margin percentage. Used to determine profitability classification.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>6.1.6 Profitability Indicator &amp; Dispatch Badges</section>
+        <snippet>Visual pattern reused across TripTransparencyPanel, Quotes list, Dispatch and Reports. Components: Lucide icon + coloured dot + text label. Tooltip explains the rule with actual % value and target.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 4.7: Compute &amp; Expose Profitability Indicator</section>
+        <snippet>Indicator should be computed centrally (backend or shared domain library) to avoid divergences. Defaults can follow PRD but values should ultimately come from configuration.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculateProfitabilityIndicator</symbol>
+        <lines>477-483</lines>
+        <reason>Existing function that calculates profitability indicator with hardcoded thresholds (≥20% green, ≥0% orange, else red). Needs enhancement to use configurable thresholds.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>type</kind>
+        <symbol>ProfitabilityIndicator</symbol>
+        <lines>21</lines>
+        <reason>Type definition for profitability states: "green" | "orange" | "red"</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>interface</kind>
+        <symbol>PricingResult</symbol>
+        <lines>127-146</lines>
+        <reason>Contains profitabilityIndicator and marginPercent fields that are already computed and returned</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>interface</kind>
+        <symbol>OrganizationPricingSettings</symbol>
+        <lines>272-282</lines>
+        <reason>Settings interface that should include configurable margin thresholds</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/pricing-calculate.ts</path>
+        <kind>route</kind>
+        <symbol>pricing-calculate</symbol>
+        <lines>all</lines>
+        <reason>API route that returns pricing results including profitabilityIndicator</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>model</kind>
+        <symbol>OrganizationPricingSettings</symbol>
+        <lines>830-860</lines>
+        <reason>Prisma model that stores defaultMarginPercent. Needs additional fields for green/orange thresholds.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/pricing-engine.test.ts</path>
+        <kind>test</kind>
+        <symbol>calculateProfitabilityIndicator tests</symbol>
+        <lines>various</lines>
+        <reason>Existing tests for profitability calculation that need extension for configurable thresholds</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>lucide-react</package>
+        <version>^0.263.1</version>
+        <reason>Icons for profitability indicator (ArrowUpRight, AlertTriangle, ArrowDownRight)</reason>
+      </node>
+      <node>
+        <package>@radix-ui/react-tooltip</package>
+        <version>^1.0.0</version>
+        <reason>Tooltip component for showing margin details on hover</reason>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="C1">Profitability indicator must be computed centrally in the backend pricing engine to avoid frontend/backend divergence</constraint>
+    <constraint id="C2">Default thresholds (≥20% green, 0-20% orange, &lt;0% red) must be used when organization has no custom configuration</constraint>
+    <constraint id="C3">The indicator component must use colour + icon + text label (not colour alone) for accessibility per PRD non-functional requirements</constraint>
+    <constraint id="C4">All monetary values in EUR only - no currency conversion</constraint>
+    <constraint id="C5">Margin calculation: marginPercent = ((price - internalCost) / price) * 100</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>calculateProfitabilityIndicator</name>
+      <kind>function</kind>
+      <signature>calculateProfitabilityIndicator(marginPercent: number, thresholds?: ProfitabilityThresholds): ProfitabilityIndicator</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>ProfitabilityThresholds</name>
+      <kind>interface</kind>
+      <signature>{ greenThreshold: number; orangeThreshold: number; }</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>ProfitabilityIndicatorData</name>
+      <kind>interface</kind>
+      <signature>{ indicator: ProfitabilityIndicator; marginPercent: number; thresholds: ProfitabilityThresholds; label: string; }</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Tests use Vitest for unit/integration tests. Test files are colocated in __tests__ folders.
+      Naming convention: [module].test.ts for unit tests.
+      Tests should cover all threshold boundaries and edge cases.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/</location>
+      <location>apps/web/app/**/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test calculateProfitabilityIndicator returns "green" for marginPercent >= greenThreshold</idea>
+      <idea acId="AC1">Test calculateProfitabilityIndicator returns "orange" for 0 &lt;= marginPercent &lt; greenThreshold</idea>
+      <idea acId="AC1">Test calculateProfitabilityIndicator returns "red" for marginPercent &lt; 0</idea>
+      <idea acId="AC1">Test with custom thresholds (e.g., 30% green, 10% orange boundary)</idea>
+      <idea acId="AC1">Test edge cases: exactly at threshold boundaries</idea>
+      <idea acId="AC3">Test that default thresholds are used when no config provided</idea>
+      <idea acId="AC3">Test that organization-specific thresholds override defaults</idea>
+      <idea acId="AC4">Test ProfitabilityIndicatorData includes all required fields for tooltip</idea>
+    </ideas>
+  </tests>
+</story-context>

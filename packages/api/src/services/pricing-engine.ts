@@ -132,6 +132,8 @@ export interface PricingResult {
 	margin: number;
 	marginPercent: number;
 	profitabilityIndicator: ProfitabilityIndicator;
+	// Story 4.7: Full profitability data for UI display
+	profitabilityData: ProfitabilityIndicatorData;
 	matchedGrid: MatchedGrid | null;
 	appliedRules: AppliedRule[];
 	isContractPrice: boolean;
@@ -279,6 +281,9 @@ export interface OrganizationPricingSettings {
 	tollCostPerKm?: number;
 	wearCostPerKm?: number;
 	driverHourlyCost?: number;
+	// Story 4.7: Profitability thresholds (optional, defaults in pricing-engine.ts)
+	greenMarginThreshold?: number;
+	orangeMarginThreshold?: number;
 }
 
 // ============================================================================
@@ -467,19 +472,134 @@ export interface VehicleSelectionInfo {
 }
 
 // ============================================================================
-// Profitability Calculation
+// Profitability Calculation (Story 4.7)
 // ============================================================================
 
 /**
+ * Story 4.7: Configurable thresholds for profitability classification
+ * Default values from PRD Appendix B
+ */
+export interface ProfitabilityThresholds {
+	/** Margin >= this value is "green" (profitable). Default: 20% */
+	greenThreshold: number;
+	/** Margin >= this value (but < green) is "orange" (low margin). Default: 0% */
+	orangeThreshold: number;
+}
+
+/**
+ * Default profitability thresholds per PRD Appendix B
+ */
+export const DEFAULT_PROFITABILITY_THRESHOLDS: ProfitabilityThresholds = {
+	greenThreshold: 20,
+	orangeThreshold: 0,
+};
+
+/**
+ * Story 4.7: Complete profitability indicator data for UI display
+ * Includes all information needed for the component and tooltip
+ */
+export interface ProfitabilityIndicatorData {
+	/** The indicator state: green, orange, or red */
+	indicator: ProfitabilityIndicator;
+	/** The actual margin percentage */
+	marginPercent: number;
+	/** The thresholds used for classification */
+	thresholds: ProfitabilityThresholds;
+	/** Human-readable label for the indicator */
+	label: string;
+	/** Detailed description for tooltip */
+	description: string;
+}
+
+/**
+ * Get human-readable label for profitability indicator
+ */
+export function getProfitabilityLabel(indicator: ProfitabilityIndicator): string {
+	switch (indicator) {
+		case "green":
+			return "Profitable";
+		case "orange":
+			return "Low margin";
+		case "red":
+			return "Loss";
+	}
+}
+
+/**
+ * Get detailed description for profitability indicator tooltip
+ */
+export function getProfitabilityDescription(
+	indicator: ProfitabilityIndicator,
+	marginPercent: number,
+	thresholds: ProfitabilityThresholds,
+): string {
+	const marginStr = marginPercent.toFixed(1);
+	const greenStr = thresholds.greenThreshold.toFixed(0);
+	const orangeStr = thresholds.orangeThreshold.toFixed(0);
+	
+	switch (indicator) {
+		case "green":
+			return `Margin: ${marginStr}% (≥${greenStr}% target)`;
+		case "orange":
+			return `Margin: ${marginStr}% (below ${greenStr}% target)`;
+		case "red":
+			return `Margin: ${marginStr}% (loss - below ${orangeStr}%)`;
+	}
+}
+
+/**
  * Calculate profitability indicator based on margin percentage
- * Green: ≥ 20%, Orange: 0-20%, Red: < 0%
+ * Story 4.7: Now supports configurable thresholds
+ * 
+ * @param marginPercent - The margin percentage to classify
+ * @param thresholds - Optional custom thresholds (defaults to PRD values)
+ * @returns The profitability indicator state
  */
 export function calculateProfitabilityIndicator(
 	marginPercent: number,
+	thresholds: ProfitabilityThresholds = DEFAULT_PROFITABILITY_THRESHOLDS,
 ): ProfitabilityIndicator {
-	if (marginPercent >= 20) return "green";
-	if (marginPercent >= 0) return "orange";
+	if (marginPercent >= thresholds.greenThreshold) return "green";
+	if (marginPercent >= thresholds.orangeThreshold) return "orange";
 	return "red";
+}
+
+/**
+ * Story 4.7: Get complete profitability indicator data for UI
+ * Returns all information needed for the ProfitabilityIndicator component
+ * 
+ * @param marginPercent - The margin percentage
+ * @param thresholds - Optional custom thresholds (defaults to PRD values)
+ * @returns Complete profitability data including indicator, label, and tooltip info
+ */
+export function getProfitabilityIndicatorData(
+	marginPercent: number,
+	thresholds: ProfitabilityThresholds = DEFAULT_PROFITABILITY_THRESHOLDS,
+): ProfitabilityIndicatorData {
+	const indicator = calculateProfitabilityIndicator(marginPercent, thresholds);
+	const label = getProfitabilityLabel(indicator);
+	const description = getProfitabilityDescription(indicator, marginPercent, thresholds);
+	
+	return {
+		indicator,
+		marginPercent: Math.round(marginPercent * 100) / 100,
+		thresholds,
+		label,
+		description,
+	};
+}
+
+/**
+ * Story 4.7: Extract profitability thresholds from organization settings
+ * Falls back to default thresholds if not configured
+ */
+export function getThresholdsFromSettings(
+	settings: OrganizationPricingSettings,
+): ProfitabilityThresholds {
+	return {
+		greenThreshold: settings.greenMarginThreshold ?? DEFAULT_PROFITABILITY_THRESHOLDS.greenThreshold,
+		orangeThreshold: settings.orangeMarginThreshold ?? DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold,
+	};
 }
 
 /**
@@ -2006,6 +2126,11 @@ function buildDynamicResult(
 		routingSource: tripAnalysis.routingSource,
 	});
 
+	// Story 4.7: Get profitability thresholds from settings
+	const thresholds = getThresholdsFromSettings(settings);
+	const profitabilityIndicator = calculateProfitabilityIndicator(marginPercent, thresholds);
+	const profitabilityData = getProfitabilityIndicatorData(marginPercent, thresholds);
+
 	return {
 		pricingMode: "DYNAMIC",
 		price,
@@ -2013,7 +2138,8 @@ function buildDynamicResult(
 		internalCost,
 		margin,
 		marginPercent,
-		profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
+		profitabilityIndicator,
+		profitabilityData,
 		matchedGrid: null,
 		appliedRules,
 		isContractPrice: false,
@@ -2092,6 +2218,11 @@ function buildGridResult(
 		routingSource: tripAnalysis.routingSource,
 	});
 
+	// Story 4.7: Get profitability thresholds from settings
+	const thresholds = getThresholdsFromSettings(settings);
+	const profitabilityIndicator = calculateProfitabilityIndicator(marginPercent, thresholds);
+	const profitabilityData = getProfitabilityIndicatorData(marginPercent, thresholds);
+
 	return {
 		pricingMode: "FIXED_GRID",
 		price,
@@ -2099,7 +2230,8 @@ function buildGridResult(
 		internalCost,
 		margin,
 		marginPercent,
-		profitabilityIndicator: calculateProfitabilityIndicator(marginPercent),
+		profitabilityIndicator,
+		profitabilityData,
 		matchedGrid,
 		appliedRules,
 		isContractPrice: true,
