@@ -1,0 +1,347 @@
+<story-context id="4-5-implement-multi-base-candidate-selection-pre-filter" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>5</storyId>
+    <title>Implement Multi-Base Candidate Selection &amp; Pre-Filter</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T17:45:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-4.5</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operations planner</asA>
+    <iWant>the engine to select candidate bases and vehicles efficiently</iWant>
+    <soThat>quotes account for deadhead distance without calling routing APIs for hopeless candidates</soThat>
+    <tasks>
+      <task id="1">Create VehicleCandidate and BaseCandidate types for selection logic</task>
+      <task id="2">Implement Haversine pre-filter to eliminate bases too far from pickup</task>
+      <task id="3">Create capacity filter to match vehicle passenger/luggage requirements</task>
+      <task id="4">Implement Google Distance Matrix integration for precise routing</task>
+      <task id="5">Create optimal base/vehicle selection algorithm based on internal cost</task>
+      <task id="6">Integrate candidate selection into pricing engine calculatePrice flow</task>
+      <task id="7">Store selected vehicle/base in tripAnalysis for transparency</task>
+      <task id="8">Add unit tests for all selection scenarios</task>
+      <task id="9">Add integration tests for API endpoint with vehicle selection</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Capacity-Compatible Vehicle Filtering">
+      <given>a fleet with vehicles linked to OperatingBase records and a requested itinerary with passenger/luggage requirements</given>
+      <when>a quote is evaluated</when>
+      <then>the engine filters vehicles that are capacity-compatible (passengerCapacity >= requested, luggageCapacity >= requested if specified)</then>
+    </criterion>
+    <criterion id="AC2" title="Haversine Pre-Filter">
+      <given>candidate vehicles/bases after capacity filtering</given>
+      <when>the pre-filter runs</when>
+      <then>bases that are obviously too far from pickup (e.g., > 100km Haversine distance) are eliminated without calling external routing APIs</then>
+    </criterion>
+    <criterion id="AC3" title="Routing API for Remaining Candidates">
+      <given>remaining candidates after Haversine pre-filter</given>
+      <when>precise routing is needed</when>
+      <then>the engine calls Google Distance Matrix API only for the top N candidates (e.g., top 3-5) to compute precise approach, service, and return distances/durations</then>
+    </criterion>
+    <criterion id="AC4" title="Optimal Base/Vehicle Selection">
+      <given>routing results for all viable candidates</given>
+      <when>selection is made</when>
+      <then>the engine selects the optimal vehicle/base pair according to configured criteria (minimal internal cost or best margin)</then>
+    </criterion>
+    <criterion id="AC5" title="Approach Segment Cost Calculation">
+      <given>a selected vehicle/base pair</given>
+      <when>internal cost is calculated</when>
+      <then>the approach segment (base → pickup) distance and duration are included in the cost calculation</then>
+    </criterion>
+    <criterion id="AC6" title="Return Segment Cost Calculation">
+      <given>a selected vehicle/base pair</given>
+      <when>internal cost is calculated</when>
+      <then>the return segment (dropoff → base) distance and duration are included in the cost calculation</then>
+    </criterion>
+    <criterion id="AC7" title="Selection Transparency in tripAnalysis">
+      <given>a quote with vehicle/base selection</given>
+      <when>the pricing result is returned</when>
+      <then>tripAnalysis contains the selected vehicle/base info, candidates considered, and selection rationale</then>
+    </criterion>
+    <criterion id="AC8" title="Fallback When No Vehicles Available">
+      <given>no vehicles match capacity or distance requirements</given>
+      <when>selection fails</when>
+      <then>the engine returns a clear error or uses default estimates with a warning flag</then>
+    </criterion>
+    <criterion id="AC9" title="Active Vehicle Status Filter">
+      <given>vehicles with different statuses (ACTIVE, MAINTENANCE, OUT_OF_SERVICE)</given>
+      <when>candidate selection runs</when>
+      <then>only ACTIVE vehicles are considered as candidates</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="FR17-FR20, FR51, Appendix B">
+        FR17: Model vehicles, drivers, and garages/bases with each vehicle linked to a default base.
+        FR18: Identify candidate vehicles and bases compatible with requested capacity and availability.
+        FR19: Use mathematical pre-filter (Haversine) to eliminate bases too far from pickup before calling routing APIs.
+        FR20: Use routing API for remaining candidates to estimate travel times/costs and select optimal vehicle/base.
+        FR51: Simulate full approach→service→return loop from multiple candidate bases and select optimal pair.
+        Appendix B Section 2: Multi-Base Model - vehicles are physically anchored, every vehicle has a homeBaseId.
+        Appendix B Section 5: Google Maps API Strategy - rough filter with Haversine, precision with Matrix API for top 3.
+      </doc>
+      <doc path="docs/bmad/tech-spec.md" title="Tech Spec" section="3. Fleet &amp; Regulatory Models">
+        OperatingBase: id, organizationId, name, address, latitude, longitude, isActive.
+        Vehicle: id, organizationId, vehicleCategoryId, operatingBaseId, passengerCapacity, luggageCapacity, consumptionLPer100Km, averageSpeedKmh, costPerKm, status.
+        VehicleCategory: id, regulatoryCategory (LIGHT/HEAVY), maxPassengers, maxLuggageVolume, priceMultiplier.
+      </doc>
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 4.5, Story 4.6">
+        Story 4.5: Multi-base candidate selection with Haversine pre-filter and optimal selection.
+        Story 4.6: Shadow calculation segments A/B/C - depends on this story for vehicle/base selection.
+        Candidate selection logic is shared with Epic 8 (Dispatch); factor reusable services.
+      </doc>
+      <doc path="docs/sprint-artifacts/4-2-add-operational-cost-components-internal-cost.md" title="Story 4.2">
+        Cost breakdown (fuel, tolls, wear, driver) already implemented.
+        calculateCostBreakdown function available for segment cost calculation.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="packages/api/src/lib/geo-utils.ts" kind="utility" symbol="haversineDistance, GeoPoint" lines="1-40" reason="Haversine distance calculation already implemented - reuse for pre-filter">
+        haversineDistance(point1: GeoPoint, point2: GeoPoint): number - calculates distance in km.
+        GeoPoint interface: { lat: number; lng: number }.
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="service" symbol="calculatePrice, calculateCostBreakdown, TripAnalysis" lines="1-600" reason="Main pricing engine - needs to integrate vehicle/base selection">
+        calculatePrice: main entry point for pricing.
+        calculateCostBreakdown: calculates fuel, tolls, wear, driver costs.
+        TripAnalysis: stores cost breakdown and future segments.
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts" kind="route" symbol="pricingCalculateRouter" lines="1-200" reason="API endpoint - needs to load vehicles and bases for selection">
+        Currently loads contacts, zones, pricingSettings.
+        Will need to also load vehicles and operating bases.
+      </file>
+      <file path="packages/database/prisma/schema.prisma" kind="model" symbol="Vehicle, OperatingBase, VehicleCategory" lines="494-573" reason="Prisma models for fleet">
+        Vehicle: passengerCapacity, luggageCapacity, operatingBaseId, vehicleCategoryId, status, consumptionLPer100Km, costPerKm.
+        OperatingBase: latitude, longitude, isActive.
+        VehicleCategory: regulatoryCategory, maxPassengers, maxLuggageVolume.
+      </file>
+      <file path="packages/api/src/services/__tests__/pricing-engine.test.ts" kind="test" symbol="describe pricing-engine" lines="1-150" reason="Existing tests to extend with vehicle selection scenarios">
+        Test patterns for dynamic pricing, grid pricing, profitability indicators.
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="@prisma/client" version="workspace" />
+        <package name="decimal.js" version="^10.4.3" note="For Decimal arithmetic in cost calculations" />
+      </node>
+      <external>
+        <api name="Google Distance Matrix API" note="For precise routing between base→pickup, pickup→dropoff, dropoff→base">
+          Endpoint: https://maps.googleapis.com/maps/api/distancematrix/json
+          Parameters: origins, destinations, mode=driving, key
+          Returns: distance (meters), duration (seconds) for each origin-destination pair
+        </api>
+      </external>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="api_cost_optimization">
+      Google Distance Matrix API calls are expensive. The Haversine pre-filter MUST eliminate obviously distant bases BEFORE calling the API.
+      Maximum API calls per quote: limit to top 3-5 candidates after pre-filter.
+    </constraint>
+    <constraint type="haversine_threshold">
+      Default Haversine threshold for pre-filter: 100km.
+      Bases beyond this distance from pickup are eliminated without API call.
+      This threshold should be configurable in OrganizationPricingSettings.
+    </constraint>
+    <constraint type="selection_criteria">
+      Default selection criterion: minimal total internal cost (approach + service + return).
+      Alternative: best margin (price - internal cost).
+      Selection criterion should be configurable.
+    </constraint>
+    <constraint type="vehicle_status">
+      Only vehicles with status = ACTIVE are eligible for selection.
+      MAINTENANCE and OUT_OF_SERVICE vehicles MUST be excluded.
+    </constraint>
+    <constraint type="capacity_matching">
+      Vehicle passengerCapacity MUST be >= requested passengerCount.
+      If luggageCapacity is specified, it MUST be >= requested luggageCount.
+    </constraint>
+    <constraint type="reusability">
+      Candidate selection logic will be reused by Epic 8 (Dispatch).
+      Design as a standalone service that can be called independently.
+    </constraint>
+    <constraint type="fallback_behavior">
+      If no vehicles match requirements, return pricing with default estimates and a warning flag.
+      Do not block the quote entirely - allow operator to proceed with manual vehicle assignment.
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="VehicleCandidate" kind="type">
+      <signature>
+interface VehicleCandidate {
+  vehicleId: string;
+  vehicleName: string;
+  vehicleCategoryId: string;
+  baseId: string;
+  baseName: string;
+  baseLocation: GeoPoint;
+  passengerCapacity: number;
+  luggageCapacity: number | null;
+  consumptionLPer100Km: number | null;
+  costPerKm: number | null;
+  averageSpeedKmh: number | null;
+}
+      </signature>
+    </interface>
+    <interface name="CandidateWithDistance" kind="type">
+      <signature>
+interface CandidateWithDistance extends VehicleCandidate {
+  haversineDistanceKm: number;  // Straight-line distance base → pickup
+  isWithinThreshold: boolean;
+}
+      </signature>
+    </interface>
+    <interface name="CandidateWithRouting" kind="type">
+      <signature>
+interface CandidateWithRouting extends CandidateWithDistance {
+  approachDistanceKm: number;    // Base → Pickup (from routing API)
+  approachDurationMinutes: number;
+  serviceDistanceKm: number;     // Pickup → Dropoff
+  serviceDurationMinutes: number;
+  returnDistanceKm: number;      // Dropoff → Base
+  returnDurationMinutes: number;
+  totalDistanceKm: number;       // Sum of all segments
+  totalDurationMinutes: number;
+  internalCost: number;          // Calculated using cost breakdown
+}
+      </signature>
+    </interface>
+    <interface name="VehicleSelectionResult" kind="type">
+      <signature>
+interface VehicleSelectionResult {
+  selectedCandidate: CandidateWithRouting | null;
+  candidatesConsidered: number;
+  candidatesAfterCapacityFilter: number;
+  candidatesAfterHaversineFilter: number;
+  candidatesWithRouting: number;
+  selectionCriterion: 'MINIMAL_COST' | 'BEST_MARGIN';
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+  allCandidates?: CandidateWithRouting[];  // For transparency/debugging
+}
+      </signature>
+    </interface>
+    <interface name="VehicleSelectionInput" kind="type">
+      <signature>
+interface VehicleSelectionInput {
+  organizationId: string;
+  pickup: GeoPoint;
+  dropoff: GeoPoint;
+  passengerCount: number;
+  luggageCount?: number;
+  vehicleCategoryId?: string;  // Optional: filter by specific category
+  haversineThresholdKm?: number;  // Default: 100km
+  maxCandidatesForRouting?: number;  // Default: 5
+  selectionCriterion?: 'MINIMAL_COST' | 'BEST_MARGIN';
+}
+      </signature>
+    </interface>
+    <interface name="selectOptimalVehicle" kind="function">
+      <signature>
+async function selectOptimalVehicle(
+  input: VehicleSelectionInput,
+  vehicles: VehicleCandidate[],
+  pricingSettings: OrganizationPricingSettings,
+  googleMapsApiKey?: string
+): Promise&lt;VehicleSelectionResult&gt;
+      </signature>
+      <path>packages/api/src/services/vehicle-selection.ts (new)</path>
+    </interface>
+    <interface name="filterByCapacity" kind="function">
+      <signature>
+function filterByCapacity(
+  vehicles: VehicleCandidate[],
+  passengerCount: number,
+  luggageCount?: number,
+  vehicleCategoryId?: string
+): VehicleCandidate[]
+      </signature>
+      <path>packages/api/src/services/vehicle-selection.ts (new)</path>
+    </interface>
+    <interface name="filterByHaversineDistance" kind="function">
+      <signature>
+function filterByHaversineDistance(
+  vehicles: VehicleCandidate[],
+  pickup: GeoPoint,
+  thresholdKm: number
+): CandidateWithDistance[]
+      </signature>
+      <path>packages/api/src/services/vehicle-selection.ts (new)</path>
+    </interface>
+    <interface name="getRoutingForCandidates" kind="function">
+      <signature>
+async function getRoutingForCandidates(
+  candidates: CandidateWithDistance[],
+  pickup: GeoPoint,
+  dropoff: GeoPoint,
+  pricingSettings: OrganizationPricingSettings,
+  googleMapsApiKey?: string
+): Promise&lt;CandidateWithRouting[]&gt;
+      </signature>
+      <path>packages/api/src/services/vehicle-selection.ts (new)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Tests should be co-located in __tests__ directories.
+      Follow existing patterns in pricing-engine.test.ts.
+      Each acceptance criterion should have at least one test case.
+      Mock Google Distance Matrix API calls in unit tests.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/vehicle-selection.test.ts (new)</location>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts (extend)</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test capacity filter: vehicle with 4 seats rejected for 5 passengers</idea>
+      <idea ac="AC1">Test capacity filter: vehicle with 4 seats accepted for 4 passengers</idea>
+      <idea ac="AC2">Test Haversine filter: base at 150km eliminated, base at 50km kept</idea>
+      <idea ac="AC2">Test configurable threshold: 50km threshold eliminates base at 60km</idea>
+      <idea ac="AC3">Test routing API called only for candidates within threshold</idea>
+      <idea ac="AC3">Test max candidates limit: only top 5 by Haversine distance get routing</idea>
+      <idea ac="AC4">Test optimal selection: lowest internal cost candidate selected</idea>
+      <idea ac="AC4">Test selection with equal costs: first candidate selected (deterministic)</idea>
+      <idea ac="AC5">Test approach segment: base 30km from pickup adds 30km to total distance</idea>
+      <idea ac="AC6">Test return segment: dropoff 20km from base adds 20km to total distance</idea>
+      <idea ac="AC7">Test tripAnalysis contains selectedVehicle, selectedBase, candidatesConsidered</idea>
+      <idea ac="AC8">Test fallback: no matching vehicles returns fallbackUsed=true with warning</idea>
+      <idea ac="AC9">Test status filter: MAINTENANCE vehicle excluded, ACTIVE vehicle included</idea>
+      <idea ac="edge">Test empty fleet: returns fallback with clear error message</idea>
+      <idea ac="edge">Test all bases too far: returns fallback after Haversine filter</idea>
+      <idea ac="edge">Test routing API failure: graceful degradation with Haversine estimates</idea>
+    </ideas>
+  </tests>
+
+  <implementation_notes>
+    <note type="new_file">
+      Create new service file: packages/api/src/services/vehicle-selection.ts
+      This service will be reusable by Epic 8 (Dispatch) and should be designed as a standalone module.
+    </note>
+    <note type="integration">
+      Integrate vehicle selection into pricing-calculate.ts route:
+      1. Load vehicles and bases for organization
+      2. Call selectOptimalVehicle before calculatePrice
+      3. Pass selected vehicle info to pricing engine
+      4. Store selection result in tripAnalysis
+    </note>
+    <note type="google_maps_mock">
+      For development/testing without Google Maps API:
+      - Use Haversine distance × 1.3 as road distance estimate
+      - Use distance / 50 km/h as duration estimate
+      - Flag results as "estimated" when API not available
+    </note>
+    <note type="future_shadow_calc">
+      This story prepares the foundation for Story 4.6 (Shadow Calculation).
+      The segments (approach, service, return) calculated here will be stored in tripAnalysis.segments.
+    </note>
+  </implementation_notes>
+</story-context>

@@ -28,7 +28,14 @@ import {
 	type PricingResult,
 	type SeasonalMultiplierData,
 	type ZoneRouteAssignment,
+	type VehicleSelectionInfo,
 } from "../../services/pricing-engine";
+import {
+	selectOptimalVehicle,
+	transformVehicleToCandidate,
+	type VehicleCandidate,
+	type VehicleSelectionInput,
+} from "../../services/vehicle-selection";
 
 // ============================================================================
 // Validation Schemas
@@ -48,6 +55,13 @@ const calculatePricingSchema = z.object({
 	pickupAt: z.string().optional(),
 	estimatedDurationMinutes: z.coerce.number().positive().optional(),
 	estimatedDistanceKm: z.coerce.number().positive().optional(),
+	// Story 4.5: Passenger and luggage count for vehicle selection
+	passengerCount: z.coerce.number().int().positive().default(1),
+	luggageCount: z.coerce.number().int().nonnegative().optional(),
+	// Story 4.5: Vehicle selection options
+	enableVehicleSelection: z.boolean().default(true),
+	haversineThresholdKm: z.coerce.number().positive().optional(),
+	maxCandidatesForRouting: z.coerce.number().int().positive().optional(),
 });
 
 // Story 4.4: Price override schema
@@ -336,6 +350,38 @@ async function loadSeasonalMultipliers(organizationId: string): Promise<Seasonal
 	}));
 }
 
+/**
+ * Load all vehicles with their bases for vehicle selection (Story 4.5)
+ */
+async function loadVehiclesForSelection(organizationId: string): Promise<VehicleCandidate[]> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const vehicles = (await db.vehicle.findMany({
+		where: withTenantFilter({}, organizationId),
+		include: {
+			operatingBase: true,
+			vehicleCategory: true,
+		},
+	})) as any[];
+
+	return vehicles.map((vehicle) => transformVehicleToCandidate(vehicle));
+}
+
+/**
+ * Load Google Maps API key for the organization (Story 4.5)
+ */
+async function loadGoogleMapsApiKey(organizationId: string): Promise<string | undefined> {
+	const settings = await db.organizationIntegrationSettings.findFirst({
+		where: { organizationId },
+	});
+
+	if (settings?.googleMapsApiKey) {
+		return settings.googleMapsApiKey;
+	}
+
+	// Fallback to environment variable
+	return process.env.GOOGLE_MAPS_API_KEY;
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -384,13 +430,67 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
-			// Load zones, pricing settings, and multipliers (Story 4.3)
-			const [zones, pricingSettings, advancedRates, seasonalMultipliers] = await Promise.all([
+			// Load zones, pricing settings, multipliers, and vehicles (Story 4.3 + 4.5)
+			const [zones, pricingSettings, advancedRates, seasonalMultipliers, vehicles, googleMapsApiKey] = await Promise.all([
 				loadZones(organizationId),
 				loadPricingSettings(organizationId),
 				loadAdvancedRates(organizationId),
 				loadSeasonalMultipliers(organizationId),
+				data.enableVehicleSelection ? loadVehiclesForSelection(organizationId) : Promise.resolve([]),
+				data.enableVehicleSelection ? loadGoogleMapsApiKey(organizationId) : Promise.resolve(undefined),
 			]);
+
+			// Story 4.5: Vehicle selection
+			let vehicleSelectionInfo: VehicleSelectionInfo | undefined;
+			let effectiveDistanceKm = data.estimatedDistanceKm;
+			let effectiveDurationMinutes = data.estimatedDurationMinutes;
+
+			if (data.enableVehicleSelection && vehicles.length > 0) {
+				const selectionInput: VehicleSelectionInput = {
+					organizationId,
+					pickup: data.pickup,
+					dropoff: data.dropoff,
+					passengerCount: data.passengerCount,
+					luggageCount: data.luggageCount,
+					vehicleCategoryId: data.vehicleCategoryId,
+					haversineThresholdKm: data.haversineThresholdKm,
+					maxCandidatesForRouting: data.maxCandidatesForRouting,
+					selectionCriterion: "MINIMAL_COST",
+				};
+
+				const selectionResult = await selectOptimalVehicle(
+					selectionInput,
+					vehicles,
+					pricingSettings,
+					googleMapsApiKey,
+				);
+
+				// Build vehicle selection info for tripAnalysis
+				vehicleSelectionInfo = {
+					selectedVehicle: selectionResult.selectedCandidate ? {
+						vehicleId: selectionResult.selectedCandidate.vehicleId,
+						vehicleName: selectionResult.selectedCandidate.vehicleName,
+						baseId: selectionResult.selectedCandidate.baseId,
+						baseName: selectionResult.selectedCandidate.baseName,
+					} : undefined,
+					candidatesConsidered: selectionResult.candidatesConsidered,
+					candidatesAfterCapacityFilter: selectionResult.candidatesAfterCapacityFilter,
+					candidatesAfterHaversineFilter: selectionResult.candidatesAfterHaversineFilter,
+					candidatesWithRouting: selectionResult.candidatesWithRouting,
+					selectionCriterion: selectionResult.selectionCriterion,
+					fallbackUsed: selectionResult.fallbackUsed,
+					fallbackReason: selectionResult.fallbackReason,
+					routingSource: selectionResult.selectedCandidate?.routingSource,
+				};
+
+				// Use routing data from selected vehicle if available
+				if (selectionResult.selectedCandidate) {
+					// Use total distance/duration from routing (includes approach + service + return)
+					// For pricing, we use service segment only (pickup → dropoff)
+					effectiveDistanceKm = selectionResult.selectedCandidate.serviceDistanceKm;
+					effectiveDurationMinutes = selectionResult.selectedCandidate.serviceDurationMinutes;
+				}
+			}
 
 			// Build pricing request
 			const pricingRequest: PricingRequest = {
@@ -400,8 +500,8 @@ export const pricingCalculateRouter = new Hono()
 				vehicleCategoryId: data.vehicleCategoryId,
 				tripType: data.tripType,
 				pickupAt: data.pickupAt,
-				estimatedDurationMinutes: data.estimatedDurationMinutes,
-				estimatedDistanceKm: data.estimatedDistanceKm,
+				estimatedDurationMinutes: effectiveDurationMinutes,
+				estimatedDistanceKm: effectiveDistanceKm,
 			};
 
 			// Calculate price (Story 4.3: now includes multipliers)
@@ -412,6 +512,11 @@ export const pricingCalculateRouter = new Hono()
 				advancedRates,
 				seasonalMultipliers,
 			});
+
+			// Story 4.5: Add vehicle selection info to tripAnalysis
+			if (vehicleSelectionInfo) {
+				result.tripAnalysis.vehicleSelection = vehicleSelectionInfo;
+			}
 
 			// Log negative margin partner trips for analysis
 			if (

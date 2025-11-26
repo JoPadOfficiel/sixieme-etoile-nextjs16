@@ -403,12 +403,34 @@ export interface SegmentCost {
 
 export interface TripAnalysis {
 	costBreakdown: CostBreakdown;
-	// Future: segments for shadow calculation (Story 4.6)
+	// Story 4.5: Vehicle selection info
+	vehicleSelection?: VehicleSelectionInfo;
+	// Story 4.6: segments for shadow calculation
 	segments?: {
 		approach?: SegmentCost;
 		service?: SegmentCost;
 		return?: SegmentCost;
 	};
+}
+
+/**
+ * Story 4.5: Vehicle selection information for transparency
+ */
+export interface VehicleSelectionInfo {
+	selectedVehicle?: {
+		vehicleId: string;
+		vehicleName: string;
+		baseId: string;
+		baseName: string;
+	};
+	candidatesConsidered: number;
+	candidatesAfterCapacityFilter: number;
+	candidatesAfterHaversineFilter: number;
+	candidatesWithRouting: number;
+	selectionCriterion: "MINIMAL_COST" | "BEST_MARGIN";
+	fallbackUsed: boolean;
+	fallbackReason?: string;
+	routingSource?: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
 }
 
 // ============================================================================
