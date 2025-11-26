@@ -424,6 +424,19 @@ export interface SegmentAnalysis {
 }
 
 /**
+ * Story 4.8: Fuel price source information for transparency
+ */
+export interface FuelPriceSourceInfo {
+	pricePerLitre: number;
+	currency: "EUR";
+	source: "CACHE" | "DEFAULT";
+	fetchedAt: string | null; // ISO timestamp or null if default
+	isStale: boolean;
+	fuelType: string;
+	countryCode: string;
+}
+
+/**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
  */
@@ -449,6 +462,9 @@ export interface TripAnalysis {
 	// Metadata
 	calculatedAt: string; // ISO timestamp
 	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
+	
+	// Story 4.8: Fuel price source for transparency
+	fuelPriceSource?: FuelPriceSourceInfo;
 }
 
 /**

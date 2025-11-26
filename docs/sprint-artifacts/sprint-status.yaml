@@ -63,3 +63,4 @@ development_status:
     4-5-implement-multi-base-candidate-selection-pre-filter: done
   4-6-implement-shadow-calculation-segments-abc-tripanalysis-storage: done
   4-7-compute-expose-profitability-indicator: done
+  4-8-use-fuel-price-cache-in-pricing-engine: done

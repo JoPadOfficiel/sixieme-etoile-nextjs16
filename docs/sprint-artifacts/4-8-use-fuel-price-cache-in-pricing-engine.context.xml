@@ -1,0 +1,176 @@
+<story-context id="4-8-use-fuel-price-cache-in-pricing-engine" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.8</storyId>
+    <title>Use Fuel Price Cache in Pricing Engine</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-26T19:55:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-4.8</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>backend engineer</asA>
+    <iWant>the pricing engine to consume fuel prices from a cache</iWant>
+    <soThat>quotes do not depend on real-time external API calls</soThat>
+    <tasks>
+      <task id="T1">Create FuelPriceService abstraction interface</task>
+      <task id="T2">Implement FuelPriceCacheService that reads from FuelPriceCache table</task>
+      <task id="T3">Add staleness rules and fallback logic</task>
+      <task id="T4">Integrate FuelPriceService into pricing engine calculateCostBreakdown</task>
+      <task id="T5">Update loadPricingSettings to use cached fuel price</task>
+      <task id="T6">Add unit tests for cache resolution and fallback scenarios</task>
+      <task id="T7">Add integration tests for pricing with cached fuel prices</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" description="Cache Consumption">
+      Given a FuelPriceCache table periodically refreshed via CollectAPI,
+      When the pricing engine needs a fuel price for a quote (given a base/zone and fuel type),
+      Then it reads the best matching cached entry in EUR and uses it in fuel cost calculations,
+      without calling CollectAPI in real time.
+    </criterion>
+    <criterion id="AC2" description="Staleness Handling">
+      Given no recent cache entry is available according to configured staleness rules,
+      When the pricing engine requests a fuel price,
+      Then the engine either uses a safe fallback value or fails gracefully with a clear error,
+      but never blocks on external API latency inside the quote request.
+    </criterion>
+    <criterion id="AC3" description="Abstraction Layer">
+      Given the pricing logic,
+      When fuel price resolution is needed,
+      Then the implementation abstracts fuel price resolution behind a small interface
+      to keep CollectAPI-specific details out of domain code.
+    </criterion>
+    <criterion id="AC4" description="EUR Currency">
+      Given the VTC ERP is EUR-only,
+      When fuel prices are retrieved from cache,
+      Then they are always in EUR with no currency conversion.
+    </criterion>
+    <criterion id="AC5" description="Fuel Type Support">
+      Given different vehicle types may use different fuel (DIESEL, GASOLINE, LPG),
+      When resolving fuel price,
+      Then the service supports querying by fuel type with DIESEL as default.
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="Appendix B - Operational Cost">
+        Fuel Cost formula: Distance (km) × Vehicle.consumption (L/100km) × FuelPrice (EUR/L).
+        CollectAPI usage: Once daily cron job at 04:00 Paris time. Calculator reads from DB (fast), never calls API in real-time.
+      </doc>
+      <doc path="docs/bmad/tech-spec.md" title="Tech Spec" section="6. Fuel &amp; Integrations">
+        FuelPriceCache model: countryCode, fuelType, pricePerLitre (EUR), latitude, longitude, source, fetchedAt.
+        Pricing engine will read from cache and only refresh via CollectAPI when necessary.
+      </doc>
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 4.8">
+        Story definition: Use Fuel Price Cache in Pricing Engine.
+        Prerequisites: Story 1.5 (integration settings), Epic 9 story for background fuel cache refresh.
+      </doc>
+    </docs>
+    <code>
+      <file path="packages/database/prisma/schema.prisma" kind="model" symbol="FuelPriceCache" lines="1235-1258" reason="Prisma model for fuel price cache - target data source">
+        Model with id, countryCode, latitude, longitude, fuelType, pricePerLitre, currency, source, fetchedAt.
+        Indexes on [countryCode, fuelType] and [fetchedAt].
+      </file>
+      <file path="packages/database/src/zod/index.ts" kind="schema" symbol="FuelPriceCacheSchema" lines="1041-1060" reason="Zod validation schema for FuelPriceCache">
+        Zod schema with all fields typed correctly including Decimal handling.
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="service" symbol="calculateCostBreakdown" lines="686-721" reason="Main function that calculates cost breakdown - needs fuel price injection">
+        Currently uses settings.fuelPricePerLiter or DEFAULT_COST_PARAMETERS.fuelPricePerLiter (1.80 EUR).
+        This is where cached fuel price should be injected.
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="service" symbol="calculateFuelCost" lines="620-632" reason="Pure function for fuel cost calculation - takes pricePerLiter as parameter">
+        Formula: distanceKm × (consumptionL100km / 100) × pricePerLiter
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="interface" symbol="OrganizationPricingSettings" lines="274-287" reason="Settings interface with fuelPricePerLiter field">
+        Contains optional fuelPricePerLiter field that can be overridden by cache.
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts" kind="constant" symbol="DEFAULT_COST_PARAMETERS" lines="608-614" reason="Default values including fuelPricePerLiter: 1.80 EUR">
+        Fallback values when no cache or settings available.
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts" kind="route" symbol="loadPricingSettings" lines="281-317" reason="Function that loads organization pricing settings - integration point for fuel cache">
+        Currently returns fuelPricePerLiter from OrganizationPricingSettings or undefined.
+      </file>
+      <file path="packages/api/src/lib/integration-keys.ts" kind="lib" symbol="resolveApiKey" lines="46-90" reason="Pattern for resolving keys with DB-first, env-fallback strategy">
+        Good pattern to follow for fuel price resolution: cache-first, fallback to default.
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@prisma/client" version="workspace" />
+        <package name="zod" version="^3.x" />
+        <package name="decimal.js" version="^10.x" note="For Prisma Decimal handling" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="performance">Fuel price resolution must not add external API latency to quote requests</constraint>
+    <constraint type="architecture">Fuel price service must be abstracted behind an interface for testability</constraint>
+    <constraint type="data">All fuel prices must be in EUR - no currency conversion</constraint>
+    <constraint type="reliability">System must gracefully handle missing or stale cache entries</constraint>
+    <constraint type="testing">Unit tests must cover cache hit, cache miss, staleness, and fallback scenarios</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="FuelPriceService" kind="TypeScript interface">
+      <signature>
+        interface FuelPriceService {
+          getFuelPrice(params: {
+            countryCode?: string;
+            fuelType?: FuelType;
+            latitude?: number;
+            longitude?: number;
+          }): Promise&lt;FuelPriceResult&gt;;
+        }
+        
+        interface FuelPriceResult {
+          pricePerLitre: number;
+          currency: "EUR";
+          source: "CACHE" | "DEFAULT";
+          fetchedAt: Date | null;
+          isStale: boolean;
+        }
+      </signature>
+      <path>packages/api/src/services/fuel-price-service.ts (new)</path>
+    </interface>
+    <interface name="FuelPriceCache Prisma" kind="Prisma model">
+      <signature>
+        db.fuelPriceCache.findFirst({
+          where: { countryCode, fuelType },
+          orderBy: { fetchedAt: 'desc' }
+        })
+      </signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Follow existing patterns in packages/api/src/services/__tests__/.
+      Mock Prisma client for database calls. Test pure functions directly.
+      Integration tests should use actual database with test data.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/fuel-price-service.test.ts (new)</location>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts (extend)</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test that getFuelPrice returns cached price when recent entry exists</idea>
+      <idea ac="AC1">Test that getFuelPrice queries by countryCode and fuelType</idea>
+      <idea ac="AC2">Test that getFuelPrice returns default when cache is empty</idea>
+      <idea ac="AC2">Test that getFuelPrice marks result as stale when entry is old</idea>
+      <idea ac="AC2">Test staleness threshold configuration (e.g., 24h, 48h)</idea>
+      <idea ac="AC3">Test that pricing engine uses FuelPriceService interface</idea>
+      <idea ac="AC3">Test that CollectAPI details are not in pricing domain code</idea>
+      <idea ac="AC4">Test that returned prices are always EUR</idea>
+      <idea ac="AC5">Test DIESEL as default fuel type</idea>
+      <idea ac="AC5">Test GASOLINE and LPG fuel types</idea>
+      <idea integration="true">Test full pricing flow with cached fuel price</idea>
+      <idea integration="true">Test pricing continues when cache is unavailable</idea>
+    </ideas>
+  </tests>
+</story-context>

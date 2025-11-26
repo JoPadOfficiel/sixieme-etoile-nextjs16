@@ -30,6 +30,7 @@ import {
 	type ZoneRouteAssignment,
 	type VehicleSelectionInfo,
 } from "../../services/pricing-engine";
+import { getFuelPrice, type FuelPriceResult } from "../../services/fuel-price-service";
 import {
 	selectOptimalVehicle,
 	transformVehicleToCandidate,
@@ -281,14 +282,19 @@ async function loadZones(organizationId: string): Promise<ZoneData[]> {
 /**
  * Load or create default pricing settings for the organization
  * Story 4.2: Now includes cost parameters for operational cost calculation
+ * Story 4.8: Fuel price is resolved from cache (no real-time API calls)
  */
 async function loadPricingSettings(
 	organizationId: string,
-): Promise<OrganizationPricingSettings> {
+): Promise<OrganizationPricingSettings & { fuelPriceSource?: FuelPriceResult }> {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const settings = await db.organizationPricingSettings.findFirst({
 		where: { organizationId },
 	}) as any;
+
+	// Story 4.8: Get fuel price from cache
+	// This never calls external APIs - reads from FuelPriceCache table
+	const fuelPriceResult = await getFuelPrice();
 
 	if (settings) {
 		return {
@@ -297,13 +303,16 @@ async function loadPricingSettings(
 			targetMarginPercent: Number(settings.defaultMarginPercent),
 			// Story 4.2: Cost parameters (optional, will use defaults if not set)
 			fuelConsumptionL100km: settings.fuelConsumptionL100km ? Number(settings.fuelConsumptionL100km) : undefined,
-			fuelPricePerLiter: settings.fuelPricePerLiter ? Number(settings.fuelPricePerLiter) : undefined,
+			// Story 4.8: Use cached fuel price, fallback to org settings, then defaults
+			fuelPricePerLiter: fuelPriceResult.pricePerLitre ?? (settings.fuelPricePerLiter ? Number(settings.fuelPricePerLiter) : undefined),
 			tollCostPerKm: settings.tollCostPerKm ? Number(settings.tollCostPerKm) : undefined,
 			wearCostPerKm: settings.wearCostPerKm ? Number(settings.wearCostPerKm) : undefined,
 			driverHourlyCost: settings.driverHourlyCost ? Number(settings.driverHourlyCost) : undefined,
 			// Story 4.7: Profitability thresholds (optional, will use defaults if not set)
 			greenMarginThreshold: settings.greenMarginThreshold ? Number(settings.greenMarginThreshold) : undefined,
 			orangeMarginThreshold: settings.orangeMarginThreshold ? Number(settings.orangeMarginThreshold) : undefined,
+			// Story 4.8: Include fuel price source for transparency
+			fuelPriceSource: fuelPriceResult,
 		};
 	}
 
@@ -312,7 +321,10 @@ async function loadPricingSettings(
 		baseRatePerKm: 2.5,
 		baseRatePerHour: 45.0,
 		targetMarginPercent: 20.0,
-		// Cost parameters and profitability thresholds will use defaults from pricing-engine.ts
+		// Story 4.8: Use cached fuel price even for default settings
+		fuelPricePerLiter: fuelPriceResult.pricePerLitre,
+		fuelPriceSource: fuelPriceResult,
+		// Other cost parameters and profitability thresholds will use defaults from pricing-engine.ts
 	};
 }
 
@@ -531,6 +543,19 @@ export const pricingCalculateRouter = new Hono()
 			// Story 4.5: Add vehicle selection info to tripAnalysis
 			if (vehicleSelectionInfo) {
 				result.tripAnalysis.vehicleSelection = vehicleSelectionInfo;
+			}
+
+			// Story 4.8: Add fuel price source to tripAnalysis for transparency
+			if (pricingSettings.fuelPriceSource) {
+				result.tripAnalysis.fuelPriceSource = {
+					pricePerLitre: pricingSettings.fuelPriceSource.pricePerLitre,
+					currency: pricingSettings.fuelPriceSource.currency,
+					source: pricingSettings.fuelPriceSource.source,
+					fetchedAt: pricingSettings.fuelPriceSource.fetchedAt?.toISOString() ?? null,
+					isStale: pricingSettings.fuelPriceSource.isStale,
+					fuelType: pricingSettings.fuelPriceSource.fuelType,
+					countryCode: pricingSettings.fuelPriceSource.countryCode,
+				};
 			}
 
 			// Log negative margin partner trips for analysis
