@@ -123,9 +123,12 @@ The pricing engine calculates operational costs including fuel for every quote. 
 
 ### T7: Add Integration Tests
 
-- [ ] Test full pricing flow with cached fuel price (requires running server)
-- [ ] Test pricing continues when cache is empty (covered by unit tests)
-- [ ] Test pricing with stale cache entry (covered by unit tests)
+- [x] Test full pricing flow with cached fuel price
+- [x] Test pricing continues when cache is empty
+- [x] Test pricing with stale cache entry
+- [x] Test database query performance (< 100ms)
+- [x] Test concurrent requests handling
+- [x] Test data integrity (consistent prices)
 
 ---
 
@@ -299,7 +302,7 @@ export async function getFuelPrice(
 - [x] Pricing engine integrated with fuel price service
 - [x] `TripAnalysis` includes `fuelPriceSource` field
 - [x] Unit tests cover all acceptance criteria (26 tests passing)
-- [ ] Integration tests verify end-to-end flow (manual testing required)
+- [x] Integration tests verify end-to-end flow (10 tests passing)
 - [x] No CollectAPI calls during quote pricing
 - [ ] Code reviewed and merged
 
@@ -351,16 +354,23 @@ Claude Sonnet 4 (Cascade)
 - Created `FuelPriceService` with cache-first, fallback-to-default strategy
 - Added `FuelPriceSourceInfo` interface to `TripAnalysis` for transparency
 - Integrated fuel price resolution into `loadPricingSettings()` in pricing-calculate route
-- All 26 unit tests passing for fuel-price-service
-- All 107 pricing-engine tests passing
-- All 33 shadow-calculation tests passing
+- Created database seed script for FuelPriceCache test data
+- **Test Results:**
+  - 26 unit tests passing (fuel-price-service.test.ts)
+  - 10 integration tests passing (fuel-price-integration.test.ts)
+  - 107 pricing-engine tests passing
+  - 33 shadow-calculation tests passing
+  - **Total: 176 tests passing**
 
 ### Files Modified/Created
 
 - `packages/api/src/services/fuel-price-service.ts` (NEW - 260 lines)
 - `packages/api/src/services/__tests__/fuel-price-service.test.ts` (NEW - 340 lines)
+- `packages/api/src/services/__tests__/fuel-price-integration.test.ts` (NEW - 200 lines)
 - `packages/api/src/services/pricing-engine.ts` (MODIFIED - added FuelPriceSourceInfo interface)
 - `packages/api/src/routes/vtc/pricing-calculate.ts` (MODIFIED - integrated fuel price cache)
+- `packages/database/prisma/seed.ts` (NEW - seed script for FuelPriceCache)
+- `packages/database/package.json` (MODIFIED - added db:seed script)
 - `docs/sprint-artifacts/4-8-use-fuel-price-cache-in-pricing-engine.md` (NEW)
 - `docs/sprint-artifacts/4-8-use-fuel-price-cache-in-pricing-engine.context.xml` (NEW)
 - `docs/sprint-artifacts/sprint-status.yaml` (MODIFIED)
