@@ -61,3 +61,4 @@ development_status:
   4-3-apply-multipliers-target-margins: done
   4-4-allow-operator-override-live-profitability-feedback: done
   4-5-implement-multi-base-candidate-selection-pre-filter: done
+  4-6-implement-shadow-calculation-segments-abc-tripanalysis-storage: done

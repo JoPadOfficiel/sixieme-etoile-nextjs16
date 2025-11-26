@@ -1,0 +1,234 @@
+<story-context id="4-6-shadow-calculation-segments" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>6</storyId>
+    <title>Implement Shadow Calculation Segments A/B/C &amp; tripAnalysis Storage</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-26T18:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-6-implement-shadow-calculation-segments-abc-tripanalysis-storage.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>product owner</asA>
+    <iWant>every quote to run a shadow calculation over segments A/B/C</iWant>
+    <soThat>internal cost and feasibility are always known, even for fixed-price trips</soThat>
+    <tasks>
+      <task id="T1">Extend TripAnalysis type with full segment breakdown (approach/service/return)</task>
+      <task id="T2">Create calculateShadowSegments function that computes A/B/C segments</task>
+      <task id="T3">Integrate shadow calculation into buildDynamicResult and buildGridResult</task>
+      <task id="T4">Ensure tripAnalysis JSON is stored in Quote.tripAnalysis field</task>
+      <task id="T5">Add unit tests covering all acceptance criteria</task>
+      <task id="T6">Update pricing-calculate route to return tripAnalysis in response</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <description>Given a priced quote (grid or dynamic) and a selected vehicle/base, when the shadow calculation runs, then it computes Segment A (approach), Segment B (service) and Segment C (return) with distances, durations and costs per segment.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC2">
+      <description>The shadow calculation uses the cost formula from PRD Appendix B: fuel, wages, tolls, wear per segment.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC3">
+      <description>The result is stored in Quote.tripAnalysis as structured JSON, including segment breakdown and cost components.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC4">
+      <description>The tripAnalysis is re-usable for Trip Transparency rendering in the UI.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC5">
+      <description>Shadow calculation runs for both Mode A (grid/FIXED_GRID) and Mode B (DYNAMIC) quotes.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC6">
+      <description>When vehicle selection provides segment data (from Story 4.5), that data is used directly instead of recalculating.</description>
+      <testable>true</testable>
+    </criterion>
+    <criterion id="AC7">
+      <description>When no vehicle is selected (fallback), the shadow calculation estimates segments using pickup/dropoff only (service segment only, no approach/return).</description>
+      <testable>true</testable>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>Appendix B - Operational Cost &amp; Profitability Engine</section>
+        <snippet>Shadow calculation simulates the full operational loop (approach, service, return) to compute internal cost. Cost = Fuel + Wages + Tolls + Wear per segment.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Section 5 - Quotes, Invoices &amp; Documents</section>
+        <snippet>Quote.tripAnalysis stores shadow calc: segments A/B/C, distances, durations, cost breakdown as JSON.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 4.6</section>
+        <snippet>Implement Shadow Calculation Segments A/B/C &amp; tripAnalysis Storage - FR21-FR23, FR14, Appendix B.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>TripAnalysis, CostBreakdown, SegmentCost</symbol>
+        <lines>398-434</lines>
+        <reason>Existing TripAnalysis type with segments placeholder - needs to be fully implemented</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculateCostBreakdown</symbol>
+        <lines>533-568</lines>
+        <reason>Cost breakdown calculation to reuse for per-segment costs</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>buildDynamicResult, buildGridResult</symbol>
+        <lines>1606-1750</lines>
+        <reason>Functions that build PricingResult - need to integrate shadow calculation</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/vehicle-selection.ts</path>
+        <kind>service</kind>
+        <symbol>CandidateWithRouting, getRoutingForCandidate</symbol>
+        <lines>52-69, 288-358</lines>
+        <reason>Vehicle selection already calculates approach/service/return segments - reuse this data</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/pricing-calculate.ts</path>
+        <kind>route</kind>
+        <symbol>pricingCalculateRoute</symbol>
+        <reason>API route that needs to return tripAnalysis in response</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Quote.tripAnalysis</symbol>
+        <lines>1076</lines>
+        <reason>JSON field where tripAnalysis is stored</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/pricing-engine.test.ts</path>
+        <kind>test</kind>
+        <reason>Existing pricing engine tests - add shadow calculation tests</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/vehicle-selection.test.ts</path>
+        <kind>test</kind>
+        <reason>Vehicle selection tests showing segment calculation patterns</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>vitest</package>
+        <version>^2.1.4</version>
+        <purpose>Unit testing framework</purpose>
+      </node>
+      <node>
+        <package>@prisma/client</package>
+        <purpose>Database ORM</purpose>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="C1">Shadow calculation MUST run for both FIXED_GRID and DYNAMIC pricing modes (per PRD)</constraint>
+    <constraint id="C2">Cost formula MUST follow PRD Appendix B: Fuel + Wages + Tolls + Wear</constraint>
+    <constraint id="C3">tripAnalysis MUST be JSON-serializable for storage in Quote.tripAnalysis</constraint>
+    <constraint id="C4">Reuse existing calculateCostBreakdown function - do not duplicate logic</constraint>
+    <constraint id="C5">Integrate with vehicle selection data from Story 4.5 when available</constraint>
+    <constraint id="C6">All monetary values in EUR, no currency conversion</constraint>
+    <constraint id="C7">Times treated as Europe/Paris business times (no TZ conversion)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>TripAnalysis</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface TripAnalysis {
+  costBreakdown: CostBreakdown;
+  vehicleSelection?: VehicleSelectionInfo;
+  segments: {
+    approach: SegmentAnalysis;
+    service: SegmentAnalysis;
+    return: SegmentAnalysis;
+  };
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  totalInternalCost: number;
+}
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>SegmentAnalysis</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface SegmentAnalysis {
+  distanceKm: number;
+  durationMinutes: number;
+  cost: CostBreakdown;
+}
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>calculateShadowSegments</name>
+      <kind>function</kind>
+      <signature>
+function calculateShadowSegments(
+  vehicleSelection: VehicleSelectionResult | null,
+  pickup: GeoPoint,
+  dropoff: GeoPoint,
+  pricingSettings: OrganizationPricingSettings,
+): TripAnalysis
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Tests should be in __tests__ folders adjacent to source files.
+      Follow existing patterns in pricing-engine.test.ts and vehicle-selection.test.ts.
+      Each AC should have at least one dedicated test case.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts</location>
+      <location>packages/api/src/services/__tests__/shadow-calculation.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test shadow calculation computes all three segments with correct distances/durations</idea>
+      <idea ac="AC2">Test cost breakdown per segment follows PRD formula (fuel + wages + tolls + wear)</idea>
+      <idea ac="AC3">Test tripAnalysis is JSON-serializable and matches expected schema</idea>
+      <idea ac="AC5">Test shadow calculation runs for both FIXED_GRID and DYNAMIC pricing modes</idea>
+      <idea ac="AC6">Test that vehicle selection segment data is reused when available</idea>
+      <idea ac="AC7">Test fallback behavior when no vehicle selected (service segment only)</idea>
+    </ideas>
+  </tests>
+
+  <technicalNotes>
+    <note>Story 4.5 already calculates approach/service/return segments in vehicle-selection.ts - reuse CandidateWithRouting data</note>
+    <note>TripAnalysis type exists but segments field is optional - make it required and fully populate</note>
+    <note>Heavy-vehicle specifics (85 km/h cap, breaks) will be completed in Epic 5 - this story focuses on segment structure</note>
+    <note>The shadow calculation must be deterministic and testable as a pure function</note>
+  </technicalNotes>
+
+  <relatedFRs>
+    <fr id="FR21">For every quote, the system shall run a shadow calculation that simulates Segment A (approach), Segment B (service) and Segment C (return) for the selected vehicle.</fr>
+    <fr id="FR22">The shadow calculation shall compute internal cost per segment using configured cost parameters (fuel, driver time, wear, tolls and other costs).</fr>
+    <fr id="FR23">The full trip analysis (segments, distances, durations, costs and key decisions) shall be stored in a structured field associated with the quote.</fr>
+    <fr id="FR14">The dynamic pricing engine shall add operational cost components (fuel, tolls, parking and other configured costs) to the base price.</fr>
+  </relatedFRs>
+</story-context>

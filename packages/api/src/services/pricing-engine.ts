@@ -395,22 +395,55 @@ export interface CostBreakdown {
 	total: number;
 }
 
+/**
+ * Legacy segment cost (kept for backward compatibility)
+ * @deprecated Use SegmentAnalysis instead
+ */
 export interface SegmentCost {
 	distanceKm: number;
 	durationMinutes: number;
 	cost: number;
 }
 
+/**
+ * Story 4.6: Detailed analysis of a single trip segment
+ * Includes full cost breakdown per segment
+ */
+export interface SegmentAnalysis {
+	name: "approach" | "service" | "return";
+	description: string;
+	distanceKm: number;
+	durationMinutes: number;
+	cost: CostBreakdown;
+	isEstimated: boolean; // true if calculated from Haversine, false if from routing API
+}
+
+/**
+ * Story 4.6: Complete trip analysis with all segments
+ * Stored in Quote.tripAnalysis as JSON
+ */
 export interface TripAnalysis {
+	// Overall cost breakdown (sum of all segments)
 	costBreakdown: CostBreakdown;
+	
 	// Story 4.5: Vehicle selection info
 	vehicleSelection?: VehicleSelectionInfo;
-	// Story 4.6: segments for shadow calculation
-	segments?: {
-		approach?: SegmentCost;
-		service?: SegmentCost;
-		return?: SegmentCost;
+	
+	// Story 4.6: Segment breakdown (required for full shadow calculation)
+	segments: {
+		approach: SegmentAnalysis | null; // null if no vehicle selected
+		service: SegmentAnalysis;
+		return: SegmentAnalysis | null; // null if no vehicle selected
 	};
+	
+	// Totals
+	totalDistanceKm: number;
+	totalDurationMinutes: number;
+	totalInternalCost: number;
+	
+	// Metadata
+	calculatedAt: string; // ISO timestamp
+	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
 }
 
 /**
@@ -588,6 +621,269 @@ export function calculateInternalCost(
 export function estimateInternalCost(distanceKm: number): number {
 	const costPerKm = 2.5; // Rough estimate including fuel, driver, wear
 	return Math.round(distanceKm * costPerKm * 100) / 100;
+}
+
+// ============================================================================
+// Shadow Calculation Functions (Story 4.6)
+// ============================================================================
+
+/**
+ * Input for shadow calculation from vehicle selection
+ */
+export interface ShadowCalculationInput {
+	// From vehicle selection (Story 4.5)
+	approachDistanceKm?: number;
+	approachDurationMinutes?: number;
+	serviceDistanceKm?: number;
+	serviceDurationMinutes?: number;
+	returnDistanceKm?: number;
+	returnDurationMinutes?: number;
+	routingSource?: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
+	// Vehicle info
+	vehicleSelection?: VehicleSelectionInfo;
+}
+
+/**
+ * Create a segment analysis with full cost breakdown
+ */
+function createSegmentAnalysis(
+	name: "approach" | "service" | "return",
+	description: string,
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	isEstimated: boolean,
+): SegmentAnalysis {
+	const cost = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	return {
+		name,
+		description,
+		distanceKm: Math.round(distanceKm * 100) / 100,
+		durationMinutes: Math.round(durationMinutes * 100) / 100,
+		cost,
+		isEstimated,
+	};
+}
+
+/**
+ * Combine multiple cost breakdowns into a total
+ */
+function combineCostBreakdowns(breakdowns: CostBreakdown[]): CostBreakdown {
+	const combined: CostBreakdown = {
+		fuel: { amount: 0, distanceKm: 0, consumptionL100km: 0, pricePerLiter: 0 },
+		tolls: { amount: 0, distanceKm: 0, ratePerKm: 0 },
+		wear: { amount: 0, distanceKm: 0, ratePerKm: 0 },
+		driver: { amount: 0, durationMinutes: 0, hourlyRate: 0 },
+		parking: { amount: 0, description: "" },
+		total: 0,
+	};
+
+	for (const breakdown of breakdowns) {
+		combined.fuel.amount += breakdown.fuel.amount;
+		combined.fuel.distanceKm += breakdown.fuel.distanceKm;
+		combined.tolls.amount += breakdown.tolls.amount;
+		combined.tolls.distanceKm += breakdown.tolls.distanceKm;
+		combined.wear.amount += breakdown.wear.amount;
+		combined.wear.distanceKm += breakdown.wear.distanceKm;
+		combined.driver.amount += breakdown.driver.amount;
+		combined.driver.durationMinutes += breakdown.driver.durationMinutes;
+		combined.parking.amount += breakdown.parking.amount;
+		combined.total += breakdown.total;
+	}
+
+	// Round totals
+	combined.fuel.amount = Math.round(combined.fuel.amount * 100) / 100;
+	combined.tolls.amount = Math.round(combined.tolls.amount * 100) / 100;
+	combined.wear.amount = Math.round(combined.wear.amount * 100) / 100;
+	combined.driver.amount = Math.round(combined.driver.amount * 100) / 100;
+	combined.total = Math.round(combined.total * 100) / 100;
+
+	// Use first non-zero rates for display
+	const firstWithFuel = breakdowns.find(b => b.fuel.consumptionL100km > 0);
+	if (firstWithFuel) {
+		combined.fuel.consumptionL100km = firstWithFuel.fuel.consumptionL100km;
+		combined.fuel.pricePerLiter = firstWithFuel.fuel.pricePerLiter;
+	}
+	const firstWithTolls = breakdowns.find(b => b.tolls.ratePerKm > 0);
+	if (firstWithTolls) {
+		combined.tolls.ratePerKm = firstWithTolls.tolls.ratePerKm;
+	}
+	const firstWithWear = breakdowns.find(b => b.wear.ratePerKm > 0);
+	if (firstWithWear) {
+		combined.wear.ratePerKm = firstWithWear.wear.ratePerKm;
+	}
+	const firstWithDriver = breakdowns.find(b => b.driver.hourlyRate > 0);
+	if (firstWithDriver) {
+		combined.driver.hourlyRate = firstWithDriver.driver.hourlyRate;
+	}
+
+	return combined;
+}
+
+/**
+ * Calculate shadow segments for a trip (Story 4.6)
+ * 
+ * This function computes the full operational loop:
+ * - Segment A (Approach): Base → Pickup
+ * - Segment B (Service): Pickup → Dropoff
+ * - Segment C (Return): Dropoff → Base
+ * 
+ * @param input - Shadow calculation input (from vehicle selection or estimates)
+ * @param serviceDistanceKm - Service segment distance (required)
+ * @param serviceDurationMinutes - Service segment duration (required)
+ * @param settings - Organization pricing settings for cost calculation
+ * @returns Complete TripAnalysis with segment breakdown
+ */
+export function calculateShadowSegments(
+	input: ShadowCalculationInput | null,
+	serviceDistanceKm: number,
+	serviceDurationMinutes: number,
+	settings: OrganizationPricingSettings,
+): TripAnalysis {
+	const calculatedAt = new Date().toISOString();
+	
+	// Determine routing source
+	let routingSource: TripAnalysis["routingSource"] = "HAVERSINE_ESTIMATE";
+	if (input?.routingSource === "GOOGLE_API") {
+		routingSource = "GOOGLE_API";
+	} else if (input?.vehicleSelection) {
+		routingSource = "VEHICLE_SELECTION";
+	}
+
+	// Check if we have vehicle selection data with segments
+	const hasVehicleSegments = input && 
+		input.approachDistanceKm !== undefined && 
+		input.returnDistanceKm !== undefined;
+
+	// Create service segment (always present)
+	const serviceSegment = createSegmentAnalysis(
+		"service",
+		"Pickup → Dropoff (client trip)",
+		input?.serviceDistanceKm ?? serviceDistanceKm,
+		input?.serviceDurationMinutes ?? serviceDurationMinutes,
+		settings,
+		routingSource === "HAVERSINE_ESTIMATE",
+	);
+
+	// Create approach and return segments (only if vehicle selected)
+	let approachSegment: SegmentAnalysis | null = null;
+	let returnSegment: SegmentAnalysis | null = null;
+
+	if (hasVehicleSegments) {
+		approachSegment = createSegmentAnalysis(
+			"approach",
+			"Base → Pickup (deadhead)",
+			input.approachDistanceKm!,
+			input.approachDurationMinutes ?? 0,
+			settings,
+			routingSource === "HAVERSINE_ESTIMATE",
+		);
+
+		returnSegment = createSegmentAnalysis(
+			"return",
+			"Dropoff → Base (deadhead)",
+			input.returnDistanceKm!,
+			input.returnDurationMinutes ?? 0,
+			settings,
+			routingSource === "HAVERSINE_ESTIMATE",
+		);
+	}
+
+	// Calculate totals
+	const allSegments = [approachSegment, serviceSegment, returnSegment].filter(
+		(s): s is SegmentAnalysis => s !== null,
+	);
+	
+	const totalDistanceKm = allSegments.reduce((sum, s) => sum + s.distanceKm, 0);
+	const totalDurationMinutes = allSegments.reduce((sum, s) => sum + s.durationMinutes, 0);
+	const totalInternalCost = allSegments.reduce((sum, s) => sum + s.cost.total, 0);
+
+	// Combine cost breakdowns
+	const costBreakdown = combineCostBreakdowns(allSegments.map(s => s.cost));
+
+	return {
+		costBreakdown,
+		vehicleSelection: input?.vehicleSelection,
+		segments: {
+			approach: approachSegment,
+			service: serviceSegment,
+			return: returnSegment,
+		},
+		totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+		totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
+		totalInternalCost: Math.round(totalInternalCost * 100) / 100,
+		calculatedAt,
+		routingSource,
+	};
+}
+
+/**
+ * Build shadow calculation input from vehicle selection result
+ */
+export function buildShadowInputFromVehicleSelection(
+	vehicleResult: {
+		selectedCandidate?: {
+			approachDistanceKm: number;
+			approachDurationMinutes: number;
+			serviceDistanceKm: number;
+			serviceDurationMinutes: number;
+			returnDistanceKm: number;
+			returnDurationMinutes: number;
+			routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
+			vehicleId: string;
+			vehicleName: string;
+			baseId: string;
+			baseName: string;
+		} | null;
+		candidatesConsidered: number;
+		candidatesAfterCapacityFilter: number;
+		candidatesAfterHaversineFilter: number;
+		candidatesWithRouting: number;
+		selectionCriterion: "MINIMAL_COST" | "BEST_MARGIN";
+		fallbackUsed: boolean;
+		fallbackReason?: string;
+	} | null,
+): ShadowCalculationInput | null {
+	if (!vehicleResult) {
+		return null;
+	}
+
+	const vehicleSelection: VehicleSelectionInfo = {
+		candidatesConsidered: vehicleResult.candidatesConsidered,
+		candidatesAfterCapacityFilter: vehicleResult.candidatesAfterCapacityFilter,
+		candidatesAfterHaversineFilter: vehicleResult.candidatesAfterHaversineFilter,
+		candidatesWithRouting: vehicleResult.candidatesWithRouting,
+		selectionCriterion: vehicleResult.selectionCriterion,
+		fallbackUsed: vehicleResult.fallbackUsed,
+		fallbackReason: vehicleResult.fallbackReason,
+	};
+
+	if (vehicleResult.selectedCandidate) {
+		const candidate = vehicleResult.selectedCandidate;
+		vehicleSelection.selectedVehicle = {
+			vehicleId: candidate.vehicleId,
+			vehicleName: candidate.vehicleName,
+			baseId: candidate.baseId,
+			baseName: candidate.baseName,
+		};
+		vehicleSelection.routingSource = candidate.routingSource;
+
+		return {
+			approachDistanceKm: candidate.approachDistanceKm,
+			approachDurationMinutes: candidate.approachDurationMinutes,
+			serviceDistanceKm: candidate.serviceDistanceKm,
+			serviceDurationMinutes: candidate.serviceDurationMinutes,
+			returnDistanceKm: candidate.returnDistanceKm,
+			returnDurationMinutes: candidate.returnDurationMinutes,
+			routingSource: candidate.routingSource,
+			vehicleSelection,
+		};
+	}
+
+	// Fallback case - no vehicle selected
+	return {
+		vehicleSelection,
+	};
 }
 
 // ============================================================================
@@ -1600,8 +1896,9 @@ export function calculatePrice(
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6)
  * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
+ * Story 4.6: Now includes full shadow calculation with segments A/B/C
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -1615,6 +1912,8 @@ function buildDynamicResult(
 	multiplierContext: MultiplierContext | null = null,
 	advancedRates: AdvancedRateData[] = [],
 	seasonalMultipliers: SeasonalMultiplierData[] = [],
+	// Story 4.6: Shadow calculation input (from vehicle selection)
+	shadowInput: ShadowCalculationInput | null = null,
 ): PricingResult {
 	// Calculate with full details
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
@@ -1652,30 +1951,59 @@ function buildDynamicResult(
 		}
 	}
 	
-	// Calculate cost breakdown (Story 4.2)
-	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
-	const internalCost = costBreakdown.total;
+	// Story 4.6: Calculate shadow segments (A/B/C)
+	const tripAnalysis = calculateShadowSegments(
+		shadowInput,
+		distanceKm,
+		durationMinutes,
+		settings,
+	);
+	
+	// Use total internal cost from shadow calculation
+	const internalCost = tripAnalysis.totalInternalCost;
 	const margin = Math.round((price - internalCost) * 100) / 100;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
-
-	// Build tripAnalysis (Story 4.2)
-	const tripAnalysis: TripAnalysis = {
-		costBreakdown,
-	};
 
 	// Add cost breakdown rule (Story 4.2)
 	appliedRules.push({
 		type: "COST_BREAKDOWN",
 		description: "Internal cost calculated with operational components",
 		costBreakdown: {
-			fuel: costBreakdown.fuel.amount,
-			tolls: costBreakdown.tolls.amount,
-			wear: costBreakdown.wear.amount,
-			driver: costBreakdown.driver.amount,
-			parking: costBreakdown.parking.amount,
-			total: costBreakdown.total,
+			fuel: tripAnalysis.costBreakdown.fuel.amount,
+			tolls: tripAnalysis.costBreakdown.tolls.amount,
+			wear: tripAnalysis.costBreakdown.wear.amount,
+			driver: tripAnalysis.costBreakdown.driver.amount,
+			parking: tripAnalysis.costBreakdown.parking.amount,
+			total: tripAnalysis.costBreakdown.total,
 		},
+	});
+
+	// Story 4.6: Add shadow calculation rule
+	appliedRules.push({
+		type: "SHADOW_CALCULATION",
+		description: `Shadow calculation completed with ${tripAnalysis.segments.approach ? "3" : "1"} segment(s)`,
+		segments: {
+			approach: tripAnalysis.segments.approach ? {
+				distanceKm: tripAnalysis.segments.approach.distanceKm,
+				durationMinutes: tripAnalysis.segments.approach.durationMinutes,
+				cost: tripAnalysis.segments.approach.cost.total,
+			} : null,
+			service: {
+				distanceKm: tripAnalysis.segments.service.distanceKm,
+				durationMinutes: tripAnalysis.segments.service.durationMinutes,
+				cost: tripAnalysis.segments.service.cost.total,
+			},
+			return: tripAnalysis.segments.return ? {
+				distanceKm: tripAnalysis.segments.return.distanceKm,
+				durationMinutes: tripAnalysis.segments.return.durationMinutes,
+				cost: tripAnalysis.segments.return.cost.total,
+			} : null,
+		},
+		totalDistanceKm: tripAnalysis.totalDistanceKm,
+		totalDurationMinutes: tripAnalysis.totalDurationMinutes,
+		totalInternalCost: tripAnalysis.totalInternalCost,
+		routingSource: tripAnalysis.routingSource,
 	});
 
 	return {
@@ -1696,7 +2024,8 @@ function buildDynamicResult(
 }
 
 /**
- * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5)
+ * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5, Story 4.6)
+ * Story 4.6: Now includes full shadow calculation with segments A/B/C
  */
 function buildGridResult(
 	price: number,
@@ -1705,31 +2034,62 @@ function buildGridResult(
 	settings: OrganizationPricingSettings,
 	matchedGrid: MatchedGrid,
 	appliedRules: AppliedRule[],
+	// Story 4.6: Shadow calculation input (from vehicle selection)
+	shadowInput: ShadowCalculationInput | null = null,
 ): PricingResult {
-	// Calculate cost breakdown for profitability analysis (Story 4.2 - AC5)
-	const costBreakdown = calculateCostBreakdown(distanceKm, durationMinutes, settings);
-	const internalCost = costBreakdown.total;
+	// Story 4.6: Calculate shadow segments (A/B/C)
+	const tripAnalysis = calculateShadowSegments(
+		shadowInput,
+		distanceKm,
+		durationMinutes,
+		settings,
+	);
+	
+	// Use total internal cost from shadow calculation
+	const internalCost = tripAnalysis.totalInternalCost;
 	const margin = Math.round((price - internalCost) * 100) / 100;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
-
-	// Build tripAnalysis
-	const tripAnalysis: TripAnalysis = {
-		costBreakdown,
-	};
 
 	// Add cost breakdown rule
 	appliedRules.push({
 		type: "COST_BREAKDOWN",
 		description: "Internal cost calculated for profitability analysis",
 		costBreakdown: {
-			fuel: costBreakdown.fuel.amount,
-			tolls: costBreakdown.tolls.amount,
-			wear: costBreakdown.wear.amount,
-			driver: costBreakdown.driver.amount,
-			parking: costBreakdown.parking.amount,
-			total: costBreakdown.total,
+			fuel: tripAnalysis.costBreakdown.fuel.amount,
+			tolls: tripAnalysis.costBreakdown.tolls.amount,
+			wear: tripAnalysis.costBreakdown.wear.amount,
+			driver: tripAnalysis.costBreakdown.driver.amount,
+			parking: tripAnalysis.costBreakdown.parking.amount,
+			total: tripAnalysis.costBreakdown.total,
 		},
+	});
+
+	// Story 4.6: Add shadow calculation rule
+	appliedRules.push({
+		type: "SHADOW_CALCULATION",
+		description: `Shadow calculation completed with ${tripAnalysis.segments.approach ? "3" : "1"} segment(s) (Grid price - Engagement Rule)`,
+		segments: {
+			approach: tripAnalysis.segments.approach ? {
+				distanceKm: tripAnalysis.segments.approach.distanceKm,
+				durationMinutes: tripAnalysis.segments.approach.durationMinutes,
+				cost: tripAnalysis.segments.approach.cost.total,
+			} : null,
+			service: {
+				distanceKm: tripAnalysis.segments.service.distanceKm,
+				durationMinutes: tripAnalysis.segments.service.durationMinutes,
+				cost: tripAnalysis.segments.service.cost.total,
+			},
+			return: tripAnalysis.segments.return ? {
+				distanceKm: tripAnalysis.segments.return.distanceKm,
+				durationMinutes: tripAnalysis.segments.return.durationMinutes,
+				cost: tripAnalysis.segments.return.cost.total,
+			} : null,
+		},
+		totalDistanceKm: tripAnalysis.totalDistanceKm,
+		totalDurationMinutes: tripAnalysis.totalDurationMinutes,
+		totalInternalCost: tripAnalysis.totalInternalCost,
+		routingSource: tripAnalysis.routingSource,
 	});
 
 	return {
