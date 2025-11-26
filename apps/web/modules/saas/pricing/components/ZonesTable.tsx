@@ -2,7 +2,6 @@
 
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
-import { cn } from "@ui/lib";
 import {
 	Table,
 	TableBody,
@@ -11,6 +10,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@ui/components/table";
+import { cn } from "@ui/lib";
 import {
 	CircleIcon,
 	HexagonIcon,
@@ -49,14 +49,14 @@ export function ZonesTable({
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-8">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+				<div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
 			</div>
 		);
 	}
 
 	if (zones.length === 0) {
 		return (
-			<div className="text-center py-8 text-muted-foreground">
+			<div className="py-8 text-center text-muted-foreground">
 				{t("pricing.zones.noZones")}
 			</div>
 		);
@@ -90,7 +90,7 @@ export function ZonesTable({
 							<TableCell>
 								<div className="flex flex-col">
 									<span className="font-medium">{zone.name}</span>
-									<Badge variant="outline" className="w-fit mt-1 text-xs">
+									<Badge variant="outline" className="mt-1 w-fit text-xs">
 										{zone.code}
 									</Badge>
 								</div>
@@ -108,7 +108,7 @@ export function ZonesTable({
 							</TableCell>
 							<TableCell>
 								{zone.centerLatitude && zone.centerLongitude ? (
-									<span className="text-sm font-mono">
+									<span className="font-mono text-sm">
 										{Number(zone.centerLatitude).toFixed(4)},{" "}
 										{Number(zone.centerLongitude).toFixed(4)}
 									</span>
