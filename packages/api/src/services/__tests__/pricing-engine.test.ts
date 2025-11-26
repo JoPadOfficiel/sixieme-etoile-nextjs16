@@ -17,6 +17,7 @@ import {
 	type AdvancedRateData,
 	type AppliedMultiplierRule,
 	type ContactData,
+	type DynamicBaseCalculationRule,
 	type OrganizationPricingSettings,
 	type PricingRequest,
 	type SeasonalMultiplierData,
@@ -1439,12 +1440,12 @@ describe("pricing-engine", () => {
 				expect(result.pricingMode).toBe("DYNAMIC");
 				expect(result.price).toBe(108); // 90 × 1.2 = 108
 
-				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION") as DynamicBaseCalculationRule | undefined;
 				expect(calcRule).toBeDefined();
-				expect(calcRule?.calculation?.selectedMethod).toBe("duration");
-				expect(calcRule?.calculation?.distanceBasedPrice).toBe(25);
-				expect(calcRule?.calculation?.durationBasedPrice).toBe(90);
-				expect(calcRule?.calculation?.basePrice).toBe(90);
+				expect(calcRule?.calculation.selectedMethod).toBe("duration");
+				expect(calcRule?.calculation.distanceBasedPrice).toBe(25);
+				expect(calcRule?.calculation.durationBasedPrice).toBe(90);
+				expect(calcRule?.calculation.basePrice).toBe(90);
 			});
 		});
 
@@ -1511,9 +1512,9 @@ describe("pricing-engine", () => {
 					},
 				});
 
-				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
-				expect(calcRule?.inputs?.baseRatePerKm).toBe(2.5);
-				expect(calcRule?.inputs?.baseRatePerHour).toBe(45.0);
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION") as DynamicBaseCalculationRule | undefined;
+				expect(calcRule?.inputs.baseRatePerKm).toBe(2.5);
+				expect(calcRule?.inputs.baseRatePerHour).toBe(45.0);
 			});
 		});
 
@@ -1537,11 +1538,11 @@ describe("pricing-engine", () => {
 					pricingSettings: defaultPricingSettings,
 				});
 
-				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION") as DynamicBaseCalculationRule | undefined;
 				// 18 × 2.5 = 45, 1 × 45 = 45 → equal, distance wins
-				expect(calcRule?.calculation?.distanceBasedPrice).toBe(45);
-				expect(calcRule?.calculation?.durationBasedPrice).toBe(45);
-				expect(calcRule?.calculation?.selectedMethod).toBe("distance");
+				expect(calcRule?.calculation.distanceBasedPrice).toBe(45);
+				expect(calcRule?.calculation.durationBasedPrice).toBe(45);
+				expect(calcRule?.calculation.selectedMethod).toBe("distance");
 			});
 
 			it("should handle very short trips", () => {
@@ -1564,11 +1565,11 @@ describe("pricing-engine", () => {
 				expect(result.pricingMode).toBe("DYNAMIC");
 				expect(result.price).toBeGreaterThan(0);
 
-				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION") as DynamicBaseCalculationRule | undefined;
 				// 1 × 2.5 = 2.5, 5/60 × 45 = 3.75 → duration wins
-				expect(calcRule?.calculation?.distanceBasedPrice).toBe(2.5);
-				expect(calcRule?.calculation?.durationBasedPrice).toBe(3.75);
-				expect(calcRule?.calculation?.selectedMethod).toBe("duration");
+				expect(calcRule?.calculation.distanceBasedPrice).toBe(2.5);
+				expect(calcRule?.calculation.durationBasedPrice).toBe(3.75);
+				expect(calcRule?.calculation.selectedMethod).toBe("duration");
 			});
 
 			it("should handle long highway trips", () => {
@@ -1590,13 +1591,13 @@ describe("pricing-engine", () => {
 
 				expect(result.pricingMode).toBe("DYNAMIC");
 
-				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION");
+				const calcRule = result.appliedRules.find(r => r.type === "DYNAMIC_BASE_CALCULATION") as DynamicBaseCalculationRule | undefined;
 				// 450 × 2.5 = 1125, 4.5 × 45 = 202.5 → distance wins
-				expect(calcRule?.calculation?.distanceBasedPrice).toBe(1125);
-				expect(calcRule?.calculation?.durationBasedPrice).toBe(202.5);
-				expect(calcRule?.calculation?.selectedMethod).toBe("distance");
-				expect(calcRule?.calculation?.basePrice).toBe(1125);
-				expect(calcRule?.calculation?.priceWithMargin).toBe(1350); // 1125 × 1.2
+				expect(calcRule?.calculation.distanceBasedPrice).toBe(1125);
+				expect(calcRule?.calculation.durationBasedPrice).toBe(202.5);
+				expect(calcRule?.calculation.selectedMethod).toBe("distance");
+				expect(calcRule?.calculation.basePrice).toBe(1125);
+				expect(calcRule?.calculation.priceWithMargin).toBe(1350); // 1125 × 1.2
 			});
 		});
 	});

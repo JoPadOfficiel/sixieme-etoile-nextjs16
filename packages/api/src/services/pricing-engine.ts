@@ -89,8 +89,31 @@ export interface PricingRequest {
 
 export interface AppliedRule {
 	type: string;
-	description: string;
+	description?: string;
 	[key: string]: unknown;
+}
+
+/**
+ * Applied rule for dynamic base calculation (Story 4.1)
+ */
+export interface DynamicBaseCalculationRule extends AppliedRule {
+	type: "DYNAMIC_BASE_CALCULATION";
+	description: string;
+	inputs: {
+		distanceKm: number;
+		durationMinutes: number;
+		baseRatePerKm: number;
+		baseRatePerHour: number;
+		targetMarginPercent: number;
+	};
+	calculation: {
+		distanceBasedPrice: number;
+		durationBasedPrice: number;
+		selectedMethod: "distance" | "duration";
+		basePrice: number;
+		priceWithMargin: number;
+	};
+	usingDefaultSettings?: boolean;
 }
 
 export interface MatchedGrid {
