@@ -889,6 +889,23 @@
 			"save": "Save Contract",
 			"saved": "Contract saved successfully.",
 			"saveFailed": "Failed to save contract. Please try again."
+		},
+		"reclassification": {
+			"thisWill": "This will:",
+			"existingUnaffected": "Existing quotes and invoices will NOT be affected.",
+			"confirm": "Confirm Reclassification",
+			"toPrivate": {
+				"title": "Reclassify to Private Client",
+				"description": "You are about to change this contact from Partner to Private.",
+				"deleteContract": "Delete the associated commercial contract (billing, payment terms, commission)",
+				"useDynamicPricing": "Future quotes will use dynamic pricing (Method 2) instead of grid pricing"
+			},
+			"toPartner": {
+				"title": "Reclassify to Partner Client",
+				"description": "You are about to change this contact from Private to Partner.",
+				"enableGridPricing": "Enable grid-based pricing (Method 1) for future quotes",
+				"allowCommercialSettings": "Allow you to configure commercial settings (billing, payment terms, commission)"
+			}
 		}
 	}
 }

@@ -407,11 +407,16 @@ describe("Contacts API", () => {
     it("should update an existing contact", async () => {
       mockAuthenticatedUser();
 
-      vi.mocked(db.contact.findFirst).mockResolvedValue(sampleContact as any);
-      vi.mocked(db.contact.update).mockResolvedValue({
+      const updatedContact = {
         ...sampleContact,
         displayName: "John Updated",
-      } as any);
+      };
+
+      // First call: check existence, Second call: fetch updated contact
+      vi.mocked(db.contact.findFirst)
+        .mockResolvedValueOnce(sampleContact as any)
+        .mockResolvedValueOnce(updatedContact as any);
+      vi.mocked(db.contact.update).mockResolvedValue(updatedContact as any);
 
       const app = createTestApp();
       const res = await app.request("/vtc/contacts/contact_123", {
@@ -444,12 +449,17 @@ describe("Contacts API", () => {
     it("should allow changing partner status", async () => {
       mockAuthenticatedUser();
 
-      vi.mocked(db.contact.findFirst).mockResolvedValue(sampleContact as any);
-      vi.mocked(db.contact.update).mockResolvedValue({
+      const updatedContact = {
         ...sampleContact,
         isPartner: true,
         defaultClientType: "PARTNER",
-      } as any);
+      };
+
+      // First call: check existence, Second call: fetch updated contact
+      vi.mocked(db.contact.findFirst)
+        .mockResolvedValueOnce(sampleContact as any)
+        .mockResolvedValueOnce(updatedContact as any);
+      vi.mocked(db.contact.update).mockResolvedValue(updatedContact as any);
 
       const app = createTestApp();
       const res = await app.request("/vtc/contacts/contact_123", {
@@ -463,6 +473,43 @@ describe("Contacts API", () => {
 
       expect(body.isPartner).toBe(true);
       expect(body.defaultClientType).toBe("PARTNER");
+    });
+
+    it("should return reclassification metadata when changing partner status", async () => {
+      mockAuthenticatedUser();
+
+      const partnerContact = {
+        ...sampleContact,
+        isPartner: true,
+        partnerContract: null, // No contract to delete
+      };
+
+      const reclassifiedContact = {
+        ...sampleContact,
+        isPartner: false,
+      };
+
+      // First call: check existence, Second call: fetch updated contact
+      vi.mocked(db.contact.findFirst)
+        .mockResolvedValueOnce(partnerContact as any)
+        .mockResolvedValueOnce(reclassifiedContact as any);
+      vi.mocked(db.contact.update).mockResolvedValue(reclassifiedContact as any);
+
+      const app = createTestApp();
+      const res = await app.request("/vtc/contacts/contact_123", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPartner: false }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      expect(body.isPartner).toBe(false);
+      expect(body._meta).toBeDefined();
+      expect(body._meta.partnerContractDeleted).toBe(false);
+      expect(body._meta.reclassifiedFrom).toBe("PARTNER");
+      expect(body._meta.reclassifiedTo).toBe("PRIVATE");
     });
   });
 

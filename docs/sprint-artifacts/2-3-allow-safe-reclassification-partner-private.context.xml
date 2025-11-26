@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>2.3</story-id>
+    <story-name>Allow Safe Reclassification Between Partner and Private</story-name>
+    <epic>Epic 2 – CRM & Partner Contracts</epic>
+    <created>2025-11-26</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Un contact peut être créé avec le mauvais type (Partner au lieu de Private ou inversement).
+      Actuellement, changer le flag `isPartner` ne déclenche aucune logique métier particulière,
+      mais il n'y a pas de garde-fou ni de feedback utilisateur sur l'impact de ce changement.
+      De plus, si un contact Partner possède un PartnerContract, la reclassification vers Private
+      doit gérer ce contrat (suppression ou archivage) pour éviter des incohérences.
+    </description>
+    <business-impact>
+      - Risque de confusion : un contact Private avec un contrat orphelin.
+      - Risque de pricing incorrect : un contact reclassifié Partner sans contrat ne bénéficie pas de Method 1.
+      - Perte de confiance si les devis/factures historiques sont altérés.
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Permettre la reclassification sécurisée d'un contact entre Partner et Private,
+      tout en préservant l'intégrité des devis et factures existants.
+    </primary>
+    <secondary>
+      - Afficher un avertissement clair à l'opérateur sur l'impact du changement.
+      - Gérer le PartnerContract lors du passage Partner → Private (suppression ou archivage).
+      - Permettre la création d'un PartnerContract lors du passage Private → Partner.
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Modification du flag `isPartner` sur un contact existant via l'UI et l'API.
+      - Avertissement utilisateur avant confirmation du changement de type.
+      - Suppression automatique du PartnerContract si passage Partner → Private (avec confirmation).
+      - Préservation des devis et factures liés (aucune modification de leurs valeurs commerciales).
+      - Tests unitaires et E2E couvrant les scénarios de reclassification.
+    </in-scope>
+    <out-of-scope>
+      - Historique des changements de type (audit log détaillé – future story).
+      - Migration en masse de contacts (bulk reclassification).
+      - Modification rétroactive des prix sur devis/factures existants (interdit par FR34).
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Le flag `isPartner` est un booléen sur le modèle `Contact`.
+      - Le modèle `PartnerContract` a une relation 1:1 avec `Contact` (contactId unique).
+      - Les devis et factures référencent `contactId` ; cette FK ne doit pas être modifiée.
+    </technical>
+    <business>
+      - FR5 : Permettre la reclassification tout en préservant les devis/factures existants.
+      - FR4 : Le pricing engine lit le type client pour décider Method 1 vs 2.
+      - FR34 : Les factures émises sont immuables.
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Suppression accidentelle du PartnerContract lors d'un changement de type.</description>
+      <mitigation>Afficher une confirmation explicite avec liste des données qui seront supprimées.</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Confusion utilisateur sur l'impact du changement.</description>
+      <mitigation>Message d'avertissement clair dans l'UI avant confirmation.</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given un contact Partner avec des devis et factures liés,
+      When je change son type vers Private et confirme,
+      Then le contact devient Private, les devis/factures restent liés et inchangés,
+      et le PartnerContract associé est supprimé.
+    </criterion>
+    <criterion id="AC2">
+      Given un contact Private avec des devis liés,
+      When je change son type vers Partner et confirme,
+      Then le contact devient Partner, les devis restent liés et inchangés,
+      et je peux ensuite créer un PartnerContract.
+    </criterion>
+    <criterion id="AC3">
+      Given je tente de reclassifier un contact,
+      When je clique sur le switch Partner/Private,
+      Then un avertissement s'affiche expliquant l'impact (ex: "Les futurs devis utiliseront le pricing dynamique").
+    </criterion>
+    <criterion id="AC4">
+      Given un contact reclassifié de Partner vers Private,
+      When je crée un nouveau devis pour ce contact,
+      Then le pricing engine utilise Method 2 (dynamique).
+    </criterion>
+    <criterion id="AC5">
+      Given un contact reclassifié de Private vers Partner avec un contrat configuré,
+      When je crée un nouveau devis pour ce contact,
+      Then le pricing engine tente Method 1 (grille) si une route correspond.
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="required" status="done">
+      Story 2.1 – Contact Model & Basic CRM UI
+    </dependency>
+    <dependency type="required" status="done">
+      Story 2.2 – Store Partner Contract Data & Rate Grid Links
+    </dependency>
+    <dependency type="optional" status="pending">
+      Epic 3 – Zone Engine & Partner Fixed Grids (pour tester AC5 avec grilles réelles)
+    </dependency>
+  </dependencies>
+
+  <technical-notes>
+    <note>
+      L'API PATCH /api/vtc/contacts/:id doit accepter le changement de `isPartner`.
+      Si passage Partner → Private et qu'un PartnerContract existe, le supprimer dans la même transaction.
+    </note>
+    <note>
+      L'UI doit afficher un dialog de confirmation avant de soumettre le changement de type.
+    </note>
+    <note>
+      Les tests doivent vérifier que les devis/factures existants ne sont pas modifiés (valeurs commerciales inchangées).
+    </note>
+  </technical-notes>
+
+  <artifacts>
+    <prd-reference>docs/bmad/prd.md – FR4, FR5, FR34</prd-reference>
+    <epic-reference>docs/bmad/epics.md – Epic 2, Story 2.3</epic-reference>
+    <schema-reference>packages/database/prisma/schema.prisma – Contact, PartnerContract, Quote, Invoice</schema-reference>
+  </artifacts>
+</story-context>

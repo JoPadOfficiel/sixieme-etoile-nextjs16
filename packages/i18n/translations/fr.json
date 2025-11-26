@@ -889,6 +889,23 @@
 			"save": "Enregistrer le contrat",
 			"saved": "Contrat enregistré avec succès.",
 			"saveFailed": "Échec de l'enregistrement du contrat. Veuillez réessayer."
+		},
+		"reclassification": {
+			"thisWill": "Cela va :",
+			"existingUnaffected": "Les devis et factures existants ne seront PAS affectés.",
+			"confirm": "Confirmer la reclassification",
+			"toPrivate": {
+				"title": "Reclassifier en client privé",
+				"description": "Vous êtes sur le point de changer ce contact de Partenaire à Privé.",
+				"deleteContract": "Supprimer le contrat commercial associé (facturation, conditions de paiement, commission)",
+				"useDynamicPricing": "Les futurs devis utiliseront la tarification dynamique (Méthode 2) au lieu de la grille"
+			},
+			"toPartner": {
+				"title": "Reclassifier en client partenaire",
+				"description": "Vous êtes sur le point de changer ce contact de Privé à Partenaire.",
+				"enableGridPricing": "Activer la tarification grille (Méthode 1) pour les futurs devis",
+				"allowCommercialSettings": "Permettre de configurer les paramètres commerciaux (facturation, conditions de paiement, commission)"
+			}
 		}
 	}
 }

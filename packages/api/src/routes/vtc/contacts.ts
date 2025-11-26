@@ -169,7 +169,7 @@ export const contactsRouter = new Hono()
 		validator("json", updateContactSchema),
 		describeRoute({
 			summary: "Update contact",
-			description: "Update an existing contact",
+			description: "Update an existing contact. Handles reclassification between Partner and Private.",
 			tags: ["VTC - Contacts"],
 		}),
 		async (c) => {
@@ -180,6 +180,9 @@ export const contactsRouter = new Hono()
 			// First check if contact exists and belongs to this organization
 			const existing = await db.contact.findFirst({
 				where: withTenantId(id, organizationId),
+				include: {
+					partnerContract: true,
+				},
 			});
 
 			if (!existing) {
@@ -188,12 +191,52 @@ export const contactsRouter = new Hono()
 				});
 			}
 
-			const contact = await db.contact.update({
-				where: { id },
-				data,
+			// Detect reclassification
+			const isReclassification = data.isPartner !== undefined && data.isPartner !== existing.isPartner;
+			const reclassifyingToPrivate = isReclassification && data.isPartner === false;
+			const reclassifyingToPartner = isReclassification && data.isPartner === true;
+
+			let partnerContractDeleted = false;
+
+			// Handle Partner → Private: delete PartnerContract if exists
+			if (reclassifyingToPrivate && existing.partnerContract) {
+				await db.$transaction(async (tx) => {
+					// Delete the partner contract
+					await tx.partnerContract.delete({
+						where: { contactId: id },
+					});
+					// Update the contact
+					await tx.contact.update({
+						where: { id },
+						data,
+					});
+				});
+				partnerContractDeleted = true;
+			} else {
+				// Standard update
+				await db.contact.update({
+					where: { id },
+					data,
+				});
+			}
+
+			// Fetch updated contact
+			const contact = await db.contact.findFirst({
+				where: withTenantId(id, organizationId),
 			});
 
-			return c.json(contact);
+			// Build response with reclassification metadata
+			const response: Record<string, unknown> = { ...contact };
+
+			if (isReclassification) {
+				response._meta = {
+					partnerContractDeleted,
+					reclassifiedFrom: existing.isPartner ? "PARTNER" : "PRIVATE",
+					reclassifiedTo: data.isPartner ? "PARTNER" : "PRIVATE",
+				};
+			}
+
+			return c.json(response);
 		},
 	)
 

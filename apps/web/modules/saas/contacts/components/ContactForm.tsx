@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { useToast } from "@ui/hooks/use-toast";
 import type { Contact } from "../types";
+import { ReclassificationWarningDialog } from "./ReclassificationWarningDialog";
 
 interface ContactFormProps {
   contact?: Contact | null;
@@ -60,6 +61,16 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
 
   const initialData = useMemo(() => getInitialFormData(contact), [contact]);
   const [formData, setFormData] = useState(initialData);
+
+  // Reclassification dialog state
+  const [showReclassificationDialog, setShowReclassificationDialog] = useState(false);
+  const [pendingIsPartnerChange, setPendingIsPartnerChange] = useState<boolean | null>(null);
+
+  // Check if this is a reclassification (existing contact changing isPartner)
+  const isReclassification = contact && pendingIsPartnerChange !== null && pendingIsPartnerChange !== contact.isPartner;
+  const reclassificationDirection = pendingIsPartnerChange ? "toPartner" : "toPrivate";
+  // We don't have direct access to partnerContract here, but we can assume it exists if contact is a partner
+  const hasContract = contact?.isPartner ?? false;
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -183,9 +194,38 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
         <Switch
           id="isPartner"
           checked={formData.isPartner}
-          onCheckedChange={(checked: boolean) => updateField("isPartner", checked)}
+          onCheckedChange={(checked: boolean) => {
+            // If editing an existing contact and changing isPartner, show warning dialog
+            if (contact && checked !== contact.isPartner) {
+              setPendingIsPartnerChange(checked);
+              setShowReclassificationDialog(true);
+            } else {
+              updateField("isPartner", checked);
+            }
+          }}
         />
       </div>
+
+      {/* Reclassification Warning Dialog */}
+      {isReclassification && (
+        <ReclassificationWarningDialog
+          open={showReclassificationDialog}
+          onOpenChange={setShowReclassificationDialog}
+          direction={reclassificationDirection}
+          hasContract={hasContract}
+          onConfirm={() => {
+            if (pendingIsPartnerChange !== null) {
+              updateField("isPartner", pendingIsPartnerChange);
+            }
+            setShowReclassificationDialog(false);
+            setPendingIsPartnerChange(null);
+          }}
+          onCancel={() => {
+            setShowReclassificationDialog(false);
+            setPendingIsPartnerChange(null);
+          }}
+        />
+      )}
 
       {/* Person Fields */}
       {formData.type === "INDIVIDUAL" && (

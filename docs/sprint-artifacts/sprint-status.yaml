@@ -49,3 +49,4 @@ development_status:
   1-5-integration-settings-storage: done
   2-1-implement-contact-model-basic-crm-ui: done
   2-2-store-partner-contract-data-rate-grid-links: done
+  2-3-allow-safe-reclassification-partner-private: done
