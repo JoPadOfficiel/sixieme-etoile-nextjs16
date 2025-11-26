@@ -842,6 +842,13 @@ model OrganizationPricingSettings {
   // Rounding rule (optional)
   roundingRule String? // e.g. "NEAREST_5", "NEAREST_10"
 
+  // Story 4.2: Operational cost parameters (optional, defaults in pricing-engine.ts)
+  fuelConsumptionL100km Decimal? @db.Decimal(5, 2) // Liters per 100km (e.g., 8.0)
+  fuelPricePerLiter     Decimal? @db.Decimal(5, 2) // EUR per liter (e.g., 1.80)
+  tollCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.15)
+  wearCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.10)
+  driverHourlyCost      Decimal? @db.Decimal(8, 2) // EUR per hour (e.g., 25.00)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

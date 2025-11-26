@@ -128,7 +128,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','minimumFare','roundingRule','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -775,6 +775,11 @@ export const OrganizationPricingSettingsSchema = z.object({
   defaultMarginPercent: z.instanceof(Prisma.Decimal, { message: "Field 'defaultMarginPercent' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
   minimumFare: z.instanceof(Prisma.Decimal, { message: "Field 'minimumFare' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
   roundingRule: z.string().nullable(),
+  fuelConsumptionL100km: z.instanceof(Prisma.Decimal, { message: "Field 'fuelConsumptionL100km' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  fuelPricePerLiter: z.instanceof(Prisma.Decimal, { message: "Field 'fuelPricePerLiter' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  tollCostPerKm: z.instanceof(Prisma.Decimal, { message: "Field 'tollCostPerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  wearCostPerKm: z.instanceof(Prisma.Decimal, { message: "Field 'wearCostPerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  driverHourlyCost: z.instanceof(Prisma.Decimal, { message: "Field 'driverHourlyCost' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
