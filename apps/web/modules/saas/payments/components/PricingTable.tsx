@@ -198,20 +198,16 @@ export function PricingTable({
 										)}
 
 										{isEnterprise ? (
-											<Button
-												className="mt-4 w-full"
-												variant="secondary"
-												asChild
-											>
-												<LocaleLink href="/contact">
+											<LocaleLink href="/contact" className="block">
+												<Button className="mt-4 w-full" variant="secondary">
 													<PhoneIcon className="mr-2 size-4" />
 													{t("pricing.contactSales")}
-												</LocaleLink>
-											</Button>
+												</Button>
+											</LocaleLink>
 										) : (
 											<Button
 												className="mt-4 w-full"
-												variant={recommended ? "primary" : "secondary"}
+												variant={recommended ? "default" : "secondary"}
 												onClick={() =>
 													onSelectPlan(planId as PlanId, price?.productId)
 												}
