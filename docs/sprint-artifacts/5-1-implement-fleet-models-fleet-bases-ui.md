@@ -1,7 +1,7 @@
 # Story 5.1: Implement Fleet Models & Fleet/Bases UI
 
 **Epic:** 5 - Fleet & RSE Compliance Engine  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 8
 
@@ -48,6 +48,22 @@
 **Given** all fleet entities  
 **When** created or queried  
 **Then** they are scoped by `organizationId` (multi-tenancy enforced)
+
+---
+
+## Implementation & Validation Summary (26 Nov 2025)
+
+- **Backend:** Added multi-tenant CRUD routes for vehicle categories, operating bases, and vehicles with validation + duplicate protection; registered routes in the VTC router.
+- **Frontend:** Delivered fleet types plus Vehicles & Bases pages, including tables, drawers (VehicleForm/BaseForm), and sidebar navigation entries.
+- **Translations:** Added complete EN/FR coverage for the new fleet module strings.
+- **Testing:** 62 Vitest API specs pass (vehicles/bases/vehicle-categories). Manual verification via Playwright MCP confirmed full UI flows (create base + vehicle). DB snapshot shows persisted rows for `operating_base` and `vehicle` tied to organization `zSs1CR7wlI8I5Yh4yIAhM`.
+
+### Acceptance Criteria Validation
+
+- ✅ **AC1** Vehicles list page with table columns, filters, and empty-state guidance.
+- ✅ **AC2** Drawer supports full vehicle create/edit workflow (category/base selectors, capacity + cost fields) and persists records.
+- ✅ **AC3** Operating Bases page lists bases with counts; drawer allows geocoded creation (tested with "Paris CDG Garage").
+- ✅ **AC4** All queries/mutations scoped by `organizationId`; verified via Vitest mocks + DB records.
 
 ---
 
