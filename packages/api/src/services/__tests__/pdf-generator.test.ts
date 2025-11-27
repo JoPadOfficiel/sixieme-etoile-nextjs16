@@ -109,11 +109,11 @@ describe("PDF Generator Service", () => {
 			totalVat: 25.0,
 			totalInclVat: 150.0,
 			commissionAmount: 12.5,
-			notes: "Facture générée depuis le devis QUOTE-123",
+			notes: "Facture generee depuis le devis QUOTE-123",
 			contact: {
 				displayName: "Jean Dupont",
 				companyName: "Entreprise ABC",
-				billingAddress: "456 Avenue des Champs-Élysées, 75008 Paris",
+				billingAddress: "456 Avenue des Champs-Elysees, 75008 Paris",
 				email: "jean.dupont@abc.fr",
 				phone: "+33 6 12 34 56 78",
 				vatNumber: "FR98765432109",
@@ -121,7 +121,7 @@ describe("PDF Generator Service", () => {
 			},
 			lines: [
 				{
-					description: "Transport Paris → CDG",
+					description: "Transport Paris - CDG",
 					quantity: 1,
 					unitPriceExclVat: 100.0,
 					vatRate: 20,
@@ -129,7 +129,7 @@ describe("PDF Generator Service", () => {
 					totalVat: 20.0,
 				},
 				{
-					description: "Supplément bagages",
+					description: "Supplement bagages",
 					quantity: 1,
 					unitPriceExclVat: 25.0,
 					vatRate: 20,

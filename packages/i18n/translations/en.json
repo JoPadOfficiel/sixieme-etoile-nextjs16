@@ -1960,5 +1960,38 @@
 				"ruleDeleteFailed": "Failed to delete RSE rule."
 			}
 		}
+	},
+	"documents": {
+		"title": "Documents",
+		"description": "View and download generated documents (quotes, invoices, mission orders).",
+		"empty": "No documents generated yet",
+		"noResults": "No documents found",
+		"error": "Error loading documents",
+		"search": "Search for a document...",
+		"columns": {
+			"type": "Type",
+			"reference": "Reference",
+			"client": "Client",
+			"createdAt": "Created",
+			"actions": "Actions"
+		},
+		"types": {
+			"QUOTE_PDF": "Quote PDF",
+			"INVOICE_PDF": "Invoice PDF",
+			"MISSION_ORDER": "Mission Order"
+		},
+		"filters": {
+			"allTypes": "All types",
+			"type": "Document type",
+			"dateRange": "Date range"
+		},
+		"actions": {
+			"download": "Download",
+			"generateQuotePdf": "Generate PDF",
+			"downloadInvoicePdf": "Download PDF"
+		},
+		"generating": "Generating...",
+		"generated": "Document generated successfully",
+		"generateError": "Error generating document"
 	}
 }

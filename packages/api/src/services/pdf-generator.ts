@@ -3,10 +3,10 @@
  * Story 7.5: Document Generation & Storage
  *
  * Generates PDF documents for quotes, invoices, and mission orders.
- * Uses jsPDF for server-side PDF generation.
+ * Uses pdf-lib for server-side PDF generation (pure JS, no DOM required).
  */
 
-import { jsPDF } from "jspdf";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 // ============================================================================
 // Types
@@ -83,10 +83,8 @@ export interface InvoicePdfData {
 // ============================================================================
 
 function formatPrice(amount: number): string {
-	return new Intl.NumberFormat("fr-FR", {
-		style: "currency",
-		currency: "EUR",
-	}).format(amount);
+	// Use ASCII-safe format for pdf-lib compatibility
+	return `${amount.toFixed(2).replace(".", ",")} EUR`;
 }
 
 function formatDate(date: Date): string {
@@ -107,387 +105,372 @@ function formatDateTime(date: Date): string {
 	}).format(date);
 }
 
+/**
+ * Sanitize text for PDF rendering (remove non-ASCII characters)
+ * pdf-lib only supports WinAnsi encoding (basic Latin characters)
+ */
+function sanitizeText(text: string): string {
+	return text
+		.replace(/→/g, "->")
+		.replace(/←/g, "<-")
+		.replace(/€/g, "EUR")
+		.replace(/[éèêë]/g, "e")
+		.replace(/[àâä]/g, "a")
+		.replace(/[ùûü]/g, "u")
+		.replace(/[îï]/g, "i")
+		.replace(/[ôö]/g, "o")
+		.replace(/ç/g, "c")
+		.replace(/[ÉÈÊË]/g, "E")
+		.replace(/[ÀÂÄÃ]/g, "A")
+		.replace(/[ÙÛÜ]/g, "U")
+		.replace(/[ÎÏ]/g, "I")
+		.replace(/[ÔÖ]/g, "O")
+		.replace(/Ç/g, "C")
+		.replace(/[^\x00-\x7F]/g, ""); // Remove any remaining non-ASCII
+}
+
+// Colors
+const BLUE = rgb(0.145, 0.388, 0.922);
+const GREEN = rgb(0.086, 0.639, 0.290);
+const GRAY = rgb(0.4, 0.4, 0.4);
+const DARK = rgb(0.216, 0.255, 0.318);
+const BLACK = rgb(0, 0, 0);
+
 // ============================================================================
 // Quote PDF Generator
 // ============================================================================
 
-export function generateQuotePdf(
+export async function generateQuotePdf(
 	quote: QuotePdfData,
 	organization: OrganizationPdfData
 ): Promise<Buffer> {
-	const doc = new jsPDF();
-	const pageWidth = doc.internal.pageSize.getWidth();
-	let y = 20;
+	const pdfDoc = await PDFDocument.create();
+	const page = pdfDoc.addPage([595, 842]); // A4
+	const { width, height } = page.getSize();
+
+	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+	let y = height - 50;
+	const leftMargin = 50;
+	const rightMargin = width - 50;
+
+	// Helper to draw sanitized text
+	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
+		page.drawText(sanitizeText(text), options);
+	};
 
 	// Header - Organization name
-	doc.setFontSize(20);
-	doc.setFont("helvetica", "bold");
-	doc.text(organization.name, 20, y);
-	y += 8;
+	draw(organization.name, {
+		x: leftMargin,
+		y,
+		size: 20,
+		font: helveticaBold,
+		color: BLACK,
+	});
+	y -= 20;
 
 	// Organization details
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
 	if (organization.address) {
-		doc.text(organization.address, 20, y);
-		y += 5;
+		draw(organization.address, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.phone) {
-		doc.text(`Tél: ${organization.phone}`, 20, y);
-		y += 5;
+		draw(`Tel: ${organization.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.email) {
-		doc.text(organization.email, 20, y);
-		y += 5;
+		draw(organization.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.siret) {
-		doc.text(`SIRET: ${organization.siret}`, 20, y);
-		y += 5;
+		draw(`SIRET: ${organization.siret}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 
 	// Document title
-	y += 10;
-	doc.setFontSize(18);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(37, 99, 235); // Blue
-	doc.text("DEVIS", 20, y);
+	y -= 20;
+	draw("DEVIS", {
+		x: leftMargin,
+		y,
+		size: 18,
+		font: helveticaBold,
+		color: BLUE,
+	});
 
 	// Reference and date on the right
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
-	doc.text(`Réf: ${quote.id.slice(-8).toUpperCase()}`, pageWidth - 60, y - 5);
-	doc.text(`Date: ${formatDate(quote.createdAt)}`, pageWidth - 60, y);
+	const refText = `Ref: ${quote.id.slice(-8).toUpperCase()}`;
+	const dateText = `Date: ${formatDate(quote.createdAt)}`;
+	draw(refText, { x: rightMargin - 100, y: y + 10, size: 10, font: helvetica, color: GRAY });
+	draw(dateText, { x: rightMargin - 100, y: y - 4, size: 10, font: helvetica, color: GRAY });
 	if (quote.validUntil) {
-		doc.text(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, pageWidth - 60, y + 5);
+		draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
+			x: rightMargin - 100, y: y - 18, size: 10, font: helvetica, color: GRAY
+		});
 	}
 
 	// Client section
-	y += 15;
-	doc.setFontSize(12);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Client", 20, y);
-	y += 6;
-
-	doc.setFontSize(11);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(0, 0, 0);
-	doc.text(quote.contact.displayName, 20, y);
-	y += 5;
-
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
+	y -= 40;
+	draw("Client", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y -= 16;
+	draw(quote.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
+	y -= 14;
 	if (quote.contact.companyName) {
-		doc.text(quote.contact.companyName, 20, y);
-		y += 5;
+		draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (quote.contact.billingAddress) {
-		doc.text(quote.contact.billingAddress, 20, y);
-		y += 5;
+		draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (quote.contact.email) {
-		doc.text(quote.contact.email, 20, y);
-		y += 5;
+		draw(quote.contact.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 
 	// Trip details section
-	y += 10;
-	doc.setFontSize(12);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Détails du trajet", 20, y);
-	y += 8;
+	y -= 20;
+	draw("Details du trajet", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y -= 18;
 
-	// Trip details table
 	const tripDetails = [
-		["Départ", quote.pickupAddress],
-		["Arrivée", quote.dropoffAddress],
+		["Depart", quote.pickupAddress],
+		["Arrivee", quote.dropoffAddress],
 		["Date et heure", formatDateTime(quote.pickupAt)],
 		["Passagers", String(quote.passengerCount)],
 		["Bagages", String(quote.luggageCount)],
-		["Catégorie véhicule", quote.vehicleCategory],
+		["Categorie vehicule", quote.vehicleCategory],
 		["Type de trajet", quote.tripType],
 	];
 
-	doc.setFontSize(10);
 	for (const [label, value] of tripDetails) {
-		doc.setFont("helvetica", "bold");
-		doc.setTextColor(55, 65, 81);
-		doc.text(label, 20, y);
-		doc.setFont("helvetica", "normal");
-		doc.setTextColor(0, 0, 0);
-		doc.text(value, 70, y);
-		y += 6;
+		draw(label, { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
+		draw(value.substring(0, 60), { x: leftMargin + 120, y, size: 10, font: helvetica, color: BLACK });
+		y -= 16;
 	}
 
 	// Pricing section
-	y += 10;
-	doc.setFontSize(12);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Tarification", 20, y);
-	y += 8;
-
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(0, 0, 0);
-	doc.text(
+	y -= 20;
+	draw("Tarification", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y -= 18;
+	draw(
 		`Mode: ${quote.pricingMode === "FIXED_GRID" ? "Grille tarifaire" : "Tarif dynamique"}`,
-		20,
-		y
+		{ x: leftMargin, y, size: 10, font: helvetica, color: BLACK }
 	);
-	y += 8;
-
-	doc.setFontSize(14);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(37, 99, 235);
-	doc.text(`Prix total TTC: ${formatPrice(quote.finalPrice)}`, 20, y);
+	y -= 20;
+	draw(`Prix total TTC: ${formatPrice(quote.finalPrice)}`, {
+		x: leftMargin, y, size: 14, font: helveticaBold, color: BLUE
+	});
 
 	// Notes
 	if (quote.notes) {
-		y += 15;
-		doc.setFontSize(12);
-		doc.setFont("helvetica", "bold");
-		doc.setTextColor(55, 65, 81);
-		doc.text("Notes", 20, y);
-		y += 6;
-		doc.setFontSize(10);
-		doc.setFont("helvetica", "normal");
-		doc.setTextColor(100, 100, 100);
-		doc.text(quote.notes, 20, y);
+		y -= 30;
+		draw("Notes", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+		y -= 16;
+		draw(quote.notes.substring(0, 100), { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
 	}
 
 	// Footer
-	y = doc.internal.pageSize.getHeight() - 30;
-	doc.setFontSize(8);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
-	doc.text(
-		"Ce devis est valable pour une durée de 30 jours à compter de sa date d'émission.",
-		20,
-		y
+	draw(
+		"Ce devis est valable pour une duree de 30 jours a compter de sa date d'emission.",
+		{ x: leftMargin, y: 50, size: 8, font: helvetica, color: GRAY }
 	);
-	doc.text("Les prix indiqués sont en euros TTC.", 20, y + 4);
+	draw(
+		"Les prix indiques sont en euros TTC.",
+		{ x: leftMargin, y: 38, size: 8, font: helvetica, color: GRAY }
+	);
 
-	// Return as Buffer
-	const arrayBuffer = doc.output("arraybuffer");
-	return Promise.resolve(Buffer.from(arrayBuffer));
+	const pdfBytes = await pdfDoc.save();
+	return Buffer.from(pdfBytes);
 }
 
 // ============================================================================
 // Invoice PDF Generator
 // ============================================================================
 
-export function generateInvoicePdf(
+export async function generateInvoicePdf(
 	invoice: InvoicePdfData,
 	organization: OrganizationPdfData
 ): Promise<Buffer> {
-	const doc = new jsPDF();
-	const pageWidth = doc.internal.pageSize.getWidth();
-	let y = 20;
+	const pdfDoc = await PDFDocument.create();
+	const page = pdfDoc.addPage([595, 842]); // A4
+	const { width, height } = page.getSize();
+
+	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+	let y = height - 50;
+	const leftMargin = 50;
+	const rightMargin = width - 50;
+
+	// Helper to draw sanitized text
+	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
+		page.drawText(sanitizeText(text), options);
+	};
 
 	// Header - Organization name
-	doc.setFontSize(20);
-	doc.setFont("helvetica", "bold");
-	doc.text(organization.name, 20, y);
-	y += 8;
+	draw(organization.name, {
+		x: leftMargin,
+		y,
+		size: 20,
+		font: helveticaBold,
+		color: BLACK,
+	});
+	y -= 20;
 
 	// Organization details
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
 	if (organization.address) {
-		doc.text(organization.address, 20, y);
-		y += 5;
+		draw(organization.address, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.phone) {
-		doc.text(`Tél: ${organization.phone}`, 20, y);
-		y += 5;
+		draw(`Tel: ${organization.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.email) {
-		doc.text(organization.email, 20, y);
-		y += 5;
+		draw(organization.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.siret) {
-		doc.text(`SIRET: ${organization.siret}`, 20, y);
-		y += 5;
+		draw(`SIRET: ${organization.siret}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.vatNumber) {
-		doc.text(`TVA: ${organization.vatNumber}`, 20, y);
-		y += 5;
+		draw(`TVA: ${organization.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 
 	// Document title
-	y += 10;
-	doc.setFontSize(18);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(22, 163, 74); // Green
-	doc.text("FACTURE", 20, y);
+	y -= 20;
+	draw("FACTURE", {
+		x: leftMargin,
+		y,
+		size: 18,
+		font: helveticaBold,
+		color: GREEN,
+	});
 
 	// Invoice number and dates on the right
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(0, 0, 0);
-	doc.text(`N° ${invoice.number}`, pageWidth - 60, y - 5);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
-	doc.text(`Émise le: ${formatDate(invoice.issueDate)}`, pageWidth - 60, y);
-	doc.text(`Échéance: ${formatDate(invoice.dueDate)}`, pageWidth - 60, y + 5);
+	draw(`N° ${invoice.number}`, { x: rightMargin - 100, y: y + 10, size: 10, font: helveticaBold, color: BLACK });
+	draw(`Emise le: ${formatDate(invoice.issueDate)}`, { x: rightMargin - 100, y: y - 4, size: 10, font: helvetica, color: GRAY });
+	draw(`Echeance: ${formatDate(invoice.dueDate)}`, { x: rightMargin - 100, y: y - 18, size: 10, font: helvetica, color: GRAY });
 
 	// Client section
-	y += 15;
-	doc.setFontSize(12);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Facturé à", 20, y);
-	y += 6;
-
-	doc.setFontSize(11);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(0, 0, 0);
-	doc.text(invoice.contact.displayName, 20, y);
-	y += 5;
-
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
+	y -= 40;
+	draw("Facture a", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y -= 16;
+	draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
+	y -= 14;
 	if (invoice.contact.companyName) {
-		doc.text(invoice.contact.companyName, 20, y);
-		y += 5;
+		draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (invoice.contact.billingAddress) {
-		doc.text(invoice.contact.billingAddress, 20, y);
-		y += 5;
+		draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (invoice.contact.vatNumber) {
-		doc.text(`TVA: ${invoice.contact.vatNumber}`, 20, y);
-		y += 5;
+		draw(`TVA: ${invoice.contact.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 
 	// Line items section
-	y += 10;
-	doc.setFontSize(12);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Détail des prestations", 20, y);
-	y += 8;
+	y -= 20;
+	draw("Detail des prestations", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y -= 20;
 
 	// Table header
-	doc.setFillColor(243, 244, 246);
-	doc.rect(20, y - 4, pageWidth - 40, 8, "F");
-	doc.setFontSize(9);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Description", 22, y);
-	doc.text("Qté", 100, y);
-	doc.text("Prix HT", 115, y);
-	doc.text("TVA", 140, y);
-	doc.text("Total HT", 160, y);
-	y += 8;
+	page.drawRectangle({
+		x: leftMargin,
+		y: y - 4,
+		width: rightMargin - leftMargin,
+		height: 18,
+		color: rgb(0.95, 0.95, 0.95),
+	});
+	draw("Description", { x: leftMargin + 5, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Qte", { x: 300, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Prix HT", { x: 340, y, size: 9, font: helveticaBold, color: DARK });
+	draw("TVA", { x: 400, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Total HT", { x: 450, y, size: 9, font: helveticaBold, color: DARK });
+	y -= 20;
 
 	// Table rows
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(0, 0, 0);
 	for (const line of invoice.lines) {
-		doc.text(line.description.substring(0, 40), 22, y);
-		doc.text(String(line.quantity), 100, y);
-		doc.text(formatPrice(line.unitPriceExclVat), 115, y);
-		doc.text(`${line.vatRate}%`, 140, y);
-		doc.text(formatPrice(line.totalExclVat), 160, y);
-		y += 6;
+		draw(line.description.substring(0, 40), { x: leftMargin + 5, y, size: 9, font: helvetica, color: BLACK });
+		draw(String(line.quantity), { x: 300, y, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.unitPriceExclVat), { x: 340, y, size: 9, font: helvetica, color: BLACK });
+		draw(`${line.vatRate}%`, { x: 400, y, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.totalExclVat), { x: 450, y, size: 9, font: helvetica, color: BLACK });
+		y -= 16;
 	}
 
 	// Totals
-	y += 10;
-	const totalsX = pageWidth - 80;
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "normal");
-	doc.text("Total HT:", totalsX, y);
-	doc.text(formatPrice(invoice.totalExclVat), totalsX + 40, y);
-	y += 6;
-	doc.text("TVA:", totalsX, y);
-	doc.text(formatPrice(invoice.totalVat), totalsX + 40, y);
-	y += 6;
-	doc.setFillColor(243, 244, 246);
-	doc.rect(totalsX - 5, y - 4, 65, 8, "F");
-	doc.setFont("helvetica", "bold");
-	doc.text("Total TTC:", totalsX, y);
-	doc.setFontSize(12);
-	doc.text(formatPrice(invoice.totalInclVat), totalsX + 40, y);
+	y -= 20;
+	const totalsX = 380;
+	draw("Total HT:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
+	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
+	y -= 16;
+	draw("TVA:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
+	draw(formatPrice(invoice.totalVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
+	y -= 16;
+	page.drawRectangle({
+		x: totalsX - 5,
+		y: y - 4,
+		width: 130,
+		height: 18,
+		color: rgb(0.95, 0.95, 0.95),
+	});
+	draw("Total TTC:", { x: totalsX, y, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 70, y, size: 12, font: helveticaBold, color: BLACK });
 
 	// Commission info for partners
 	if (invoice.commissionAmount && invoice.commissionAmount > 0) {
-		y += 15;
-		doc.setFontSize(10);
-		doc.setFont("helvetica", "bold");
-		doc.setTextColor(249, 115, 22); // Orange
-		doc.text(`Commission partenaire: ${formatPrice(invoice.commissionAmount)}`, 20, y);
-		y += 5;
-		doc.setFont("helvetica", "normal");
-		doc.setTextColor(100, 100, 100);
-		doc.text(
-			`Montant net: ${formatPrice(invoice.totalExclVat - invoice.commissionAmount)}`,
-			20,
-			y
-		);
+		y -= 30;
+		draw(`Commission partenaire: ${formatPrice(invoice.commissionAmount)}`, {
+			x: leftMargin, y, size: 10, font: helveticaBold, color: rgb(0.976, 0.451, 0.086)
+		});
+		y -= 14;
+		draw(`Montant net: ${formatPrice(invoice.totalExclVat - invoice.commissionAmount)}`, {
+			x: leftMargin, y, size: 10, font: helvetica, color: GRAY
+		});
 	}
 
 	// Notes
 	if (invoice.notes) {
-		y += 15;
-		doc.setFontSize(10);
-		doc.setFont("helvetica", "bold");
-		doc.setTextColor(55, 65, 81);
-		doc.text("Notes", 20, y);
-		y += 5;
-		doc.setFont("helvetica", "normal");
-		doc.setTextColor(100, 100, 100);
-		doc.text(invoice.notes, 20, y);
+		y -= 30;
+		draw("Notes", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
+		y -= 14;
+		draw(invoice.notes.substring(0, 100), { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
 	}
 
 	// Payment info
-	y += 15;
-	doc.setFontSize(10);
-	doc.setFont("helvetica", "bold");
-	doc.setTextColor(55, 65, 81);
-	doc.text("Informations de paiement", 20, y);
-	y += 5;
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
+	y -= 30;
+	draw("Informations de paiement", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
+	y -= 14;
 	if (invoice.paymentTerms) {
-		doc.text(`Conditions: ${invoice.paymentTerms}`, 20, y);
-		y += 5;
+		draw(`Conditions: ${invoice.paymentTerms}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.iban) {
-		doc.text(`IBAN: ${organization.iban}`, 20, y);
-		y += 5;
+		draw(`IBAN: ${organization.iban}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		y -= 14;
 	}
 	if (organization.bic) {
-		doc.text(`BIC: ${organization.bic}`, 20, y);
+		draw(`BIC: ${organization.bic}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
 	}
 
 	// Footer
-	y = doc.internal.pageSize.getHeight() - 25;
-	doc.setFontSize(8);
-	doc.setFont("helvetica", "normal");
-	doc.setTextColor(100, 100, 100);
-	doc.text(
-		"En cas de retard de paiement, des pénalités de retard seront appliquées au taux légal en vigueur.",
-		20,
-		y
+	draw(
+		"En cas de retard de paiement, des penalites de retard seront appliquees au taux legal en vigueur.",
+		{ x: leftMargin, y: 50, size: 8, font: helvetica, color: GRAY }
 	);
-	doc.text(
-		"Une indemnité forfaitaire de 40€ pour frais de recouvrement sera également due.",
-		20,
-		y + 4
+	draw(
+		"Une indemnite forfaitaire de 40EUR pour frais de recouvrement sera egalement due.",
+		{ x: leftMargin, y: 38, size: 8, font: helvetica, color: GRAY }
 	);
 
-	// Return as Buffer
-	const arrayBuffer = doc.output("arraybuffer");
-	return Promise.resolve(Buffer.from(arrayBuffer));
+	const pdfBytes = await pdfDoc.save();
+	return Buffer.from(pdfBytes);
 }
 
 // ============================================================================
