@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@ui/components/popover";
-import { Skeleton } from "@ui/components/skeleton";
+        import { Skeleton } from "@ui/components/skeleton";
 import { apiClient } from "@shared/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import {
