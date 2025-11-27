@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>7-1</story-id>
+    <story-key>7-1-implement-invoice-invoiceline-models-invoices-ui</story-key>
+    <epic>Epic 7 – Invoicing & Documents</epic>
+    <created>2025-11-27</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem>
+    <description>
+      L'ERP VTC dispose d'un système complet de devis (Quotes) avec pricing, shadow calculation 
+      et profitabilité, mais les utilisateurs finance ne peuvent pas encore gérer les factures 
+      via l'interface utilisateur. Les modèles Invoice et InvoiceLine existent dans Prisma et 
+      l'API backend est implémentée, mais il n'y a pas d'écrans UI pour :
+      - Lister les factures avec filtres et pagination
+      - Voir le détail d'une facture avec ses lignes et ventilation TVA
+      - Naviguer entre contacts, devis et factures
+    </description>
+    <business-impact>
+      Sans UI de facturation, les opérateurs ne peuvent pas :
+      - Consulter les factures émises
+      - Suivre les paiements (DRAFT → ISSUED → PAID)
+      - Vérifier la ventilation TVA et les commissions partenaires
+      - Générer des exports ou documents (préparation Epic 7.5)
+    </business-impact>
+  </problem>
+
+  <objectives>
+    <objective id="1">
+      Implémenter la page liste des factures /dashboard/invoices avec colonnes : 
+      Invoice No, Client, Issue Date, Due Date, Total (EUR), VAT breakdown indicator, 
+      Status, Source Quote
+    </objective>
+    <objective id="2">
+      Implémenter la page détail facture /dashboard/invoices/[id] avec layout deux colonnes :
+      - Gauche : entité de facturation et métadonnées
+      - Droite : lignes de facture et ventilation TVA
+    </objective>
+    <objective id="3">
+      Afficher les totaux HT, TVA et TTC correctement calculés et stockés
+    </objective>
+    <objective id="4">
+      Permettre la navigation bidirectionnelle entre Contact → Invoices et Quote → Invoice
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Page /app/[organizationSlug]/invoices (liste)</item>
+      <item>Page /app/[organizationSlug]/invoices/[id] (détail)</item>
+      <item>Composant InvoicesTable avec filtres (status, contact, date range, search)</item>
+      <item>Composant InvoiceDetail avec lignes et totaux</item>
+      <item>Composant InvoiceStatusBadge (DRAFT, ISSUED, PAID, CANCELLED)</item>
+      <item>Composant InvoiceLinesList pour afficher les lignes</item>
+      <item>Intégration avec l'API existante /api/vtc/invoices</item>
+      <item>Traductions i18n pour les labels factures</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Création de facture standalone (Story 7.2 - conversion depuis quote)</item>
+      <item>Génération PDF (Story 7.5)</item>
+      <item>Édition des montants (factures immuables après création)</item>
+      <item>Workflow de paiement avancé</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Les modèles Prisma Invoice et InvoiceLine existent déjà avec tous les champs requis.
+      L'API backend /api/vtc/invoices est complète (CRUD + from-quote).
+    </constraint>
+    <constraint type="business">
+      FR33-FR34 : Les factures sont immuables - les montants ne peuvent pas être modifiés après création.
+      Seuls le statut, la date d'échéance et les notes peuvent être mis à jour.
+    </constraint>
+    <constraint type="ux">
+      Suivre le pattern UX existant des QuotesTable et QuoteDetail pour la cohérence.
+      Utiliser shadcn/ui + Tailwind CSS comme les autres écrans.
+    </constraint>
+    <constraint type="i18n">
+      Toutes les chaînes doivent être externalisées dans les fichiers de traduction.
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Incohérence visuelle avec les autres écrans</description>
+      <mitigation>Réutiliser les composants existants (Badge, Table, Card) et suivre les patterns de QuotesTable</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Manque de données de test pour valider l'affichage</description>
+      <mitigation>Utiliser l'endpoint POST /api/vtc/invoices/from-quote pour créer des factures de test</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-models>
+      <model name="Invoice">
+        <location>packages/database/prisma/schema.prisma:1120-1170</location>
+        <fields>
+          id, organizationId, quoteId?, contactId, number, status (DRAFT|ISSUED|PAID|CANCELLED),
+          issueDate, dueDate, totalExclVat, totalVat, totalInclVat, currency (EUR),
+          commissionAmount?, notes?, createdAt, updatedAt
+        </fields>
+        <relations>contact, quote?, lines[], documents[]</relations>
+      </model>
+      <model name="InvoiceLine">
+        <location>packages/database/prisma/schema.prisma:1172-1202</location>
+        <fields>
+          id, invoiceId, lineType (SERVICE|OPTIONAL_FEE|PROMOTION_ADJUSTMENT|OTHER),
+          description, quantity, unitPriceExclVat, vatRate, totalExclVat, totalVat, sortOrder
+        </fields>
+      </model>
+    </existing-models>
+
+    <existing-api>
+      <endpoint method="GET" path="/api/vtc/invoices">
+        Liste paginée avec filtres (status, contactId, search, dateFrom, dateTo)
+      </endpoint>
+      <endpoint method="GET" path="/api/vtc/invoices/:id">
+        Détail complet avec contact, quote, lines, documents
+      </endpoint>
+      <endpoint method="POST" path="/api/vtc/invoices">
+        Création manuelle avec lignes
+      </endpoint>
+      <endpoint method="POST" path="/api/vtc/invoices/from-quote/:quoteId">
+        Conversion quote → invoice avec deep-copy
+      </endpoint>
+      <endpoint method="PATCH" path="/api/vtc/invoices/:id">
+        Mise à jour status/dueDate/notes uniquement
+      </endpoint>
+      <endpoint method="DELETE" path="/api/vtc/invoices/:id">
+        Suppression (DRAFT uniquement)
+      </endpoint>
+    </existing-api>
+
+    <patterns-to-follow>
+      <pattern name="QuotesTable">
+        <location>apps/web/modules/saas/quotes/components/QuotesTable.tsx</location>
+        <description>Pattern de table avec filtres, pagination, actions dropdown</description>
+      </pattern>
+      <pattern name="QuoteDetailPage">
+        <location>apps/web/modules/saas/quotes/components/QuoteDetailPage.tsx</location>
+        <description>Pattern de page détail avec header, colonnes et panels</description>
+      </pattern>
+      <pattern name="QuoteStatusBadge">
+        <location>apps/web/modules/saas/quotes/components/QuoteStatusBadge.tsx</location>
+        <description>Pattern de badge de statut avec couleurs sémantiques</description>
+      </pattern>
+    </patterns-to-follow>
+
+    <file-structure>
+      <folder path="apps/web/modules/saas/invoices">
+        <file>components/InvoicesTable.tsx</file>
+        <file>components/InvoiceDetail.tsx</file>
+        <file>components/InvoiceStatusBadge.tsx</file>
+        <file>components/InvoiceLinesList.tsx</file>
+        <file>components/InvoiceHeader.tsx</file>
+        <file>hooks/useInvoices.ts</file>
+        <file>hooks/useInvoiceDetail.ts</file>
+        <file>types.ts</file>
+      </folder>
+      <folder path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/invoices">
+        <file>page.tsx</file>
+        <file>[id]/page.tsx</file>
+      </folder>
+    </file-structure>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given /dashboard/invoices, When I open the page, Then I see a table with columns:
+      Invoice No, Client, Issue Date, Due Date, Total (EUR), VAT indicator, Status, Source Quote
+    </criterion>
+    <criterion id="AC2">
+      Given the invoices list, When I filter by status/date/search, Then the results update accordingly
+    </criterion>
+    <criterion id="AC3">
+      Given /dashboard/invoices/[id], When I view an invoice, Then I see:
+      - Left: billing entity (contact info, billing address)
+      - Right: line items with VAT breakdown and totals (HT, TVA, TTC)
+    </criterion>
+    <criterion id="AC4">
+      Given an invoice linked to a quote, When I view it, Then I can navigate to the source quote
+    </criterion>
+    <criterion id="AC5">
+      Given an invoice with commission, When I view it, Then the commission amount is displayed
+    </criterion>
+  </acceptance-criteria>
+
+  <dependencies>
+    <dependency type="completed">Story 1.1-1.3: Data model + EUR + tenancy</dependency>
+    <dependency type="completed">Story 2.4: Link quotes/invoices to contacts</dependency>
+    <dependency type="completed">Story 6.4: Quote lifecycle (ACCEPTED status required)</dependency>
+    <dependency type="existing">API /api/vtc/invoices fully implemented</dependency>
+  </dependencies>
+
+  <test-strategy>
+    <unit-tests>
+      <test>InvoiceStatusBadge renders correct colors for each status</test>
+      <test>InvoiceLinesList calculates and displays totals correctly</test>
+      <test>formatPrice and formatVat helpers work with EUR amounts</test>
+    </unit-tests>
+    <integration-tests>
+      <test>InvoicesTable fetches and displays data from API</test>
+      <test>InvoiceDetail loads complete invoice with lines</test>
+      <test>Filters update query params and refetch data</test>
+    </integration-tests>
+    <e2e-tests>
+      <test>Navigate to invoices list, filter by status, click row to view detail</test>
+      <test>From invoice detail, navigate to source quote</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

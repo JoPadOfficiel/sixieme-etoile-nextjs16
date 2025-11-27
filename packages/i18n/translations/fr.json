@@ -274,6 +274,82 @@
 			"subject": "Vous avez été invité à rejoindre une organisation"
 		}
 	},
+	"invoices": {
+		"title": "Factures",
+		"description": "Gérez vos factures, suivez les paiements et générez des exports.",
+		"addInvoice": "Nouvelle facture",
+		"search": "Rechercher une facture...",
+		"overdue": "En retard",
+		"dueToday": "Échéance aujourd'hui",
+		"dueIn": "Échéance dans {days} jours",
+		"notFound": "Facture introuvable",
+		"statusUpdated": "Statut mis à jour",
+		"updateError": "Erreur lors de la mise à jour",
+		"unknownError": "Une erreur inconnue est survenue",
+		"partner": "Partenaire",
+		"private": "Client privé",
+		"loadError": "Erreur lors du chargement des factures",
+		"noResults": "Aucune facture trouvée",
+		"empty": "Vous n'avez pas encore de factures.",
+		"columns": {
+			"number": "N° Facture",
+			"client": "Client",
+			"issueDate": "Date d'émission",
+			"dueDate": "Date d'échéance",
+			"total": "Total TTC",
+			"vat": "TVA",
+			"status": "Statut",
+			"sourceQuote": "Devis source"
+		},
+		"status": {
+			"draft": "Brouillon",
+			"issued": "Émise",
+			"paid": "Payée",
+			"cancelled": "Annulée"
+		},
+		"filters": {
+			"allStatuses": "Tous les statuts",
+			"status": "Statut",
+			"dateRange": "Période"
+		},
+		"detail": {
+			"title": "Facture",
+			"backToInvoices": "Retour aux factures",
+			"billingInfo": "Informations de facturation",
+			"metadata": "Détails de la facture",
+			"invoiceNumber": "Numéro de facture",
+			"vatNumber": "N° TVA",
+			"lines": "Lignes de facture",
+			"noLines": "Aucune ligne de facture",
+			"totals": "Totaux",
+			"vatBreakdown": "Détail TVA",
+			"totalExclVat": "Total HT",
+			"totalVat": "Total TVA",
+			"totalInclVat": "Total TTC",
+			"commission": "Commission partenaire",
+			"sourceQuote": "Devis source",
+			"viewQuote": "Voir le devis",
+			"notes": "Notes",
+			"description": "Description",
+			"quantity": "Qté",
+			"unitPrice": "P.U. HT",
+			"vatRate": "TVA",
+			"total": "Total HT"
+		},
+		"actions": {
+			"issue": "Émettre la facture",
+			"markPaid": "Marquer comme payée",
+			"cancel": "Annuler",
+			"download": "Télécharger PDF",
+			"menu": "Actions",
+			"view": "Voir le détail",
+			"viewQuote": "Voir le devis source"
+		},
+		"pagination": {
+			"showing": "Affichage de {from} à {to} sur {total} factures",
+			"page": "Page {current} sur {total}"
+		}
+	},
 	"newsletter": {
 		"email": "Email",
 		"hints": {

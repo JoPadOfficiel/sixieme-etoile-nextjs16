@@ -11,6 +11,7 @@ import {
 	FileTextIcon,
 	HomeIcon,
 	MapPinIcon,
+	ReceiptIcon,
 	SettingsIcon,
 	UserCog2Icon,
 	UserCogIcon,
@@ -55,6 +56,12 @@ export function NavBar() {
 						href: `${basePath}/quotes`,
 						icon: FileTextIcon,
 						isActive: pathname.startsWith(`${basePath}/quotes`),
+					},
+					{
+						label: t("invoices.title"),
+						href: `${basePath}/invoices`,
+						icon: ReceiptIcon,
+						isActive: pathname.startsWith(`${basePath}/invoices`),
 					},
 					{
 						label: t("fleet.vehicles.title"),
