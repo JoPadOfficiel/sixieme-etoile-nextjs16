@@ -654,8 +654,8 @@ apps/web/
 - [x] Download PDF button added to InvoiceHeader
 - [x] Translations added (fr + en)
 - [x] Unit tests passing (Vitest) - 7 tests
-- [ ] E2E tests passing (Playwright MCP) - Blocked by Next.js/Turbopack runtime issue
-- [x] API tests passing (Curl + DB verification) - List endpoint works
+- [x] E2E tests passing (Playwright MCP) - PDF generation and download works
+- [x] API tests passing (Curl + DB verification) - All endpoints work
 - [ ] Code review completed
 
 ---
@@ -677,7 +677,7 @@ apps/web/
 
 ### Known Issues
 
-- **Next.js/Turbopack Runtime Issue**: PDF generation works in unit tests but fails with 500 error in Next.js runtime. The pdf-lib library works correctly in isolation but encounters issues when loaded through Turbopack. This needs investigation in a production build.
+- ~~**Next.js/Turbopack Runtime Issue**: PDF generation works in unit tests but fails with 500 error in Next.js runtime.~~ **RESOLVED**: Issue was caused by stale Turbopack cache. Clearing `.next` folder and regenerating Prisma client fixed the issue.
 
 ### Files Modified/Created
 
@@ -703,11 +703,11 @@ apps/web/
 
 ### Tests Executed
 
-| Test Type              | Count | Status                      |
-| ---------------------- | ----- | --------------------------- |
-| Vitest (pdf-generator) | 7     | ✅ Passing                  |
-| API (curl)             | 1     | ✅ List endpoint works      |
-| Playwright MCP         | 0     | ⚠️ Blocked by runtime issue |
+| Test Type              | Count | Status                                     |
+| ---------------------- | ----- | ------------------------------------------ |
+| Vitest (pdf-generator) | 7     | ✅ Passing                                 |
+| API (curl)             | 5     | ✅ All endpoints work                      |
+| Playwright MCP         | 3     | ✅ PDF generation, download, list all work |
 
 ### Git Info
 
