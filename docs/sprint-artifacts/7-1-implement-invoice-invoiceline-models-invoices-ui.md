@@ -212,7 +212,7 @@ Utiliser l'API existante :
 
 ## Test Cases
 
-### Unit Tests
+### Unit Tests (Node.js native)
 
 | Test ID  | Description                          | Expected Result                          |
 | -------- | ------------------------------------ | ---------------------------------------- |
@@ -223,23 +223,14 @@ Utiliser l'API existante :
 | UT-7.1.5 | InvoiceLinesList calculates totals   | Sum of line totals matches invoice total |
 | UT-7.1.6 | formatPrice formats EUR correctly    | "1 234,56 €" format                      |
 
-### Integration Tests
-
-| Test ID  | Description                 | Expected Result                       |
-| -------- | --------------------------- | ------------------------------------- |
-| IT-7.1.1 | InvoicesTable fetches data  | API called, data displayed            |
-| IT-7.1.2 | Filter by status            | Query param updated, filtered results |
-| IT-7.1.3 | InvoiceDetail loads invoice | Complete invoice with lines displayed |
-| IT-7.1.4 | Status update action        | PATCH called, UI updated              |
-
-### E2E Tests (Playwright)
+### E2E Tests (Playwright MCP)
 
 | Test ID   | Description         | Steps                                       |
 | --------- | ------------------- | ------------------------------------------- |
 | E2E-7.1.1 | View invoices list  | Navigate to /invoices, verify table renders |
-| E2E-7.1.2 | Filter invoices     | Apply status filter, verify results         |
-| E2E-7.1.3 | View invoice detail | Click row, verify detail page               |
-| E2E-7.1.4 | Navigate to quote   | Click source quote link, verify navigation  |
+| E2E-7.1.2 | View invoice detail | Click row, verify detail page               |
+| E2E-7.1.3 | Verify translations | Check EN translations                       |
+| E2E-7.1.4 | Verify DB data      | Check PostgreSQL data consistency           |
 
 ---
 
