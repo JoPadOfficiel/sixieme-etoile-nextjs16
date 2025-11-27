@@ -14,7 +14,7 @@
 		"@repo/storage": "workspace:*",
 		"@repo/utils": "workspace:*",
 		"@scalar/hono-api-reference": "^0.5.159",
-		"@sindresorhus/slugify": "^2.2.1",
+		"@sindresorhus/slugify": "^3.0.0",
 		"date-fns": "^4.1.0",
 		"hono": "^4.6.10",
 		"hono-openapi": "^0.1.5",
