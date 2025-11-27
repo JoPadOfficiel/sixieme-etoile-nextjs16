@@ -148,7 +148,7 @@ export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineTy
 
 export const DocumentTypeScalarFieldEnumSchema = z.enum(['id','code','name','description']);
 
-export const DocumentScalarFieldEnumSchema = z.enum(['id','organizationId','documentTypeId','quoteId','invoiceId','storagePath','url','createdAt']);
+export const DocumentScalarFieldEnumSchema = z.enum(['id','organizationId','documentTypeId','quoteId','invoiceId','storagePath','url','filename','createdAt']);
 
 export const FuelPriceCacheScalarFieldEnumSchema = z.enum(['id','countryCode','latitude','longitude','fuelType','pricePerLitre','currency','source','fetchedAt']);
 
@@ -1046,6 +1046,7 @@ export const DocumentSchema = z.object({
   invoiceId: z.string().nullable(),
   storagePath: z.string().nullable(),
   url: z.string().nullable(),
+  filename: z.string().nullable(),
   createdAt: z.coerce.date(),
 })
 

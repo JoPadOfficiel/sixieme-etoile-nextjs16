@@ -1960,5 +1960,38 @@
 				"ruleDeleteFailed": "Échec de la suppression de la règle RSE."
 			}
 		}
+	},
+	"documents": {
+		"title": "Documents",
+		"description": "Consultez et téléchargez les documents générés (devis, factures, ordres de mission).",
+		"empty": "Aucun document généré",
+		"noResults": "Aucun document trouvé",
+		"error": "Erreur lors du chargement des documents",
+		"search": "Rechercher un document...",
+		"columns": {
+			"type": "Type",
+			"reference": "Référence",
+			"client": "Client",
+			"createdAt": "Créé le",
+			"actions": "Actions"
+		},
+		"types": {
+			"QUOTE_PDF": "Devis PDF",
+			"INVOICE_PDF": "Facture PDF",
+			"MISSION_ORDER": "Ordre de mission"
+		},
+		"filters": {
+			"allTypes": "Tous les types",
+			"type": "Type de document",
+			"dateRange": "Période"
+		},
+		"actions": {
+			"download": "Télécharger",
+			"generateQuotePdf": "Générer PDF",
+			"downloadInvoicePdf": "Télécharger PDF"
+		},
+		"generating": "Génération en cours...",
+		"generated": "Document généré avec succès",
+		"generateError": "Erreur lors de la génération du document"
 	}
 }

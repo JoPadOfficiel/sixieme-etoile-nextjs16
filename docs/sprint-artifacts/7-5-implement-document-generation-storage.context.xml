@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>7.5</story-id>
+    <story-title>Implement Document Generation & Storage for Quotes, Invoices & Mission Orders</story-title>
+    <epic>Epic 7 – Invoicing & Documents</epic>
+    <created>2025-11-27</created>
+    <agent>Bob (Scrum Master)</agent>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Les opérateurs VTC ont besoin de générer et stocker des documents PDF professionnels 
+      (devis, factures, ordres de mission) pour les envoyer aux clients et maintenir une 
+      archive auditable. Actuellement, les modèles Prisma Document et DocumentType existent 
+      mais aucune logique de génération ou interface utilisateur n'est implémentée.
+    </summary>
+    <business-impact>
+      - Sans génération PDF, les opérateurs doivent créer manuellement les documents
+      - Pas d'archive centralisée des documents envoyés aux clients
+      - Risque de non-conformité comptable et réglementaire
+      - Perte de temps opérationnel significative
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Implémenter un système complet de génération et stockage de documents PDF pour 
+      les devis, factures et ordres de mission, avec une interface utilisateur permettant 
+      de visualiser, télécharger et gérer ces documents.
+    </primary>
+    <secondary>
+      - Fournir des templates PDF professionnels avec logo et coordonnées de l'organisation
+      - Permettre la génération à la demande depuis les pages de détail (devis/facture)
+      - Créer une page /dashboard/documents listant tous les documents générés
+      - Assurer la traçabilité et l'auditabilité des documents
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Service de génération PDF (quote-pdf, invoice-pdf, mission-order)</item>
+      <item>API CRUD pour les documents (/api/vtc/documents)</item>
+      <item>Stockage des fichiers PDF (local ou cloud storage)</item>
+      <item>Page liste des documents (/dashboard/documents)</item>
+      <item>Boutons "Generate PDF" / "Download" sur les pages Quote et Invoice detail</item>
+      <item>Seed des DocumentType (QUOTE_PDF, INVOICE_PDF, MISSION_ORDER)</item>
+      <item>Traductions FR/EN</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Envoi automatique par email (future story)</item>
+      <item>Signature électronique</item>
+      <item>Génération en masse (batch)</item>
+      <item>Templates personnalisables par organisation (MVP: template unique)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Utiliser les modèles Prisma existants: Document, DocumentType</item>
+      <item>Respecter le multi-tenancy (organizationId sur tous les documents)</item>
+      <item>PDF déterministe et reproductible</item>
+      <item>Stockage compatible avec le déploiement (local dev, cloud prod)</item>
+    </technical>
+    <business>
+      <item>FR31-FR36: Documents comme partie du cycle de vie devis/facture</item>
+      <item>Immutabilité: le PDF doit refléter les valeurs au moment de la génération</item>
+      <item>Format professionnel: logo, coordonnées, mentions légales</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Performance de génération PDF pour documents complexes</description>
+      <mitigation>Utiliser une librairie légère (react-pdf ou jspdf), génération asynchrone si nécessaire</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Stockage des fichiers en production</description>
+      <mitigation>Abstraction du storage (interface), local pour dev, S3/Cloudflare R2 pour prod</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-models>
+      <model name="DocumentType">
+        <location>packages/database/prisma/schema.prisma:1208-1218</location>
+        <fields>id, code (unique), name, description</fields>
+        <note>Codes prévus: QUOTE_PDF, INVOICE_PDF, MISSION_ORDER</note>
+      </model>
+      <model name="Document">
+        <location>packages/database/prisma/schema.prisma:1221-1247</location>
+        <fields>id, organizationId, documentTypeId, quoteId?, invoiceId?, storagePath?, url?, createdAt</fields>
+        <relations>organization, documentType, invoice</relations>
+        <note>Relation Quote manquante dans le schéma actuel - à ajouter</note>
+      </model>
+    </existing-models>
+
+    <existing-patterns>
+      <pattern name="API Routes">
+        <example>packages/api/src/routes/vtc/invoices.ts</example>
+        <description>Hono router avec organizationMiddleware, validation Zod, tenant filtering</description>
+      </pattern>
+      <pattern name="UI Components">
+        <example>apps/web/modules/saas/invoices/components/InvoiceDetail.tsx</example>
+        <description>Card-based layout, hooks pour data fetching, actions dans header</description>
+      </pattern>
+      <pattern name="Hooks">
+        <example>apps/web/modules/saas/invoices/hooks/useInvoiceDetail.ts</example>
+        <description>React Query hooks pour fetch et mutations</description>
+      </pattern>
+    </existing-patterns>
+
+    <dependencies>
+      <completed>
+        <item>Story 7.1: Invoice & InvoiceLine models and Invoices UI</item>
+        <item>Story 7.2: Convert quote to invoice with deep-copy</item>
+        <item>Story 7.3: VAT breakdown for transport & ancillary</item>
+        <item>Story 7.4: Commission calculation into invoices</item>
+        <item>Story 6.3: Quote detail with stored tripAnalysis</item>
+      </completed>
+      <required-packages>
+        <package name="@react-pdf/renderer" purpose="PDF generation with React components"/>
+        <package name="date-fns" purpose="Date formatting (already installed)"/>
+      </required-packages>
+    </dependencies>
+
+    <file-structure>
+      <new-files>
+        <file>packages/api/src/routes/vtc/documents.ts</file>
+        <file>packages/api/src/services/pdf-generator.ts</file>
+        <file>packages/api/src/services/pdf-templates/quote-template.tsx</file>
+        <file>packages/api/src/services/pdf-templates/invoice-template.tsx</file>
+        <file>packages/api/src/services/pdf-templates/mission-order-template.tsx</file>
+        <file>packages/api/src/services/storage-service.ts</file>
+        <file>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/documents/page.tsx</file>
+        <file>apps/web/modules/saas/documents/components/DocumentsTable.tsx</file>
+        <file>apps/web/modules/saas/documents/hooks/useDocuments.ts</file>
+      </new-files>
+      <modified-files>
+        <file>packages/api/src/routes/vtc/router.ts</file>
+        <file>packages/database/prisma/schema.prisma</file>
+        <file>apps/web/modules/saas/invoices/components/InvoiceHeader.tsx</file>
+        <file>apps/web/modules/saas/quotes/components/QuoteHeader.tsx</file>
+        <file>packages/i18n/translations/fr.json</file>
+        <file>packages/i18n/translations/en.json</file>
+      </modified-files>
+    </file-structure>
+  </technical-context>
+
+  <ux-requirements>
+    <reference>UX Spec Section 8.13: Documents & Reporting</reference>
+    <screens>
+      <screen name="Documents List" route="/dashboard/documents">
+        <description>Liste des documents générés avec filtres par client/date/type</description>
+        <columns>
+          <column>Document Type (QUOTE_PDF, INVOICE_PDF, MISSION_ORDER)</column>
+          <column>Related Entity (Quote #, Invoice #)</column>
+          <column>Client</column>
+          <column>Created At</column>
+          <column>Actions (Download, View)</column>
+        </columns>
+        <filters>
+          <filter>Type de document</filter>
+          <filter>Client</filter>
+          <filter>Plage de dates</filter>
+        </filters>
+      </screen>
+      <screen name="Quote Detail - Generate PDF">
+        <description>Bouton "Generate PDF" dans QuoteHeader pour créer un PDF du devis</description>
+        <action>POST /api/vtc/documents/generate/quote/:quoteId</action>
+      </screen>
+      <screen name="Invoice Detail - Generate PDF">
+        <description>Bouton "Download PDF" dans InvoiceHeader pour créer/télécharger le PDF</description>
+        <action>POST /api/vtc/documents/generate/invoice/:invoiceId</action>
+      </screen>
+    </screens>
+  </ux-requirements>
+
+  <related-frs>
+    <fr id="FR31-FR36">Documents as part of quote/invoice lifecycle</fr>
+    <fr id="FR33">Convert accepted quote to invoice (document generation trigger)</fr>
+    <fr id="FR34">Deep-copy semantics (PDF reflects values at generation time)</fr>
+  </related-frs>
+
+  <acceptance-criteria-preview>
+    <ac id="AC1">DocumentType seed data created (QUOTE_PDF, INVOICE_PDF, MISSION_ORDER)</ac>
+    <ac id="AC2">PDF generation service creates valid PDF files</ac>
+    <ac id="AC3">Documents API provides CRUD operations with tenant filtering</ac>
+    <ac id="AC4">Documents list page displays all generated documents with filters</ac>
+    <ac id="AC5">Quote detail page has "Generate PDF" button that creates and downloads PDF</ac>
+    <ac id="AC6">Invoice detail page has "Download PDF" button that creates and downloads PDF</ac>
+    <ac id="AC7">Generated PDFs include organization logo, contact details, and legal mentions</ac>
+    <ac id="AC8">Document records are properly linked to quotes/invoices</ac>
+  </acceptance-criteria-preview>
+</story-context>

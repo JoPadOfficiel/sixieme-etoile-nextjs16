@@ -12,10 +12,50 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting database seed...");
 
+  // Seed Document Types (Story 7.5)
+  await seedDocumentTypes();
+
   // Seed Fuel Price Cache
   await seedFuelPriceCache();
 
   console.log("✅ Database seed completed!");
+}
+
+/**
+ * Seed DocumentType with standard document types
+ * Story 7.5: Document Generation & Storage
+ */
+async function seedDocumentTypes() {
+  console.log("  📄 Seeding DocumentTypes...");
+
+  const documentTypes = [
+    {
+      code: "QUOTE_PDF",
+      name: "Quote PDF",
+      description: "PDF document for quotes sent to clients",
+    },
+    {
+      code: "INVOICE_PDF",
+      name: "Invoice PDF",
+      description: "PDF document for invoices",
+    },
+    {
+      code: "MISSION_ORDER",
+      name: "Mission Order PDF",
+      description: "PDF document for driver mission orders",
+    },
+  ];
+
+  for (const dt of documentTypes) {
+    await prisma.documentType.upsert({
+      where: { code: dt.code },
+      update: { name: dt.name, description: dt.description },
+      create: dt,
+    });
+  }
+
+  const count = await prisma.documentType.count();
+  console.log(`    ✓ Created/updated ${count} document types`);
 }
 
 /**

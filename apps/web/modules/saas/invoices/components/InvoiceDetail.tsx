@@ -20,6 +20,7 @@ import { InvoiceLinesList } from "./InvoiceLinesList";
 import type { InvoiceStatus } from "../types";
 import { formatDate, formatPrice, isOverdue, getDaysUntilDue } from "../types";
 import { useToast } from "@ui/hooks/use-toast";
+import { useGenerateInvoicePdf, getDocumentDownloadUrl } from "@saas/documents/hooks/useDocuments";
 
 interface InvoiceDetailProps {
   invoiceId: string;
@@ -42,6 +43,7 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
 
   const { data: invoice, isLoading, error } = useInvoiceDetail({ invoiceId });
   const updateMutation = useUpdateInvoice();
+  const generatePdfMutation = useGenerateInvoicePdf();
 
   const handleStatusChange = async (newStatus: InvoiceStatus) => {
     if (!invoice) return;
@@ -59,6 +61,29 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
       toast({
         title: t("invoices.updateError"),
         description: error instanceof Error ? error.message : t("invoices.unknownError"),
+        variant: "error",
+      });
+    }
+  };
+
+  /**
+   * Story 7.5: Handle PDF generation and download
+   */
+  const handleDownloadPdf = async () => {
+    if (!invoice) return;
+
+    try {
+      const document = await generatePdfMutation.mutateAsync(invoice.id);
+      toast({
+        title: t("documents.generated"),
+      });
+      // Open download URL in new tab
+      const downloadUrl = getDocumentDownloadUrl(document.id);
+      window.open(downloadUrl, "_blank");
+    } catch (error) {
+      toast({
+        title: t("documents.generateError"),
+        description: error instanceof Error ? error.message : undefined,
         variant: "error",
       });
     }
@@ -95,7 +120,8 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
       <InvoiceHeader
         invoice={invoice}
         onStatusChange={handleStatusChange}
-        isLoading={updateMutation.isPending}
+        onDownload={handleDownloadPdf}
+        isLoading={updateMutation.isPending || generatePdfMutation.isPending}
       />
 
       {/* Two-column layout */}

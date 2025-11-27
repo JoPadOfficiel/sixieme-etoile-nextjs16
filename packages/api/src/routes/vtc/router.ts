@@ -3,6 +3,7 @@ import { basesRouter } from "./bases";
 import { complianceRouter } from "./compliance";
 import { contactsRouter } from "./contacts";
 import { disposRouter } from "./dispos";
+import { documentsRouter } from "./documents";
 import { driversRouter } from "./drivers";
 import { excursionsRouter } from "./excursions";
 import { integrationsRouter } from "./integrations";
@@ -43,6 +44,7 @@ export const vtcRouter = new Hono()
 	.route("/", zoneRoutesRouter)
 	.route("/", excursionsRouter)
 	.route("/", disposRouter)
-	.route("/", invoicesRouter);
+	.route("/", invoicesRouter)
+	.route("/", documentsRouter);
 
 export type VtcRouter = typeof vtcRouter;

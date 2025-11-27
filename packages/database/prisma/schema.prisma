@@ -1113,6 +1113,7 @@ model Quote {
   // Relations
   invoice         Invoice?
   statusAuditLogs QuoteStatusAuditLog[]
+  documents       Document[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1230,18 +1231,21 @@ model Document {
 
   // Related entities (optional)
   quoteId   String?
+  quote     Quote?   @relation(fields: [quoteId], references: [id])
   invoiceId String?
   invoice   Invoice? @relation(fields: [invoiceId], references: [id])
 
   // Storage
   storagePath String?
   url         String?
+  filename    String?
 
   // Metadata
   createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([documentTypeId])
+  @@index([quoteId])
   @@index([invoiceId])
   @@map("document")
 }

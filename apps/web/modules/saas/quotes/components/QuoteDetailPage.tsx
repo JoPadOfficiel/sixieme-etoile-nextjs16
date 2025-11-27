@@ -11,6 +11,7 @@ import { QuoteActivityLog } from "./QuoteActivityLog";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useGenerateQuotePdf, getDocumentDownloadUrl } from "@saas/documents/hooks/useDocuments";
 import type { PricingResult, TripAnalysis } from "../types";
 
 interface QuoteDetailPageProps {
@@ -47,6 +48,9 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
     isLoading: isActionsLoading,
     isConverting,
   } = useQuoteActions();
+
+  // Story 7.5: PDF generation
+  const generatePdfMutation = useGenerateQuotePdf();
 
   // Handle send quote
   const handleSend = async () => {
@@ -100,6 +104,27 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   // Handle update notes
   const handleUpdateNotes = async (notes: string | null) => {
     await updateNotes(quoteId, notes);
+  };
+
+  /**
+   * Story 7.5: Handle PDF generation and download
+   */
+  const handleDownloadPdf = async () => {
+    try {
+      const document = await generatePdfMutation.mutateAsync(quoteId);
+      toast({
+        title: t("documents.generated"),
+      });
+      // Open download URL in new tab
+      const downloadUrl = getDocumentDownloadUrl(document.id);
+      window.open(downloadUrl, "_blank");
+    } catch (error) {
+      toast({
+        title: t("documents.generateError"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   // Transform stored tripAnalysis to PricingResult for TripTransparencyPanel
@@ -160,7 +185,8 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
         onAccept={handleAccept}
         onReject={handleReject}
         onConvertToInvoice={handleConvertToInvoice}
-        isLoading={isActionsLoading || isConverting}
+        onDownloadPdf={handleDownloadPdf}
+        isLoading={isActionsLoading || isConverting || generatePdfMutation.isPending}
       />
 
       {/* 3-Column Layout */}

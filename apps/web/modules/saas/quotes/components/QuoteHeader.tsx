@@ -5,6 +5,7 @@ import { Badge } from "@ui/components/badge";
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
+  DownloadIcon,
   FileTextIcon,
   Loader2Icon,
   SendIcon,
@@ -22,6 +23,7 @@ interface QuoteHeaderProps {
   onAccept: () => void;
   onReject: () => void;
   onConvertToInvoice: () => void;
+  onDownloadPdf?: () => void;
   isLoading: boolean;
 }
 
@@ -39,6 +41,7 @@ export function QuoteHeader({
   onAccept,
   onReject,
   onConvertToInvoice,
+  onDownloadPdf,
   isLoading,
 }: QuoteHeaderProps) {
   const t = useTranslations();
@@ -115,6 +118,18 @@ export function QuoteHeader({
               <FileTextIcon className="size-4 mr-2" />
             )}
             {t("quotes.detail.actions.convertToInvoice")}
+          </Button>
+        )}
+
+        {/* Story 7.5: PDF Download button */}
+        {onDownloadPdf && (
+          <Button onClick={onDownloadPdf} disabled={isLoading} variant="outline">
+            {isLoading ? (
+              <Loader2Icon className="size-4 mr-2 animate-spin" />
+            ) : (
+              <DownloadIcon className="size-4 mr-2" />
+            )}
+            {t("documents.actions.generateQuotePdf")}
           </Button>
         )}
       </div>
