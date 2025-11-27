@@ -1132,12 +1132,89 @@
 					"zones": "Zones",
 					"routes": "Routes",
 					"excursions": "Excursions",
-					"dispos": "Mises à disposition"
+					"dispos": "Mises à disposition",
+					"seasonalMultipliers": "Multiplicateurs saisonniers"
 				},
 				"title": "Organisation"
 			}
 		},
-		"save": "Enregistrer"
+		"save": "Enregistrer",
+		"pricing": {
+			"seasonalMultipliers": {
+				"title": "Multiplicateurs Saisonniers",
+				"description": "Configurez les ajustements de prix pour des périodes et événements spécifiques",
+				"addButton": "Ajouter un multiplicateur",
+				"stats": {
+					"currentlyActive": "Actuellement actifs",
+					"upcoming": "À venir (30 jours)",
+					"total": "Total configuré"
+				},
+				"table": {
+					"name": "Nom",
+					"period": "Période",
+					"multiplier": "Multiplicateur",
+					"priority": "Priorité",
+					"status": "Statut",
+					"actions": "Actions"
+				},
+				"status": {
+					"all": "Tous",
+					"active": "Actif",
+					"upcoming": "À venir",
+					"expired": "Expiré"
+				},
+				"actions": {
+					"edit": "Modifier",
+					"delete": "Supprimer"
+				},
+				"form": {
+					"createTitle": "Créer un multiplicateur saisonnier",
+					"createDescription": "Ajoutez un nouveau multiplicateur saisonnier pour une période spécifique.",
+					"editTitle": "Modifier le multiplicateur saisonnier",
+					"editDescription": "Modifiez les paramètres du multiplicateur saisonnier.",
+					"name": "Nom",
+					"namePlaceholder": "ex: Salon du Bourget 2025",
+					"description": "Description",
+					"descriptionPlaceholder": "Description optionnelle...",
+					"startDate": "Date de début",
+					"endDate": "Date de fin",
+					"multiplier": "Multiplicateur",
+					"multiplierHelp": "Le prix sera multiplié par cette valeur (0.1x à 3.0x)",
+					"priority": "Priorité",
+					"priorityHelp": "La priorité la plus haute prévaut en cas de chevauchement",
+					"isActive": "Actif",
+					"isActiveHelp": "Seuls les multiplicateurs actifs sont appliqués à la tarification",
+					"create": "Créer",
+					"save": "Enregistrer",
+					"saving": "Enregistrement...",
+					"cancel": "Annuler",
+					"errors": {
+						"nameRequired": "Le nom est requis",
+						"nameTooLong": "Le nom doit contenir 100 caractères maximum",
+						"startDateRequired": "La date de début est requise",
+						"endDateRequired": "La date de fin est requise",
+						"endDateBeforeStart": "La date de fin doit être postérieure à la date de début",
+						"multiplierRange": "Le multiplicateur doit être compris entre 0.1 et 3.0"
+					}
+				},
+				"delete": {
+					"title": "Supprimer le multiplicateur",
+					"message": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action est irréversible.",
+					"confirm": "Supprimer",
+					"cancel": "Annuler"
+				},
+				"toast": {
+					"createSuccess": "Multiplicateur créé avec succès",
+					"updateSuccess": "Multiplicateur mis à jour avec succès",
+					"deleteSuccess": "Multiplicateur supprimé avec succès",
+					"error": "Une erreur est survenue"
+				},
+				"empty": {
+					"title": "Aucun multiplicateur configuré",
+					"description": "Créez votre premier multiplicateur saisonnier pour ajuster les prix sur des périodes spécifiques."
+				}
+			}
+		}
 	},
 	"start": {
 		"subtitle": "Consultez les dernières statistiques de votre activité.",

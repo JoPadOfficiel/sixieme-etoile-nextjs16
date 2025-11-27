@@ -1132,12 +1132,89 @@
 					"zones": "Zones",
 					"routes": "Routes",
 					"excursions": "Excursions",
-					"dispos": "Disposals"
+					"dispos": "Disposals",
+					"seasonalMultipliers": "Seasonal Multipliers"
 				},
 				"title": "Organization"
 			}
 		},
-		"save": "Save"
+		"save": "Save",
+		"pricing": {
+			"seasonalMultipliers": {
+				"title": "Seasonal Multipliers",
+				"description": "Configure price adjustments for specific periods and events",
+				"addButton": "Add Multiplier",
+				"stats": {
+					"currentlyActive": "Currently Active",
+					"upcoming": "Upcoming (30 days)",
+					"total": "Total Configured"
+				},
+				"table": {
+					"name": "Name",
+					"period": "Period",
+					"multiplier": "Multiplier",
+					"priority": "Priority",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"status": {
+					"all": "All",
+					"active": "Active",
+					"upcoming": "Upcoming",
+					"expired": "Expired"
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
+				},
+				"form": {
+					"createTitle": "Create Seasonal Multiplier",
+					"createDescription": "Add a new seasonal multiplier for a specific period.",
+					"editTitle": "Edit Seasonal Multiplier",
+					"editDescription": "Modify the seasonal multiplier settings.",
+					"name": "Name",
+					"namePlaceholder": "e.g., Le Bourget Air Show 2025",
+					"description": "Description",
+					"descriptionPlaceholder": "Optional description...",
+					"startDate": "Start Date",
+					"endDate": "End Date",
+					"multiplier": "Multiplier",
+					"multiplierHelp": "Price will be multiplied by this value (0.1x to 3.0x)",
+					"priority": "Priority",
+					"priorityHelp": "Higher priority takes precedence when periods overlap",
+					"isActive": "Active",
+					"isActiveHelp": "Only active multipliers are applied to pricing",
+					"create": "Create",
+					"save": "Save Changes",
+					"saving": "Saving...",
+					"cancel": "Cancel",
+					"errors": {
+						"nameRequired": "Name is required",
+						"nameTooLong": "Name must be 100 characters or less",
+						"startDateRequired": "Start date is required",
+						"endDateRequired": "End date is required",
+						"endDateBeforeStart": "End date must be after start date",
+						"multiplierRange": "Multiplier must be between 0.1 and 3.0"
+					}
+				},
+				"delete": {
+					"title": "Delete Multiplier",
+					"message": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+					"confirm": "Delete",
+					"cancel": "Cancel"
+				},
+				"toast": {
+					"createSuccess": "Multiplier created successfully",
+					"updateSuccess": "Multiplier updated successfully",
+					"deleteSuccess": "Multiplier deleted successfully",
+					"error": "An error occurred"
+				},
+				"empty": {
+					"title": "No multipliers configured",
+					"description": "Create your first seasonal multiplier to adjust prices for specific periods."
+				}
+			}
+		}
 	},
 	"start": {
 		"subtitle": "See the latest stats of your awesome business.",

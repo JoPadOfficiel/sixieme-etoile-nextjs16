@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>9-1</story-id>
+    <story-key>9-1-settings-pricing-seasonal-multipliers</story-key>
+    <epic>Epic 9 – Advanced Pricing Configuration & Reporting</epic>
+    <title>Settings → Pricing – Seasonal Multipliers</title>
+    <created>2025-11-27</created>
+    <author>Bob (Scrum Master)</author>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Les pricing managers n'ont actuellement aucun moyen de configurer des multiplicateurs saisonniers 
+      depuis l'interface utilisateur. Les ajustements de prix pour les périodes de pointe (Le Bourget Air Show, 
+      haute saison estivale, événements spéciaux) doivent être gérés manuellement ou via des modifications 
+      de code, ce qui est inefficace et source d'erreurs.
+    </summary>
+    <business-impact>
+      - Perte de revenus potentiels pendant les périodes de forte demande
+      - Risque d'erreurs de tarification lors d'événements majeurs
+      - Temps opérateur gaspillé sur des ajustements manuels
+      - Impossibilité de planifier à l'avance les ajustements tarifaires
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Permettre aux pricing managers de configurer, visualiser et gérer les multiplicateurs saisonniers 
+      directement depuis l'interface Settings → Pricing, avec application automatique par le moteur de pricing.
+    </primary>
+    <secondary>
+      - Interface intuitive avec cartes de résumé (actifs, à venir, total)
+      - Table de données avec tri, filtrage et actions
+      - Formulaire de création/édition avec slider pour le multiplicateur
+      - Gestion des priorités pour les multiplicateurs qui se chevauchent
+      - Respect de la sémantique Europe/Paris pour les plages de dates
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>API CRUD pour SeasonalMultiplier (GET, POST, PATCH, DELETE)</item>
+      <item>Page Settings → Pricing → Seasonal Multipliers</item>
+      <item>Composant SeasonalMultiplierList avec table de données</item>
+      <item>Composant SeasonalMultiplierFormDialog pour création/édition</item>
+      <item>Cartes de résumé (Currently Active, Upcoming, Total)</item>
+      <item>Intégration avec le pricing engine existant (Story 4.3)</item>
+      <item>Traductions EN/FR</item>
+      <item>Tests unitaires et E2E</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification du pricing engine (déjà implémenté en Story 4.3)</item>
+      <item>Gestion des multiplicateurs par zone (Advanced Rate Modifiers - Story 9.2)</item>
+      <item>Reporting sur l'impact des multiplicateurs (Story 9.8)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Utiliser le modèle SeasonalMultiplier existant dans Prisma</item>
+      <item>Respecter les patterns API Hono existants (organizationMiddleware, validation Zod)</item>
+      <item>Utiliser shadcn/ui pour tous les composants UI</item>
+      <item>Dates stockées en Europe/Paris business time sans conversion</item>
+      <item>Multi-tenancy: toutes les données scoped par organizationId</item>
+    </technical>
+    <business>
+      <item>Les multiplicateurs actifs doivent être appliqués immédiatement par le pricing engine</item>
+      <item>Gestion déterministe des chevauchements via priorité</item>
+      <item>Valeurs de multiplicateur entre 0.1x et 3.0x</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Chevauchement de multiplicateurs sans priorité claire</description>
+      <mitigation>Implémenter un champ priority et documenter la logique de résolution</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance avec un grand nombre de multiplicateurs</description>
+      <mitigation>Pagination côté serveur et indexation appropriée</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-models>
+      <model name="SeasonalMultiplier">
+        <location>packages/database/prisma/schema.prisma</location>
+        <fields>
+          - id: String (cuid)
+          - organizationId: String (FK)
+          - name: String
+          - description: String?
+          - startDate: DateTime
+          - endDate: DateTime
+          - multiplier: Decimal(4,2)
+          - priority: Int (default 0)
+          - isActive: Boolean (default true)
+          - createdAt: DateTime
+          - updatedAt: DateTime
+        </fields>
+      </model>
+    </existing-models>
+
+    <existing-integration>
+      <component name="Pricing Engine">
+        <location>packages/api/src/services/pricing-engine.ts</location>
+        <description>
+          Le pricing engine (Story 4.3) applique déjà les SeasonalMultipliers lors du calcul dynamique.
+          La fonction applySeasonalMultipliers() récupère les multiplicateurs actifs pour la date du trip
+          et applique celui avec la priorité la plus haute.
+        </description>
+      </component>
+    </existing-integration>
+
+    <api-patterns>
+      <pattern name="VTC Routes">
+        <location>packages/api/src/routes/vtc/</location>
+        <description>
+          Tous les routes VTC utilisent:
+          - Hono router avec basePath
+          - organizationMiddleware pour auth et tenant isolation
+          - Validation Zod via hono-openapi/zod
+          - Réponses JSON standardisées
+        </description>
+        <example>packages/api/src/routes/vtc/excursions.ts</example>
+      </pattern>
+    </api-patterns>
+
+    <ui-patterns>
+      <pattern name="Settings Pages">
+        <location>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/</location>
+        <description>
+          Pages de configuration avec:
+          - Layout partagé avec navigation latérale
+          - Cartes de résumé en haut
+          - Tables de données avec filtres
+          - Dialogs pour création/édition
+        </description>
+        <example>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/zones/</example>
+      </pattern>
+    </ui-patterns>
+  </technical-context>
+
+  <ux-requirements>
+    <reference>docs/bmad/ux-design-specification.md - Section 8.9</reference>
+    <layout>
+      <summary-cards>
+        <card title="Currently Active" icon="CheckCircle2" color="green">
+          Nombre de multiplicateurs actifs aujourd'hui
+        </card>
+        <card title="Upcoming" icon="Calendar" color="blue">
+          Nombre de multiplicateurs à venir dans les 30 prochains jours
+        </card>
+        <card title="Total Configured" icon="Settings" color="gray">
+          Nombre total de multiplicateurs configurés
+        </card>
+      </summary-cards>
+      <table>
+        <columns>
+          - Name (string, sortable)
+          - Period (startDate - endDate, formatted)
+          - Multiplier (decimal, displayed as percentage, e.g., "1.30x" or "+30%")
+          - Priority (int, sortable)
+          - Status (Active/Upcoming/Expired badge)
+          - Actions (Edit, Delete)
+        </columns>
+        <filters>
+          - Status (All, Active, Upcoming, Expired)
+          - Search by name
+        </filters>
+      </table>
+      <form-dialog>
+        <fields>
+          - Name (required, text input)
+          - Description (optional, textarea)
+          - Start Date (required, date picker)
+          - End Date (required, date picker)
+          - Multiplier (required, slider 0.1-3.0 with live percentage display)
+          - Priority (optional, number input, default 0)
+          - Is Active (toggle, default true)
+        </fields>
+      </form-dialog>
+    </layout>
+  </ux-requirements>
+
+  <dependencies>
+    <dependency type="model" status="done">
+      SeasonalMultiplier Prisma model (Story 1.1)
+    </dependency>
+    <dependency type="service" status="done">
+      Pricing engine integration (Story 4.3)
+    </dependency>
+    <dependency type="middleware" status="done">
+      organizationMiddleware for tenant isolation
+    </dependency>
+    <dependency type="ui" status="done">
+      Settings layout and navigation
+    </dependency>
+  </dependencies>
+
+  <acceptance-criteria-summary>
+    <ac id="AC1">Page accessible via /dashboard/settings/pricing/seasonal-multipliers</ac>
+    <ac id="AC2">Cartes de résumé affichant les compteurs corrects</ac>
+    <ac id="AC3">Table listant tous les multiplicateurs avec tri et filtrage</ac>
+    <ac id="AC4">Dialog de création avec validation des champs</ac>
+    <ac id="AC5">Dialog d'édition pré-rempli avec les valeurs existantes</ac>
+    <ac id="AC6">Suppression avec confirmation</ac>
+    <ac id="AC7">API endpoints CRUD fonctionnels et testés</ac>
+    <ac id="AC8">Multi-tenancy respectée (données isolées par organisation)</ac>
+    <ac id="AC9">Traductions EN/FR complètes</ac>
+  </acceptance-criteria-summary>
+
+  <files-to-create>
+    <file path="packages/api/src/routes/vtc/seasonal-multipliers.ts">
+      API routes CRUD pour SeasonalMultiplier
+    </file>
+    <file path="packages/api/src/routes/vtc/__tests__/seasonal-multipliers.test.ts">
+      Tests unitaires pour les routes API
+    </file>
+    <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/seasonal-multipliers/page.tsx">
+      Page principale des multiplicateurs saisonniers
+    </file>
+    <file path="apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierList.tsx">
+      Composant table des multiplicateurs
+    </file>
+    <file path="apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierFormDialog.tsx">
+      Dialog de création/édition
+    </file>
+    <file path="apps/web/modules/saas/settings/pricing/hooks/useSeasonalMultipliers.ts">
+      React Query hooks pour l'API
+    </file>
+    <file path="apps/web/modules/saas/settings/pricing/types/seasonal-multiplier.ts">
+      Types TypeScript
+    </file>
+  </files-to-create>
+
+  <files-to-modify>
+    <file path="packages/api/src/routes/vtc/router.ts">
+      Enregistrer les routes seasonal-multipliers
+    </file>
+    <file path="packages/i18n/translations/en.json">
+      Ajouter les traductions anglaises
+    </file>
+    <file path="packages/i18n/translations/fr.json">
+      Ajouter les traductions françaises
+    </file>
+  </files-to-modify>
+</story-context>
