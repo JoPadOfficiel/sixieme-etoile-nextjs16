@@ -1,0 +1,305 @@
+<story-context id="9-2-settings-pricing-advanced-rate-modifiers" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>9.2</storyId>
+    <title>Settings → Pricing – Advanced Rate Modifiers</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T22:56:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/9-2-settings-pricing-advanced-rate-modifiers.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>pricing manager</asA>
+    <iWant>to configure advanced rate modifiers (night, weekend, long-distance, zone-specific) from the Settings UI</iWant>
+    <soThat>complex business rules can be expressed without code changes and prices automatically adjust based on configurable conditions</soThat>
+    <tasks>
+      <task id="1">Create API routes for AdvancedRate CRUD operations</task>
+      <task id="2">Create TypeScript types for AdvancedRate</task>
+      <task id="3">Create React Query hooks for AdvancedRate management</task>
+      <task id="4">Create AdvancedRateSummaryCards component</task>
+      <task id="5">Create AdvancedRateList component with filtering</task>
+      <task id="6">Create AdvancedRateFormDialog component</task>
+      <task id="7">Create Settings page at /settings/pricing/advanced-rates</task>
+      <task id="8">Add translations (en/fr)</task>
+      <task id="9">Write unit tests (Vitest)</task>
+      <task id="10">Write E2E tests (Playwright MCP)</task>
+      <task id="11">Test API endpoints with curl</task>
+      <task id="12">Verify database state via MCP</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Page Navigation & Layout">
+      Given I am logged in as a pricing manager
+      When I navigate to Settings → Pricing → Advanced Rates
+      Then I see the page at /app/{orgSlug}/settings/pricing/advanced-rates
+      And the page displays:
+        - Page title "Advanced Rate Modifiers"
+        - "Add Rate Modifier" button in the header
+        - Summary cards (Active by Type)
+        - Data table with all configured rate modifiers
+    </criterion>
+
+    <criterion id="AC2" title="Summary Cards Display">
+      Given the Advanced Rates page is loaded
+      When I view the summary cards
+      Then I see cards showing counts by type:
+        | Card | Description | Icon |
+        | Night Rates | Count of NIGHT type modifiers | Moon |
+        | Weekend Rates | Count of WEEKEND type modifiers | Calendar |
+        | Long Distance | Count of LONG_DISTANCE type modifiers | Route |
+        | Zone-Based | Count of ZONE_SCENARIO type modifiers | MapPin |
+        | Total Active | Total count of active modifiers | Settings |
+    </criterion>
+
+    <criterion id="AC3" title="Data Table Display">
+      Given rate modifiers exist for the organization
+      When I view the data table
+      Then I see columns:
+        | Column | Content |
+        | Name | Rate modifier name |
+        | Type | NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY badge |
+        | Conditions | Time range, days, distance, or zone displayed |
+        | Adjustment | Value displayed as "+20%" or "+15€" |
+        | Priority | Numeric priority value |
+        | Status | Badge: Active (green), Inactive (gray) |
+        | Actions | Edit and Delete buttons |
+      And the table is sortable by Name, Type, Priority
+      And I can filter by Type (All, Night, Weekend, Long Distance, Zone, Holiday)
+      And I can filter by Status (All, Active, Inactive)
+    </criterion>
+
+    <criterion id="AC4" title="Create Rate Modifier Dialog">
+      Given I click "Add Rate Modifier" button
+      When the dialog opens
+      Then I see a form with:
+        | Field | Type | Validation |
+        | Name | Text input | Required, max 100 chars |
+        | Type | Select | Required: NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY |
+        | Start Time | Time picker | Required for NIGHT/WEEKEND/HOLIDAY |
+        | End Time | Time picker | Required for NIGHT/WEEKEND/HOLIDAY |
+        | Days of Week | Multi-select checkboxes | Required for WEEKEND/HOLIDAY |
+        | Min Distance (km) | Number input | Required for LONG_DISTANCE |
+        | Max Distance (km) | Number input | Optional for LONG_DISTANCE |
+        | Zone | Select (zones list) | Required for ZONE_SCENARIO |
+        | Adjustment Type | Select | Required: PERCENTAGE, FIXED_AMOUNT |
+        | Value | Number input | Required |
+        | Priority | Number input | Optional, default 0 |
+        | Active | Toggle | Default true |
+      When I fill valid data and click "Create"
+      Then the rate modifier is created
+      And the table refreshes with the new entry
+      And a success toast appears
+    </criterion>
+
+    <criterion id="AC5" title="Edit Rate Modifier Dialog">
+      Given I click Edit on an existing rate modifier
+      When the dialog opens
+      Then all fields are pre-populated with current values
+      When I modify fields and click "Save"
+      Then the rate modifier is updated
+      And the table refreshes with updated data
+      And a success toast appears
+    </criterion>
+
+    <criterion id="AC6" title="Delete Rate Modifier">
+      Given I click Delete on an existing rate modifier
+      When the confirmation dialog appears
+      Then I see the rate modifier name in the confirmation message
+      When I confirm deletion
+      Then the rate modifier is removed from the database
+      And the table refreshes without the deleted entry
+      And a success toast appears
+    </criterion>
+
+    <criterion id="AC7" title="API Endpoints">
+      Given the advanced rates API
+      When called with valid authentication and organization context
+      Then the following endpoints are available:
+        | Method | Endpoint | Description |
+        | GET | /api/vtc/pricing/advanced-rates | List all rate modifiers |
+        | GET | /api/vtc/pricing/advanced-rates/:id | Get single rate modifier |
+        | POST | /api/vtc/pricing/advanced-rates | Create rate modifier |
+        | PATCH | /api/vtc/pricing/advanced-rates/:id | Update rate modifier |
+        | DELETE | /api/vtc/pricing/advanced-rates/:id | Delete rate modifier |
+        | GET | /api/vtc/pricing/advanced-rates/stats | Get summary stats by type |
+    </criterion>
+
+    <criterion id="AC8" title="Multi-Tenancy Isolation">
+      Given Organization A has rate modifiers [R1, R2]
+      And Organization B has rate modifiers [R3, R4]
+      When a user from Organization A lists rate modifiers
+      Then they only see [R1, R2]
+      And they cannot access R3 or R4 by ID
+    </criterion>
+
+    <criterion id="AC9" title="Conditional Form Fields">
+      Given I am creating a rate modifier
+      When I select Type = NIGHT
+      Then Start Time and End Time fields are shown and required
+      And Days of Week, Distance, and Zone fields are hidden
+
+      When I select Type = WEEKEND
+      Then Start Time, End Time, and Days of Week fields are shown
+      And Distance and Zone fields are hidden
+
+      When I select Type = LONG_DISTANCE
+      Then Min Distance field is shown and required
+      And Max Distance field is shown (optional)
+      And Time, Days, and Zone fields are hidden
+
+      When I select Type = ZONE_SCENARIO
+      Then Zone select field is shown and required
+      And Time, Days, and Distance fields are hidden
+    </criterion>
+
+    <criterion id="AC10" title="Translations">
+      Given the application language is set to English
+      When I view the Advanced Rates page
+      Then all labels, buttons, and messages are in English
+
+      Given the application language is set to French
+      When I view the Advanced Rates page
+      Then all labels, buttons, and messages are in French
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="FR58 - Advanced Rate Modifiers">
+        FR58: The pricing engine shall support advanced rate modifiers driven by business rules 
+        (e.g. night hours, weekends, long-distance thresholds) that automatically adjust the base 
+        price using percentage or fixed adjustments according to configurable triggers.
+      </doc>
+      <doc path="docs/bmad/tech-spec.md" title="Tech Spec" section="AdvancedRate Model">
+        AdvancedRate model with appliesTo enum (NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY),
+        time conditions, distance conditions, zone conditions, and adjustment type/value.
+      </doc>
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 9.2">
+        Story definition with acceptance criteria for advanced rate modifiers configuration.
+      </doc>
+      <doc path="docs/sprint-artifacts/9-1-settings-pricing-seasonal-multipliers.md" title="Story 9.1 Reference">
+        Reference implementation for similar pricing configuration UI pattern.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="packages/database/prisma/schema.prisma" kind="schema" symbol="AdvancedRate" lines="944-984" reason="Prisma model definition for AdvancedRate with all fields and relations">
+        Model includes: id, organizationId, name, appliesTo (enum), startTime, endTime, daysOfWeek,
+        minDistanceKm, maxDistanceKm, zoneId, adjustmentType, value, priority, isActive, timestamps.
+      </file>
+      <file path="packages/database/prisma/schema.prisma" kind="enum" symbol="AdvancedRateAppliesTo" lines="284-291" reason="Enum defining rate modifier types">
+        Values: NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY
+      </file>
+      <file path="packages/database/prisma/schema.prisma" kind="enum" symbol="AdjustmentType" lines="265-268" reason="Enum for adjustment type">
+        Values: PERCENTAGE, FIXED_AMOUNT
+      </file>
+      <file path="packages/api/src/routes/vtc/seasonal-multipliers.ts" kind="router" symbol="seasonalMultipliersRouter" reason="Reference pattern for CRUD API routes">
+        Pattern to follow: Hono router, organizationMiddleware, Zod validation, tenant helpers,
+        transform functions, stats endpoint, list/get/create/patch/delete endpoints.
+      </file>
+      <file path="packages/api/src/routes/vtc/router.ts" kind="router" symbol="vtcRouter" reason="Main VTC router where new routes must be registered" />
+      <file path="apps/web/modules/saas/settings/pricing/types/seasonal-multiplier.ts" kind="types" reason="Reference pattern for TypeScript types">
+        Pattern: Core types, API response types, API request types, filter types, helper functions.
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierList.tsx" kind="component" reason="Reference pattern for data table component">
+        Pattern: shadcn Table, Badge, DropdownMenu, Select for filtering, loading skeletons.
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierSummaryCards.tsx" kind="component" reason="Reference pattern for summary cards" />
+      <file path="apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierFormDialog.tsx" kind="component" reason="Reference pattern for create/edit dialog" />
+      <file path="apps/web/modules/saas/settings/pricing/hooks/useSeasonalMultipliers.ts" kind="hooks" reason="Reference pattern for React Query hooks" />
+      <file path="packages/api/src/lib/tenant-prisma.ts" kind="utility" reason="Tenant helpers: withTenantFilter, withTenantCreate, withTenantId" />
+      <file path="packages/api/src/middleware/organization.ts" kind="middleware" reason="Organization middleware for multi-tenancy" />
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="hono" version="^4.x" purpose="API routing framework" />
+        <package name="hono-openapi" version="^0.x" purpose="OpenAPI documentation" />
+        <package name="zod" version="^3.x" purpose="Schema validation" />
+        <package name="@tanstack/react-query" version="^5.x" purpose="Data fetching and caching" />
+        <package name="next-intl" version="^3.x" purpose="Internationalization" />
+        <package name="lucide-react" version="^0.x" purpose="Icons" />
+      </node>
+      <ui>
+        <component name="Card" package="@ui/components/card" />
+        <component name="Table" package="@ui/components/table" />
+        <component name="Badge" package="@ui/components/badge" />
+        <component name="Button" package="@ui/components/button" />
+        <component name="Dialog" package="@ui/components/dialog" />
+        <component name="Select" package="@ui/components/select" />
+        <component name="Input" package="@ui/components/input" />
+        <component name="Label" package="@ui/components/label" />
+        <component name="Switch" package="@ui/components/switch" />
+        <component name="DropdownMenu" package="@ui/components/dropdown-menu" />
+        <component name="Skeleton" package="@ui/components/skeleton" />
+        <component name="Checkbox" package="@ui/components/checkbox" />
+      </ui>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Follow existing VTC API patterns from seasonal-multipliers.ts</constraint>
+    <constraint type="pattern">Use organizationMiddleware for all routes</constraint>
+    <constraint type="pattern">Use withTenantFilter, withTenantCreate, withTenantId helpers</constraint>
+    <constraint type="pattern">Use Zod for request validation</constraint>
+    <constraint type="pattern">Use shadcn/ui components consistently</constraint>
+    <constraint type="pattern">Use next-intl for all user-facing strings</constraint>
+    <constraint type="pattern">Follow Europe/Paris business time semantics</constraint>
+    <constraint type="data">Time fields stored as HH:MM strings</constraint>
+    <constraint type="data">Days of week stored as comma-separated string (e.g., "1,2,3,4,5")</constraint>
+    <constraint type="data">Decimal fields use Prisma Decimal type</constraint>
+    <constraint type="security">Multi-tenancy isolation must be enforced at API level</constraint>
+    <constraint type="ux">Conditional form fields based on rate type selection</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/vtc/pricing/advanced-rates" kind="REST endpoint">
+      Query params: page, limit, type, status, search
+      Response: { data: AdvancedRate[], meta: { page, limit, total, totalPages } }
+    </interface>
+    <interface name="GET /api/vtc/pricing/advanced-rates/stats" kind="REST endpoint">
+      Response: { night: number, weekend: number, longDistance: number, zoneScenario: number, holiday: number, totalActive: number }
+    </interface>
+    <interface name="GET /api/vtc/pricing/advanced-rates/:id" kind="REST endpoint">
+      Response: AdvancedRate
+    </interface>
+    <interface name="POST /api/vtc/pricing/advanced-rates" kind="REST endpoint">
+      Body: CreateAdvancedRateRequest
+      Response: AdvancedRate (201)
+    </interface>
+    <interface name="PATCH /api/vtc/pricing/advanced-rates/:id" kind="REST endpoint">
+      Body: UpdateAdvancedRateRequest
+      Response: AdvancedRate
+    </interface>
+    <interface name="DELETE /api/vtc/pricing/advanced-rates/:id" kind="REST endpoint">
+      Response: { success: true }
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Unit tests with Vitest for API routes.
+      E2E tests with Playwright MCP for UI interactions.
+      API tests with curl commands.
+      Database verification via MCP postgres_vtc_sixiemme_etoile.
+    </standards>
+    <locations>
+      packages/api/src/routes/vtc/__tests__/advanced-rates.test.ts
+      apps/web/e2e/settings-advanced-rates.spec.ts
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test page renders with all expected elements</idea>
+      <idea ac="AC2">Test summary cards show correct counts by type</idea>
+      <idea ac="AC3">Test table displays all columns and supports filtering</idea>
+      <idea ac="AC4">Test create dialog with all field types and validation</idea>
+      <idea ac="AC5">Test edit dialog pre-populates values correctly</idea>
+      <idea ac="AC6">Test delete with confirmation dialog</idea>
+      <idea ac="AC7">Test all API endpoints return expected responses</idea>
+      <idea ac="AC8">Test multi-tenancy isolation prevents cross-org access</idea>
+      <idea ac="AC9">Test conditional form fields show/hide based on type</idea>
+      <idea ac="AC10">Test translations in both English and French</idea>
+    </ideas>
+  </tests>
+</story-context>

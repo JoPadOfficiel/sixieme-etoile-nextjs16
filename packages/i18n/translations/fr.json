@@ -1133,7 +1133,8 @@
 					"routes": "Routes",
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
-					"seasonalMultipliers": "Multiplicateurs saisonniers"
+					"seasonalMultipliers": "Multiplicateurs saisonniers",
+					"advancedRates": "Tarifs avancés"
 				},
 				"title": "Organisation"
 			}
@@ -1212,6 +1213,105 @@
 				"empty": {
 					"title": "Aucun multiplicateur configuré",
 					"description": "Créez votre premier multiplicateur saisonnier pour ajuster les prix sur des périodes spécifiques."
+				}
+			},
+			"advancedRates": {
+				"title": "Modificateurs de Tarifs Avancés",
+				"description": "Configurez les ajustements de prix selon les conditions de temps, distance ou zone",
+				"addButton": "Ajouter un modificateur",
+				"stats": {
+					"night": "Tarifs Nuit",
+					"weekend": "Tarifs Week-end",
+					"longDistance": "Longue Distance",
+					"zoneScenario": "Par Zone",
+					"holiday": "Jours Fériés",
+					"totalActive": "Total Actifs"
+				},
+				"table": {
+					"name": "Nom",
+					"type": "Type",
+					"conditions": "Conditions",
+					"adjustment": "Ajustement",
+					"priority": "Priorité",
+					"status": "Statut",
+					"actions": "Actions"
+				},
+				"types": {
+					"NIGHT": "Nuit",
+					"WEEKEND": "Week-end",
+					"LONG_DISTANCE": "Longue Distance",
+					"ZONE_SCENARIO": "Zone",
+					"HOLIDAY": "Jour Férié"
+				},
+				"status": {
+					"all": "Tous",
+					"active": "Actif",
+					"inactive": "Inactif"
+				},
+				"conditions": {
+					"timeRange": "{start} - {end}",
+					"days": "Jours: {days}",
+					"distance": "{min}km - {max}km",
+					"distanceMin": "≥ {min}km",
+					"zone": "Zone: {zone}"
+				},
+				"form": {
+					"createTitle": "Créer un modificateur de tarif",
+					"editTitle": "Modifier le modificateur de tarif",
+					"name": "Nom",
+					"namePlaceholder": "ex: Majoration Nuit",
+					"type": "Type",
+					"typePlaceholder": "Sélectionner le type...",
+					"startTime": "Heure de début",
+					"endTime": "Heure de fin",
+					"daysOfWeek": "Jours de la semaine",
+					"days": {
+						"0": "Dim",
+						"1": "Lun",
+						"2": "Mar",
+						"3": "Mer",
+						"4": "Jeu",
+						"5": "Ven",
+						"6": "Sam"
+					},
+					"minDistance": "Distance minimum (km)",
+					"maxDistance": "Distance maximum (km)",
+					"maxDistanceHelp": "Laisser vide pour aucune limite",
+					"zone": "Zone",
+					"zonePlaceholder": "Sélectionner une zone...",
+					"adjustmentType": "Type d'ajustement",
+					"adjustmentTypes": {
+						"PERCENTAGE": "Pourcentage",
+						"FIXED_AMOUNT": "Montant fixe (€)"
+					},
+					"value": "Valeur",
+					"valueHelp": "Entrez le pourcentage (ex: 20 pour +20%) ou le montant en EUR",
+					"priority": "Priorité",
+					"priorityHelp": "La priorité la plus haute prévaut quand plusieurs modificateurs s'appliquent",
+					"isActive": "Actif",
+					"create": "Créer",
+					"save": "Enregistrer",
+					"cancel": "Annuler"
+				},
+				"delete": {
+					"title": "Supprimer le modificateur",
+					"message": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action est irréversible.",
+					"confirm": "Supprimer",
+					"cancel": "Annuler"
+				},
+				"toast": {
+					"createSuccess": "Modificateur créé avec succès",
+					"updateSuccess": "Modificateur mis à jour avec succès",
+					"deleteSuccess": "Modificateur supprimé avec succès",
+					"error": "Une erreur est survenue"
+				},
+				"empty": {
+					"title": "Aucun modificateur configuré",
+					"description": "Créez votre premier modificateur de tarif pour ajuster les prix selon des conditions."
+				},
+				"actions": {
+					"edit": "Modifier",
+					"delete": "Supprimer"
 				}
 			}
 		}

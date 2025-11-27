@@ -1133,7 +1133,8 @@
 					"routes": "Routes",
 					"excursions": "Excursions",
 					"dispos": "Disposals",
-					"seasonalMultipliers": "Seasonal Multipliers"
+					"seasonalMultipliers": "Seasonal Multipliers",
+					"advancedRates": "Advanced Rates"
 				},
 				"title": "Organization"
 			}
@@ -1212,6 +1213,105 @@
 				"empty": {
 					"title": "No multipliers configured",
 					"description": "Create your first seasonal multiplier to adjust prices for specific periods."
+				}
+			},
+			"advancedRates": {
+				"title": "Advanced Rate Modifiers",
+				"description": "Configure price adjustments based on time, distance, or zone conditions",
+				"addButton": "Add Rate Modifier",
+				"stats": {
+					"night": "Night Rates",
+					"weekend": "Weekend Rates",
+					"longDistance": "Long Distance",
+					"zoneScenario": "Zone-Based",
+					"holiday": "Holiday Rates",
+					"totalActive": "Total Active"
+				},
+				"table": {
+					"name": "Name",
+					"type": "Type",
+					"conditions": "Conditions",
+					"adjustment": "Adjustment",
+					"priority": "Priority",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"types": {
+					"NIGHT": "Night",
+					"WEEKEND": "Weekend",
+					"LONG_DISTANCE": "Long Distance",
+					"ZONE_SCENARIO": "Zone",
+					"HOLIDAY": "Holiday"
+				},
+				"status": {
+					"all": "All",
+					"active": "Active",
+					"inactive": "Inactive"
+				},
+				"conditions": {
+					"timeRange": "{start} - {end}",
+					"days": "Days: {days}",
+					"distance": "{min}km - {max}km",
+					"distanceMin": "≥ {min}km",
+					"zone": "Zone: {zone}"
+				},
+				"form": {
+					"createTitle": "Create Rate Modifier",
+					"editTitle": "Edit Rate Modifier",
+					"name": "Name",
+					"namePlaceholder": "e.g., Night Surcharge",
+					"type": "Type",
+					"typePlaceholder": "Select type...",
+					"startTime": "Start Time",
+					"endTime": "End Time",
+					"daysOfWeek": "Days of Week",
+					"days": {
+						"0": "Sun",
+						"1": "Mon",
+						"2": "Tue",
+						"3": "Wed",
+						"4": "Thu",
+						"5": "Fri",
+						"6": "Sat"
+					},
+					"minDistance": "Minimum Distance (km)",
+					"maxDistance": "Maximum Distance (km)",
+					"maxDistanceHelp": "Leave empty for no upper limit",
+					"zone": "Zone",
+					"zonePlaceholder": "Select zone...",
+					"adjustmentType": "Adjustment Type",
+					"adjustmentTypes": {
+						"PERCENTAGE": "Percentage",
+						"FIXED_AMOUNT": "Fixed Amount (€)"
+					},
+					"value": "Value",
+					"valueHelp": "Enter percentage (e.g., 20 for +20%) or amount in EUR",
+					"priority": "Priority",
+					"priorityHelp": "Higher priority takes precedence when multiple modifiers apply",
+					"isActive": "Active",
+					"create": "Create",
+					"save": "Save Changes",
+					"cancel": "Cancel"
+				},
+				"delete": {
+					"title": "Delete Rate Modifier",
+					"message": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+					"confirm": "Delete",
+					"cancel": "Cancel"
+				},
+				"toast": {
+					"createSuccess": "Rate modifier created successfully",
+					"updateSuccess": "Rate modifier updated successfully",
+					"deleteSuccess": "Rate modifier deleted successfully",
+					"error": "An error occurred"
+				},
+				"empty": {
+					"title": "No rate modifiers configured",
+					"description": "Create your first rate modifier to adjust prices based on conditions."
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
 				}
 			}
 		}
