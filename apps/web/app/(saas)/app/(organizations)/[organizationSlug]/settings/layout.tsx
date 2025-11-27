@@ -12,6 +12,7 @@ import {
 	PackageIcon,
 	RouteIcon,
 	Settings2Icon,
+	SunIcon,
 	TagIcon,
 	Users2Icon,
 } from "lucide-react";
@@ -83,6 +84,11 @@ export default async function SettingsLayout({
 							title: t("settings.menu.organization.pricing.dispos"),
 							href: `${organizationSettingsBasePath}/pricing/dispos`,
 							icon: <PackageIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.pricing.seasonalMultipliers"),
+							href: `${organizationSettingsBasePath}/pricing/seasonal-multipliers`,
+							icon: <SunIcon className="size-4 opacity-50" />,
 						},
 					],
 				},
