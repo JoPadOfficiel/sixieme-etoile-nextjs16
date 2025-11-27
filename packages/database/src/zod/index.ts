@@ -140,7 +140,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','windowStart','windowEnd','pricingStrategy','isActive','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','tripAnalysis','appliedRules','validUntil','notes','createdAt','updatedAt']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','createdAt','updatedAt']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','notes','createdAt','updatedAt']);
 
@@ -157,6 +157,8 @@ export const OrganizationIntegrationSettingsScalarFieldEnumSchema = z.enum(['id'
 export const DriverRSECounterScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','date','regulatoryCategory','licenseCategoryId','drivingMinutes','amplitudeMinutes','breakMinutes','restMinutes','workStartTime','workEndTime','createdAt','updatedAt']);
 
 export const ComplianceAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','timestamp','quoteId','missionId','vehicleCategoryId','regulatoryCategory','decision','violations','warnings','reason','countersSnapshot']);
+
+export const QuoteStatusAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousStatus','newStatus','userId','timestamp','reason']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -948,6 +950,11 @@ export const QuoteSchema = z.object({
   appliedRules: JsonValueSchema.nullable(),
   validUntil: z.coerce.date().nullable(),
   notes: z.string().nullable(),
+  sentAt: z.coerce.date().nullable(),
+  viewedAt: z.coerce.date().nullable(),
+  acceptedAt: z.coerce.date().nullable(),
+  rejectedAt: z.coerce.date().nullable(),
+  expiredAt: z.coerce.date().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
@@ -1131,3 +1138,23 @@ export const ComplianceAuditLogSchema = z.object({
 })
 
 export type ComplianceAuditLog = z.infer<typeof ComplianceAuditLogSchema>
+
+/////////////////////////////////////////
+// QUOTE STATUS AUDIT LOG SCHEMA
+/////////////////////////////////////////
+
+/**
+ * QuoteStatusAuditLog - Tracks quote status transitions for audit purposes
+ */
+export const QuoteStatusAuditLogSchema = z.object({
+  previousStatus: QuoteStatusSchema,
+  newStatus: QuoteStatusSchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  quoteId: z.string(),
+  userId: z.string().nullable(),
+  timestamp: z.coerce.date(),
+  reason: z.string().nullable(),
+})
+
+export type QuoteStatusAuditLog = z.infer<typeof QuoteStatusAuditLogSchema>

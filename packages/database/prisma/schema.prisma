@@ -147,6 +147,7 @@ model Organization {
   partnerContracts            PartnerContract[]
   driverRSECounters           DriverRSECounter[]
   complianceAuditLogs         ComplianceAuditLog[]
+  quoteStatusAuditLogs        QuoteStatusAuditLog[]
 
   @@unique([slug])
   @@map("organization")
@@ -1094,12 +1095,20 @@ model Quote {
   // Notes
   notes String?
 
+  // Status transition timestamps (Story 6.4)
+  sentAt     DateTime?
+  viewedAt   DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  expiredAt  DateTime?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  invoice Invoice?
+  invoice         Invoice?
+  statusAuditLogs QuoteStatusAuditLog[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1350,4 +1359,35 @@ model ComplianceAuditLog {
   @@index([driverId])
   @@index([timestamp])
   @@map("compliance_audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// QUOTE STATUS AUDIT LOG (Story 6.4)
+// ----------------------------------------------------------------------------
+
+/// QuoteStatusAuditLog - Tracks quote status transitions for audit purposes
+model QuoteStatusAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quoteId        String
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Transition details
+  previousStatus QuoteStatus
+  newStatus      QuoteStatus
+
+  // Actor
+  userId String?
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  // Optional context/reason
+  reason String?
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@index([timestamp])
+  @@map("quote_status_audit_log")
 }

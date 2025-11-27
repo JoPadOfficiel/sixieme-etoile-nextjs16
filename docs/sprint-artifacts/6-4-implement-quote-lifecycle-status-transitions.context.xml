@@ -1,0 +1,271 @@
+<story-context id="6-4-implement-quote-lifecycle-status-transitions" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>6.4</storyId>
+    <title>Implement Quote Lifecycle and Status Transitions</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-27T10:00:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-4-implement-quote-lifecycle-status-transitions.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>structured quote lifecycle states and transitions</iWant>
+    <soThat>I can manage quotes consistently from draft to acceptance</soThat>
+    <tasks>
+      <task id="1">Implement QuoteStateMachine service in packages/api/src/services/quote-state-machine.ts with transition validation logic</task>
+      <task id="2">Add status timestamp fields to Quote model (sentAt, viewedAt, acceptedAt, rejectedAt, expiredAt)</task>
+      <task id="3">Update PATCH /api/vtc/quotes/:id endpoint to use state machine for status transitions</task>
+      <task id="4">Implement commercial value freezing logic when status changes from DRAFT to SENT</task>
+      <task id="5">Add background job/cron for automatic EXPIRED status based on validUntil date</task>
+      <task id="6">Update QuoteDetailPage to reflect status-based UI behavior (editable vs readonly)</task>
+      <task id="7">Add status transition audit logging for traceability</task>
+      <task id="8">Add translations (EN/FR) for status transition messages and errors</task>
+      <task id="9">Write Vitest unit tests for state machine transitions</task>
+      <task id="10">Write Playwright E2E tests for full quote lifecycle flow</task>
+      <task id="11">Test API endpoints with curl and verify DB state via MCP postgres</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="New Quote Status is DRAFT">
+      <given>a new quote is created</given>
+      <when>I first save it</when>
+      <then>its status is DRAFT and it remains fully editable (prices, notes, dates can be modified)</then>
+    </criterion>
+    <criterion id="AC2" title="Send Quote Transitions to SENT">
+      <given>a DRAFT quote</given>
+      <when>I send the quote to a client (via Send Quote action)</when>
+      <then>the status becomes SENT, sentAt timestamp is recorded, and commercial values are frozen (no silent recomputes)</then>
+    </criterion>
+    <criterion id="AC3" title="Commercial Values Frozen After SENT">
+      <given>a quote with status SENT or ACCEPTED</given>
+      <when>I view or reload the quote</when>
+      <then>the displayed prices, costs, and margins are the stored values, NOT recomputed from current configuration</then>
+    </criterion>
+    <criterion id="AC4" title="VIEWED Status on Client View">
+      <given>a SENT quote</given>
+      <when>a client views the quote (future: via public link)</when>
+      <then>the status can transition to VIEWED and viewedAt timestamp is recorded</then>
+    </criterion>
+    <criterion id="AC5" title="Accept Quote Transitions to ACCEPTED">
+      <given>a SENT or VIEWED quote</given>
+      <when>I record client acceptance (Mark as Accepted action)</when>
+      <then>the status moves to ACCEPTED, acceptedAt timestamp is recorded, and Convert to Invoice button becomes available</then>
+    </criterion>
+    <criterion id="AC6" title="Reject Quote Transitions to REJECTED">
+      <given>a SENT or VIEWED quote</given>
+      <when>I record client rejection (Mark as Rejected action)</when>
+      <then>the status moves to REJECTED and rejectedAt timestamp is recorded</then>
+    </criterion>
+    <criterion id="AC7" title="Invalid Transitions are Blocked">
+      <given>a quote in any status</given>
+      <when>I attempt an invalid transition (e.g., ACCEPTED to DRAFT, REJECTED to SENT)</when>
+      <then>the API returns a 400 error with a clear message explaining the invalid transition</then>
+    </criterion>
+    <criterion id="AC8" title="Automatic Expiration">
+      <given>a DRAFT or SENT quote with validUntil date in the past</given>
+      <when>the expiration job runs (or on next access)</when>
+      <then>the status transitions to EXPIRED and expiredAt timestamp is recorded</then>
+    </criterion>
+    <criterion id="AC9" title="Status Transition Audit Trail">
+      <given>any status transition occurs</given>
+      <when>the transition completes</when>
+      <then>an audit log entry is created with previous status, new status, timestamp, and user ID</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR31-FR33 Quote Lifecycle</section>
+        <snippet>Quotes shall follow a lifecycle with at least the states Draft, Sent, Viewed, Accepted, Rejected and Expired. Draft quotes shall remain editable. Sent or Accepted quotes shall remain commercially fixed.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR32 Commercial Value Freezing</section>
+        <snippet>Draft quotes shall remain editable and may optionally refresh certain dynamic data according to configuration, while Sent or Accepted quotes shall remain commercially fixed.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Quotes, Invoices and Documents</section>
+        <snippet>Quote lifecycle from quote to invoice. Invoices derived from quotes with deep copy semantics. Status transitions in backend domain code (state machine-like) to ensure consistency across UI and APIs.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 6 - Quotes and Operator Cockpit</title>
+        <section>Story 6.4</section>
+        <snippet>Implement lifecycle transitions in backend domain code (state machine-like) to ensure consistency across UI and APIs. Optionally support EXPIRED based on validity dates and background jobs.</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Quote, QuoteStatus enum</symbol>
+        <lines>224-232, 1046-1109</lines>
+        <reason>Quote model with status field and QuoteStatus enum (DRAFT, SENT, VIEWED, ACCEPTED, REJECTED, EXPIRED)</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/quotes.ts</path>
+        <kind>api-route</kind>
+        <symbol>quotesRouter, updateQuoteSchema</symbol>
+        <lines>40-48, 252-289</lines>
+        <reason>Current PATCH endpoint for quote updates - needs state machine integration</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/hooks/useQuoteActions.ts</path>
+        <kind>hook</kind>
+        <symbol>useQuoteActions, sendQuote, acceptQuote, rejectQuote</symbol>
+        <lines>1-135</lines>
+        <reason>Frontend hooks for quote status transitions - already implemented, may need updates</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuoteDetailPage.tsx</path>
+        <kind>component</kind>
+        <symbol>QuoteDetailPage</symbol>
+        <lines>1-198</lines>
+        <reason>Quote detail page that uses status transitions - needs status-based UI behavior</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuoteHeader.tsx</path>
+        <kind>component</kind>
+        <symbol>QuoteHeader</symbol>
+        <reason>Header component with action buttons based on status - needs transition validation</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuoteActivityLog.tsx</path>
+        <kind>component</kind>
+        <symbol>QuoteActivityLog</symbol>
+        <reason>Activity log showing status history - needs timestamp display</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/types.ts</path>
+        <kind>types</kind>
+        <symbol>Quote, QuoteStatus</symbol>
+        <reason>Type definitions for quotes - needs timestamp fields</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/__tests__/quotes.test.ts</path>
+        <kind>test</kind>
+        <symbol>quotes API tests</symbol>
+        <reason>Existing quote tests - extend with state machine tests</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@prisma/client</package>
+        <usage>Database operations for quote status updates</usage>
+      </node>
+      <node>
+        <package>hono</package>
+        <usage>API framework for route handlers</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Validation schemas for status transitions</usage>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Cache invalidation after status transitions</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">State machine logic must be in a dedicated service file, not inline in route handlers</constraint>
+    <constraint type="pattern">All status transitions must go through the state machine for validation</constraint>
+    <constraint type="pattern">Commercial values (prices, costs, margins) must be frozen after SENT status</constraint>
+    <constraint type="pattern">Status timestamps must be recorded for audit trail</constraint>
+    <constraint type="i18n">All error messages must use translation keys</constraint>
+    <constraint type="tenancy">All operations scoped to current organization</constraint>
+    <constraint type="immutability">SENT/ACCEPTED quotes must NOT recompute pricing on load</constraint>
+    <constraint type="audit">All status transitions must be logged for compliance</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>QuoteStateMachine</name>
+      <kind>service class</kind>
+      <signature>
+        class QuoteStateMachine {
+          static canTransition(from: QuoteStatus, to: QuoteStatus): boolean
+          static getValidTransitions(from: QuoteStatus): QuoteStatus[]
+          static validateTransition(from: QuoteStatus, to: QuoteStatus): { valid: boolean, error?: string }
+          static async transition(quoteId: string, newStatus: QuoteStatus, userId?: string): Promise&lt;Quote&gt;
+        }
+      </signature>
+      <path>packages/api/src/services/quote-state-machine.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/quotes/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Body: { status?: QuoteStatus, notes?: string, validUntil?: string }
+        Response: Quote object with updated status and timestamps
+        Errors: 400 for invalid transitions, 404 for not found
+      </signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+    <interface>
+      <name>Quote model extensions</name>
+      <kind>Prisma schema</kind>
+      <signature>
+        Add fields: sentAt DateTime?, viewedAt DateTime?, acceptedAt DateTime?, rejectedAt DateTime?, expiredAt DateTime?
+      </signature>
+      <path>packages/database/prisma/schema.prisma</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests of the state machine service.
+      Use Playwright MCP for E2E browser automation of full lifecycle flow.
+      Use curl for API endpoint testing with DB verification via MCP postgres.
+      All transitions must be tested: valid and invalid.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/quote-state-machine.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/quotes.test.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test new quote is created with DRAFT status</idea>
+      <idea acId="AC2">Test DRAFT to SENT transition records sentAt timestamp</idea>
+      <idea acId="AC3">Test SENT quote returns stored values, not recomputed</idea>
+      <idea acId="AC4">Test SENT to VIEWED transition records viewedAt timestamp</idea>
+      <idea acId="AC5">Test SENT/VIEWED to ACCEPTED transition records acceptedAt timestamp</idea>
+      <idea acId="AC6">Test SENT/VIEWED to REJECTED transition records rejectedAt timestamp</idea>
+      <idea acId="AC7">Test invalid transitions return 400 error (ACCEPTED to DRAFT, REJECTED to SENT, etc.)</idea>
+      <idea acId="AC8">Test automatic expiration based on validUntil date</idea>
+      <idea acId="AC9">Test audit log entry created for each transition</idea>
+      <idea>Vitest: Test all valid transition paths in state machine</idea>
+      <idea>Vitest: Test all invalid transition paths return errors</idea>
+      <idea>Playwright: Full lifecycle flow DRAFT → SENT → ACCEPTED</idea>
+      <idea>Playwright: Verify UI buttons change based on status</idea>
+      <idea>Curl: Test PATCH endpoint with status transitions</idea>
+      <idea>DB: Verify timestamps are correctly recorded after transitions</idea>
+    </ideas>
+  </tests>
+
+  <statusTransitionMatrix>
+    <transition from="DRAFT" to="SENT" valid="true" action="Send Quote" />
+    <transition from="DRAFT" to="EXPIRED" valid="true" action="Auto-expire" />
+    <transition from="SENT" to="VIEWED" valid="true" action="Client views" />
+    <transition from="SENT" to="ACCEPTED" valid="true" action="Mark as Accepted" />
+    <transition from="SENT" to="REJECTED" valid="true" action="Mark as Rejected" />
+    <transition from="SENT" to="EXPIRED" valid="true" action="Auto-expire" />
+    <transition from="VIEWED" to="ACCEPTED" valid="true" action="Mark as Accepted" />
+    <transition from="VIEWED" to="REJECTED" valid="true" action="Mark as Rejected" />
+    <transition from="VIEWED" to="EXPIRED" valid="true" action="Auto-expire" />
+    <transition from="ACCEPTED" to="*" valid="false" note="Terminal state except invoice conversion" />
+    <transition from="REJECTED" to="*" valid="false" note="Terminal state" />
+    <transition from="EXPIRED" to="*" valid="false" note="Terminal state" />
+  </statusTransitionMatrix>
+</story-context>

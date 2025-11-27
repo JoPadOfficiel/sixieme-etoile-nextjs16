@@ -1289,7 +1289,15 @@
 			"viewed": "Consulté",
 			"accepted": "Accepté",
 			"rejected": "Refusé",
-			"expired": "Expiré"
+			"expired": "Expiré",
+			"transition": {
+				"alreadyInStatus": "Le devis est déjà dans ce statut",
+				"terminalState": "Impossible de changer depuis ce statut. C'est un état terminal.",
+				"invalidTransition": "Transition de statut invalide",
+				"notFound": "Devis non trouvé",
+				"cannotModifyCommercial": "Impossible de modifier les valeurs commerciales pour les devis non-BROUILLON",
+				"cannotModifyNotes": "Impossible de modifier les notes pour les devis non-BROUILLON"
+			}
 		},
 		"filters": {
 			"status": "Statut",
@@ -1432,6 +1440,10 @@
 			"backToQuotes": "Retour aux devis",
 			"notFound": "Devis introuvable",
 			"notFoundDescription": "Le devis que vous recherchez n'existe pas ou a été supprimé.",
+			"frozen": {
+				"title": "Valeurs commerciales figées",
+				"description": "Ce devis a été envoyé. Les valeurs commerciales (prix, coûts, marges) ne peuvent plus être modifiées."
+			},
 			"actions": {
 				"send": "Envoyer le devis",
 				"accept": "Marquer comme accepté",

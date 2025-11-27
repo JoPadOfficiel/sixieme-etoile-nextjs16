@@ -6,6 +6,7 @@ import { Textarea } from "@ui/components/textarea";
 import {
   CalendarIcon,
   CheckCircleIcon,
+  ClockIcon,
   EditIcon,
   EyeIcon,
   FileTextIcon,
@@ -101,6 +102,16 @@ export function QuoteActivityLog({
       date: new Date(quote.rejectedAt),
       icon: XCircleIcon,
       colorClass: "text-red-500",
+    });
+  }
+
+  // Expired event (Story 6.4)
+  if (quote.expiredAt) {
+    events.push({
+      type: "expired",
+      date: new Date(quote.expiredAt),
+      icon: ClockIcon,
+      colorClass: "text-gray-500",
     });
   }
 

@@ -54,11 +54,81 @@ export interface Quote {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  // Story 6.3: Status transition timestamps
+  // Story 6.3/6.4: Status transition timestamps
   sentAt: string | null;
   viewedAt: string | null;
   acceptedAt: string | null;
   rejectedAt: string | null;
+  expiredAt: string | null;
+}
+
+// ============================================================================
+// Story 6.4: Quote Lifecycle & Status Transitions
+// ============================================================================
+
+/**
+ * Valid status transitions map
+ * Each key is a current status, and the value is an array of valid next statuses
+ */
+export const VALID_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
+  DRAFT: ["SENT", "EXPIRED"],
+  SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"],
+  VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED"],
+  ACCEPTED: [], // Terminal state
+  REJECTED: [], // Terminal state
+  EXPIRED: [],  // Terminal state
+};
+
+/**
+ * Check if a transition from one status to another is valid
+ */
+export function canTransition(from: QuoteStatus, to: QuoteStatus): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+/**
+ * Get list of valid next statuses from current status
+ */
+export function getValidTransitions(from: QuoteStatus): QuoteStatus[] {
+  return VALID_TRANSITIONS[from] ?? [];
+}
+
+/**
+ * Check if a quote's commercial values should be frozen (non-editable)
+ * Commercial values are frozen after the quote leaves DRAFT status
+ */
+export function isCommerciallyFrozen(status: QuoteStatus): boolean {
+  return status !== "DRAFT";
+}
+
+/**
+ * Check if a quote can be edited (notes, etc.)
+ * Only DRAFT quotes are fully editable
+ */
+export function isEditable(status: QuoteStatus): boolean {
+  return status === "DRAFT";
+}
+
+/**
+ * Check if a quote can be converted to an invoice
+ * Only ACCEPTED quotes can be converted
+ */
+export function canConvertToInvoice(status: QuoteStatus): boolean {
+  return status === "ACCEPTED";
+}
+
+/**
+ * Status audit log entry
+ */
+export interface QuoteStatusAuditLog {
+  id: string;
+  organizationId: string;
+  quoteId: string;
+  previousStatus: QuoteStatus;
+  newStatus: QuoteStatus;
+  userId: string | null;
+  timestamp: string;
+  reason: string | null;
 }
 
 export interface QuotesResponse {

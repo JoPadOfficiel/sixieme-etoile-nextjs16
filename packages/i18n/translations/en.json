@@ -1289,7 +1289,15 @@
 			"viewed": "Viewed",
 			"accepted": "Accepted",
 			"rejected": "Rejected",
-			"expired": "Expired"
+			"expired": "Expired",
+			"transition": {
+				"alreadyInStatus": "Quote is already in this status",
+				"terminalState": "Cannot transition from this status. This is a terminal state.",
+				"invalidTransition": "Invalid status transition",
+				"notFound": "Quote not found",
+				"cannotModifyCommercial": "Cannot modify commercial values for non-DRAFT quotes",
+				"cannotModifyNotes": "Cannot modify notes for non-DRAFT quotes"
+			}
 		},
 		"filters": {
 			"status": "Status",
@@ -1432,6 +1440,10 @@
 			"backToQuotes": "Back to Quotes",
 			"notFound": "Quote not found",
 			"notFoundDescription": "The quote you are looking for does not exist or has been deleted.",
+			"frozen": {
+				"title": "Commercial Values Frozen",
+				"description": "This quote has been sent. Commercial values (prices, costs, margins) cannot be modified."
+			},
 			"actions": {
 				"send": "Send Quote",
 				"accept": "Mark as Accepted",

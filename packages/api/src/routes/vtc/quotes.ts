@@ -11,29 +11,72 @@ import {
 	withTenantId,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import { QuoteStateMachine } from "../../services/quote-state-machine";
+import type { QuoteStatus } from "@prisma/client";
 
 // Validation schemas with EUR documentation
 const createQuoteSchema = z.object({
 	contactId: z.string().min(1).describe("Contact ID for the quote"),
 	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
-	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]).describe("Pricing mode: FIXED_GRID (Method 1) or DYNAMIC (Method 2)"),
-	tripType: z.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"]).describe("Type of trip"),
-	pickupAt: z.string().datetime().describe("Pickup date/time in Europe/Paris business time"),
+	pricingMode: z
+		.enum(["FIXED_GRID", "DYNAMIC"])
+		.describe("Pricing mode: FIXED_GRID (Method 1) or DYNAMIC (Method 2)"),
+	tripType: z
+		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
+		.describe("Type of trip"),
+	pickupAt: z
+		.string()
+		.datetime()
+		.describe("Pickup date/time in Europe/Paris business time"),
 	pickupAddress: z.string().min(1).describe("Pickup address"),
 	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
-	pickupLongitude: z.number().optional().nullable().describe("Pickup longitude"),
+	pickupLongitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Pickup longitude"),
 	dropoffAddress: z.string().min(1).describe("Dropoff address"),
-	dropoffLatitude: z.number().optional().nullable().describe("Dropoff latitude"),
-	dropoffLongitude: z.number().optional().nullable().describe("Dropoff longitude"),
+	dropoffLatitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Dropoff latitude"),
+	dropoffLongitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Dropoff longitude"),
 	passengerCount: z.number().int().positive().describe("Number of passengers"),
-	luggageCount: z.number().int().nonnegative().default(0).describe("Number of luggage pieces"),
+	luggageCount: z
+		.number()
+		.int()
+		.nonnegative()
+		.default(0)
+		.describe("Number of luggage pieces"),
 	suggestedPrice: z.number().positive().describe("Suggested price in EUR"),
 	finalPrice: z.number().positive().describe("Final price in EUR"),
-	internalCost: z.number().optional().nullable().describe("Internal cost in EUR (shadow calculation result)"),
+	internalCost: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Internal cost in EUR (shadow calculation result)"),
 	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
-	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details: segments A/B/C, costs"),
-	appliedRules: z.record(z.unknown()).optional().nullable().describe("Applied pricing rules, multipliers, promotions"),
-	validUntil: z.string().datetime().optional().nullable().describe("Quote validity date in Europe/Paris business time"),
+	tripAnalysis: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Shadow calculation details: segments A/B/C, costs"),
+	appliedRules: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Applied pricing rules, multipliers, promotions"),
+	validUntil: z
+		.string()
+		.datetime()
+		.optional()
+		.nullable()
+		.describe("Quote validity date in Europe/Paris business time"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 });
 
@@ -44,7 +87,12 @@ const updateQuoteSchema = z.object({
 		.describe("Quote lifecycle status"),
 	finalPrice: z.number().positive().optional().describe("Final price in EUR"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
-	validUntil: z.string().datetime().optional().nullable().describe("Quote validity date in Europe/Paris business time"),
+	validUntil: z
+		.string()
+		.datetime()
+		.optional()
+		.nullable()
+		.describe("Quote validity date in Europe/Paris business time"),
 });
 
 const listQuotesSchema = z.object({
@@ -56,11 +104,28 @@ const listQuotesSchema = z.object({
 	contactId: z.string().optional(),
 	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]).optional(),
 	// Story 6.1: Additional filters for quotes list
-	search: z.string().optional().describe("Search in contact name, pickup/dropoff addresses"),
-	clientType: z.enum(["PARTNER", "PRIVATE"]).optional().describe("Filter by client type (partner or private)"),
-	vehicleCategoryId: z.string().optional().describe("Filter by vehicle category"),
-	dateFrom: z.string().datetime().optional().describe("Filter quotes with pickupAt >= dateFrom"),
-	dateTo: z.string().datetime().optional().describe("Filter quotes with pickupAt <= dateTo"),
+	search: z
+		.string()
+		.optional()
+		.describe("Search in contact name, pickup/dropoff addresses"),
+	clientType: z
+		.enum(["PARTNER", "PRIVATE"])
+		.optional()
+		.describe("Filter by client type (partner or private)"),
+	vehicleCategoryId: z
+		.string()
+		.optional()
+		.describe("Filter by vehicle category"),
+	dateFrom: z
+		.string()
+		.datetime()
+		.optional()
+		.describe("Filter quotes with pickupAt >= dateFrom"),
+	dateTo: z
+		.string()
+		.datetime()
+		.optional()
+		.describe("Filter quotes with pickupAt <= dateTo"),
 });
 
 export const quotesRouter = new Hono()
@@ -73,13 +138,24 @@ export const quotesRouter = new Hono()
 		validator("query", listQuotesSchema),
 		describeRoute({
 			summary: "List quotes",
-			description: "Get a paginated list of quotes for the current organization",
+			description:
+				"Get a paginated list of quotes for the current organization",
 			tags: ["VTC - Quotes"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, status, contactId, pricingMode, search, clientType, vehicleCategoryId, dateFrom, dateTo } =
-				c.req.valid("query");
+			const {
+				page,
+				limit,
+				status,
+				contactId,
+				pricingMode,
+				search,
+				clientType,
+				vehicleCategoryId,
+				dateFrom,
+				dateTo,
+			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -94,8 +170,12 @@ export const quotesRouter = new Hono()
 			// Story 6.1: Add search filter (contact name, addresses)
 			if (search) {
 				baseWhere.OR = [
-					{ contact: { displayName: { contains: search, mode: "insensitive" } } },
-					{ contact: { companyName: { contains: search, mode: "insensitive" } } },
+					{
+						contact: { displayName: { contains: search, mode: "insensitive" } },
+					},
+					{
+						contact: { companyName: { contains: search, mode: "insensitive" } },
+					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
 				];
@@ -231,8 +311,12 @@ export const quotesRouter = new Hono()
 						finalPrice: data.finalPrice,
 						internalCost: data.internalCost,
 						marginPercent: data.marginPercent,
-						tripAnalysis: data.tripAnalysis as Prisma.InputJsonValue | undefined,
-						appliedRules: data.appliedRules as Prisma.InputJsonValue | undefined,
+						tripAnalysis: data.tripAnalysis as
+							| Prisma.InputJsonValue
+							| undefined,
+						appliedRules: data.appliedRules as
+							| Prisma.InputJsonValue
+							| undefined,
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
 						notes: data.notes,
 						status: "DRAFT",
@@ -255,7 +339,8 @@ export const quotesRouter = new Hono()
 		validator("json", updateQuoteSchema),
 		describeRoute({
 			summary: "Update quote",
-			description: "Update an existing quote",
+			description:
+				"Update an existing quote. Status transitions are validated via state machine (Story 6.4).",
 			tags: ["VTC - Quotes"],
 		}),
 		async (c) => {
@@ -273,15 +358,72 @@ export const quotesRouter = new Hono()
 				});
 			}
 
+			// Story 6.4: Handle status transitions via state machine
+			if (data.status && data.status !== existing.status) {
+				// Get user ID from session if available
+				const session = c.get("session");
+				const userId =
+					typeof session === "object" && session?.userId
+						? session.userId
+						: undefined;
+
+				const result = await QuoteStateMachine.transition(
+					id,
+					data.status as QuoteStatus,
+					organizationId,
+					userId,
+				);
+
+				if (!result.success) {
+					throw new HTTPException(400, {
+						message: result.error || "Invalid status transition",
+					});
+				}
+
+				// If only status was being updated, return the result
+				if (!data.notes && !data.validUntil && !data.finalPrice) {
+					return c.json(result.quote);
+				}
+
+				// Continue with other updates if present
+				// Remove status from data since it's already handled
+				delete data.status;
+			}
+
+			// Story 6.4: Block commercial value changes for non-DRAFT quotes
+			if (
+				data.finalPrice !== undefined &&
+				QuoteStateMachine.isCommerciallyFrozen(existing.status)
+			) {
+				throw new HTTPException(400, {
+					message:
+						"Cannot modify commercial values for non-DRAFT quotes. Commercial values are frozen after sending.",
+				});
+			}
+
+			// Story 6.4: Block notes changes for non-DRAFT quotes (except internal notes)
+			if (
+				data.notes !== undefined &&
+				!QuoteStateMachine.isEditable(existing.status)
+			) {
+				throw new HTTPException(400, {
+					message: "Cannot modify notes for non-DRAFT quotes.",
+				});
+			}
+
 			const quote = await db.quote.update({
 				where: { id },
 				data: {
-					...data,
-					validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
+					...(data.finalPrice !== undefined && { finalPrice: data.finalPrice }),
+					...(data.notes !== undefined && { notes: data.notes }),
+					...(data.validUntil !== undefined && {
+						validUntil: data.validUntil ? new Date(data.validUntil) : null,
+					}),
 				},
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					invoice: true,
 				},
 			});
 
