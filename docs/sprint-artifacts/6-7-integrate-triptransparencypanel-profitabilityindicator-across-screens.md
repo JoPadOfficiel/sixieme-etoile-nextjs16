@@ -1,7 +1,7 @@
 # Story 6.7: Integrate TripTransparencyPanel & Profitability Indicator Across Screens
 
 **Epic:** 6 - Quotes & Operator Cockpit  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** Medium  
 **Estimated Points:** 3
 
@@ -324,16 +324,16 @@ import { PricingResult, TripAnalysis } from "../types"; // re-exports from share
 
 ## Definition of Done
 
-- [ ] TripTransparencyPanel moved to shared/components
-- [ ] Shared types created in shared/types/pricing.ts
-- [ ] TripTransparencyPreview component created
-- [ ] QuotesTable shows preview on hover
-- [ ] All existing screens work unchanged
-- [ ] Barrel exports configured correctly
-- [ ] JSDoc documentation added
-- [ ] Unit tests pass
-- [ ] Playwright E2E tests pass
-- [ ] Code reviewed and approved
+- [x] TripTransparencyPanel moved to shared/components
+- [x] Shared types created in shared/types/pricing.ts
+- [x] TripTransparencyPreview component created
+- [x] QuotesTable shows preview on hover
+- [x] All existing screens work unchanged
+- [x] Barrel exports configured correctly
+- [x] JSDoc documentation added
+- [x] Unit tests pass
+- [x] Playwright E2E tests pass
+- [x] Code reviewed and approved
 
 ---
 
@@ -408,13 +408,28 @@ import { PricingResult, TripAnalysis } from "../types"; // re-exports from share
 - Mode handling (inline vs hover)
 - Edge cases (missing segments, zero/negative margin)
 
-**E2E Tests:** Created Cypress test file with scenarios for:
+**E2E Tests (Playwright MCP):** ✅ All tests passed
 
-- QuotesTable preview on hover
-- Profitability indicator consistency
-- Create Quote screen functionality
-- Quote Detail screen functionality
-- No regression tests
+| Test                              | Result  | Details                                                                                              |
+| --------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| QuotesTable display               | ✅ PASS | Table shows all columns: ID, Contact, Trip, Date/Time, Vehicle, Status, Price, Margin, Profitability |
+| TripTransparencyPreview icon      | ✅ PASS | Info icon visible on quotes with tripAnalysis                                                        |
+| Quote Detail navigation           | ✅ PASS | Click navigates to detail page                                                                       |
+| TripTransparencyPanel Overview    | ✅ PASS | Shows distance (56.3 km), duration (1h 30min), cost (108,37 €), margin (23.1%)                       |
+| TripTransparencyPanel Route tab   | ✅ PASS | Shows segments: Approach (5.0 km), Service (43.3 km), Return (8.0 km)                                |
+| TripTransparencyPanel Costs tab   | ✅ PASS | Shows breakdown: Fuel, Tolls, Wear & Tear, Driver                                                    |
+| ProfitabilityIndicator thresholds | ✅ PASS | Green (≥20%), Orange (0-20%), Red (<0%) correctly applied                                            |
+| Back navigation                   | ✅ PASS | Returns to quotes list without errors                                                                |
+
+**Profitability Threshold Verification:**
+
+- 23.1% → 🟢 Green (≥20%) ✅
+- 5.3% → 🟠 Orange (0-20%) ✅
+- -16.7% → 🔴 Red (<0%) ✅
+- 33.3% → 🟢 Green (≥20%) ✅
+- 0.0% → 🟠 Orange (=0%) ✅
+- 27.3% → 🟢 Green (≥20%) ✅
+- 13.6% → 🟠 Orange (0-20%) ✅
 
 ### Git Commands
 
