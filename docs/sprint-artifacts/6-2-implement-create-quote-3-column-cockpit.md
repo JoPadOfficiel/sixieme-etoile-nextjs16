@@ -1,7 +1,7 @@
 # Story 6.2: Implement Create Quote 3-Column Cockpit
 
 **Epic:** 6 - Quotes & Operator Cockpit  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 8
 
@@ -250,18 +250,18 @@ apps/web/modules/saas/quotes/
 
 ## Definition of Done
 
-- [ ] Page route `/quotes/new` created and accessible
-- [ ] 3-column layout renders correctly on desktop (≥1280px)
-- [ ] Responsive layout works at tablet (1024-1279px) and mobile (<1024px)
-- [ ] Contact selector with search and Partner/Private badge
-- [ ] Address autocomplete with Google Places (or fallback)
-- [ ] Vehicle category selector populated from API
-- [ ] Pricing calculation triggers on form changes with skeleton loading
-- [ ] TripTransparencyPanel displays all cost components
-- [ ] Profitability indicator updates based on margin
-- [ ] Price override updates margin in real-time
-- [ ] Quote creation via API with success redirect
-- [ ] Translations added (EN, FR)
-- [ ] Vitest unit tests passing
-- [ ] Playwright E2E tests passing
-- [ ] Code reviewed and merged
+- [x] Page route `/quotes/new` created and accessible
+- [x] 3-column layout renders correctly on desktop (≥1280px)
+- [x] Responsive layout works at tablet (1024-1279px) and mobile (<1024px)
+- [x] Contact selector with search and Partner/Private badge
+- [x] Address autocomplete with Google Places (or fallback)
+- [x] Vehicle category selector populated from API
+- [x] Pricing calculation triggers on form changes with skeleton loading
+- [x] TripTransparencyPanel displays all cost components
+- [x] Profitability indicator updates based on margin
+- [x] Price override updates margin in real-time
+- [x] Quote creation via API with success redirect
+- [x] Translations added (EN, FR)
+- [x] Vitest unit tests passing
+- [x] Playwright E2E tests passing
+- [x] Code reviewed and merged
