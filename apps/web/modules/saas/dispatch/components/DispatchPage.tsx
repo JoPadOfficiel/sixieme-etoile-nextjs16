@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyPanel";
@@ -12,13 +12,16 @@ import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
+import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import type { MissionsFilters as Filters, MissionDetail } from "../types";
 import type { PricingResult } from "@saas/quotes/types";
+import type { CandidateBase } from "../types/assignment";
 
 /**
  * DispatchPage Component
  *
  * Story 8.1: Implement Dispatch Screen Layout
+ * Story 8.3: Multi-Base Optimisation & Visualisation
  *
  * Main 3-zone layout for the Dispatch screen:
  * - Left: Missions list with filters
@@ -27,6 +30,7 @@ import type { PricingResult } from "@saas/quotes/types";
  *
  * @see UX Spec 8.8 Dispatch Screen
  * @see AC1: Dispatch Screen Layout
+ * @see Story 8.3: Multi-base visualization on map
  */
 
 export function DispatchPage() {
@@ -48,6 +52,10 @@ export function DispatchPage() {
 	const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
 	const [isAssignmentDrawerOpen, setIsAssignmentDrawerOpen] = useState(false);
 
+	// Story 8.3: Multi-base visualization state
+	const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+	const [hoveredCandidateId, setHoveredCandidateId] = useState<string | null>(null);
+
 	// Fetch data
 	const { data: missionsData, isLoading: missionsLoading } = useMissions({
 		filters,
@@ -61,6 +69,40 @@ export function DispatchPage() {
 
 	const { data: bases = [], isLoading: basesLoading } = useOperatingBases();
 	const { categories: vehicleCategories = [] } = useVehicleCategories();
+
+	// Story 8.3: Fetch candidates when drawer is open
+	const { data: candidatesData, isLoading: candidatesLoading } = useAssignmentCandidates({
+		missionId: selectedMissionId,
+		enabled: isAssignmentDrawerOpen && !!selectedMissionId,
+	});
+
+	// Story 8.3: Transform candidates to map-friendly format
+	const candidateBases = useMemo<CandidateBase[]>(() => {
+		if (!candidatesData?.candidates) return [];
+		return candidatesData.candidates.map((candidate) => ({
+			vehicleId: candidate.vehicleId,
+			baseId: candidate.baseId,
+			baseName: candidate.baseName,
+			latitude: candidate.baseLatitude,
+			longitude: candidate.baseLongitude,
+			isSelected: candidate.vehicleId === selectedCandidateId,
+			isHovered: candidate.vehicleId === hoveredCandidateId,
+			estimatedCost: candidate.estimatedCost.total,
+			segments: candidate.segments,
+		}));
+	}, [candidatesData, selectedCandidateId, hoveredCandidateId]);
+
+	// Story 8.3: Get active candidate for route display
+	const activeCandidate = useMemo(() => {
+		const activeId = hoveredCandidateId ?? selectedCandidateId;
+		if (!activeId || !candidatesData?.candidates) return null;
+		return candidatesData.candidates.find((c) => c.vehicleId === activeId) ?? null;
+	}, [candidatesData, hoveredCandidateId, selectedCandidateId]);
+
+	// Story 8.3: Determine route display mode
+	const isPreview = hoveredCandidateId !== null && selectedCandidateId !== hoveredCandidateId;
+	const showApproach = activeCandidate !== null;
+	const showReturn = selectedCandidateId !== null && !isPreview;
 
 	// Update URL when filters change
 	const handleFiltersChange = useCallback(
@@ -97,6 +139,27 @@ export function DispatchPage() {
 
 	const handleCloseAssignmentDrawer = useCallback(() => {
 		setIsAssignmentDrawerOpen(false);
+		// Story 8.3: Reset candidate selection when drawer closes
+		setSelectedCandidateId(null);
+		setHoveredCandidateId(null);
+	}, []);
+
+	// Story 8.3: Handlers for candidate hover/select from drawer
+	const handleCandidateHoverStart = useCallback((candidateId: string) => {
+		setHoveredCandidateId(candidateId);
+	}, []);
+
+	const handleCandidateHoverEnd = useCallback(() => {
+		setHoveredCandidateId(null);
+	}, []);
+
+	const handleSelectedCandidateChange = useCallback((candidateId: string | null) => {
+		setSelectedCandidateId(candidateId);
+	}, []);
+
+	// Story 8.3: Handler for candidate select from map
+	const handleMapCandidateSelect = useCallback((vehicleId: string) => {
+		setSelectedCandidateId((prev) => (prev === vehicleId ? null : vehicleId));
 	}, []);
 
 	// Convert mission detail to PricingResult for TripTransparencyPanel
@@ -137,6 +200,18 @@ export function DispatchPage() {
 						mission={selectedMission || null}
 						bases={bases}
 						isLoading={basesLoading}
+						// Story 8.3: Multi-base visualization props
+						candidateBases={isAssignmentDrawerOpen ? candidateBases : undefined}
+						selectedCandidateId={selectedCandidateId}
+						hoveredCandidateId={hoveredCandidateId}
+						activeSegments={activeCandidate?.segments}
+						showApproach={showApproach}
+						showReturn={showReturn}
+						isPreview={isPreview}
+						isLoadingRoutes={candidatesLoading}
+						onCandidateSelect={handleMapCandidateSelect}
+						onCandidateHoverStart={handleCandidateHoverStart}
+						onCandidateHoverEnd={handleCandidateHoverEnd}
 					/>
 				</div>
 
@@ -154,7 +229,7 @@ export function DispatchPage() {
 					/>
 				</div>
 			</div>
-		{/* Assignment Drawer (Story 8.2) */}
+		{/* Assignment Drawer (Story 8.2 + 8.3) */}
 			<AssignmentDrawer
 				isOpen={isAssignmentDrawerOpen}
 				onClose={handleCloseAssignmentDrawer}
@@ -168,6 +243,10 @@ export function DispatchPage() {
 							}
 						: undefined
 				}
+				// Story 8.3: Multi-base visualization callbacks
+				onCandidateHoverStart={handleCandidateHoverStart}
+				onCandidateHoverEnd={handleCandidateHoverEnd}
+				onSelectedCandidateChange={handleSelectedCandidateChange}
 			/>
 		</div>
 	);

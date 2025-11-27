@@ -25,6 +25,24 @@ export interface CandidateCost {
 	total: number;
 }
 
+/**
+ * Story 8.3: Route segment details for visualization
+ */
+export interface RouteSegment {
+	distanceKm: number;
+	durationMinutes: number;
+	polyline?: string; // Encoded polyline (optional, for Google API routes)
+}
+
+/**
+ * Story 8.3: All route segments for a candidate
+ */
+export interface CandidateSegments {
+	approach: RouteSegment;
+	service: RouteSegment;
+	return: RouteSegment;
+}
+
 export interface AssignmentCandidate {
 	vehicleId: string;
 	vehicleName: string;
@@ -36,6 +54,9 @@ export interface AssignmentCandidate {
 	baseId: string;
 	baseName: string;
 	baseDistanceKm: number;
+	// Story 8.3: Base coordinates for map visualization
+	baseLatitude: number;
+	baseLongitude: number;
 	driverId: string | null;
 	driverName: string | null;
 	driverLicenses: string[];
@@ -44,6 +65,23 @@ export interface AssignmentCandidate {
 	compliance: CandidateCompliance;
 	estimatedCost: CandidateCost;
 	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
+	// Story 8.3: Segment details for route visualization
+	segments: CandidateSegments;
+}
+
+/**
+ * Story 8.3: Candidate base for map visualization
+ */
+export interface CandidateBase {
+	vehicleId: string;
+	baseId: string;
+	baseName: string;
+	latitude: number;
+	longitude: number;
+	isSelected: boolean;
+	isHovered: boolean;
+	estimatedCost: number;
+	segments: CandidateSegments;
 }
 
 export interface AssignmentCandidatesResponse {

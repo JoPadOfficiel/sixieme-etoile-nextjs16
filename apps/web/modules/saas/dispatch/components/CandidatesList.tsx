@@ -1,21 +1,25 @@
 "use client";
 
+import { useMemo } from "react";
 import { Skeleton } from "@ui/components/skeleton";
 import { Car } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { CandidateRow } from "./CandidateRow";
 import type { AssignmentCandidate } from "../types/assignment";
+import { getBestCandidate, getCostDifference, isBestCandidate } from "../hooks/useRouteVisualization";
 
 /**
  * CandidatesList Component
  *
  * Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
+ * Story 8.3: Multi-Base Optimisation & Visualisation - Added hover callbacks and cost comparison
  *
  * List of candidate vehicle/driver pairs for assignment.
  *
  * @see AC2: Candidate List Display
  * @see AC10: Empty State and Loading
+ * @see Story 8.3 AC4: Cost Comparison Visualization
  */
 
 interface CandidatesListProps {
@@ -24,6 +28,9 @@ interface CandidatesListProps {
 	onSelect: (candidateId: string) => void;
 	isLoading: boolean;
 	className?: string;
+	// Story 8.3: Hover callbacks for map preview
+	onHoverStart?: (candidateId: string) => void;
+	onHoverEnd?: () => void;
 }
 
 export function CandidatesList({
@@ -32,7 +39,12 @@ export function CandidatesList({
 	onSelect,
 	isLoading,
 	className,
+	onHoverStart,
+	onHoverEnd,
 }: CandidatesListProps) {
+	// Story 8.3: Find best candidate for cost comparison
+	const bestCandidate = useMemo(() => getBestCandidate(candidates), [candidates]);
+
 	if (isLoading) {
 		return <CandidatesListSkeleton className={className} />;
 	}
@@ -52,6 +64,10 @@ export function CandidatesList({
 					candidate={candidate}
 					isSelected={candidate.vehicleId === selectedId}
 					onSelect={onSelect}
+					onHoverStart={onHoverStart}
+					onHoverEnd={onHoverEnd}
+					costDifference={getCostDifference(candidate, bestCandidate)}
+					isBestOption={isBestCandidate(candidate, bestCandidate)}
 				/>
 			))}
 		</div>

@@ -589,6 +589,9 @@ export const missionsRouter = new Hono()
 					baseId: candidate.baseId,
 					baseName: candidate.baseName,
 					baseDistanceKm: candidate.haversineDistanceKm,
+					// Story 8.3: Add base coordinates for map visualization
+					baseLatitude: candidate.baseLocation.lat,
+					baseLongitude: candidate.baseLocation.lng,
 					driverId: driver?.id ?? null,
 					driverName: driver
 						? `${driver.firstName} ${driver.lastName}`
@@ -606,6 +609,21 @@ export const missionsRouter = new Hono()
 						total: Math.round(candidate.internalCost * 100) / 100,
 					},
 					routingSource: candidate.routingSource,
+					// Story 8.3: Add segment details for route visualization
+					segments: {
+						approach: {
+							distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
+							durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+						},
+						service: {
+							distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
+							durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+						},
+						return: {
+							distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
+							durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+						},
+					},
 				};
 			});
 

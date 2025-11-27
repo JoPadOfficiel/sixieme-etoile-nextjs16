@@ -2053,6 +2053,15 @@
 					"service": "Service",
 					"return": "Return",
 					"total": "Total"
+				},
+				"costComparison": {
+					"best": "Best option",
+					"difference": "+{amount} vs best",
+					"segments": {
+						"approach": "Approach (base → pickup)",
+						"service": "Service (pickup → dropoff)",
+						"return": "Return (dropoff → base)"
+					}
 				}
 			},
 			"empty": {
@@ -2067,7 +2076,19 @@
 			"route": "Route",
 			"base": "Base",
 			"nearbyBases": "Nearby Bases",
-			"selectMission": "Select a mission to view route details"
+			"selectMission": "Select a mission to view route details",
+			"candidateBase": "Candidate Base",
+			"candidateBases": "Candidate Bases",
+			"otherBase": "Other Base",
+			"otherBases": "Other Bases",
+			"approachRoute": "Approach",
+			"serviceRoute": "Service",
+			"returnRoute": "Return",
+			"totalCost": "Total Cost",
+			"noCandidates": "No candidate bases within range",
+			"loadingRoutes": "Loading routes...",
+			"clickToSelect": "Click to select this candidate",
+			"more": "more"
 		}
 	},
 	"documents": {

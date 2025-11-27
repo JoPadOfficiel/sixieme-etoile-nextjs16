@@ -27,12 +27,14 @@ import type {
  * AssignmentDrawer Component
  *
  * Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
+ * Story 8.3: Multi-Base Optimisation & Visualisation - Added hover state for map preview
  *
  * Main drawer component for assigning vehicles/drivers to missions.
  * Opens from the right side and displays candidate list with filters.
  *
  * @see AC1: Assignment Drawer Opens on Button Click
  * @see AC6: Candidate Selection and Assignment
+ * @see Story 8.3 AC2: Route Preview on Hover
  */
 
 interface AssignmentDrawerProps {
@@ -45,6 +47,11 @@ interface AssignmentDrawerProps {
 		pickupAt: string;
 	};
 	onAssignmentComplete?: () => void;
+	// Story 8.3: Hover state callbacks for map preview
+	onCandidateHoverStart?: (candidateId: string) => void;
+	onCandidateHoverEnd?: () => void;
+	/** Story 8.3: Expose selected candidate ID to parent */
+	onSelectedCandidateChange?: (candidateId: string | null) => void;
 }
 
 export function AssignmentDrawer({
@@ -53,15 +60,24 @@ export function AssignmentDrawer({
 	missionId,
 	missionSummary,
 	onAssignmentComplete,
+	onCandidateHoverStart,
+	onCandidateHoverEnd,
+	onSelectedCandidateChange,
 }: AssignmentDrawerProps) {
 	const t = useTranslations("dispatch.assignment");
 	const { toast } = useToast();
 
 	// State
-	const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+	const [selectedCandidateId, setSelectedCandidateIdInternal] = useState<string | null>(null);
 	const [sortBy, setSortBy] = useState<CandidateSortBy>("score");
 	const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
 	const [search, setSearch] = useState("");
+
+	// Story 8.3: Wrap setSelectedCandidateId to notify parent
+	const setSelectedCandidateId = useCallback((id: string | null) => {
+		setSelectedCandidateIdInternal(id);
+		onSelectedCandidateChange?.(id);
+	}, [onSelectedCandidateChange]);
 
 	// Fetch candidates
 	const {
@@ -159,7 +175,7 @@ export function AssignmentDrawer({
 				onClose();
 			}
 		},
-		[onClose],
+		[onClose, setSelectedCandidateId],
 	);
 
 	// Format pickup time
@@ -205,6 +221,8 @@ export function AssignmentDrawer({
 						onSelect={setSelectedCandidateId}
 						isLoading={candidatesLoading}
 						className="flex-1 max-h-[calc(100vh-20rem)]"
+						onHoverStart={onCandidateHoverStart}
+						onHoverEnd={onCandidateHoverEnd}
 					/>
 				</div>
 

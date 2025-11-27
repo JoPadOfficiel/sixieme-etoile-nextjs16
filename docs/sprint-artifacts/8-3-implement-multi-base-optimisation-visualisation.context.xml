@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>8-3</story-id>
+    <story-name>Implement Multi-Base Optimisation & Visualisation</story-name>
+    <epic>Epic 8 – Dispatch & Strategic Optimisation</epic>
+    <created>2025-11-27</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Dispatchers need to compare vehicle/base options visually to make optimal assignment decisions.
+      Currently, the AssignmentDrawer (Story 8.2) shows candidates with flexibility scores and costs,
+      but there is no visual comparison on the map showing alternative bases and routes.
+      Dispatchers cannot easily see WHY one base is better than another without visual context.
+    </summary>
+    <business-impact>
+      - Suboptimal assignments due to lack of visual comparison
+      - Increased deadhead costs when dispatchers cannot see route differences
+      - Slower decision-making without visual aids
+      - Reduced confidence in assignment choices
+    </business-impact>
+    <user-pain-points>
+      - Cannot visualize approach routes from different bases
+      - No visual indication of which bases are candidates vs eliminated
+      - Cannot compare total trip cost visually across options
+      - Map does not update when hovering/selecting different candidates
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Enable dispatchers to visually compare multi-base options on the map,
+      seeing approach/service/return routes for each candidate to make informed decisions.
+    </primary>
+    <secondary>
+      - Highlight candidate bases on the map with visual differentiation
+      - Show route polylines for selected candidate (approach + service + return)
+      - Display cost/margin comparison for each base option
+      - Reuse existing vehicle-selection.ts service logic
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - Enhance DispatchMap to show candidate bases from AssignmentDrawer
+      - Add route visualization for approach (base→pickup), service (pickup→dropoff), return (dropoff→base)
+      - Highlight selected candidate's route on map
+      - Show alternative bases as markers with visual distinction
+      - Display cost comparison overlay on map or in drawer
+      - Integrate with existing selectOptimalVehicle service
+    </in-scope>
+    <out-of-scope>
+      - Real-time traffic updates
+      - Route optimization algorithms (use existing)
+      - Driver scheduling conflicts (Story 5.5)
+      - Chaining optimization (Story 8.4)
+      - Empty leg detection (Story 8.5)
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Must reuse vehicle-selection.ts service (Story 4.5)
+      - Must integrate with existing DispatchMap component
+      - Must work with Google Maps API (or Haversine fallback)
+      - Performance: Map updates should be smooth (&lt;100ms)
+    </technical>
+    <business>
+      - EUR only for cost display
+      - Europe/Paris timezone for all times
+      - Must respect organization-level multi-tenancy
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Google Maps API rate limits when fetching routes for multiple candidates</description>
+      <mitigation>Use cached routing data from candidates endpoint; limit live route fetching</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Map performance with many polylines</description>
+      <mitigation>Only show routes for selected/hovered candidate, not all at once</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-services>
+      <service name="vehicle-selection.ts" path="packages/api/src/services/vehicle-selection.ts">
+        <description>Multi-base candidate selection with Haversine pre-filter and routing</description>
+        <key-functions>
+          - selectOptimalVehicle(): Main entry point
+          - filterByHaversineDistance(): Pre-filter bases
+          - getRoutingForCandidates(): Get approach/service/return segments
+          - CandidateWithRouting: Type with all segment data
+        </key-functions>
+        <reuse-strategy>
+          The candidates endpoint already returns routing data (approachDistanceKm, serviceDistanceKm, returnDistanceKm).
+          Frontend needs to use this data to draw polylines on the map.
+        </reuse-strategy>
+      </service>
+      <service name="missions.ts" path="packages/api/src/routes/vtc/missions.ts">
+        <description>Missions API including GET /:id/candidates endpoint</description>
+        <key-endpoints>
+          - GET /missions/:id/candidates: Returns AssignmentCandidate[] with routing data
+        </key-endpoints>
+      </service>
+    </existing-services>
+
+    <existing-components>
+      <component name="DispatchMap" path="apps/web/modules/saas/dispatch/components/DispatchMap.tsx">
+        <description>Google Map showing mission route and bases</description>
+        <current-features>
+          - Pickup/dropoff markers
+          - Route polyline (service segment only)
+          - Operating bases markers
+        </current-features>
+        <enhancement-needed>
+          - Accept candidate bases as prop
+          - Show approach/return polylines for selected candidate
+          - Highlight candidate bases vs other bases
+          - Support hover state to preview routes
+        </enhancement-needed>
+      </component>
+      <component name="AssignmentDrawer" path="apps/web/modules/saas/dispatch/components/AssignmentDrawer.tsx">
+        <description>Drawer for selecting vehicle/driver candidates</description>
+        <integration-point>
+          Pass selected/hovered candidate to DispatchMap for visualization
+        </integration-point>
+      </component>
+      <component name="CandidateRow" path="apps/web/modules/saas/dispatch/components/CandidateRow.tsx">
+        <description>Individual candidate row with score, compliance, cost</description>
+        <enhancement-needed>
+          - Add onHover callback to trigger map preview
+          - Show base location indicator
+        </enhancement-needed>
+      </component>
+    </existing-components>
+
+    <data-structures>
+      <type name="AssignmentCandidate">
+        <fields>
+          - vehicleId, vehicleName, vehicleCategory
+          - baseId, baseName, baseDistanceKm
+          - driverId, driverName, driverLicenses
+          - flexibilityScore, scoreBreakdown
+          - compliance: { status, warnings }
+          - estimatedCost: { approach, service, return, total }
+          - routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE"
+        </fields>
+        <missing-for-visualization>
+          - baseLatitude, baseLongitude (needed for map markers)
+          - Route polyline coordinates (or we reconstruct from pickup/dropoff/base)
+        </missing-for-visualization>
+      </type>
+    </data-structures>
+
+    <api-changes-needed>
+      <change type="enhancement">
+        <endpoint>GET /missions/:id/candidates</endpoint>
+        <description>Add base coordinates to response for map visualization</description>
+        <new-fields>
+          - baseLatitude: number
+          - baseLongitude: number
+        </new-fields>
+      </change>
+    </api-changes-needed>
+  </technical-context>
+
+  <dependencies>
+    <dependency status="done">
+      <id>4-5</id>
+      <name>Multi-Base Candidate Selection & Pre-Filter</name>
+      <provides>selectOptimalVehicle service, CandidateWithRouting type</provides>
+    </dependency>
+    <dependency status="done">
+      <id>8-1</id>
+      <name>Dispatch Screen Layout</name>
+      <provides>DispatchMap component, DispatchPage layout</provides>
+    </dependency>
+    <dependency status="done">
+      <id>8-2</id>
+      <name>Assignment Drawer</name>
+      <provides>AssignmentDrawer, CandidatesList, useAssignmentCandidates hook</provides>
+    </dependency>
+    <dependency status="done">
+      <id>5-1</id>
+      <name>Fleet Models & UI</name>
+      <provides>Vehicle, OperatingBase models with coordinates</provides>
+    </dependency>
+  </dependencies>
+
+  <acceptance-criteria-preview>
+    <ac id="AC1">Given a mission with multiple feasible bases/vehicles, when I open the assignment drawer, then the map shows candidate bases as distinct markers</ac>
+    <ac id="AC2">Given candidate bases on the map, when I hover over a candidate in the drawer, then the map highlights that base and shows the approach route</ac>
+    <ac id="AC3">Given a selected candidate, when I view the map, then I see three route segments: approach (gray), service (blue), return (gray)</ac>
+    <ac id="AC4">Given multiple candidates, when I compare them, then I can see total internal cost and margin for each option</ac>
+    <ac id="AC5">Given the map with candidates, when I click a base marker, then the corresponding candidate is selected in the drawer</ac>
+  </acceptance-criteria-preview>
+
+  <related-documents>
+    <document type="prd" path="docs/bmad/prd.md">
+      <relevant-sections>FR17-FR20, FR51 (Multi-base dispatch)</relevant-sections>
+    </document>
+    <document type="tech-spec" path="docs/bmad/tech-spec.md">
+      <relevant-sections>Fleet & Operations Context, Pricing & Costing Context</relevant-sections>
+    </document>
+    <document type="ux-spec" path="docs/bmad/ux-design-specification.md">
+      <relevant-sections>8.8 Dispatch Screen, Assignment Drawer</relevant-sections>
+    </document>
+    <document type="epic" path="docs/bmad/epics.md">
+      <relevant-sections>Story 8.3: Implement Multi-Base Optimisation & Visualisation</relevant-sections>
+    </document>
+  </related-documents>
+</story-context>

@@ -26,23 +26,35 @@ import type { AssignmentCandidate } from "../types/assignment";
  * CandidateRow Component
  *
  * Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
+ * Story 8.3: Multi-Base Optimisation & Visualisation - Added hover callbacks
  *
  * Individual candidate row in the assignment drawer.
  * Shows vehicle, driver, score, compliance, and cost.
  *
  * @see AC2: Candidate List Display
+ * @see Story 8.3 AC2: Route Preview on Hover
  */
 
 interface CandidateRowProps {
 	candidate: AssignmentCandidate;
 	isSelected: boolean;
 	onSelect: (candidateId: string) => void;
+	// Story 8.3: Hover callbacks for map preview
+	onHoverStart?: (candidateId: string) => void;
+	onHoverEnd?: () => void;
+	/** Story 8.3: Show cost comparison with best option */
+	costDifference?: number;
+	isBestOption?: boolean;
 }
 
 export function CandidateRow({
 	candidate,
 	isSelected,
 	onSelect,
+	onHoverStart,
+	onHoverEnd,
+	costDifference,
+	isBestOption = false,
 }: CandidateRowProps) {
 	const t = useTranslations("dispatch.assignment.candidate");
 
@@ -56,6 +68,8 @@ export function CandidateRow({
 				isSelected && "border-primary bg-primary/5 ring-1 ring-primary/20",
 			)}
 			onClick={() => onSelect(candidate.vehicleId)}
+			onMouseEnter={() => onHoverStart?.(candidate.vehicleId)}
+			onMouseLeave={() => onHoverEnd?.()}
 			data-testid="candidate-row"
 			data-selected={isSelected}
 		>
@@ -139,9 +153,22 @@ export function CandidateRow({
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<div className="flex items-center gap-1 text-sm font-medium">
-									<Euro className="size-3.5 text-muted-foreground" />
-									<span>{candidate.estimatedCost.total.toFixed(2)}</span>
+								<div className="flex flex-col items-end gap-0.5">
+									<div className="flex items-center gap-1 text-sm font-medium">
+										<Euro className="size-3.5 text-muted-foreground" />
+										<span>{candidate.estimatedCost.total.toFixed(2)}</span>
+									</div>
+									{/* Story 8.3: Cost comparison indicator */}
+									{isBestOption && (
+										<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400">
+											{t("costComparison.best")}
+										</Badge>
+									)}
+									{!isBestOption && costDifference !== undefined && costDifference > 0 && (
+										<span className="text-[10px] text-muted-foreground">
+											+€{costDifference.toFixed(2)}
+										</span>
+									)}
 								</div>
 							</TooltipTrigger>
 							<TooltipContent side="left">

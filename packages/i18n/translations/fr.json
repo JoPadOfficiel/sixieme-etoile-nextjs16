@@ -2053,6 +2053,15 @@
 					"service": "Service",
 					"return": "Retour",
 					"total": "Total"
+				},
+				"costComparison": {
+					"best": "Meilleure option",
+					"difference": "+{amount} vs meilleur",
+					"segments": {
+						"approach": "Approche (base → prise en charge)",
+						"service": "Service (prise en charge → dépose)",
+						"return": "Retour (dépose → base)"
+					}
 				}
 			},
 			"empty": {
@@ -2067,7 +2076,19 @@
 			"route": "Trajet",
 			"base": "Base",
 			"nearbyBases": "Bases à proximité",
-			"selectMission": "Sélectionnez une mission pour voir les détails du trajet"
+			"selectMission": "Sélectionnez une mission pour voir les détails du trajet",
+			"candidateBase": "Base candidate",
+			"candidateBases": "Bases candidates",
+			"otherBase": "Autre base",
+			"otherBases": "Autres bases",
+			"approachRoute": "Approche",
+			"serviceRoute": "Service",
+			"returnRoute": "Retour",
+			"totalCost": "Coût total",
+			"noCandidates": "Aucune base candidate à portée",
+			"loadingRoutes": "Chargement des trajets...",
+			"clickToSelect": "Cliquez pour sélectionner ce candidat",
+			"more": "autres"
 		}
 	},
 	"documents": {
