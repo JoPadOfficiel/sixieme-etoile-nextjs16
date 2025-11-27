@@ -1408,6 +1408,8 @@
 			"viewEditComingSoon": "Quote details page coming soon",
 			"duplicate": "Duplicate",
 			"convertToInvoice": "Convert to Invoice",
+			"convertSuccess": "Invoice created successfully",
+			"convertError": "Failed to create invoice",
 			"cancel": "Cancel Quote"
 		},
 		"pagination": {
@@ -1556,6 +1558,8 @@
 				"rejectSuccess": "Quote marked as rejected",
 				"rejectError": "Failed to reject quote",
 				"invoiceComingSoon": "Invoice creation coming soon",
+				"convertSuccess": "Invoice created successfully",
+				"convertError": "Failed to create invoice",
 				"notesUpdated": "Notes updated",
 				"notesError": "Failed to update notes"
 			},

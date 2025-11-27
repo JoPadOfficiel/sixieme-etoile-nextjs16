@@ -3,12 +3,14 @@
 import { Skeleton } from "@ui/components/skeleton";
 import { useToast } from "@ui/hooks/use-toast";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { QuoteHeader } from "./QuoteHeader";
 import { QuoteCommercialSummary } from "./QuoteCommercialSummary";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
 import { QuoteActivityLog } from "./QuoteActivityLog";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import type { PricingResult, TripAnalysis } from "../types";
 
 interface QuoteDetailPageProps {
@@ -29,12 +31,22 @@ interface QuoteDetailPageProps {
 export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   const t = useTranslations();
   const { toast } = useToast();
+  const router = useRouter();
+  const { activeOrganization } = useActiveOrganization();
 
   // Fetch quote data
   const { data: quote, isLoading, error } = useQuoteDetail(quoteId);
 
-  // Quote actions
-  const { sendQuote, acceptQuote, rejectQuote, updateNotes, isLoading: isActionsLoading } = useQuoteActions();
+  // Quote actions (Story 7.2: Added convertToInvoice and isConverting)
+  const { 
+    sendQuote, 
+    acceptQuote, 
+    rejectQuote, 
+    updateNotes, 
+    convertToInvoice,
+    isLoading: isActionsLoading,
+    isConverting,
+  } = useQuoteActions();
 
   // Handle send quote
   const handleSend = async () => {
@@ -63,11 +75,26 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
     }
   };
 
-  // Handle convert to invoice (placeholder)
-  const handleConvertToInvoice = () => {
-    toast({
-      title: t("quotes.detail.actions.invoiceComingSoon"),
-    });
+  /**
+   * Story 7.2: Handle convert to invoice
+   * Calls API to create invoice with deep-copy semantics
+   * Navigates to the created invoice on success
+   */
+  const handleConvertToInvoice = async () => {
+    try {
+      const invoice = await convertToInvoice(quoteId);
+      toast({
+        title: t("quotes.detail.actions.convertSuccess"),
+      });
+      // Navigate to the created invoice
+      router.push(`/app/${activeOrganization?.slug}/invoices/${invoice.id}`);
+    } catch (error) {
+      toast({
+        title: t("quotes.detail.actions.convertError"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   // Handle update notes
@@ -133,7 +160,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
         onAccept={handleAccept}
         onReject={handleReject}
         onConvertToInvoice={handleConvertToInvoice}
-        isLoading={isActionsLoading}
+        isLoading={isActionsLoading || isConverting}
       />
 
       {/* 3-Column Layout */}

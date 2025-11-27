@@ -14,9 +14,30 @@ interface UpdateQuoteParams {
 }
 
 /**
+ * Invoice response from API
+ * Note: Decimal fields are returned as strings from Prisma
+ * @see Story 7.2: Convert Accepted Quote to Invoice
+ */
+export interface InvoiceResponse {
+  id: string;
+  number: string;
+  status: "DRAFT" | "ISSUED" | "PAID" | "CANCELLED";
+  contactId: string;
+  quoteId: string | null;
+  totalExclVat: string;
+  totalVat: string;
+  totalInclVat: string;
+  commissionAmount: string | null;
+  issueDate: string;
+  dueDate: string;
+  notes: string | null;
+}
+
+/**
  * Hook for quote status transition actions
  * 
  * @see Story 6.3: Quote Detail with Stored tripAnalysis
+ * @see Story 7.2: Convert Accepted Quote to Invoice
  */
 export function useQuoteActions() {
   const t = useTranslations();
@@ -43,6 +64,32 @@ export function useQuoteActions() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["quote", variables.quoteId] });
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+  });
+
+  /**
+   * Story 7.2: Mutation for converting quote to invoice
+   * Uses POST /invoices/from-quote/:quoteId endpoint
+   */
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: async (quoteId: string): Promise<InvoiceResponse> => {
+      const response = await apiClient.vtc.invoices["from-quote"][":quoteId"].$post({
+        param: { quoteId },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = (errorData as { message?: string }).message || "Failed to convert quote to invoice";
+        throw new Error(errorMessage);
+      }
+
+      return response.json() as Promise<InvoiceResponse>;
+    },
+    onSuccess: (_, quoteId) => {
+      // Invalidate both quotes and invoices caches
+      queryClient.invalidateQueries({ queryKey: ["quote", quoteId] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
   });
 
@@ -122,12 +169,22 @@ export function useQuoteActions() {
     );
   };
 
+  /**
+   * Story 7.2: Convert an accepted quote to an invoice
+   * Returns the created invoice for navigation
+   */
+  const convertToInvoice = async (quoteId: string): Promise<InvoiceResponse> => {
+    return convertToInvoiceMutation.mutateAsync(quoteId);
+  };
+
   return {
     sendQuote,
     acceptQuote,
     rejectQuote,
     updateNotes,
+    convertToInvoice,
     isLoading: updateQuoteMutation.isPending,
+    isConverting: convertToInvoiceMutation.isPending,
   };
 }
 

@@ -1408,6 +1408,8 @@
 			"viewEditComingSoon": "Page de détails du devis bientôt disponible",
 			"duplicate": "Dupliquer",
 			"convertToInvoice": "Convertir en facture",
+			"convertSuccess": "Facture créée avec succès",
+			"convertError": "Échec de la création de la facture",
 			"cancel": "Annuler le devis"
 		},
 		"pagination": {
@@ -1556,6 +1558,8 @@
 				"rejectSuccess": "Devis marqué comme refusé",
 				"rejectError": "Échec du refus du devis",
 				"invoiceComingSoon": "Création de facture bientôt disponible",
+				"convertSuccess": "Facture créée avec succès",
+				"convertError": "Échec de la création de la facture",
 				"notesUpdated": "Notes mises à jour",
 				"notesError": "Échec de la mise à jour des notes"
 			},

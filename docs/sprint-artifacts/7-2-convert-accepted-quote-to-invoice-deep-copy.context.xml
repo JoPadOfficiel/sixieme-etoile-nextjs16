@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>7-2</story-id>
+    <story-key>7-2-convert-accepted-quote-to-invoice-deep-copy</story-key>
+    <epic>Epic 7 – Invoicing & Documents</epic>
+    <title>Convert Accepted Quote to Invoice with Deep-Copy Semantics</title>
+    <created>2025-11-27</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Les opérateurs ne peuvent pas convertir un devis accepté en facture depuis l'interface utilisateur.
+      Le bouton "Convertir en facture" existe mais affiche seulement un message "Coming soon".
+      L'API backend est implémentée mais non connectée au frontend.
+    </summary>
+    <business-impact>
+      - Perte de temps : les opérateurs doivent créer manuellement les factures
+      - Risque d'erreur : les valeurs commerciales peuvent être mal recopiées
+      - Non-conformité FR33-FR34 : la sémantique deep-copy n'est pas garantie côté UI
+    </business-impact>
+    <current-state>
+      - API POST /invoices/from-quote/:quoteId existe et fonctionne
+      - Frontend QuoteDetailPage a un placeholder handleConvertToInvoice
+      - Frontend QuotesTable a un TODO pour handleConvertToInvoice
+      - Hook useQuoteActions n'a pas de fonction convertToInvoice
+    </current-state>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Implémenter la conversion complète devis → facture avec deep-copy depuis l'UI
+    </primary>
+    <secondary>
+      <item>Ajouter la fonction convertToInvoice au hook useQuoteActions</item>
+      <item>Connecter QuoteDetailPage et QuotesTable à l'API</item>
+      <item>Naviguer vers la facture créée après conversion</item>
+      <item>Afficher des messages de succès/erreur appropriés</item>
+      <item>Ajouter les traductions manquantes</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Hook useQuoteActions : ajouter convertToInvoice</item>
+      <item>QuoteDetailPage : implémenter handleConvertToInvoice réel</item>
+      <item>QuotesTable : implémenter handleConvertToInvoice réel</item>
+      <item>Navigation vers /invoices/[id] après création</item>
+      <item>Traductions FR pour les messages de succès/erreur</item>
+      <item>Tests unitaires et E2E</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification de l'API backend (déjà implémentée)</item>
+      <item>Modification du modèle Prisma Invoice/InvoiceLine</item>
+      <item>Génération PDF (Story 7.5)</item>
+      <item>Modification des calculs de TVA/commission (déjà dans l'API)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Utiliser l'API existante POST /invoices/from-quote/:quoteId</item>
+      <item>Respecter les patterns React Query existants</item>
+      <item>Invalider les caches quotes et invoices après création</item>
+      <item>Gérer les erreurs API (quote non-ACCEPTED, facture déjà existante)</item>
+    </technical>
+    <business>
+      <item>FR33: Seuls les devis ACCEPTED peuvent être convertis</item>
+      <item>FR34: Deep-copy obligatoire (géré par l'API)</item>
+      <item>Une seule facture par devis (unicité quoteId)</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Double-clic créant deux factures</description>
+      <mitigation>Désactiver le bouton pendant le chargement (isLoading)</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Navigation échouée si la facture n'est pas trouvée</description>
+      <mitigation>Vérifier la réponse API avant navigation</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/routes/vtc/invoices.ts" relevance="high">
+        API endpoint POST /invoices/from-quote/:quoteId (lignes 347-492)
+        - Vérifie que le quote est ACCEPTED
+        - Vérifie qu'aucune facture n'existe déjà
+        - Crée la facture avec deep-copy des valeurs
+        - Calcule automatiquement TVA et commission
+        - Retourne la facture complète avec lignes
+      </file>
+      <file path="apps/web/modules/saas/quotes/hooks/useQuoteActions.ts" relevance="high">
+        Hook existant pour les actions sur les devis
+        - sendQuote, acceptQuote, rejectQuote, updateNotes
+        - Pattern mutation React Query à suivre
+        - Manque: convertToInvoice
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/QuoteDetailPage.tsx" relevance="high">
+        Page détail devis avec placeholder handleConvertToInvoice (ligne 67-71)
+        - Affiche toast "invoiceComingSoon"
+        - Doit appeler le hook et naviguer vers la facture
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/QuotesTable.tsx" relevance="high">
+        Table des devis avec TODO handleConvertToInvoice (ligne 157-161)
+        - Affiche console.log seulement
+        - Doit appeler le hook et naviguer vers la facture
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/QuoteHeader.tsx" relevance="medium">
+        Header avec bouton "Convert to Invoice" (ligne 110-119)
+        - Bouton conditionnel si status === ACCEPTED
+        - Appelle onConvertToInvoice prop
+      </file>
+    </existing-code>
+
+    <api-client-pattern>
+      L'API client utilise Hono RPC. Pour appeler POST /invoices/from-quote/:quoteId:
+      ```typescript
+      const response = await apiClient.vtc.invoices["from-quote"][":quoteId"].$post({
+        param: { quoteId },
+      });
+      ```
+    </api-client-pattern>
+
+    <dependencies>
+      <dependency>Story 7.1 (done): Invoice/InvoiceLine models et UI</dependency>
+      <dependency>Story 6.4 (done): Quote lifecycle (ACCEPTED status)</dependency>
+      <dependency>API /invoices/from-quote/:quoteId (implémentée)</dependency>
+    </dependencies>
+  </technical-context>
+
+  <acceptance-criteria-preview>
+    <criterion id="AC1">
+      Given un devis avec status ACCEPTED
+      When je clique sur "Convertir en facture" depuis la page détail
+      Then une facture est créée avec deep-copy des valeurs
+      And je suis redirigé vers la page détail de la facture
+    </criterion>
+    <criterion id="AC2">
+      Given un devis avec status ACCEPTED dans la liste
+      When je clique sur "Convertir en facture" dans le menu actions
+      Then une facture est créée
+      And je suis redirigé vers la page détail de la facture
+    </criterion>
+    <criterion id="AC3">
+      Given un devis qui a déjà une facture associée
+      When je tente de le convertir
+      Then un message d'erreur s'affiche
+      And aucune facture n'est créée
+    </criterion>
+    <criterion id="AC4">
+      Given la conversion réussie
+      When la facture est créée
+      Then les valeurs commerciales (prix, TVA, commission) sont copiées
+      And les changements futurs de configuration n'affectent pas cette facture
+    </criterion>
+  </acceptance-criteria-preview>
+
+  <test-strategy>
+    <unit-tests>
+      <test>useQuoteActions.convertToInvoice appelle l'API correctement</test>
+      <test>useQuoteActions.convertToInvoice gère les erreurs</test>
+    </unit-tests>
+    <integration-tests>
+      <test>POST /invoices/from-quote/:quoteId avec quote ACCEPTED</test>
+      <test>POST /invoices/from-quote/:quoteId avec quote non-ACCEPTED (400)</test>
+      <test>POST /invoices/from-quote/:quoteId avec facture existante (400)</test>
+    </integration-tests>
+    <e2e-tests>
+      <test>Conversion depuis QuoteDetailPage avec navigation</test>
+      <test>Conversion depuis QuotesTable avec navigation</test>
+      <test>Vérification des données en base après conversion</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

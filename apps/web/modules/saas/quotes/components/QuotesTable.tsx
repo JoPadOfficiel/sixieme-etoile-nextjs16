@@ -28,7 +28,7 @@ import {
 import { useToast } from "@ui/hooks/use-toast";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { apiClient } from "@shared/lib/api-client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BuildingIcon,
   ChevronLeftIcon,
@@ -142,6 +142,30 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
   };
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  /**
+   * Story 7.2: Mutation for converting quote to invoice from table
+   */
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const response = await apiClient.vtc.invoices["from-quote"][":quoteId"].$post({
+        param: { quoteId },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = (errorData as { message?: string }).message || "Failed to convert quote to invoice";
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+  });
 
   const handleRowClick = (quote: Quote) => {
     // Story 6.3: Navigate to quote detail page
@@ -154,10 +178,25 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
     console.log("Duplicate quote:", quote.id);
   };
 
-  const handleConvertToInvoice = (quote: Quote, e: React.MouseEvent) => {
+  /**
+   * Story 7.2: Handle convert to invoice from table dropdown
+   */
+  const handleConvertToInvoice = async (quote: Quote, e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Implement convert to invoice in Epic 7
-    console.log("Convert to invoice:", quote.id);
+    try {
+      const invoice = await convertToInvoiceMutation.mutateAsync(quote.id);
+      toast({
+        title: t("quotes.actions.convertSuccess"),
+      });
+      // Navigate to the created invoice
+      router.push(`/app/${activeOrganization?.slug}/invoices/${(invoice as { id: string }).id}`);
+    } catch (error) {
+      toast({
+        title: t("quotes.actions.convertError"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   const handleCancel = async (quote: Quote, e: React.MouseEvent) => {
