@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>6-7</story-id>
+    <story-title>Integrate TripTransparencyPanel & Profitability Indicator Across Screens</story-title>
+    <epic>Epic 6 - Quotes & Operator Cockpit</epic>
+    <created-date>2025-11-27</created-date>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les composants TripTransparencyPanel et ProfitabilityIndicator existent et fonctionnent dans le module quotes, 
+      mais ils ne sont pas encore intégrés de manière cohérente sur tous les écrans qui en ont besoin :
+      
+      1. **Quotes List** : Utilise ProfitabilityIndicator mais pas de preview Trip Transparency
+      2. **Create Quote** : Utilise les deux composants correctement
+      3. **Quote Detail** : Utilise les deux composants correctement
+      4. **Dispatch Screen** : N'existe pas encore - doit utiliser les mêmes composants
+      
+      L'objectif est de garantir une expérience cohérente où les opérateurs voient les mêmes informations 
+      de pricing et de coût de la même manière partout dans l'application.
+    </description>
+    <business-impact>
+      - Incohérence UX si les indicateurs de rentabilité diffèrent entre écrans
+      - Risque de confusion pour les opérateurs qui passent d'un écran à l'autre
+      - Duplication de code si chaque écran implémente sa propre version
+      - Difficulté de maintenance si les règles de calcul de marge changent
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">
+      Centraliser TripTransparencyPanel et ProfitabilityIndicator dans un module shared réutilisable
+    </objective>
+    <objective id="2">
+      Garantir que les mêmes seuils de profitabilité (green/orange/red) sont utilisés partout
+    </objective>
+    <objective id="3">
+      Créer une version compacte de TripTransparencyPanel pour les listes (preview mode)
+    </objective>
+    <objective id="4">
+      Préparer l'intégration pour le futur écran Dispatch (Epic 8)
+    </objective>
+    <objective id="5">
+      Documenter les props et l'usage des composants pour les développeurs
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Déplacer ProfitabilityIndicator vers un module shared (déjà fait)</item>
+      <item>Créer un module shared pour TripTransparencyPanel</item>
+      <item>Créer TripTransparencyPreview - version compacte pour les listes</item>
+      <item>Ajouter TripTransparencyPreview dans QuotesTable (hover ou expandable row)</item>
+      <item>Exporter les types partagés (PricingResult, TripAnalysis) depuis un module commun</item>
+      <item>Créer des hooks partagés pour la transformation des données</item>
+      <item>Ajouter des tests unitaires pour les composants partagés</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Implémentation complète de l'écran Dispatch (Epic 8)</item>
+      <item>Modification des calculs de pricing/marge (déjà implémentés)</item>
+      <item>Ajout de nouvelles fonctionnalités aux composants existants</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Les composants doivent rester data-driven (props depuis l'API) avec un minimum de logique métier embarquée
+    </constraint>
+    <constraint type="technical">
+      Les seuils de profitabilité doivent provenir de la configuration (OrganizationPricingSettings.defaultMarginPercent)
+    </constraint>
+    <constraint type="ux">
+      La version preview ne doit pas surcharger les listes - utiliser des tooltips ou expandable rows
+    </constraint>
+    <constraint type="performance">
+      Le chargement des données de trip analysis ne doit pas ralentir le rendu des listes
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      Breaking changes si les imports sont modifiés sans mise à jour des consommateurs
+    </risk>
+    <risk severity="low">
+      Incohérence temporaire si certains écrans ne sont pas mis à jour simultanément
+    </risk>
+    <risk severity="medium">
+      Performance dégradée si TripTransparencyPreview charge trop de données dans les listes
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component path="apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx">
+        Composant existant dans shared - déjà bien positionné
+        Props: marginPercent, greenThreshold, orangeThreshold, compact, className
+        Utilisé dans: QuotesTable, TripTransparencyPanel
+      </component>
+      <component path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Composant principal - actuellement dans le module quotes
+        Props: pricingResult, isLoading, className
+        Utilisé dans: CreateQuoteCockpit, QuoteDetailPage
+        À déplacer vers shared pour réutilisation
+      </component>
+      <component path="apps/web/modules/saas/quotes/components/QuotesTable.tsx">
+        Table des devis - utilise ProfitabilityIndicator
+        Candidat pour intégrer TripTransparencyPreview
+      </component>
+      <component path="apps/web/modules/saas/quotes/types.ts">
+        Types PricingResult, TripAnalysis, etc.
+        À exporter depuis un module partagé
+      </component>
+    </existing-components>
+
+    <existing-types>
+      <type name="PricingResult">
+        Interface complète pour les résultats de pricing
+        Contient: pricingMode, price, internalCost, marginPercent, tripAnalysis, complianceResult
+      </type>
+      <type name="TripAnalysis">
+        Structure JSON pour l'analyse de trajet
+        Contient: segments (approach/service/return), costBreakdown, vehicleSelection
+      </type>
+      <type name="ProfitabilityLevel">
+        Enum: "green" | "orange" | "red"
+      </type>
+    </existing-types>
+
+    <shared-module-structure>
+      <proposed-structure>
+        apps/web/modules/saas/shared/
+        ├── components/
+        │   ├── ProfitabilityIndicator.tsx (existant)
+        │   ├── TripTransparencyPanel.tsx (à créer/déplacer)
+        │   ├── TripTransparencyPreview.tsx (à créer)
+        │   └── index.ts (exports)
+        ├── types/
+        │   ├── pricing.ts (PricingResult, TripAnalysis, etc.)
+        │   └── index.ts
+        └── hooks/
+            ├── usePricingResultTransform.ts (à créer)
+            └── index.ts
+      </proposed-structure>
+    </shared-module-structure>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" title="Composants dans module shared">
+      Given les composants TripTransparencyPanel et ProfitabilityIndicator
+      When je vérifie leur emplacement
+      Then ils sont tous deux dans apps/web/modules/saas/shared/components/
+      And ils sont exportés via un index.ts
+    </criterion>
+    
+    <criterion id="AC2" title="Types partagés centralisés">
+      Given les types PricingResult, TripAnalysis, ProfitabilityLevel
+      When je vérifie leur emplacement
+      Then ils sont définis dans apps/web/modules/saas/shared/types/
+      And les modules quotes et dispatch les importent depuis shared
+    </criterion>
+    
+    <criterion id="AC3" title="TripTransparencyPreview créé">
+      Given le besoin d'afficher un aperçu dans les listes
+      When je consulte le module shared
+      Then un composant TripTransparencyPreview existe
+      And il affiche: distance, durée, coût interne, marge, indicateur de rentabilité
+      And il est utilisable en mode tooltip ou expandable row
+    </criterion>
+    
+    <criterion id="AC4" title="QuotesTable intègre le preview">
+      Given la table des devis (QuotesTable)
+      When je survole une ligne ou clique sur un bouton d'expansion
+      Then je vois un TripTransparencyPreview avec les données du devis
+      And les données sont chargées de manière optimisée (pas de requête supplémentaire si déjà présentes)
+    </criterion>
+    
+    <criterion id="AC5" title="Seuils de profitabilité cohérents">
+      Given les seuils de profitabilité (green >= 20%, orange >= 0%, red < 0%)
+      When je consulte n'importe quel écran (Quotes list, Create, Detail, future Dispatch)
+      Then les mêmes seuils sont appliqués
+      And les couleurs et icônes sont identiques
+    </criterion>
+    
+    <criterion id="AC6" title="Pas de régression sur les écrans existants">
+      Given les écrans CreateQuoteCockpit et QuoteDetailPage
+      When je les utilise après la refactorisation
+      Then le comportement est identique à avant
+      And les tests existants passent toujours
+    </criterion>
+    
+    <criterion id="AC7" title="Documentation des composants">
+      Given les composants partagés
+      When je consulte leur code
+      Then chaque composant a des JSDoc décrivant son usage
+      And les props sont typées et documentées
+    </criterion>
+  </acceptance-criteria>
+
+  <implementation-notes>
+    <note category="architecture">
+      Créer un barrel export (index.ts) dans shared/components pour faciliter les imports:
+      import { TripTransparencyPanel, ProfitabilityIndicator } from "@saas/shared/components"
+    </note>
+    <note category="types">
+      Les types pricing doivent être dans shared/types/pricing.ts et réexportés.
+      Le module quotes/types.ts peut réexporter depuis shared pour compatibilité ascendante.
+    </note>
+    <note category="preview">
+      TripTransparencyPreview doit être léger - pas de tabs, juste les métriques clés.
+      Utiliser un Popover ou HoverCard de shadcn/ui pour l'affichage au survol.
+    </note>
+    <note category="performance">
+      Pour QuotesTable, les données tripAnalysis sont déjà dans la réponse API.
+      Pas besoin de requête supplémentaire - juste afficher les données existantes.
+    </note>
+    <note category="i18n">
+      Vérifier que toutes les traductions nécessaires existent dans les fichiers de messages.
+      Les clés sont déjà sous "quotes.create.tripTransparency.*" et "quotes.profitability.*".
+    </note>
+  </implementation-notes>
+
+  <related-stories>
+    <story id="6.1">Quotes List with Status & Profitability (utilise ProfitabilityIndicator)</story>
+    <story id="6.2">Create Quote 3-Column Cockpit (utilise TripTransparencyPanel)</story>
+    <story id="6.3">Quote Detail with Stored tripAnalysis (utilise TripTransparencyPanel)</story>
+    <story id="4.7">Compute & Expose Profitability Indicator (définit les règles de calcul)</story>
+    <story id="8.x">Future Dispatch Screen (consommera les composants partagés)</story>
+  </related-stories>
+
+  <related-frs>
+    <fr id="FR21-FR24">Shadow Calculation and Profitability Indicator</fr>
+    <fr id="FR42-FR44">Operator Cockpit UI with cost breakdown</fr>
+    <fr id="FR55">Trip Transparency with editable cost components</fr>
+  </related-frs>
+</story-context>

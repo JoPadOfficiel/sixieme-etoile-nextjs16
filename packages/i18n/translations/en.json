@@ -1452,6 +1452,10 @@
 					"wear": "Wear & Tear",
 					"driver": "Driver",
 					"parking": "Parking"
+				},
+				"preview": {
+					"title": "Trip Summary",
+					"segments": "Segments"
 				}
 			}
 		},

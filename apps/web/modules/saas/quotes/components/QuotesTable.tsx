@@ -50,6 +50,7 @@ import type { Quote, QuotesResponse, QuoteStatus } from "../types";
 import { formatPrice, formatMargin, formatTripSummary } from "../types";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
+import { TripTransparencyPreview } from "@saas/shared/components/TripTransparencyPreview";
 
 interface QuotesTableProps {
   onAddQuote: () => void;
@@ -290,9 +291,21 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
                         </div>
                       </TableCell>
 
-                      {/* Trip Summary */}
-                      <TableCell className="max-w-[200px] truncate">
-                        {formatTripSummary(quote.pickupAddress, quote.dropoffAddress)}
+                      {/* Trip Summary with Preview */}
+                      <TableCell className="max-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate">
+                            {formatTripSummary(quote.pickupAddress, quote.dropoffAddress)}
+                          </span>
+                          {quote.tripAnalysis && (
+                            <TripTransparencyPreview
+                              tripAnalysis={quote.tripAnalysis}
+                              marginPercent={quote.marginPercent}
+                              internalCost={quote.internalCost}
+                              mode="hover"
+                            />
+                          )}
+                        </div>
                       </TableCell>
 
                       {/* Date/Time */}

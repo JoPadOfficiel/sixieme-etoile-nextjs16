@@ -1452,6 +1452,10 @@
 					"wear": "Usure",
 					"driver": "Chauffeur",
 					"parking": "Parking"
+				},
+				"preview": {
+					"title": "Résumé du trajet",
+					"segments": "Segments"
 				}
 			}
 		},

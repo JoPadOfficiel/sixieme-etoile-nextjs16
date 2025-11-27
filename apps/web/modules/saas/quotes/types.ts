@@ -2,6 +2,7 @@
  * Quote types for the Quotes module
  * Story 6.1: Implement Quotes List with Status & Profitability
  * Story 6.5: Blocking and Non-Blocking Alerts
+ * Story 6.7: Types are now also available from @saas/shared/types
  */
 
 export type QuoteStatus = "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";

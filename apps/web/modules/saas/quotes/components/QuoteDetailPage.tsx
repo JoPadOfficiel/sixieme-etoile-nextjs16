@@ -96,6 +96,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
       isContractPrice: quote.pricingMode === "FIXED_GRID",
       fallbackReason: null,
       tripAnalysis,
+      complianceResult: null, // Story 6.7: Add missing complianceResult field
     };
   };
 
