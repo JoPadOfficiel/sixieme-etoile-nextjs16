@@ -1,0 +1,183 @@
+<story-context id="8-4-detect-suggest-trip-chaining-opportunities" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>4</storyId>
+    <title>Detect &amp; Suggest Trip Chaining Opportunities</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T19:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-8.4</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>dispatcher</asA>
+    <iWant>the system to detect opportunities to chain trips (where the drop-off of one mission is close in time and space to the pick-up of another)</iWant>
+    <soThat>I can reduce or eliminate deadhead segments and improve operational profitability</soThat>
+    <tasks>
+      <task id="T1">Create trip chaining detection service with time/distance thresholds</task>
+      <task id="T2">Implement API endpoint to get chaining suggestions for missions</task>
+      <task id="T3">Add chaining suggestions UI in Dispatch screen</task>
+      <task id="T4">Calculate and display estimated savings from chaining</task>
+      <task id="T5">Update shadow calculation when chaining is applied</task>
+      <task id="T6">Add unit tests for chaining detection algorithm</task>
+      <task id="T7">Add E2E tests for chaining workflow</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Chaining Detection Algorithm">
+      <given>A set of confirmed missions in a time window</given>
+      <when>The planning engine runs chaining detection</when>
+      <then>It detects where the drop-off of one mission is close in time and space to the pickup of another</then>
+      <and>Proximity is determined by configurable thresholds (default: 30min time gap, 10km distance)</and>
+    </criterion>
+    
+    <criterion id="AC2" title="Chaining Suggestions Display">
+      <given>Chaining opportunities are detected</given>
+      <when>I view the Dispatch screen</when>
+      <then>The system proposes chain suggestions (e.g., "Chain with Mission #1234")</then>
+      <and>Each suggestion shows estimated savings (reduced deadhead km/cost)</and>
+    </criterion>
+    
+    <criterion id="AC3" title="Chaining Application">
+      <given>A chaining suggestion is displayed</given>
+      <when>I click "Apply Chain" on a suggestion</when>
+      <then>The missions are linked as a chain</then>
+      <and>The shadow calculation is updated to reflect the new route (no return to base between missions)</and>
+      <and>Profitability indicators are recalculated</and>
+    </criterion>
+    
+    <criterion id="AC4" title="Savings Calculation">
+      <given>Two missions that can be chained</given>
+      <when>The chaining suggestion is generated</when>
+      <then>The system calculates:
+        - Original total cost (Mission1 full loop + Mission2 full loop)
+        - Chained cost (Mission1 approach + Mission1 service + transition + Mission2 service + Mission2 return)
+        - Savings = Original - Chained
+      </then>
+    </criterion>
+    
+    <criterion id="AC5" title="Chain Constraints">
+      <given>Potential chaining candidates</given>
+      <when>Chaining is evaluated</when>
+      <then>The system verifies:
+        - Same vehicle category compatibility
+        - Same driver/vehicle can serve both
+        - RSE compliance for combined duration
+        - Time gap allows for transition
+      </then>
+    </criterion>
+    
+    <criterion id="AC6" title="API Endpoint">
+      <given>GET /api/vtc/missions/:id/chaining-suggestions endpoint</given>
+      <when>Called with a mission ID</when>
+      <then>Returns list of chainable missions with savings estimates</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="FR52" snippet="The planning engine shall detect opportunities to chain trips and propose such chains as preferred assignments to reduce or eliminate deadhead segments." />
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 8.4" snippet="Detect &amp; Suggest Trip Chaining Opportunities - detect where drop-off of one mission is close in time and space to pickup of another." />
+      <doc path="docs/bmad/tech-spec.md" title="Tech Spec" section="Pricing &amp; Costing Context" snippet="Shadow calculation engine: approach / service / return segments. Integration with fuel prices and distance/time from external APIs." />
+      <doc path="docs/sprint-artifacts/8-1-implement-dispatch-screen-layout.md" title="Story 8.1" section="Implementation" snippet="Missions list with filters, DispatchMap, TripTransparencyPanel - foundation for dispatch UI." />
+      <doc path="docs/sprint-artifacts/8-2-implement-assignment-drawer.md" title="Story 8.2" section="Implementation" snippet="Assignment drawer with candidates, flexibility score, shadow calculation update after assignment." />
+      <doc path="docs/sprint-artifacts/8-3-implement-multi-base-optimisation-visualisation.md" title="Story 8.3" section="Implementation" snippet="Multi-base visualization, route segments (approach/service/return), cost comparison." />
+    </docs>
+    
+    <code>
+      <file path="packages/api/src/routes/vtc/missions.ts" kind="router" symbol="missionsRouter" lines="1-838" reason="Main missions API - add chaining suggestions endpoint here" />
+      <file path="packages/api/src/services/vehicle-selection.ts" kind="service" symbol="filterByHaversineDistance, getRoutingForCandidates" lines="1-595" reason="Reuse Haversine distance calculation and routing logic for chaining detection" />
+      <file path="packages/api/src/services/flexibility-score.ts" kind="service" symbol="calculateFlexibilityScore" lines="1-195" reason="Reference for scoring algorithm pattern" />
+      <file path="packages/api/src/lib/geo-utils.ts" kind="utility" symbol="haversineDistance" reason="Distance calculation between coordinates" />
+      <file path="apps/web/modules/saas/dispatch/components/DispatchPage.tsx" kind="component" symbol="DispatchPage" reason="Main dispatch page - integrate chaining suggestions UI" />
+      <file path="apps/web/modules/saas/dispatch/components/MissionsList.tsx" kind="component" symbol="MissionsList" reason="Missions list - show chaining indicators" />
+      <file path="apps/web/modules/saas/dispatch/components/MissionRow.tsx" kind="component" symbol="MissionRow" reason="Mission row - add chaining badge/action" />
+      <file path="apps/web/modules/saas/dispatch/hooks/useMissions.ts" kind="hook" symbol="useMissions, useMissionDetail" reason="Data fetching pattern for missions" />
+      <file path="apps/web/modules/saas/dispatch/types/mission.ts" kind="types" symbol="MissionListItem, MissionDetail" reason="Mission type definitions - extend for chaining" />
+    </code>
+    
+    <dependencies>
+      <ecosystem name="node">
+        <package name="@tanstack/react-query" version="^5.0.0" />
+        <package name="hono" version="^4.0.0" />
+        <package name="zod" version="^3.22.0" />
+        <package name="@prisma/client" version="^5.0.0" />
+        <package name="lucide-react" version="^0.300.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Follow existing service pattern from vehicle-selection.ts and flexibility-score.ts</constraint>
+    <constraint type="pattern">Use Hono router pattern from missions.ts for new endpoints</constraint>
+    <constraint type="pattern">Use React Query hooks pattern from useMissions.ts</constraint>
+    <constraint type="tenancy">All queries must be scoped by organizationId using withTenantFilter</constraint>
+    <constraint type="performance">Use Haversine pre-filter before detailed calculations</constraint>
+    <constraint type="ux">Chaining suggestions should be non-intrusive - shown as optional recommendations</constraint>
+    <constraint type="compliance">Chaining must respect RSE constraints for combined trip duration</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/vtc/missions/:id/chaining-suggestions" kind="REST endpoint">
+      <signature>GET /api/vtc/missions/:id/chaining-suggestions</signature>
+      <response>{
+  "suggestions": [
+    {
+      "targetMissionId": "string",
+      "targetMissionSummary": "string",
+      "chainOrder": "BEFORE" | "AFTER",
+      "transitionDistanceKm": "number",
+      "transitionDurationMinutes": "number",
+      "savings": {
+        "distanceKm": "number",
+        "costEur": "number",
+        "percentReduction": "number"
+      },
+      "compatibility": {
+        "vehicleCategory": "boolean",
+        "timeGap": "boolean",
+        "rseCompliance": "boolean"
+      }
+    }
+  ],
+  "mission": { "id": "string", "pickupAt": "string", ... }
+}</response>
+    </interface>
+    
+    <interface name="POST /api/vtc/missions/:id/apply-chain" kind="REST endpoint">
+      <signature>POST /api/vtc/missions/:id/apply-chain</signature>
+      <request>{ "targetMissionId": "string", "chainOrder": "BEFORE" | "AFTER" }</request>
+      <response>{ "success": "boolean", "chainId": "string", "updatedMissions": [...] }</response>
+    </interface>
+    
+    <interface name="ChainingService" kind="service">
+      <signature>detectChainingOpportunities(missionId: string, organizationId: string, options?: ChainingOptions): Promise&lt;ChainingSuggestion[]&gt;</signature>
+      <signature>calculateChainingSavings(mission1: Mission, mission2: Mission, settings: PricingSettings): ChainingSavings</signature>
+      <signature>applyChain(missionId: string, targetMissionId: string, chainOrder: ChainOrder): Promise&lt;ChainResult&gt;</signature>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests in packages/api/src/services/__tests__/.
+      Use Playwright MCP for E2E tests.
+      Use curl for API endpoint testing with database verification via MCP @postgres_vtc_sixiemme_etoile.
+      All acceptance criteria must be covered by at least one test.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/chaining-service.test.ts</location>
+      <location>apps/web/modules/saas/dispatch/components/__tests__/ChainingSuggestions.test.tsx</location>
+      <location>apps/web/e2e/dispatch-chaining.spec.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test chaining detection with missions at various time/distance combinations</idea>
+      <idea ac="AC1">Test threshold configuration (30min/10km defaults)</idea>
+      <idea ac="AC2">Test UI displays chaining suggestions correctly</idea>
+      <idea ac="AC3">Test chain application updates both missions</idea>
+      <idea ac="AC4">Test savings calculation accuracy</idea>
+      <idea ac="AC5">Test constraint validation (vehicle category, RSE)</idea>
+      <idea ac="AC6">Test API endpoint returns correct suggestions</idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -21,6 +21,15 @@ import {
 	type CandidateWithRouting,
 } from "../../services/vehicle-selection";
 import type { OrganizationPricingSettings } from "../../services/pricing-engine";
+import {
+	detectChainingOpportunities,
+	extractCostData,
+	estimateDropoffTime,
+	generateChainId,
+	DEFAULT_CHAINING_CONFIG,
+	type MissionForChaining,
+	type ChainingSuggestion,
+} from "../../services/chaining-service";
 
 /**
  * Missions Router
@@ -835,3 +844,311 @@ function determineComplianceStatus(
 
 	return { status: "OK", warnings: [] };
 }
+
+// ============================================================================
+// Chaining Endpoints (Story 8.4)
+// ============================================================================
+
+/**
+ * Transform a Quote to MissionForChaining
+ */
+function quoteToMissionForChaining(quote: {
+	id: string;
+	pickupAt: Date;
+	pickupAddress: string;
+	pickupLatitude: unknown;
+	pickupLongitude: unknown;
+	dropoffAddress: string;
+	dropoffLatitude: unknown;
+	dropoffLongitude: unknown;
+	vehicleCategoryId: string;
+	vehicleCategory?: { id: string; name: string; code: string };
+	contact?: { displayName: string };
+	chainId: string | null;
+	tripAnalysis: unknown;
+}): MissionForChaining {
+	const costData = extractCostData(quote.tripAnalysis);
+	
+	return {
+		id: quote.id,
+		pickupAt: quote.pickupAt,
+		pickupAddress: quote.pickupAddress,
+		pickupLatitude: quote.pickupLatitude ? Number(quote.pickupLatitude) : null,
+		pickupLongitude: quote.pickupLongitude ? Number(quote.pickupLongitude) : null,
+		dropoffAddress: quote.dropoffAddress,
+		dropoffLatitude: quote.dropoffLatitude ? Number(quote.dropoffLatitude) : null,
+		dropoffLongitude: quote.dropoffLongitude ? Number(quote.dropoffLongitude) : null,
+		vehicleCategoryId: quote.vehicleCategoryId,
+		vehicleCategory: quote.vehicleCategory,
+		contact: quote.contact,
+		chainId: quote.chainId,
+		estimatedDropoffAt: estimateDropoffTime(quote.pickupAt),
+		...costData,
+	};
+}
+
+// Add chaining endpoints to the router
+export const chainingRouter = new Hono()
+	.basePath("/missions")
+	.use("*", organizationMiddleware)
+
+	// Get chaining suggestions for a mission (Story 8.4)
+	.get(
+		"/:id/chaining-suggestions",
+		describeRoute({
+			summary: "Get chaining suggestions",
+			description:
+				"Get trip chaining suggestions for a mission to reduce deadhead segments",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			// Get the source mission
+			const sourceQuote = await db.quote.findFirst({
+				where: {
+					...withTenantId(id, organizationId),
+					status: "ACCEPTED",
+				},
+				include: {
+					vehicleCategory: true,
+					contact: true,
+				},
+			});
+
+			if (!sourceQuote) {
+				throw new HTTPException(404, {
+					message: "Mission not found",
+				});
+			}
+
+			// Get candidate missions in time window (±4 hours)
+			const searchWindowMs = DEFAULT_CHAINING_CONFIG.searchWindowHours * 60 * 60 * 1000;
+			const minTime = new Date(sourceQuote.pickupAt.getTime() - searchWindowMs);
+			const maxTime = new Date(sourceQuote.pickupAt.getTime() + searchWindowMs);
+
+			const candidateQuotes = await db.quote.findMany({
+				where: {
+					organizationId,
+					status: "ACCEPTED",
+					id: { not: id },
+					pickupAt: {
+						gte: minTime,
+						lte: maxTime,
+					},
+				},
+				include: {
+					vehicleCategory: true,
+					contact: true,
+				},
+			});
+
+			// Transform to MissionForChaining
+			const sourceMission = quoteToMissionForChaining(sourceQuote);
+			const candidateMissions = candidateQuotes.map(quoteToMissionForChaining);
+
+			// Detect chaining opportunities
+			const suggestions = detectChainingOpportunities(
+				sourceMission,
+				candidateMissions,
+				DEFAULT_CHAINING_CONFIG,
+			);
+
+			return c.json({
+				suggestions,
+				mission: {
+					id: sourceQuote.id,
+					pickupAt: sourceQuote.pickupAt.toISOString(),
+					pickupAddress: sourceQuote.pickupAddress,
+					dropoffAddress: sourceQuote.dropoffAddress,
+					dropoffAt: estimateDropoffTime(sourceQuote.pickupAt).toISOString(),
+				},
+			});
+		},
+	)
+
+	// Apply chain to missions (Story 8.4)
+	.post(
+		"/:id/apply-chain",
+		validator(
+			"json",
+			z.object({
+				targetMissionId: z.string().min(1),
+				chainOrder: z.enum(["BEFORE", "AFTER"]),
+			}),
+		),
+		describeRoute({
+			summary: "Apply chain to missions",
+			description:
+				"Chain two missions together to reduce deadhead segments",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+			const { targetMissionId, chainOrder } = c.req.valid("json");
+
+			// Verify both missions exist and are not already chained
+			const [sourceQuote, targetQuote] = await Promise.all([
+				db.quote.findFirst({
+					where: {
+						...withTenantId(id, organizationId),
+						status: "ACCEPTED",
+					},
+				}),
+				db.quote.findFirst({
+					where: {
+						...withTenantId(targetMissionId, organizationId),
+						status: "ACCEPTED",
+					},
+				}),
+			]);
+
+			if (!sourceQuote) {
+				throw new HTTPException(404, {
+					message: "Source mission not found",
+				});
+			}
+
+			if (!targetQuote) {
+				throw new HTTPException(404, {
+					message: "Target mission not found",
+				});
+			}
+
+			if (sourceQuote.chainId) {
+				throw new HTTPException(400, {
+					message: "Source mission is already part of a chain",
+				});
+			}
+
+			if (targetQuote.chainId) {
+				throw new HTTPException(400, {
+					message: "Target mission is already part of a chain",
+				});
+			}
+
+			// Generate chain ID
+			const chainId = generateChainId();
+
+			// Determine chain order
+			const firstMissionId = chainOrder === "AFTER" ? id : targetMissionId;
+			const secondMissionId = chainOrder === "AFTER" ? targetMissionId : id;
+
+			// Update both missions with chain info
+			const [updatedFirst, updatedSecond] = await Promise.all([
+				db.quote.update({
+					where: { id: firstMissionId },
+					data: {
+						chainId,
+						chainOrder: 1,
+						chainedWithId: secondMissionId,
+					},
+				}),
+				db.quote.update({
+					where: { id: secondMissionId },
+					data: {
+						chainId,
+						chainOrder: 2,
+						chainedWithId: null, // Last in chain
+					},
+				}),
+			]);
+
+			// Calculate savings (simplified - would need full recalculation)
+			const sourceCosts = extractCostData(sourceQuote.tripAnalysis);
+			const targetCosts = extractCostData(targetQuote.tripAnalysis);
+			const estimatedSavings = {
+				distanceKm: Math.round(
+					((sourceCosts.returnDistanceKm || 0) + (targetCosts.approachDistanceKm || 0)) * 0.8 * 100
+				) / 100,
+				costEur: Math.round(
+					((sourceCosts.returnCost || 0) + (targetCosts.approachCost || 0)) * 0.8 * 100
+				) / 100,
+			};
+
+			return c.json({
+				success: true,
+				chainId,
+				updatedMissions: [
+					{
+						id: updatedFirst.id,
+						chainOrder: 1,
+						newInternalCost: Number(updatedFirst.internalCost) || 0,
+						newMarginPercent: Number(updatedFirst.marginPercent) || 0,
+					},
+					{
+						id: updatedSecond.id,
+						chainOrder: 2,
+						newInternalCost: Number(updatedSecond.internalCost) || 0,
+						newMarginPercent: Number(updatedSecond.marginPercent) || 0,
+					},
+				],
+				totalSavings: estimatedSavings,
+				message: "Chain applied successfully",
+			});
+		},
+	)
+
+	// Remove chain from mission (Story 8.4)
+	.delete(
+		"/:id/chain",
+		describeRoute({
+			summary: "Remove chain from mission",
+			description:
+				"Remove a mission from its chain, dissolving the chain if needed",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			// Get the mission
+			const quote = await db.quote.findFirst({
+				where: {
+					...withTenantId(id, organizationId),
+					status: "ACCEPTED",
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, {
+					message: "Mission not found",
+				});
+			}
+
+			if (!quote.chainId) {
+				throw new HTTPException(400, {
+					message: "Mission is not part of a chain",
+				});
+			}
+
+			// Find all missions in the same chain
+			const chainedMissions = await db.quote.findMany({
+				where: {
+					organizationId,
+					chainId: quote.chainId,
+				},
+			});
+
+			// Remove chain from all missions
+			await db.quote.updateMany({
+				where: {
+					organizationId,
+					chainId: quote.chainId,
+				},
+				data: {
+					chainId: null,
+					chainOrder: null,
+					chainedWithId: null,
+				},
+			});
+
+			return c.json({
+				success: true,
+				affectedMissions: chainedMissions.map((m) => m.id),
+				message: "Chain removed successfully",
+			});
+		},
+	);

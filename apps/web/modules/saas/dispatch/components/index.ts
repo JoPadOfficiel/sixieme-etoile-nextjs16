@@ -11,3 +11,6 @@ export * from "./CandidatesList";
 export * from "./CandidateRow";
 export * from "./CandidateFilters";
 export * from "./FlexibilityScore";
+// Story 8.4: Trip Chaining
+export * from "./ChainingSuggestions";
+export * from "./ChainBadge";

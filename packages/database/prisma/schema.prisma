@@ -1117,6 +1117,13 @@ model Quote {
   assignedDriver    Driver?   @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
   assignedAt        DateTime?
 
+  // Chaining fields (Story 8.4)
+  chainId       String? // Shared ID for chained missions (UUID)
+  chainOrder    Int? // Order in chain (1, 2, 3...)
+  chainedWithId String? // Direct link to next mission in chain
+  chainedWith   Quote?  @relation("ChainLink", fields: [chainedWithId], references: [id])
+  chainedBy     Quote[] @relation("ChainLink")
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1136,6 +1143,7 @@ model Quote {
   @@index([pickupAt])
   @@index([assignedVehicleId])
   @@index([assignedDriverId])
+  @@index([chainId])
   @@map("quote")
 }
 
