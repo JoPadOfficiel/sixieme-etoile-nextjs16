@@ -197,10 +197,26 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
                 </div>
               </div>
 
-              {invoice.commissionAmount && parseFloat(invoice.commissionAmount) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t("invoices.detail.commission")}</span>
-                  <span className="font-medium">{formatPrice(invoice.commissionAmount)}</span>
+              {/* Story 7.4: Enhanced Commission Section for Partners */}
+              {invoice.contact.isPartner && invoice.commissionAmount && parseFloat(invoice.commissionAmount) > 0 && (
+                <div className="space-y-2 pt-2 border-t">
+                  <h4 className="text-sm font-medium">{t("invoices.detail.commissionSection")}</h4>
+                  {invoice.contact.partnerContract?.commissionPercent && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t("invoices.detail.commissionRate")}</span>
+                      <span>{invoice.contact.partnerContract.commissionPercent}%</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t("invoices.detail.commissionAmount")}</span>
+                    <span className="font-medium text-orange-600">-{formatPrice(invoice.commissionAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t("invoices.detail.netAmount")}</span>
+                    <span className="font-medium">
+                      {formatPrice(parseFloat(invoice.totalExclVat) - parseFloat(invoice.commissionAmount))}
+                    </span>
+                  </div>
                 </div>
               )}
 

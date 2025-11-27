@@ -145,6 +145,7 @@ export function InvoicesTable() {
                   <TableHead>{t("invoices.columns.dueDate")}</TableHead>
                   <TableHead className="text-right">{t("invoices.columns.total")}</TableHead>
                   <TableHead className="text-right">{t("invoices.columns.vat")}</TableHead>
+                  <TableHead className="text-right">{t("invoices.columns.commission")}</TableHead>
                   <TableHead>{t("invoices.columns.status")}</TableHead>
                   <TableHead>{t("invoices.columns.sourceQuote")}</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -153,7 +154,7 @@ export function InvoicesTable() {
               <TableBody>
                 {data?.data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                       {search ? t("invoices.noResults") : t("invoices.empty")}
                     </TableCell>
                   </TableRow>
@@ -227,6 +228,13 @@ export function InvoicesTable() {
                         {/* VAT */}
                         <TableCell className="text-right text-muted-foreground">
                           {formatPrice(invoice.totalVat)}
+                        </TableCell>
+
+                        {/* Commission (Story 7.4) */}
+                        <TableCell className="text-right text-muted-foreground">
+                          {invoice.commissionAmount && parseFloat(invoice.commissionAmount) > 0
+                            ? formatPrice(invoice.commissionAmount)
+                            : "—"}
                         </TableCell>
 
                         {/* Status */}

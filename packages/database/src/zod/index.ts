@@ -140,7 +140,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','windowStart','windowEnd','pricingStrategy','isActive','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','createdAt','updatedAt']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','createdAt','updatedAt']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','notes','createdAt','updatedAt']);
 
@@ -946,6 +946,8 @@ export const QuoteSchema = z.object({
   finalPrice: z.instanceof(Prisma.Decimal, { message: "Field 'finalPrice' must be a Decimal. Location: ['Models', 'Quote']"}),
   internalCost: z.instanceof(Prisma.Decimal, { message: "Field 'internalCost' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
   marginPercent: z.instanceof(Prisma.Decimal, { message: "Field 'marginPercent' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
+  commissionPercent: z.instanceof(Prisma.Decimal, { message: "Field 'commissionPercent' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
+  commissionAmount: z.instanceof(Prisma.Decimal, { message: "Field 'commissionAmount' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
   tripAnalysis: JsonValueSchema.nullable(),
   appliedRules: JsonValueSchema.nullable(),
   validUntil: z.coerce.date().nullable(),

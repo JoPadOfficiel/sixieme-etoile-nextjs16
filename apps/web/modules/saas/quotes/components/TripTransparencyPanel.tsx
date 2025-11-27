@@ -83,7 +83,7 @@ export function TripTransparencyPanel({
     );
   }
 
-  const { tripAnalysis, marginPercent, internalCost, price, pricingMode, matchedGrid } = pricingResult;
+  const { tripAnalysis, marginPercent, internalCost, price, pricingMode, matchedGrid, commissionData } = pricingResult;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -182,9 +182,35 @@ export function TripTransparencyPanel({
                     <span className="font-medium">
                       {formatPrice(price - internalCost)}
                     </span>
-                    <ProfitabilityIndicator marginPercent={marginPercent} />
+                    {!commissionData && <ProfitabilityIndicator marginPercent={marginPercent} />}
                   </div>
                 </div>
+
+                {/* Story 7.4: Commission Section for Partners */}
+                {commissionData && commissionData.commissionPercent > 0 && (
+                  <>
+                    <div className="flex items-center justify-between py-2 border-t">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <PercentIcon className="size-3" />
+                        {t("quotes.create.tripTransparency.commission")} ({commissionData.commissionPercent}%)
+                      </span>
+                      <span className="font-medium text-orange-600">
+                        -{formatPrice(commissionData.commissionAmount)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 bg-muted/30 rounded px-2 -mx-2">
+                      <span className="font-medium">
+                        {t("quotes.create.tripTransparency.netMargin")}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">
+                          {formatPrice(commissionData.effectiveMargin)} ({commissionData.effectiveMarginPercent.toFixed(1)}%)
+                        </span>
+                        <ProfitabilityIndicator marginPercent={commissionData.effectiveMarginPercent} />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Vehicle Selection Info */}
                 {tripAnalysis.vehicleSelection?.selectedVehicle && (

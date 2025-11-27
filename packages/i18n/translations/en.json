@@ -298,6 +298,7 @@
 			"dueDate": "Due Date",
 			"total": "Total (Inc. VAT)",
 			"vat": "VAT",
+			"commission": "Commission",
 			"status": "Status",
 			"sourceQuote": "Source Quote"
 		},
@@ -333,6 +334,10 @@
 			"totalVat": "Total VAT",
 			"totalInclVat": "Total (Inc. VAT)",
 			"commission": "Partner Commission",
+			"commissionSection": "Partner Commission",
+			"commissionRate": "Commission Rate",
+			"commissionAmount": "Commission Amount",
+			"netAmount": "Net Amount",
 			"sourceQuote": "Source Quote",
 			"viewQuote": "View quote",
 			"notes": "Notes",
@@ -1537,6 +1542,8 @@
 					"driver": "Driver",
 					"parking": "Parking"
 				},
+				"commission": "Commission",
+				"netMargin": "Net Margin",
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"

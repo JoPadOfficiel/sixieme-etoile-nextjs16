@@ -1085,6 +1085,10 @@ model Quote {
   internalCost   Decimal? @db.Decimal(10, 2)
   marginPercent  Decimal? @db.Decimal(5, 2)
 
+  // Commission data (Story 7.4)
+  commissionPercent Decimal? @db.Decimal(5, 2) // Snapshot from partner contract at quote time
+  commissionAmount  Decimal? @db.Decimal(10, 2) // Calculated commission amount
+
   // Analysis context (JSON)
   tripAnalysis Json? // Shadow calculation: segments A/B/C, distances, durations, cost breakdown
   appliedRules Json? // Which grids, multipliers, promotions, optional fees were used

@@ -3,10 +3,19 @@
  * Implements the Engagement Rule for partner grid pricing (Method 1)
  * and fallback to dynamic pricing (Method 2)
  * Story 4.3: Adds multiplier support (advanced rates + seasonal multipliers)
+ * Story 7.4: Adds commission integration for partner profitability
  */
 
 import type { GeoPoint, ZoneData } from "../lib/geo-utils";
 import { findZoneForPoint } from "../lib/geo-utils";
+import {
+	calculateCommission,
+	calculateEffectiveMargin,
+	getCommissionData,
+	hasCommission,
+	getCommissionPercent,
+	type CommissionData,
+} from "./commission-service";
 
 // Europe/Paris timezone constant
 const PARIS_TZ = "Europe/Paris";
@@ -145,6 +154,8 @@ export interface PricingResult {
 	// New fields for Story 4.4 (optional, only present after override)
 	overrideApplied?: boolean;
 	previousPrice?: number;
+	// Story 7.4: Commission data for partner quotes
+	commissionData?: CommissionData;
 }
 
 // ============================================================================
@@ -617,6 +628,93 @@ export function getThresholdsFromSettings(
 		orangeThreshold: settings.orangeMarginThreshold ?? DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold,
 	};
 }
+
+// ============================================================================
+// Story 7.4: Commission-Aware Profitability Calculation
+// ============================================================================
+
+/**
+ * Story 7.4: Calculate profitability including partner commission
+ * 
+ * For partner quotes, the effective margin is reduced by the commission amount.
+ * This provides accurate profitability indicators for B2B contracts.
+ * 
+ * Formula:
+ * - Effective Margin = Selling Price - Internal Cost - Commission
+ * - Effective Margin % = (Effective Margin / Selling Price) × 100
+ * 
+ * @param sellingPrice - Final selling price
+ * @param internalCost - Internal operational cost
+ * @param commissionPercent - Commission percentage from partner contract (0 for private clients)
+ * @param thresholds - Profitability thresholds for indicator classification
+ * @returns Profitability data with commission information
+ * 
+ * @example
+ * ```typescript
+ * // Partner with 10% commission
+ * const result = calculateProfitabilityWithCommission(150, 80, 10);
+ * // result.profitabilityData.marginPercent = 36.67% (effective)
+ * // result.commissionData.commissionAmount = 15.00
+ * 
+ * // Private client (no commission)
+ * const result = calculateProfitabilityWithCommission(150, 80, 0);
+ * // result.profitabilityData.marginPercent = 46.67% (gross)
+ * ```
+ */
+export function calculateProfitabilityWithCommission(
+	sellingPrice: number,
+	internalCost: number,
+	commissionPercent: number,
+	thresholds: ProfitabilityThresholds = DEFAULT_PROFITABILITY_THRESHOLDS,
+): {
+	profitabilityData: ProfitabilityIndicatorData;
+	commissionData: CommissionData | undefined;
+	margin: number;
+	marginPercent: number;
+} {
+	// Get commission data (handles 0% case gracefully)
+	const commissionData = commissionPercent > 0
+		? getCommissionData(sellingPrice, internalCost, commissionPercent)
+		: undefined;
+
+	// Calculate margin (effective if commission, gross otherwise)
+	let margin: number;
+	let marginPercent: number;
+
+	if (commissionData) {
+		margin = commissionData.effectiveMargin;
+		marginPercent = commissionData.effectiveMarginPercent;
+	} else {
+		// No commission - use gross margin
+		margin = Math.round((sellingPrice - internalCost) * 100) / 100;
+		marginPercent = sellingPrice > 0
+			? Math.round(((margin / sellingPrice) * 100) * 100) / 100
+			: 0;
+	}
+
+	// Get profitability indicator based on effective margin
+	const profitabilityData = getProfitabilityIndicatorData(marginPercent, thresholds);
+
+	return {
+		profitabilityData,
+		commissionData,
+		margin,
+		marginPercent,
+	};
+}
+
+/**
+ * Story 7.4: Re-export commission service functions for convenience
+ * Allows pricing engine consumers to access commission utilities
+ */
+export {
+	calculateCommission,
+	calculateEffectiveMargin,
+	getCommissionData,
+	hasCommission,
+	getCommissionPercent,
+	type CommissionData,
+};
 
 /**
  * Default cost parameters for Paris VTC market (Story 4.2)

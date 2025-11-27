@@ -1,0 +1,218 @@
+<story-context id="7-4-integrate-commission-calculation-invoices" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>7.4</storyId>
+    <title>Integrate Commission Calculation into Invoices</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-27T16:35:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>finance user</asA>
+    <iWant>partner commissions to be reflected in invoices and profitability</iWant>
+    <soThat>B2B contracts are correctly accounted for</soThat>
+    <tasks>
+      <task id="1">Extend pricing engine to include commission in profitability calculation</task>
+      <task id="2">Add commission fields to Quote model for storage</task>
+      <task id="3">Update TripTransparencyPanel to show commission impact on margin</task>
+      <task id="4">Add commission column to InvoicesTable for partner invoices</task>
+      <task id="5">Create commission summary section in InvoiceDetail</task>
+      <task id="6">Implement commission export in invoice data</task>
+      <task id="7">Add unit tests for commission calculation logic</task>
+      <task id="8">Add E2E tests for commission display</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>a partner contact with a configured commission percentage (e.g., 10%)</given>
+      <when>an invoice is created from an accepted quote</when>
+      <then>commission amounts are computed and stored in invoice data (commissionAmount field)</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>a quote for a partner with commission</given>
+      <when>the profitability indicator is calculated</when>
+      <then>the margin calculation includes commission as a cost (reducing effective margin)</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>the TripTransparencyPanel for a partner quote</given>
+      <when>I view the cost breakdown</when>
+      <then>I see the commission amount and its impact on the net margin</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>the Invoices list</given>
+      <when>I view invoices for partner contacts</when>
+      <then>I see a commission column showing the commission amount</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>an Invoice detail page for a partner</given>
+      <when>I view the metadata section</when>
+      <then>I see commission percentage, commission amount, and net amount after commission</then>
+    </criterion>
+    <criterion id="AC6">
+      <given>invoice data export or API response</given>
+      <when>I fetch invoice data</when>
+      <then>commission fields are included and can be used for reports</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR2, FR36 - Partner Contracts and Commissions</section>
+        <snippet>FR2: For each partner client, the system shall store contract data including commission percentage. FR36: For partner contracts with commissions, the system shall calculate commission amounts and incorporate them into profitability calculations and invoice data.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 7.4: Integrate Commission Calculation into Invoices</section>
+        <snippet>Commission logic should be centralised, ideally reused from pricing/profitability calculations. Decide whether commissions appear as explicit lines or only as metadata, based on accounting needs.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>PartnerContract Model</section>
+        <snippet>commissionPercent: Decimal @default(0) @db.Decimal(5, 2) - Commission percentage from 0.00 to 100.00</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <file>
+        <path>packages/api/src/routes/vtc/invoices.ts</path>
+        <kind>API Route</kind>
+        <symbol>invoicesRouter, calculateCommission</symbol>
+        <lines>287-294, 423-430</lines>
+        <reason>Existing commission calculation when creating invoices - needs to be extracted and reused in pricing engine</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/partner-contracts.ts</path>
+        <kind>API Route</kind>
+        <symbol>partnerContractsRouter</symbol>
+        <lines>1-311</lines>
+        <reason>Partner contract API with commissionPercent field - source of commission data</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>Service</kind>
+        <symbol>PricingResult, calculateProfitabilityIndicator, getProfitabilityIndicatorData</symbol>
+        <lines>127-148, 574-606</lines>
+        <reason>Pricing engine where commission should be integrated into profitability calculation</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/invoices/components/InvoiceDetail.tsx</path>
+        <kind>React Component</kind>
+        <symbol>InvoiceDetail</symbol>
+        <lines>200-205</lines>
+        <reason>Invoice detail showing commission - needs enhancement for net amount</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/invoices/components/InvoicesTable.tsx</path>
+        <kind>React Component</kind>
+        <symbol>InvoicesTable</symbol>
+        <lines>1-336</lines>
+        <reason>Invoices table - needs commission column for partner invoices</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/invoices/types.ts</path>
+        <kind>TypeScript Types</kind>
+        <symbol>InvoiceListItem, Invoice</symbol>
+        <lines>90-124</lines>
+        <reason>Invoice types - already has commissionAmount field</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/shared/components/TripTransparencyPanel.tsx</path>
+        <kind>React Component</kind>
+        <symbol>TripTransparencyPanel</symbol>
+        <reason>Trip transparency panel - needs commission display for partner quotes</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>Database Schema</kind>
+        <symbol>Invoice, PartnerContract, Quote</symbol>
+        <lines>383-400</lines>
+        <reason>Prisma schema - Invoice has commissionAmount, Quote may need commission fields</reason>
+      </file>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@prisma/client</package>
+        <version>^6.1.0</version>
+      </node>
+      <node>
+        <package>hono</package>
+        <version>^4.6.14</version>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <version>^5.62.7</version>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <version>^3.25.3</version>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Commission logic must be centralized to avoid double-dipping (FR36)</constraint>
+    <constraint>Commission should reduce effective margin in profitability calculations</constraint>
+    <constraint>Commission amounts are immutable after invoice creation (deep-copy semantics)</constraint>
+    <constraint>All monetary values in EUR (FR39)</constraint>
+    <constraint>Multi-tenancy: commission data scoped by organizationId</constraint>
+    <constraint>Commission percentage comes from PartnerContract, not hardcoded</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/invoices</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/invoices?page=1&amp;limit=20&amp;status=ISSUED</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/invoices/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/invoices/:id - Returns invoice with contact.partnerContract</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/invoices/from-quote/:quoteId</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/invoices/from-quote/:quoteId - Creates invoice with commission calculation</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>calculateProfitabilityIndicator</name>
+      <kind>Function</kind>
+      <signature>calculateProfitabilityIndicator(marginPercent: number, thresholds?: ProfitabilityThresholds): ProfitabilityIndicator</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Tests use Vitest for unit/integration tests and Playwright MCP for E2E tests.
+      API tests use curl commands with PostgreSQL MCP verification.
+      All tests must verify multi-tenancy isolation.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/invoices.test.ts</location>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts</location>
+      <location>apps/web/modules/saas/invoices/__tests__/</location>
+      <location>apps/web/cypress/e2e/invoices.cy.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test commission calculation: 10% of 150€ = 15€ commission</idea>
+      <idea acId="AC2">Test profitability with commission: margin = price - cost - commission</idea>
+      <idea acId="AC3">Test TripTransparencyPanel shows commission for partner quotes</idea>
+      <idea acId="AC4">Test InvoicesTable shows commission column for partner invoices</idea>
+      <idea acId="AC5">Test InvoiceDetail shows commission breakdown with net amount</idea>
+      <idea acId="AC6">Test API response includes commission fields for export</idea>
+    </ideas>
+  </tests>
+</story-context>

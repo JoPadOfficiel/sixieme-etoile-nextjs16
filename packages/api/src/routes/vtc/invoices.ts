@@ -1,8 +1,9 @@
 /**
- * Invoices API Route (Story 2.4 + Story 7.1)
+ * Invoices API Route (Story 2.4 + Story 7.1 + Story 7.4)
  *
  * Provides CRUD operations for invoices with contact linking.
  * Invoices are immutable financial documents derived from accepted quotes.
+ * Story 7.4: Uses centralized commission service for partner commission calculation.
  */
 
 import { db } from "@repo/database";
@@ -25,6 +26,10 @@ import {
 	calculateTransportAmount,
 	TRANSPORT_VAT_RATE,
 } from "../../services/invoice-line-builder";
+import {
+	calculateCommission,
+	getCommissionPercent,
+} from "../../services/commission-service";
 
 // ============================================================================
 // Validation Schemas
@@ -284,12 +289,16 @@ export const invoicesRouter = new Hono()
 			// Generate invoice number
 			const invoiceNumber = await generateInvoiceNumber(organizationId);
 
-			// Calculate commission if partner
+			// Story 7.4: Calculate commission using centralized service
 			let commissionAmount = data.commissionAmount;
-			if (contact.isPartner && contact.partnerContract && !commissionAmount) {
-				const commissionPercent = Number(contact.partnerContract.commissionPercent);
+			if (!commissionAmount) {
+				const commissionPercent = getCommissionPercent(contact);
 				if (commissionPercent > 0) {
-					commissionAmount = (data.totalExclVat * commissionPercent) / 100;
+					const commissionResult = calculateCommission({
+						totalExclVat: data.totalExclVat,
+						commissionPercent,
+					});
+					commissionAmount = commissionResult.commissionAmount;
 				}
 			}
 
@@ -420,13 +429,15 @@ export const invoicesRouter = new Hono()
 			// Calculate totals from lines (ensures consistency)
 			const totals = calculateInvoiceTotals(invoiceLines);
 
-			// Calculate commission for partners (based on total excl. VAT)
+			// Story 7.4: Calculate commission using centralized service
 			let commissionAmount: number | null = null;
-			if (quote.contact.isPartner && quote.contact.partnerContract) {
-				const commissionPercent = Number(quote.contact.partnerContract.commissionPercent);
-				if (commissionPercent > 0) {
-					commissionAmount = Math.round((totals.totalExclVat * commissionPercent) / 100 * 100) / 100;
-				}
+			const commissionPercent = getCommissionPercent(quote.contact);
+			if (commissionPercent > 0) {
+				const commissionResult = calculateCommission({
+					totalExclVat: totals.totalExclVat,
+					commissionPercent,
+				});
+				commissionAmount = commissionResult.commissionAmount;
 			}
 
 			// Set due date based on payment terms
@@ -448,9 +459,6 @@ export const invoicesRouter = new Hono()
 						break;
 					case "DAYS_60":
 						dueDate.setDate(dueDate.getDate() + 60);
-						break;
-					case "END_OF_MONTH":
-						dueDate = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0);
 						break;
 				}
 			} else {

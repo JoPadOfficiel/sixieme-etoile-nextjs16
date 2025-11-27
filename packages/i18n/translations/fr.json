@@ -298,6 +298,7 @@
 			"dueDate": "Date d'échéance",
 			"total": "Total TTC",
 			"vat": "TVA",
+			"commission": "Commission",
 			"status": "Statut",
 			"sourceQuote": "Devis source"
 		},
@@ -333,6 +334,10 @@
 			"totalVat": "Total TVA",
 			"totalInclVat": "Total TTC",
 			"commission": "Commission partenaire",
+			"commissionSection": "Commission partenaire",
+			"commissionRate": "Taux de commission",
+			"commissionAmount": "Montant commission",
+			"netAmount": "Montant net",
 			"sourceQuote": "Devis source",
 			"viewQuote": "Voir le devis",
 			"notes": "Notes",
@@ -1537,6 +1542,8 @@
 					"driver": "Chauffeur",
 					"parking": "Parking"
 				},
+				"commission": "Commission",
+				"netMargin": "Marge nette",
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"

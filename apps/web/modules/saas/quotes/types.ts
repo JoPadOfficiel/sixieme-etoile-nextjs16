@@ -440,6 +440,17 @@ export interface TripAnalysis {
  * Pricing calculation result
  * Story 6.5: Extended with compliance validation results
  */
+/**
+ * Story 7.4: Commission data for partner quotes
+ */
+export interface CommissionData {
+  commissionPercent: number;
+  commissionAmount: number;
+  effectiveMargin: number;
+  effectiveMarginPercent: number;
+  netAmountAfterCommission: number;
+}
+
 export interface PricingResult {
   pricingMode: PricingMode;
   price: number;
@@ -465,6 +476,8 @@ export interface PricingResult {
   tripAnalysis: TripAnalysis;
   // Story 6.5: Compliance validation results
   complianceResult: ComplianceValidationResult | null;
+  // Story 7.4: Commission data for partner quotes
+  commissionData?: CommissionData;
 }
 
 /**
