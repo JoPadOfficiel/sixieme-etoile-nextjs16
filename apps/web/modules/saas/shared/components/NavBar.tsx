@@ -9,6 +9,7 @@ import {
 	CarIcon,
 	ChevronRightIcon,
 	FileTextIcon,
+	FolderIcon,
 	HomeIcon,
 	MapPinIcon,
 	ReceiptIcon,
@@ -62,6 +63,12 @@ export function NavBar() {
 						href: `${basePath}/invoices`,
 						icon: ReceiptIcon,
 						isActive: pathname.startsWith(`${basePath}/invoices`),
+					},
+					{
+						label: t("documents.title"),
+						href: `${basePath}/documents`,
+						icon: FolderIcon,
+						isActive: pathname.startsWith(`${basePath}/documents`),
 					},
 					{
 						label: t("fleet.vehicles.title"),
