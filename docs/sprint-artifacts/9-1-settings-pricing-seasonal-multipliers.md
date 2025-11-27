@@ -591,25 +591,25 @@ curl -X DELETE "http://localhost:3000/api/vtc/seasonal-multipliers/{id}" \
 
 ## Definition of Done
 
-- [ ] API route GET /seasonal-multipliers implemented
-- [ ] API route GET /seasonal-multipliers/stats implemented
-- [ ] API route GET /seasonal-multipliers/:id implemented
-- [ ] API route POST /seasonal-multipliers implemented
-- [ ] API route PATCH /seasonal-multipliers/:id implemented
-- [ ] API route DELETE /seasonal-multipliers/:id implemented
-- [ ] Routes registered in vtc/router.ts
-- [ ] Page /settings/pricing/seasonal-multipliers created
-- [ ] SeasonalMultiplierSummaryCards component implemented
-- [ ] SeasonalMultiplierList component implemented
-- [ ] SeasonalMultiplierFormDialog component implemented
-- [ ] useSeasonalMultipliers hooks implemented
-- [ ] TypeScript types defined
-- [ ] Translations added (en/fr)
-- [ ] Unit tests passing (Vitest)
-- [ ] E2E tests passing (Playwright MCP)
-- [ ] API endpoints tested with curl
-- [ ] Database state verified via MCP
-- [ ] Code reviewed and merged
+- [x] API route GET /seasonal-multipliers implemented
+- [x] API route GET /seasonal-multipliers/stats implemented
+- [x] API route GET /seasonal-multipliers/:id implemented
+- [x] API route POST /seasonal-multipliers implemented
+- [x] API route PATCH /seasonal-multipliers/:id implemented
+- [x] API route DELETE /seasonal-multipliers/:id implemented
+- [x] Routes registered in vtc/router.ts
+- [x] Page /settings/pricing/seasonal-multipliers created
+- [x] SeasonalMultiplierSummaryCards component implemented
+- [x] SeasonalMultiplierList component implemented
+- [x] SeasonalMultiplierFormDialog component implemented
+- [x] useSeasonalMultipliers hooks implemented
+- [x] TypeScript types defined
+- [x] Translations added (en/fr)
+- [x] Unit tests passing (Vitest)
+- [x] E2E tests passing (Playwright MCP)
+- [x] API endpoints tested with curl
+- [x] Database state verified via MCP
+- [x] Code reviewed and merged
 
 ---
 
