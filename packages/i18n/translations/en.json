@@ -1313,6 +1313,89 @@
 					"edit": "Edit",
 					"delete": "Delete"
 				}
+			},
+			"optionalFees": {
+				"title": "Optional Fees",
+				"description": "Configure additional fees that can be added to quotes and invoices",
+				"addButton": "Add Fee",
+				"stats": {
+					"fixed": "Fixed Fees",
+					"percentage": "Percentage Fees",
+					"taxable": "Taxable",
+					"totalActive": "Total Active"
+				},
+				"table": {
+					"name": "Name",
+					"type": "Type",
+					"amount": "Amount",
+					"vat": "VAT",
+					"autoApply": "Auto-Apply",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"types": {
+					"FIXED": "Fixed",
+					"PERCENTAGE": "Percentage"
+				},
+				"status": {
+					"all": "All",
+					"active": "Active",
+					"inactive": "Inactive"
+				},
+				"autoApply": {
+					"enabled": "Enabled",
+					"disabled": "None",
+					"rules": "{count} rule(s)"
+				},
+				"form": {
+					"createTitle": "Create Optional Fee",
+					"editTitle": "Edit Optional Fee",
+					"name": "Name",
+					"namePlaceholder": "e.g., Baby Seat",
+					"description": "Description",
+					"descriptionPlaceholder": "Optional description...",
+					"amountType": "Amount Type",
+					"amountTypePlaceholder": "Select type...",
+					"amount": "Amount",
+					"amountHelp": "Enter amount in EUR for fixed, or percentage value",
+					"isTaxable": "Taxable",
+					"isTaxableHelp": "Whether VAT applies to this fee",
+					"vatRate": "VAT Rate (%)",
+					"vatRateHelp": "Standard rate is 20%",
+					"autoApplyRules": "Auto-Apply Rules",
+					"autoApplyRulesHelp": "Conditions for automatic fee application",
+					"isActive": "Active",
+					"create": "Create",
+					"save": "Save Changes",
+					"cancel": "Cancel"
+				},
+				"autoApplyTypes": {
+					"AIRPORT_PICKUP": "Airport Pickup",
+					"AIRPORT_DROPOFF": "Airport Dropoff",
+					"BAGGAGE_OVER_CAPACITY": "Baggage Over Capacity",
+					"NIGHT_SERVICE": "Night Service",
+					"CUSTOM": "Custom Condition"
+				},
+				"delete": {
+					"title": "Delete Fee",
+					"message": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+					"confirm": "Delete",
+					"cancel": "Cancel"
+				},
+				"toast": {
+					"createSuccess": "Fee created successfully",
+					"updateSuccess": "Fee updated successfully",
+					"deleteSuccess": "Fee deleted successfully",
+					"error": "An error occurred"
+				},
+				"empty": {
+					"title": "No optional fees configured",
+					"description": "Create your first optional fee to add extras to quotes."
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
+				}
 			}
 		}
 	},

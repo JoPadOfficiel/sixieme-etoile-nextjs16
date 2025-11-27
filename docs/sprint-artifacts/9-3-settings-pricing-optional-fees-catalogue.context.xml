@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="9-3-settings-pricing-optional-fees-catalogue" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>3</storyId>
+    <title>Settings → Pricing – Optional Fees Catalogue</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T22:18:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/9-3-settings-pricing-optional-fees-catalogue.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a catalogue of optional fees configurable from the UI</iWant>
+    <soThat>I can add typical extras (baby seat, airport waiting, cleaning) consistently to quotes and invoices</soThat>
+    <tasks>
+      <task id="1">Create API routes for OptionalFee CRUD operations</task>
+      <task id="2">Create OptionalFeeSummaryCards component</task>
+      <task id="3">Create OptionalFeeList component with data table</task>
+      <task id="4">Create OptionalFeeFormDialog component</task>
+      <task id="5">Create useOptionalFees React Query hooks</task>
+      <task id="6">Create Settings page at /settings/pricing/optional-fees</task>
+      <task id="7">Add translations (EN/FR)</task>
+      <task id="8">Write unit tests (Vitest)</task>
+      <task id="9">Write E2E tests (Playwright)</task>
+      <task id="10">Test API with curl and verify DB state</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Page Navigation &amp; Layout - Page at /app/{orgSlug}/settings/pricing/optional-fees with title, add button, summary cards, data table</criterion>
+    <criterion id="AC2">Summary Cards - Fixed Fees, Percentage Fees, Taxable, Total Active counts</criterion>
+    <criterion id="AC3">Data Table - Columns: Name, Type, Amount, VAT, Auto-Apply, Status, Actions; sortable, filterable, searchable</criterion>
+    <criterion id="AC4">Create Fee Dialog - Form with name, description, amountType, amount, isTaxable, vatRate, autoApplyRules, isActive</criterion>
+    <criterion id="AC5">Edit Fee Dialog - Pre-populated fields, conditional VAT visibility</criterion>
+    <criterion id="AC6">Delete Fee - Confirmation dialog, success toast</criterion>
+    <criterion id="AC7">API Endpoints - GET list, GET stats, GET by id, POST create, PATCH update, DELETE</criterion>
+    <criterion id="AC8">Multi-Tenancy Isolation - Organization-scoped data access</criterion>
+    <criterion id="AC9">VAT Configuration - Conditional vatRate field based on isTaxable toggle</criterion>
+    <criterion id="AC10">Translations - EN/FR support for all labels and messages</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR56 - Optional Fees</section>
+        <snippet>The system shall support a configurable catalogue of optional fees (baby seat, airport waiting, premium cleaning) with fixed or percentage-based amounts, taxation flags and automated triggers.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>OptionalFee Model</section>
+        <snippet>OptionalFee - Catalogue of optional fees (baby seat, waiting, cleaning) per FR56. Key fields: name, description, amountType (FIXED/PERCENTAGE), amount, isTaxable, vatRate, autoApplyRules (JSON).</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Settings → Pricing</section>
+        <snippet>Config screens for seasonal multipliers, advanced rate modifiers, optional fees and promotions, using list views with status chips and modal editors.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 9.3</section>
+        <snippet>Implement Settings → Pricing – Optional Fees Catalogue. As an operator, I want a catalogue of optional fees configurable from the UI, so that I can add typical extras consistently.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/9-1-settings-pricing-seasonal-multipliers.md</path>
+        <title>Story 9.1 - Seasonal Multipliers</title>
+        <section>Reference Implementation</section>
+        <snippet>Reference for API patterns, component structure, hooks, and translations. Follow same patterns for OptionalFees.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/9-2-settings-pricing-advanced-rate-modifiers.md</path>
+        <title>Story 9.2 - Advanced Rate Modifiers</title>
+        <section>Reference Implementation</section>
+        <snippet>Reference for conditional form fields and type-based filtering patterns.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>OptionalFee</symbol>
+        <lines>1016-1044</lines>
+        <reason>Prisma model definition for OptionalFee with all fields</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>enum</kind>
+        <symbol>AmountType</symbol>
+        <lines>258-262</lines>
+        <reason>Enum for FIXED/PERCENTAGE amount types</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/seasonal-multipliers.ts</path>
+        <kind>api-route</kind>
+        <symbol>seasonalMultipliersRouter</symbol>
+        <lines>1-437</lines>
+        <reason>Reference implementation for pricing config API routes - follow same patterns</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <reason>Main VTC router where optional-fees routes must be registered</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>withTenantFilter, withTenantCreate, withTenantId</symbol>
+        <reason>Multi-tenancy helpers for Prisma queries</reason>
+      </file>
+      <file>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <reason>Middleware that extracts organizationId from session</reason>
+      </file>
+      <file>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/seasonal-multipliers/page.tsx</path>
+        <kind>page</kind>
+        <symbol>SeasonalMultipliersPage</symbol>
+        <reason>Reference page structure for pricing settings</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierSummaryCards.tsx</path>
+        <kind>component</kind>
+        <symbol>SeasonalMultiplierSummaryCards</symbol>
+        <reason>Reference component for summary cards pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierList.tsx</path>
+        <kind>component</kind>
+        <symbol>SeasonalMultiplierList</symbol>
+        <reason>Reference component for data table pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/SeasonalMultiplierFormDialog.tsx</path>
+        <kind>component</kind>
+        <symbol>SeasonalMultiplierFormDialog</symbol>
+        <reason>Reference component for create/edit dialog pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/hooks/useSeasonalMultipliers.ts</path>
+        <kind>hook</kind>
+        <symbol>useSeasonalMultipliers, useSeasonalMultiplierStats</symbol>
+        <reason>Reference hooks for React Query patterns</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/types/seasonal-multiplier.ts</path>
+        <kind>types</kind>
+        <symbol>SeasonalMultiplier, SeasonalMultiplierStats</symbol>
+        <reason>Reference TypeScript types structure</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/__tests__/seasonal-multipliers.test.ts</path>
+        <kind>test</kind>
+        <symbol>SeasonalMultipliers API tests</symbol>
+        <reason>Reference test structure and patterns</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/en.json</path>
+        <kind>i18n</kind>
+        <symbol>settings.pricing.seasonalMultipliers</symbol>
+        <reason>Reference translation structure - add optionalFees section</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/fr.json</path>
+        <kind>i18n</kind>
+        <symbol>settings.pricing.seasonalMultipliers</symbol>
+        <reason>Reference translation structure - add optionalFees section</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>@repo/database</package>
+        <usage>Prisma client for OptionalFee CRUD</usage>
+      </node>
+      <node>
+        <package>hono</package>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>hono-openapi</package>
+        <usage>OpenAPI documentation decorators</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching and caching hooks</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons: Euro, Percent, Receipt, Settings, Plus, Pencil, Trash2</usage>
+      </node>
+      <node>
+        <package>shadcn/ui</package>
+        <usage>Card, Table, Dialog, Badge, Button, Input, Select, Switch, Textarea</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Follow existing patterns from seasonal-multipliers and advanced-rates implementations</constraint>
+    <constraint>All API routes must use organizationMiddleware for multi-tenancy</constraint>
+    <constraint>Use withTenantFilter, withTenantCreate, withTenantId helpers for Prisma queries</constraint>
+    <constraint>Validate all inputs with Zod schemas</constraint>
+    <constraint>Use shadcn/ui components for consistent UI</constraint>
+    <constraint>Support both EN and FR translations</constraint>
+    <constraint>Amount stored as Decimal(10,4) - convert to number for JSON responses</constraint>
+    <constraint>VAT rate stored as Decimal(5,2) - default 20.00</constraint>
+    <constraint>autoApplyRules stored as JSON - nullable</constraint>
+    <constraint>Europe/Paris business time for all timestamps</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/pricing/optional-fees</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/optional-fees?page=1&amp;limit=50&amp;type=FIXED|PERCENTAGE&amp;status=active|inactive&amp;search=string</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing/optional-fees/stats</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/optional-fees/stats -> { fixed, percentage, taxable, totalActive }</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing/optional-fees/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/optional-fees/:id -> OptionalFee</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/pricing/optional-fees</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/pricing/optional-fees { name, description?, amountType, amount, isTaxable?, vatRate?, autoApplyRules?, isActive? }</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/pricing/optional-fees/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>PATCH /api/vtc/pricing/optional-fees/:id { ...partial fields }</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/pricing/optional-fees/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/vtc/pricing/optional-fees/:id -> { success: true }</signature>
+      <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests following existing patterns in packages/api/src/routes/vtc/__tests__/.
+      Use Playwright MCP for E2E tests.
+      Use curl for API endpoint verification.
+      Use MCP @postgres_vtc_sixiemme_etoile for database state verification.
+      All tests must cover multi-tenancy isolation.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/optional-fees.test.ts</location>
+      <location>apps/web/e2e/settings-optional-fees.spec.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test page renders with correct layout elements</idea>
+      <idea acId="AC2">Test stats endpoint returns correct counts by type</idea>
+      <idea acId="AC3">Test table displays all columns, sorting, filtering, search</idea>
+      <idea acId="AC4">Test create dialog validation and submission</idea>
+      <idea acId="AC5">Test edit dialog pre-population and update</idea>
+      <idea acId="AC6">Test delete confirmation and success</idea>
+      <idea acId="AC7">Test all API endpoints with valid/invalid data</idea>
+      <idea acId="AC8">Test organization isolation - cannot access other org's fees</idea>
+      <idea acId="AC9">Test VAT field visibility toggle based on isTaxable</idea>
+      <idea acId="AC10">Test translations switch between EN/FR</idea>
+    </ideas>
+  </tests>
+</story-context>

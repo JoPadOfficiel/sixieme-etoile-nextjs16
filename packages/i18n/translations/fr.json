@@ -1313,6 +1313,89 @@
 					"edit": "Modifier",
 					"delete": "Supprimer"
 				}
+			},
+			"optionalFees": {
+				"title": "Frais Optionnels",
+				"description": "Configurez les frais additionnels pouvant être ajoutés aux devis et factures",
+				"addButton": "Ajouter un frais",
+				"stats": {
+					"fixed": "Frais Fixes",
+					"percentage": "Frais en %",
+					"taxable": "Taxables",
+					"totalActive": "Total Actifs"
+				},
+				"table": {
+					"name": "Nom",
+					"type": "Type",
+					"amount": "Montant",
+					"vat": "TVA",
+					"autoApply": "Auto-Application",
+					"status": "Statut",
+					"actions": "Actions"
+				},
+				"types": {
+					"FIXED": "Fixe",
+					"PERCENTAGE": "Pourcentage"
+				},
+				"status": {
+					"all": "Tous",
+					"active": "Actif",
+					"inactive": "Inactif"
+				},
+				"autoApply": {
+					"enabled": "Activé",
+					"disabled": "Aucune",
+					"rules": "{count} règle(s)"
+				},
+				"form": {
+					"createTitle": "Créer un frais optionnel",
+					"editTitle": "Modifier le frais optionnel",
+					"name": "Nom",
+					"namePlaceholder": "ex: Siège Bébé",
+					"description": "Description",
+					"descriptionPlaceholder": "Description optionnelle...",
+					"amountType": "Type de montant",
+					"amountTypePlaceholder": "Sélectionner le type...",
+					"amount": "Montant",
+					"amountHelp": "Entrez le montant en EUR pour fixe, ou la valeur en pourcentage",
+					"isTaxable": "Taxable",
+					"isTaxableHelp": "Si la TVA s'applique à ce frais",
+					"vatRate": "Taux de TVA (%)",
+					"vatRateHelp": "Le taux standard est de 20%",
+					"autoApplyRules": "Règles d'auto-application",
+					"autoApplyRulesHelp": "Conditions pour l'application automatique du frais",
+					"isActive": "Actif",
+					"create": "Créer",
+					"save": "Enregistrer",
+					"cancel": "Annuler"
+				},
+				"autoApplyTypes": {
+					"AIRPORT_PICKUP": "Prise en charge Aéroport",
+					"AIRPORT_DROPOFF": "Dépose Aéroport",
+					"BAGGAGE_OVER_CAPACITY": "Bagages Hors Capacité",
+					"NIGHT_SERVICE": "Service de Nuit",
+					"CUSTOM": "Condition Personnalisée"
+				},
+				"delete": {
+					"title": "Supprimer le frais",
+					"message": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action est irréversible.",
+					"confirm": "Supprimer",
+					"cancel": "Annuler"
+				},
+				"toast": {
+					"createSuccess": "Frais créé avec succès",
+					"updateSuccess": "Frais mis à jour avec succès",
+					"deleteSuccess": "Frais supprimé avec succès",
+					"error": "Une erreur est survenue"
+				},
+				"empty": {
+					"title": "Aucun frais optionnel configuré",
+					"description": "Créez votre premier frais optionnel pour ajouter des extras aux devis."
+				},
+				"actions": {
+					"edit": "Modifier",
+					"delete": "Supprimer"
+				}
 			}
 		}
 	},
