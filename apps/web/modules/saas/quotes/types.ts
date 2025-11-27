@@ -1,12 +1,115 @@
 /**
  * Quote types for the Quotes module
  * Story 6.1: Implement Quotes List with Status & Profitability
+ * Story 6.5: Blocking and Non-Blocking Alerts
  */
 
 export type QuoteStatus = "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 export type PricingMode = "FIXED_GRID" | "DYNAMIC";
 export type TripType = "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID";
 export type ProfitabilityLevel = "green" | "orange" | "red";
+export type RegulatoryCategory = "LIGHT" | "HEAVY";
+
+// ============================================================================
+// Story 6.5: Compliance Types for Blocking/Non-Blocking Alerts
+// ============================================================================
+
+export type ComplianceViolationType =
+  | "DRIVING_TIME_EXCEEDED"
+  | "AMPLITUDE_EXCEEDED"
+  | "BREAK_REQUIRED"
+  | "SPEED_LIMIT_EXCEEDED";
+
+export type ComplianceWarningType = "APPROACHING_LIMIT" | "BREAK_RECOMMENDED";
+
+export type ComplianceSeverity = "BLOCKING" | "WARNING";
+
+/**
+ * Compliance violation - blocks quote creation/sending
+ */
+export interface ComplianceViolation {
+  type: ComplianceViolationType;
+  message: string;
+  actual: number;
+  limit: number;
+  unit: "hours" | "minutes" | "km/h";
+  severity: "BLOCKING";
+}
+
+/**
+ * Compliance warning - informs but doesn't block
+ */
+export interface ComplianceWarning {
+  type: ComplianceWarningType;
+  message: string;
+  actual: number;
+  limit: number;
+  percentOfLimit: number;
+}
+
+/**
+ * Applied compliance rule for transparency
+ */
+export interface AppliedComplianceRule {
+  ruleId: string;
+  ruleName: string;
+  threshold: number;
+  unit: string;
+  result: "PASS" | "FAIL" | "WARNING";
+  actualValue?: number;
+}
+
+/**
+ * Adjusted durations after break injection and speed capping
+ */
+export interface AdjustedDurations {
+  totalDrivingMinutes: number;
+  totalAmplitudeMinutes: number;
+  injectedBreakMinutes: number;
+  cappedSpeedApplied: boolean;
+  originalDrivingMinutes: number;
+  originalAmplitudeMinutes: number;
+}
+
+/**
+ * Full compliance validation result
+ */
+export interface ComplianceValidationResult {
+  isCompliant: boolean;
+  regulatoryCategory: RegulatoryCategory;
+  violations: ComplianceViolation[];
+  warnings: ComplianceWarning[];
+  adjustedDurations: AdjustedDurations;
+  rulesApplied: AppliedComplianceRule[];
+}
+
+/**
+ * Check if there are any blocking violations
+ */
+export function hasBlockingViolations(result: ComplianceValidationResult | null): boolean {
+  if (!result) return false;
+  return result.violations.length > 0;
+}
+
+/**
+ * Check if there are any warnings (non-blocking)
+ */
+export function hasComplianceWarnings(result: ComplianceValidationResult | null): boolean {
+  if (!result) return false;
+  return result.warnings.length > 0;
+}
+
+/**
+ * Get compliance status level for UI display
+ */
+export function getComplianceStatusLevel(
+  result: ComplianceValidationResult | null
+): "ok" | "warning" | "error" {
+  if (!result) return "ok";
+  if (result.violations.length > 0) return "error";
+  if (result.warnings.length > 0) return "warning";
+  return "ok";
+}
 
 export interface VehicleCategory {
   id: string;
@@ -321,6 +424,7 @@ export interface TripAnalysis {
 
 /**
  * Pricing calculation result
+ * Story 6.5: Extended with compliance validation results
  */
 export interface PricingResult {
   pricingMode: PricingMode;
@@ -345,6 +449,8 @@ export interface PricingResult {
   isContractPrice: boolean;
   fallbackReason: string | null;
   tripAnalysis: TripAnalysis;
+  // Story 6.5: Compliance validation results
+  complianceResult: ComplianceValidationResult | null;
 }
 
 /**

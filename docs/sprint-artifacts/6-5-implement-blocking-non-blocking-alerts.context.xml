@@ -1,0 +1,258 @@
+<story-context id="6-5-implement-blocking-non-blocking-alerts" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>5</storyId>
+    <title>Implement Blocking and Non-Blocking Alerts for Impossible or Risky Trips</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-27T13:15:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-5-implement-blocking-non-blocking-alerts.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>clear blocking and non-blocking alerts for impossible or risky trips</iWant>
+    <soThat>I do not accidentally confirm illegal or extremely unprofitable missions</soThat>
+    <tasks>
+      <task id="1">Create ComplianceAlertBanner component for blocking violations</task>
+      <task id="2">Create ComplianceWarningAlert component for non-blocking warnings</task>
+      <task id="3">Extend PricingResult type to include compliance validation results</task>
+      <task id="4">Integrate compliance validation in usePricingCalculation hook</task>
+      <task id="5">Add blocking banner to CreateQuoteCockpit when violations exist</task>
+      <task id="6">Add inline warnings to TripTransparencyPanel for low margin/compliance warnings</task>
+      <task id="7">Disable create/send actions when blocking violations exist</task>
+      <task id="8">Add translations for all alert messages</task>
+      <task id="9">Write unit tests for alert components</task>
+      <task id="10">Write Playwright tests for blocking/non-blocking alert flows</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>a quote that fails hard constraints (e.g. heavy-vehicle regulations, impossible schedule)</given>
+      <when>pricing/validation runs</when>
+      <then>a page-level blocking banner appears with explicit reasons and the create/send actions are disabled until the issue is resolved</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>a quote that is legal but low-margin or unusual</given>
+      <when>I view it</when>
+      <then>non-blocking inline alerts (e.g. orange profitability indicator, warnings in TripTransparencyPanel) inform me but do not block sending</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>a blocking violation exists</given>
+      <when>I attempt to create or send the quote</when>
+      <then>the action is prevented and the banner explains why</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>a compliance warning exists (non-blocking)</given>
+      <when>I view the quote cockpit</when>
+      <then>I see the warning but can still proceed with creating/sending the quote</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>the backend returns compliance validation results</given>
+      <when>the UI receives them</when>
+      <then>violations are distinguished from warnings by severity level (BLOCKING vs WARNING)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR46, FR47-FR48</section>
+        <snippet>FR46: The UI shall provide blocking alerts when a requested trip is operationally or regulatorily impossible and guide the operator to adjust parameters or staffing. FR47: Heavy-vehicle compliance validator blocks non-compliant missions with explicit error reasons.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>7.3 Forms &amp; Validation, 6.1.6 Profitability Indicator &amp; Dispatch Badges</section>
+        <snippet>Blocking errors (e.g. impossible trip, regulatory violation) are shown as page-level banners with clear actions. Non-blocking warnings use inline alerts in the TripTransparencyPanel and Dispatch badges.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Fleet &amp; Regulatory Models, Compliance Engine</section>
+        <snippet>Heavy-vehicle regulations (maximum driving time, amplitude, rest times, mandatory breaks) must be treated as hard constraints that shape which itineraries and staffing options are feasible.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 6 - Quotes &amp; Operator Cockpit</title>
+        <section>Story 6.5</section>
+        <snippet>Implement blocking and non-blocking alerts for impossible or risky trips. Blocking alerts prevent confirmation of illegal missions; non-blocking alerts inform about low margin or unusual conditions.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/api/src/services/compliance-validator.ts</path>
+        <kind>service</kind>
+        <symbol>validateHeavyVehicleCompliance, ComplianceValidationResult, ComplianceViolation, ComplianceWarning</symbol>
+        <lines>1-558</lines>
+        <reason>Core compliance validation logic that returns violations (BLOCKING) and warnings. This service must be called during pricing and its results surfaced in the UI.</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/compliance.ts</path>
+        <kind>route</kind>
+        <symbol>complianceRouter, POST /validate, POST /alternatives</symbol>
+        <lines>1-581</lines>
+        <reason>API endpoints for compliance validation. The /validate endpoint returns isCompliant, violations[], warnings[] that the UI must consume.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/quotes/components/CreateQuoteCockpit.tsx</path>
+        <kind>component</kind>
+        <symbol>CreateQuoteCockpit</symbol>
+        <lines>1-186</lines>
+        <reason>Main cockpit component where blocking banners must be added. Currently handles pricing errors via toast but needs page-level blocking alerts.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx</path>
+        <kind>component</kind>
+        <symbol>TripTransparencyPanel</symbol>
+        <lines>1-452</lines>
+        <reason>Panel where non-blocking inline warnings should be displayed. Already shows profitability indicator; needs compliance warnings section.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/quotes/components/QuotePricingPanel.tsx</path>
+        <kind>component</kind>
+        <symbol>QuotePricingPanel</symbol>
+        <lines>1-284</lines>
+        <reason>Contains the submit button that must be disabled when blocking violations exist.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts</path>
+        <kind>hook</kind>
+        <symbol>usePricingCalculation, PricingResult</symbol>
+        <lines>1-235</lines>
+        <reason>Hook that calls pricing API. Must be extended to also call compliance validation and include results in PricingResult.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/quotes/types.ts</path>
+        <kind>types</kind>
+        <symbol>PricingResult, TripAnalysis</symbol>
+        <lines>1-383</lines>
+        <reason>Type definitions that must be extended to include compliance validation results (violations, warnings, isCompliant).</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/ui/components/alert.tsx</path>
+        <kind>component</kind>
+        <symbol>Alert, AlertTitle, AlertDescription</symbol>
+        <lines>1-67</lines>
+        <reason>Base alert component with variants (default, primary, error, success). Use error variant for blocking alerts.</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+        <kind>component</kind>
+        <symbol>ProfitabilityIndicator</symbol>
+        <reason>Existing profitability indicator component. Pattern to follow for compliance status indicators.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons for alerts: AlertTriangle, XCircle, ShieldCheck, AlertOctagon</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>Alert, Badge, Button components from shadcn/ui</usage>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <usage>Translations for alert messages</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Blocking alerts must completely prevent quote creation/sending - no workarounds</constraint>
+    <constraint>Backend must distinguish BLOCKING vs WARNING severity in API responses</constraint>
+    <constraint>Use existing Alert component variants (error for blocking, default/primary for warnings)</constraint>
+    <constraint>Follow UX spec patterns: page-level banners for blocking, inline alerts for non-blocking</constraint>
+    <constraint>All alert messages must be translatable via next-intl</constraint>
+    <constraint>Compliance validation should be called alongside pricing calculation, not as a separate user action</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /api/vtc/compliance/validate</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Request: { vehicleCategoryId, regulatoryCategory, tripAnalysis, pickupAt, estimatedDropoffAt? }
+        Response: { isCompliant, violations[], warnings[], adjustedDurations, rulesApplied[], summary }
+      </signature>
+      <path>packages/api/src/routes/vtc/compliance.ts</path>
+    </interface>
+    <interface>
+      <name>ComplianceValidationResult</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+        interface ComplianceValidationResult {
+          isCompliant: boolean;
+          regulatoryCategory: "LIGHT" | "HEAVY";
+          violations: ComplianceViolation[];
+          warnings: ComplianceWarning[];
+          adjustedDurations: AdjustedDurations;
+          rulesApplied: AppliedComplianceRule[];
+          rulesUsed: RSERules | null;
+        }
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>ComplianceViolation</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+        interface ComplianceViolation {
+          type: "DRIVING_TIME_EXCEEDED" | "AMPLITUDE_EXCEEDED" | "BREAK_REQUIRED" | "SPEED_LIMIT_EXCEEDED";
+          message: string;
+          actual: number;
+          limit: number;
+          unit: "hours" | "minutes" | "km/h";
+          severity: "BLOCKING";
+        }
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+    <interface>
+      <name>ComplianceWarning</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+        interface ComplianceWarning {
+          type: "APPROACHING_LIMIT" | "BREAK_RECOMMENDED";
+          message: string;
+          actual: number;
+          limit: number;
+          percentOfLimit: number;
+        }
+      </signature>
+      <path>packages/api/src/services/compliance-validator.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests of components and hooks.
+      Use Playwright MCP for E2E tests of the blocking/non-blocking alert flows.
+      Test files should be colocated with components or in __tests__ directories.
+      Follow existing test patterns in the codebase.
+    </standards>
+    <locations>
+      apps/web/modules/saas/quotes/components/__tests__/
+      apps/web/modules/saas/quotes/hooks/__tests__/
+      packages/api/src/services/__tests__/
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test that blocking banner appears when compliance validation returns violations</idea>
+      <idea acId="AC1">Test that create button is disabled when violations exist</idea>
+      <idea acId="AC2">Test that inline warnings appear in TripTransparencyPanel for low margin</idea>
+      <idea acId="AC2">Test that inline warnings appear for compliance warnings (approaching limit)</idea>
+      <idea acId="AC3">Test that clicking disabled create button shows explanation</idea>
+      <idea acId="AC4">Test that quote can be created despite warnings</idea>
+      <idea acId="AC5">Test that API response correctly distinguishes violations from warnings</idea>
+      <idea>Playwright: Create quote with HEAVY vehicle exceeding 10h driving - verify blocking banner</idea>
+      <idea>Playwright: Create quote with low margin - verify orange indicator and warning but can submit</idea>
+      <idea>Playwright: Create quote with LIGHT vehicle - verify no compliance checks shown</idea>
+    </ideas>
+  </tests>
+</story-context>

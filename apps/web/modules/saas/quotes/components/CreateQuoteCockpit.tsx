@@ -10,9 +10,10 @@ import { useActiveOrganization } from "@saas/organizations/hooks/use-active-orga
 import { QuoteBasicInfoPanel } from "./QuoteBasicInfoPanel";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
 import { QuotePricingPanel } from "./QuotePricingPanel";
+import { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 import { usePricingCalculation } from "../hooks/usePricingCalculation";
 import type { CreateQuoteFormData } from "../types";
-import { initialCreateQuoteFormData } from "../types";
+import { initialCreateQuoteFormData, hasBlockingViolations } from "../types";
 
 /**
  * CreateQuoteCockpit Component
@@ -22,7 +23,10 @@ import { initialCreateQuoteFormData } from "../types";
  * - Center: Trip Transparency (costs, segments, profitability)
  * - Right: Pricing & options (price, notes, submit)
  * 
+ * Story 6.5: Includes blocking banner for compliance violations
+ * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
+ * @see Story 6.5: Blocking and Non-Blocking Alerts
  * @see UX Spec 8.3.2 Create Quote
  */
 export function CreateQuoteCockpit() {
@@ -144,39 +148,63 @@ export function CreateQuoteCockpit() {
     },
   });
 
+  // Story 6.5: Check for blocking violations
+  const hasViolations = hasBlockingViolations(pricingResult?.complianceResult ?? null);
+
   const handleSubmit = () => {
+    // Story 6.5: Prevent submission if there are blocking violations
+    if (hasViolations) {
+      toast({
+        title: t("quotes.compliance.cannotCreate"),
+        description: t("quotes.compliance.resolveViolations"),
+        variant: "error",
+      });
+      return;
+    }
     createQuoteMutation.mutate();
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Column - Basic Info */}
-      <div className="lg:col-span-1">
-        <QuoteBasicInfoPanel
-          formData={formData}
-          onFormChange={handleFormChange}
-          disabled={createQuoteMutation.isPending}
+    <div className="space-y-6">
+      {/* Story 6.5: Blocking Alert Banner for Compliance Violations */}
+      {pricingResult?.complianceResult && hasViolations && (
+        <ComplianceAlertBanner
+          violations={pricingResult.complianceResult.violations}
+          className="mb-2"
         />
-      </div>
+      )}
 
-      {/* Center Column - Trip Transparency */}
-      <div className="lg:col-span-1">
-        <TripTransparencyPanel
-          pricingResult={pricingResult}
-          isLoading={isCalculating}
-        />
-      </div>
+      {/* 3-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Basic Info */}
+        <div className="lg:col-span-1">
+          <QuoteBasicInfoPanel
+            formData={formData}
+            onFormChange={handleFormChange}
+            disabled={createQuoteMutation.isPending}
+          />
+        </div>
 
-      {/* Right Column - Pricing & Options */}
-      <div className="lg:col-span-1">
-        <QuotePricingPanel
-          formData={formData}
-          pricingResult={pricingResult}
-          isCalculating={isCalculating}
-          isSubmitting={createQuoteMutation.isPending}
-          onFormChange={handleFormChange}
-          onSubmit={handleSubmit}
-        />
+        {/* Center Column - Trip Transparency */}
+        <div className="lg:col-span-1">
+          <TripTransparencyPanel
+            pricingResult={pricingResult}
+            isLoading={isCalculating}
+          />
+        </div>
+
+        {/* Right Column - Pricing & Options */}
+        <div className="lg:col-span-1">
+          <QuotePricingPanel
+            formData={formData}
+            pricingResult={pricingResult}
+            isCalculating={isCalculating}
+            isSubmitting={createQuoteMutation.isPending}
+            onFormChange={handleFormChange}
+            onSubmit={handleSubmit}
+            hasBlockingViolations={hasViolations}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1425,7 +1425,8 @@
 				"tabs": {
 					"overview": "Aperçu",
 					"route": "Itinéraire",
-					"costs": "Coûts"
+					"costs": "Coûts",
+					"compliance": "Conformité"
 				},
 				"segment": "Segment",
 				"cost": "Coût",
@@ -1514,6 +1515,38 @@
 				"placeholder": "Ajouter des notes sur ce devis...",
 				"empty": "Aucune note"
 			}
+		},
+		"compliance": {
+			"banner": {
+				"title": "Trajet impossible",
+				"description": "Ce trajet viole les contraintes réglementaires et ne peut pas être confirmé. Veuillez ajuster les paramètres ci-dessous.",
+				"suggestedActions": "Actions suggérées :",
+				"action": {
+					"reduceDuration": "Réduire la durée ou la distance du trajet",
+					"changeVehicle": "Utiliser une catégorie de véhicule LÉGER à la place",
+					"splitTrip": "Diviser le trajet sur plusieurs jours"
+				},
+				"viewAlternatives": "Voir les options alternatives"
+			},
+			"violations": {
+				"DRIVING_TIME_EXCEEDED": "Temps de conduite maximum dépassé",
+				"AMPLITUDE_EXCEEDED": "Amplitude de travail maximum dépassée",
+				"BREAK_REQUIRED": "Pause obligatoire requise",
+				"SPEED_LIMIT_EXCEEDED": "Limite de vitesse dépassée"
+			},
+			"warnings": {
+				"title": "Avertissements de conformité",
+				"description": "Ce trajet est conforme mais approche des limites réglementaires. Vous pouvez tout de même continuer.",
+				"count": "{count, plural, one {# avertissement} other {# avertissements}}",
+				"APPROACHING_LIMIT": "Approche de la limite réglementaire",
+				"BREAK_RECOMMENDED": "Pause recommandée"
+			},
+			"actual": "Réel",
+			"limit": "Limite",
+			"blocked": "Trajet bloqué",
+			"blockedTooltip": "Ce trajet ne peut pas être créé en raison de violations réglementaires. Veuillez consulter les alertes bloquantes ci-dessus.",
+			"cannotCreate": "Impossible de créer le devis",
+			"resolveViolations": "Veuillez résoudre les violations de conformité avant de créer ce devis."
 		}
 	},
 	"fleet": {

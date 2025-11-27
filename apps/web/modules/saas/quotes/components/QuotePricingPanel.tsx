@@ -7,11 +7,18 @@ import { Label } from "@ui/components/label";
 import { Textarea } from "@ui/components/textarea";
 import { Skeleton } from "@ui/components/skeleton";
 import {
+  AlertOctagonIcon,
   CalendarIcon,
   EuroIcon,
   Loader2Icon,
   PlusIcon,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@ui/components/tooltip";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
@@ -29,6 +36,8 @@ interface QuotePricingPanelProps {
   ) => void;
   onSubmit: () => void;
   className?: string;
+  // Story 6.5: Blocking violations flag
+  hasBlockingViolations?: boolean;
 }
 
 /**
@@ -37,7 +46,10 @@ interface QuotePricingPanelProps {
  * Right column of the Create Quote cockpit.
  * Contains suggested price, final price input, notes, validity, and submit button.
  * 
+ * Story 6.5: Submit button is disabled when blocking violations exist.
+ * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
+ * @see Story 6.5: Blocking and Non-Blocking Alerts
  * @see UX Spec 8.3.2 Create Quote - Right Column
  * @see FR16 Operator Override with Live Profitability Feedback
  */
@@ -49,6 +61,7 @@ export function QuotePricingPanel({
   onFormChange,
   onSubmit,
   className,
+  hasBlockingViolations = false,
 }: QuotePricingPanelProps) {
   const t = useTranslations();
 
@@ -232,26 +245,47 @@ export function QuotePricingPanel({
         </CardContent>
       </Card>
 
-      {/* Submit Button */}
-      <Button
-        type="button"
-        size="lg"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={!isFormValid || isSubmitting || isCalculating}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2Icon className="size-4 mr-2 animate-spin" />
-            {t("quotes.create.creating")}
-          </>
-        ) : (
-          <>
-            <PlusIcon className="size-4 mr-2" />
-            {t("quotes.create.createQuote")}
-          </>
-        )}
-      </Button>
+      {/* Submit Button - Story 6.5: Disabled when blocking violations exist */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-full">
+              <Button
+                type="button"
+                size="lg"
+                className={cn(
+                  "w-full",
+                  hasBlockingViolations && "opacity-50 cursor-not-allowed"
+                )}
+                onClick={onSubmit}
+                disabled={!isFormValid || isSubmitting || isCalculating || hasBlockingViolations}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2Icon className="size-4 mr-2 animate-spin" />
+                    {t("quotes.create.creating")}
+                  </>
+                ) : hasBlockingViolations ? (
+                  <>
+                    <AlertOctagonIcon className="size-4 mr-2" />
+                    {t("quotes.compliance.blocked")}
+                  </>
+                ) : (
+                  <>
+                    <PlusIcon className="size-4 mr-2" />
+                    {t("quotes.create.createQuote")}
+                  </>
+                )}
+              </Button>
+            </div>
+          </TooltipTrigger>
+          {hasBlockingViolations && (
+            <TooltipContent side="top" className="max-w-xs">
+              <p>{t("quotes.compliance.blockedTooltip")}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Validation Hints */}
       {!isFormValid && (

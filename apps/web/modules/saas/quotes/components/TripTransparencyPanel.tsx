@@ -25,8 +25,9 @@ import {
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
+import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import type { PricingResult } from "../types";
-import { formatPrice, formatDistance, formatDuration } from "../types";
+import { formatPrice, formatDistance, formatDuration, hasComplianceWarnings } from "../types";
 
 interface TripTransparencyPanelProps {
   pricingResult: PricingResult | null;
@@ -40,7 +41,10 @@ interface TripTransparencyPanelProps {
  * Central panel displaying trip transparency with distance, duration,
  * internal cost, margin, and segment breakdown.
  * 
+ * Story 6.5: Includes compliance warnings section for non-blocking alerts.
+ * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
+ * @see Story 6.5: Blocking and Non-Blocking Alerts
  * @see UX Spec 6.1.5 TripTransparencyPanel
  * @see FR21-FR24 Shadow Calculation and Profitability
  */
@@ -129,7 +133,12 @@ export function TripTransparencyPanel({
 
       {/* Tabs for detailed breakdown */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={cn(
+          "grid w-full",
+          pricingResult.complianceResult && hasComplianceWarnings(pricingResult.complianceResult)
+            ? "grid-cols-4"
+            : "grid-cols-3"
+        )}>
           <TabsTrigger value="overview">
             {t("quotes.create.tripTransparency.tabs.overview")}
           </TabsTrigger>
@@ -139,6 +148,12 @@ export function TripTransparencyPanel({
           <TabsTrigger value="costs">
             {t("quotes.create.tripTransparency.tabs.costs")}
           </TabsTrigger>
+          {/* Story 6.5: Compliance tab when warnings exist */}
+          {pricingResult.complianceResult && hasComplianceWarnings(pricingResult.complianceResult) && (
+            <TabsTrigger value="compliance" className="text-amber-600">
+              {t("quotes.create.tripTransparency.tabs.compliance")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -327,6 +342,15 @@ export function TripTransparencyPanel({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Story 6.5: Compliance Tab - Warnings */}
+        {pricingResult.complianceResult && hasComplianceWarnings(pricingResult.complianceResult) && (
+          <TabsContent value="compliance" className="mt-4">
+            <ComplianceWarningAlert
+              warnings={pricingResult.complianceResult.warnings}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

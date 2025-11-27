@@ -3,7 +3,14 @@
 import { apiClient } from "@shared/lib/api-client";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CreateQuoteFormData, PricingResult, TripAnalysis, ProfitabilityLevel } from "../types";
+import type { 
+  CreateQuoteFormData, 
+  PricingResult, 
+  TripAnalysis, 
+  ProfitabilityLevel,
+  ComplianceValidationResult,
+  RegulatoryCategory,
+} from "../types";
 import { getProfitabilityLevel } from "../types";
 
 /**
@@ -61,6 +68,63 @@ interface PricingApiResponse {
 }
 
 /**
+ * Story 6.5: Compliance validation input
+ */
+interface ComplianceValidationInput {
+  vehicleCategoryId: string;
+  regulatoryCategory: RegulatoryCategory;
+  tripAnalysis: {
+    segments: {
+      approach?: { durationMinutes: number; distanceKm?: number } | null;
+      service: { durationMinutes: number; distanceKm?: number };
+      return?: { durationMinutes: number; distanceKm?: number } | null;
+    };
+    totalDurationMinutes?: number;
+  };
+  pickupAt: string;
+  estimatedDropoffAt?: string;
+}
+
+/**
+ * Story 6.5: Compliance API response
+ */
+interface ComplianceApiResponse {
+  isCompliant: boolean;
+  regulatoryCategory: RegulatoryCategory;
+  violations: Array<{
+    type: string;
+    message: string;
+    actual: number;
+    limit: number;
+    unit: "hours" | "minutes" | "km/h";
+    severity: "BLOCKING";
+  }>;
+  warnings: Array<{
+    type: string;
+    message: string;
+    actual: number;
+    limit: number;
+    percentOfLimit: number;
+  }>;
+  adjustedDurations: {
+    totalDrivingMinutes: number;
+    totalAmplitudeMinutes: number;
+    injectedBreakMinutes: number;
+    cappedSpeedApplied: boolean;
+    originalDrivingMinutes: number;
+    originalAmplitudeMinutes: number;
+  };
+  rulesApplied: Array<{
+    ruleId: string;
+    ruleName: string;
+    threshold: number;
+    unit: string;
+    result: "PASS" | "FAIL" | "WARNING";
+    actualValue?: number;
+  }>;
+}
+
+/**
  * Hook options
  */
 interface UsePricingCalculationOptions {
@@ -84,9 +148,12 @@ interface UsePricingCalculationReturn {
  * 
  * Handles debounced pricing calculation API calls.
  * Transforms API response to PricingResult format for UI consumption.
+ * Story 6.5: Also runs compliance validation for HEAVY vehicles.
  * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
+ * @see Story 6.5: Blocking and Non-Blocking Alerts
  * @see POST /api/vtc/pricing/calculate
+ * @see POST /api/vtc/compliance/validate
  */
 export function usePricingCalculation(
   options: UsePricingCalculationOptions = {}
@@ -96,6 +163,10 @@ export function usePricingCalculation(
   const [pricingResult, setPricingResult] = useState<PricingResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Store vehicle category for compliance check
+  const vehicleCategoryRef = useRef<{ id: string; regulatoryCategory: RegulatoryCategory } | null>(null);
+  const pickupAtRef = useRef<string | null>(null);
 
   // Pricing calculation mutation
   const mutation = useMutation({
@@ -111,7 +182,44 @@ export function usePricingCalculation(
 
       return response.json() as Promise<PricingApiResponse>;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // Story 6.5: Run compliance validation for HEAVY vehicles
+      let complianceResult: ComplianceValidationResult | null = null;
+      
+      if (
+        vehicleCategoryRef.current?.regulatoryCategory === "HEAVY" &&
+        data.tripAnalysis &&
+        pickupAtRef.current
+      ) {
+        try {
+          complianceResult = await validateCompliance({
+            vehicleCategoryId: vehicleCategoryRef.current.id,
+            regulatoryCategory: "HEAVY",
+            tripAnalysis: {
+              segments: {
+                approach: data.tripAnalysis.segments.approach ? {
+                  durationMinutes: data.tripAnalysis.segments.approach.durationMinutes,
+                  distanceKm: data.tripAnalysis.segments.approach.distanceKm,
+                } : null,
+                service: {
+                  durationMinutes: data.tripAnalysis.segments.service.durationMinutes,
+                  distanceKm: data.tripAnalysis.segments.service.distanceKm,
+                },
+                return: data.tripAnalysis.segments.return ? {
+                  durationMinutes: data.tripAnalysis.segments.return.durationMinutes,
+                  distanceKm: data.tripAnalysis.segments.return.distanceKm,
+                } : null,
+              },
+              totalDurationMinutes: data.tripAnalysis.totalDurationMinutes,
+            },
+            pickupAt: pickupAtRef.current,
+          });
+        } catch (complianceError) {
+          console.error("Compliance validation failed:", complianceError);
+          // Don't block pricing if compliance check fails
+        }
+      }
+
       // Transform API response to PricingResult
       const result: PricingResult = {
         pricingMode: data.pricingMode,
@@ -126,6 +234,7 @@ export function usePricingCalculation(
         isContractPrice: data.isContractPrice,
         fallbackReason: data.fallbackReason,
         tripAnalysis: data.tripAnalysis,
+        complianceResult,
       };
       setPricingResult(result);
       setError(null);
@@ -134,6 +243,51 @@ export function usePricingCalculation(
       setError(err instanceof Error ? err : new Error("Unknown error"));
     },
   });
+
+  /**
+   * Story 6.5: Call compliance validation API
+   */
+  async function validateCompliance(
+    input: ComplianceValidationInput
+  ): Promise<ComplianceValidationResult | null> {
+    try {
+      const response = await apiClient.vtc.compliance.validate.$post({
+        json: input,
+      });
+
+      if (!response.ok) {
+        console.error("Compliance API error:", response.status);
+        return null;
+      }
+
+      const data = await response.json() as ComplianceApiResponse;
+      
+      return {
+        isCompliant: data.isCompliant,
+        regulatoryCategory: data.regulatoryCategory,
+        violations: data.violations.map(v => ({
+          type: v.type as ComplianceValidationResult["violations"][0]["type"],
+          message: v.message,
+          actual: v.actual,
+          limit: v.limit,
+          unit: v.unit,
+          severity: v.severity,
+        })),
+        warnings: data.warnings.map(w => ({
+          type: w.type as ComplianceValidationResult["warnings"][0]["type"],
+          message: w.message,
+          actual: w.actual,
+          limit: w.limit,
+          percentOfLimit: w.percentOfLimit,
+        })),
+        adjustedDurations: data.adjustedDurations,
+        rulesApplied: data.rulesApplied,
+      };
+    } catch (err) {
+      console.error("Compliance validation error:", err);
+      return null;
+    }
+  }
 
   // Check if form data has required fields for pricing
   const canCalculate = useCallback((formData: CreateQuoteFormData): boolean => {
@@ -180,6 +334,15 @@ export function usePricingCalculation(
 
       // Debounce the API call
       debounceTimer.current = setTimeout(() => {
+        // Story 6.5: Store vehicle category for compliance check
+        if (formData.vehicleCategory) {
+          vehicleCategoryRef.current = {
+            id: formData.vehicleCategoryId,
+            regulatoryCategory: formData.vehicleCategory.regulatoryCategory,
+          };
+        }
+        pickupAtRef.current = formData.pickupAt?.toISOString() ?? null;
+
         const input: PricingCalculationInput = {
           contactId: formData.contactId,
           pickup: {

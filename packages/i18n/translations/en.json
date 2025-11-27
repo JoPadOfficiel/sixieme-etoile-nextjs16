@@ -1425,7 +1425,8 @@
 				"tabs": {
 					"overview": "Overview",
 					"route": "Route",
-					"costs": "Costs"
+					"costs": "Costs",
+					"compliance": "Compliance"
 				},
 				"segment": "Segment",
 				"cost": "Cost",
@@ -1514,6 +1515,38 @@
 				"placeholder": "Add notes about this quote...",
 				"empty": "No notes"
 			}
+		},
+		"compliance": {
+			"banner": {
+				"title": "Trip Cannot Be Created",
+				"description": "This trip violates regulatory constraints and cannot be confirmed. Please adjust the parameters below.",
+				"suggestedActions": "Suggested Actions:",
+				"action": {
+					"reduceDuration": "Reduce the trip duration or distance",
+					"changeVehicle": "Use a LIGHT vehicle category instead",
+					"splitTrip": "Split the trip into multiple days"
+				},
+				"viewAlternatives": "View Alternative Options"
+			},
+			"violations": {
+				"DRIVING_TIME_EXCEEDED": "Maximum Driving Time Exceeded",
+				"AMPLITUDE_EXCEEDED": "Maximum Work Amplitude Exceeded",
+				"BREAK_REQUIRED": "Mandatory Break Required",
+				"SPEED_LIMIT_EXCEEDED": "Speed Limit Exceeded"
+			},
+			"warnings": {
+				"title": "Compliance Warnings",
+				"description": "This trip is compliant but approaching regulatory limits. You can still proceed.",
+				"count": "{count, plural, one {# warning} other {# warnings}}",
+				"APPROACHING_LIMIT": "Approaching Regulatory Limit",
+				"BREAK_RECOMMENDED": "Break Recommended"
+			},
+			"actual": "Actual",
+			"limit": "Limit",
+			"blocked": "Trip Blocked",
+			"blockedTooltip": "This trip cannot be created due to regulatory violations. Please review the blocking alerts above.",
+			"cannotCreate": "Cannot Create Quote",
+			"resolveViolations": "Please resolve the compliance violations before creating this quote."
 		}
 	},
 	"fleet": {

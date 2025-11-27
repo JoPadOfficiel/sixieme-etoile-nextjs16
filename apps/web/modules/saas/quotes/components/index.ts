@@ -14,3 +14,7 @@ export { QuoteDetailPage } from "./QuoteDetailPage";
 export { QuoteHeader } from "./QuoteHeader";
 export { QuoteCommercialSummary } from "./QuoteCommercialSummary";
 export { QuoteActivityLog } from "./QuoteActivityLog";
+
+// Story 6.5: Compliance Alerts
+export { ComplianceAlertBanner } from "./ComplianceAlertBanner";
+export { ComplianceWarningAlert } from "./ComplianceWarningAlert";
