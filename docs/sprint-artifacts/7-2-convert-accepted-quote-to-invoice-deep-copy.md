@@ -277,9 +277,41 @@ const handleConvertToInvoice = async () => {
 - [x] Bouton désactivé pendant le chargement
 - [x] Traductions FR ajoutées
 - [x] Tests unitaires passants (API tests)
-- [ ] Tests E2E passants (à exécuter manuellement)
-- [ ] Vérification DB après conversion (à exécuter manuellement)
+- [x] Tests E2E passants (Playwright MCP - 27/11/2025)
+- [x] Vérification DB après conversion (confirmée - 27/11/2025)
 - [ ] Code review completed
+
+## E2E Test Results (27/11/2025)
+
+### Test 1: Conversion depuis QuotesTable ✅
+
+- **Quote**: Partner Beta (cmih6krnj0003it74nwkoe08i) - 150,00 €
+- **Action**: Clic sur "Convert to Invoice" dans le menu dropdown
+- **Résultat**:
+  - Toast "Invoice created successfully" affiché
+  - Navigation vers `/app/vtc-qa-orga1/invoices/cmihkkxv50001it8th9c44bw0`
+  - Facture INV-2025-0002 créée avec deep-copy des valeurs
+
+### Test 2: Vérification Deep-Copy en DB ✅
+
+```sql
+-- Facture créée
+SELECT * FROM invoice WHERE number = 'INV-2025-0002';
+-- totalExclVat: 150.00, totalVat: 15.00, totalInclVat: 165.00
+
+-- Ligne de facture
+SELECT * FROM invoice_line WHERE "invoiceId" = 'cmihkkxv50001it8th9c44bw0';
+-- description: "Transport: 1 Avenue des Champs-Élysées, Paris → Aéroport Charles de Gaulle, Paris"
+-- unitPriceExclVat: 150.00, vatRate: 10%
+```
+
+### Test 3: Gestion d'erreur - Facture existante ✅
+
+- **Action**: Tentative de conversion du même devis (déjà converti)
+- **Résultat**:
+  - Erreur 400 Bad Request
+  - Toast "Failed to create invoice" avec message d'erreur
+  - Utilisateur reste sur la page des devis
 
 ---
 
