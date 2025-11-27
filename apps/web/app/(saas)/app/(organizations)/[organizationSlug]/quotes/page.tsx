@@ -22,7 +22,7 @@ export default function QuotesPage() {
 
   const handleAddQuote = () => {
     // Navigate to create quote page (Story 6.2)
-    router.push(`/${activeOrganization?.slug}/quotes/new`);
+    router.push(`/app/${activeOrganization?.slug}/quotes/new`);
   };
 
   return (

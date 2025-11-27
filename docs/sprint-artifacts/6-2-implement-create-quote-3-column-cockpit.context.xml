@@ -1,0 +1,321 @@
+<story-context id="6-2-implement-create-quote-3-column-cockpit" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>6.2</storyId>
+    <title>Implement Create Quote 3-Column Cockpit</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T09:00:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-2-implement-create-quote-3-column-cockpit.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a three-column cockpit for quote creation</iWant>
+    <soThat>I can see client context, trip transparency and pricing options at the same time</soThat>
+    <tasks>
+      <task id="1">Create quotes/new page route at apps/web/app/(saas)/app/(organizations)/[organizationSlug]/quotes/new/page.tsx</task>
+      <task id="2">Create CreateQuoteCockpit component with 3-column responsive layout</task>
+      <task id="3">Create QuoteBasicInfoPanel (left column) with contact selector, trip type, pickup/dropoff, datetime, vehicle category</task>
+      <task id="4">Create TripTransparencyPanel (center column) with distance, duration, internal cost, margin, tabs for Overview/Route/Fees/Tolls</task>
+      <task id="5">Create QuotePricingPanel (right column) with suggested/final price, optional fees, promotions, notes</task>
+      <task id="6">Implement AddressAutocomplete component for Google Places integration</task>
+      <task id="7">Integrate pricing engine API call on form changes with skeleton loading pattern</task>
+      <task id="8">Create quote via POST /api/vtc/quotes on form submission</task>
+      <task id="9">Add translations (EN/FR) for all new UI elements</task>
+      <task id="10">Write Vitest unit tests for new components</task>
+      <task id="11">Write Playwright E2E tests for quote creation flow</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="3-Column Layout Display">
+      <given>/dashboard/quotes/new page</given>
+      <when>I open the page</when>
+      <then>I see three columns as per UX spec 8.3.2:
+        - Left: basic info (contact selector with type badge, trip type, pickup/destination via Google Places, datetime, vehicle category)
+        - Center: TripTransparencyPanel (distance, duration, internal cost, margin %, tabs for Overview/Route/Fees/Tolls, map)
+        - Right: pricing and options (suggested price vs final price, optional fees checklist, promotion code selector, notes)</then>
+    </criterion>
+    <criterion id="AC2" title="Pricing Calculation Trigger">
+      <given>mandatory inputs are filled (contact, itinerary, time, vehicle category)</given>
+      <when>I complete the required fields</when>
+      <then>the backend runs pricing + shadow calculation and the middle column updates with a skeleton→result pattern</then>
+    </criterion>
+    <criterion id="AC3" title="Contact Selector with Type Badge">
+      <given>the contact selector in left column</given>
+      <when>I search and select a contact</when>
+      <then>the contact displays with Partner/Private badge and the pricing mode is determined accordingly</then>
+    </criterion>
+    <criterion id="AC4" title="Address Autocomplete">
+      <given>pickup and dropoff address fields</given>
+      <when>I type an address</when>
+      <then>Google Places autocomplete suggestions appear and selecting one populates lat/lng coordinates</then>
+    </criterion>
+    <criterion id="AC5" title="Trip Transparency Panel">
+      <given>pricing calculation has completed</given>
+      <when>I view the center column</when>
+      <then>I see:
+        - Summary cards: distance (km), duration (min), internal cost (EUR), margin (%)
+        - Profitability indicator (green/orange/red)
+        - Tabs: Overview, Route (segments A/B/C), Fees and Tolls
+        - Cost breakdown per segment</then>
+    </criterion>
+    <criterion id="AC6" title="Price Override with Live Feedback">
+      <given>a computed quote with suggested price</given>
+      <when>I manually edit the final price in the right column</when>
+      <then>the margin percentage and profitability indicator update immediately</then>
+    </criterion>
+    <criterion id="AC7" title="Quote Creation">
+      <given>all required fields are filled</given>
+      <when>I click "Create Quote" button</when>
+      <then>the quote is created via API with status DRAFT and I am redirected to the quotes list or quote detail</then>
+    </criterion>
+    <criterion id="AC8" title="Responsive Layout">
+      <given>screen width less than 1280px</given>
+      <when>I view the page</when>
+      <then>columns stack appropriately with Trip Transparency remaining visible</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR42-FR45 Operator Cockpit and UX</section>
+        <snippet>The quote builder UI shall present client, itinerary, timing and resource inputs in a structured, easy-to-scan layout. The UI shall display a visual representation of the trip including approach, main service and return segments.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR21-FR24 Shadow Calculation</section>
+        <snippet>For every quote, the system shall run a shadow calculation that simulates Segment A (approach), Segment B (service) and Segment C (return). The system shall compute and display a profitability indicator based on selling price vs internal cost.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Pricing and Costing Context</section>
+        <snippet>Shadow calculation engine: approach / service / return segments. Integration with fuel prices and distance/time from external APIs. Dual pricing method: partner fixed grids vs dynamic pricing.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.3.2 Create Quote</section>
+        <snippet>Route: /dashboard/quotes/new. Layout: 3 columns. Left – Basic Info: contact selector, trip type, pickup/destination (Google Places), datetime, vehicle category. Center – Trip Transparency. Right – Pricing and Options.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>6.1.5 TripTransparencyPanel</section>
+        <snippet>Composite component containing summary row (distance, duration, internal cost, margin %, profitability light) and tabs (Overview, Route, Fees and Tolls). Uses Cards, Tabs, Table and Badges.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 6 - Quotes and Operator Cockpit</title>
+        <section>Story 6.2</section>
+        <snippet>Implement Create Quote 3-Column Cockpit. Prerequisites: Stories 4.1-4.7 (pricing and shadow), 5.1 (vehicles/bases), 2.1-2.2 (contact and partner data), Maps integration.</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuotesTable.tsx</path>
+        <kind>component</kind>
+        <symbol>QuotesTable</symbol>
+        <lines>1-410</lines>
+        <reason>Reference for quotes module patterns, API client usage, translations, and table component structure</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/types.ts</path>
+        <kind>types</kind>
+        <symbol>Quote, QuoteStatus, PricingMode, TripType</symbol>
+        <lines>1-140</lines>
+        <reason>Type definitions for quotes including tripAnalysis and appliedRules structures</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+        <kind>component</kind>
+        <symbol>ProfitabilityIndicator</symbol>
+        <lines>1-149</lines>
+        <reason>Reusable profitability indicator component to use in TripTransparencyPanel</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/contacts/components/ContactForm.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactForm</symbol>
+        <lines>1-348</lines>
+        <reason>Reference for form patterns, mutations, validation, and shadcn/ui component usage</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/quotes.ts</path>
+        <kind>api-route</kind>
+        <symbol>quotesRouter, createQuoteSchema</symbol>
+        <lines>15-250</lines>
+        <reason>API endpoint for creating quotes, validation schema with all required fields</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>calculatePrice, calculateShadowSegments, TripAnalysis</symbol>
+        <lines>752-2258</lines>
+        <reason>Pricing engine with shadow calculation, profitability indicator, and cost breakdown logic</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/quotes/page.tsx</path>
+        <kind>page</kind>
+        <symbol>QuotesPage</symbol>
+        <lines>1-39</lines>
+        <reason>Existing quotes list page with navigation to /quotes/new</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuoteStatusBadge.tsx</path>
+        <kind>component</kind>
+        <symbol>QuoteStatusBadge</symbol>
+        <reason>Status badge component to reuse in quote creation flow</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/content/locales/en/quotes.json</path>
+        <kind>translations</kind>
+        <reason>English translations for quotes module - extend with create quote strings</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/content/locales/fr/quotes.json</path>
+        <kind>translations</kind>
+        <reason>French translations for quotes module - extend with create quote strings</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching, mutations, and cache invalidation</usage>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <usage>Internationalization with useTranslations hook</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons for UI elements</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>shadcn/ui components: Card, Tabs, Input, Select, Button, Label, Skeleton</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Form validation schema</usage>
+      </node>
+      <node>
+        <package>@googlemaps/js-api-loader</package>
+        <usage>Google Places Autocomplete integration (to be added if not present)</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Follow existing module structure: apps/web/modules/saas/quotes/components/</constraint>
+    <constraint type="pattern">Use React Query for API calls with skeleton loading pattern</constraint>
+    <constraint type="pattern">Follow ContactForm pattern for form state management and mutations</constraint>
+    <constraint type="pattern">Use shadcn/ui components consistently (Card, Tabs, Input, Select, Button)</constraint>
+    <constraint type="i18n">All user-facing strings must use useTranslations hook</constraint>
+    <constraint type="currency">All monetary values in EUR, formatted consistently</constraint>
+    <constraint type="timezone">All datetime values in Europe/Paris business time, no conversion</constraint>
+    <constraint type="tenancy">All API calls scoped to current organization via organizationMiddleware</constraint>
+    <constraint type="responsive">3-column layout at 1280px+, stack to 2 columns at 1024-1279px</constraint>
+    <constraint type="accessibility">All interactive elements must have proper aria-labels</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /api/vtc/quotes</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Body: {
+          contactId: string,
+          vehicleCategoryId: string,
+          pricingMode: "FIXED_GRID" | "DYNAMIC",
+          tripType: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID",
+          pickupAt: string (ISO datetime),
+          pickupAddress: string,
+          pickupLatitude?: number,
+          pickupLongitude?: number,
+          dropoffAddress: string,
+          dropoffLatitude?: number,
+          dropoffLongitude?: number,
+          passengerCount: number,
+          luggageCount: number,
+          suggestedPrice: number,
+          finalPrice: number,
+          internalCost?: number,
+          marginPercent?: number,
+          tripAnalysis?: object,
+          appliedRules?: object,
+          validUntil?: string,
+          notes?: string
+        }
+        Response: Quote object with status 201
+      </signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/contacts</name>
+      <kind>REST endpoint</kind>
+      <signature>Query: { search?, page?, limit? } → { data: Contact[], meta: PaginationMeta }</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/vehicle-categories</name>
+      <kind>REST endpoint</kind>
+      <signature>Query: { page?, limit? } → { data: VehicleCategory[], meta: PaginationMeta }</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>calculatePrice</name>
+      <kind>function</kind>
+      <signature>(request: PricingRequest, context: PricingEngineContext) => PricingResult</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>calculateShadowSegments</name>
+      <kind>function</kind>
+      <signature>(input: ShadowCalculationInput, serviceDistanceKm: number, serviceDurationMinutes: number, settings: OrganizationPricingSettings) => TripAnalysis</signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>ProfitabilityIndicator</name>
+      <kind>React component</kind>
+      <signature>Props: { marginPercent: number, greenThreshold?: number, orangeThreshold?: number, compact?: boolean }</signature>
+      <path>apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests with React Testing Library for component tests.
+      Use Playwright MCP for E2E browser automation tests.
+      Follow existing test patterns in packages/api/src/services/__tests__/.
+      Component tests should verify rendering, user interactions, and state changes.
+      E2E tests should cover the full quote creation flow from navigation to submission.
+    </standards>
+    <locations>
+      <location>apps/web/modules/saas/quotes/components/__tests__/</location>
+      <location>packages/api/src/services/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test 3-column layout renders correctly with all sections visible</idea>
+      <idea acId="AC2">Test skeleton loading appears during pricing calculation</idea>
+      <idea acId="AC3">Test contact selector shows Partner/Private badges correctly</idea>
+      <idea acId="AC4">Test address autocomplete integration (mock Google Places API)</idea>
+      <idea acId="AC5">Test TripTransparencyPanel displays all cost components and tabs</idea>
+      <idea acId="AC6">Test price override updates margin and profitability indicator in real-time</idea>
+      <idea acId="AC7">Test quote creation API call with correct payload</idea>
+      <idea acId="AC7">Test redirect after successful quote creation</idea>
+      <idea acId="AC8">Test responsive layout at different breakpoints</idea>
+      <idea>Playwright: Navigate to /quotes/new, fill form, verify pricing updates, submit quote</idea>
+      <idea>Playwright: Verify contact search and selection with badge display</idea>
+      <idea>Playwright: Verify Trip Transparency tabs switch correctly</idea>
+    </ideas>
+  </tests>
+</story-context>

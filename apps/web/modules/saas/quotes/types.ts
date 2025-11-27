@@ -137,3 +137,171 @@ export function formatTripSummary(pickupAddress: string, dropoffAddress: string)
   const dropoff = dropoffAddress.split(",")[0] || dropoffAddress;
   return `${pickup} → ${dropoff}`;
 }
+
+// ============================================================================
+// Story 6.2: Create Quote Cockpit Types
+// ============================================================================
+
+/**
+ * Form data for creating a new quote
+ */
+export interface CreateQuoteFormData {
+  contactId: string;
+  contact: Contact | null;
+  tripType: TripType;
+  pickupAddress: string;
+  pickupLatitude: number | null;
+  pickupLongitude: number | null;
+  dropoffAddress: string;
+  dropoffLatitude: number | null;
+  dropoffLongitude: number | null;
+  pickupAt: Date | null;
+  vehicleCategoryId: string;
+  vehicleCategory: VehicleCategory | null;
+  passengerCount: number;
+  luggageCount: number;
+  finalPrice: number;
+  notes: string;
+  validUntil: Date | null;
+}
+
+/**
+ * Initial form data for create quote
+ */
+export const initialCreateQuoteFormData: CreateQuoteFormData = {
+  contactId: "",
+  contact: null,
+  tripType: "TRANSFER",
+  pickupAddress: "",
+  pickupLatitude: null,
+  pickupLongitude: null,
+  dropoffAddress: "",
+  dropoffLatitude: null,
+  dropoffLongitude: null,
+  pickupAt: null,
+  vehicleCategoryId: "",
+  vehicleCategory: null,
+  passengerCount: 1,
+  luggageCount: 0,
+  finalPrice: 0,
+  notes: "",
+  validUntil: null,
+};
+
+/**
+ * Segment analysis from shadow calculation
+ */
+export interface SegmentAnalysis {
+  name: "approach" | "service" | "return";
+  description: string;
+  distanceKm: number;
+  durationMinutes: number;
+  cost: CostBreakdown;
+  isEstimated: boolean;
+}
+
+/**
+ * Cost breakdown per component
+ */
+export interface CostBreakdown {
+  fuel: { amount: number; distanceKm: number; consumptionL100km: number; pricePerLiter: number };
+  tolls: { amount: number; distanceKm: number; ratePerKm: number };
+  wear: { amount: number; distanceKm: number; ratePerKm: number };
+  driver: { amount: number; durationMinutes: number; hourlyRate: number };
+  parking: { amount: number; description: string };
+  total: number;
+}
+
+/**
+ * Trip analysis from shadow calculation
+ */
+export interface TripAnalysis {
+  costBreakdown: CostBreakdown;
+  vehicleSelection?: {
+    selectedVehicle?: {
+      vehicleId: string;
+      vehicleName: string;
+      baseId: string;
+      baseName: string;
+    };
+    candidatesConsidered: number;
+    candidatesAfterCapacityFilter: number;
+    candidatesAfterHaversineFilter: number;
+    candidatesWithRouting: number;
+    selectionCriterion: string;
+    fallbackUsed: boolean;
+    fallbackReason?: string;
+  };
+  segments: {
+    approach: SegmentAnalysis | null;
+    service: SegmentAnalysis;
+    return: SegmentAnalysis | null;
+  };
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  totalInternalCost: number;
+  calculatedAt: string;
+  routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
+}
+
+/**
+ * Pricing calculation result
+ */
+export interface PricingResult {
+  pricingMode: PricingMode;
+  price: number;
+  currency: string;
+  internalCost: number;
+  margin: number;
+  marginPercent: number;
+  profitabilityIndicator: ProfitabilityLevel;
+  matchedGrid: {
+    type: string;
+    id: string;
+    name: string;
+    fromZone?: string;
+    toZone?: string;
+  } | null;
+  appliedRules: Array<{
+    type: string;
+    description: string;
+    [key: string]: unknown;
+  }>;
+  isContractPrice: boolean;
+  fallbackReason: string | null;
+  tripAnalysis: TripAnalysis;
+}
+
+/**
+ * Address with coordinates
+ */
+export interface AddressWithCoordinates {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/**
+ * Format duration in minutes to human readable
+ */
+export function formatDuration(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) {
+    return "—";
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours > 0) {
+    return `${hours}h ${mins}min`;
+  }
+  return `${mins} min`;
+}
+
+/**
+ * Format distance in km
+ */
+export function formatDistance(km: number | null | undefined): string {
+  if (km === null || km === undefined) {
+    return "—";
+  }
+  return `${km.toFixed(1)} km`;
+}

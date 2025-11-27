@@ -1319,6 +1319,112 @@
 			"lossTooltip": "Ce devis est en dessous du coût",
 			"margin": "Marge",
 			"thresholds": "Vert ≥ {green}%, Orange ≥ {orange}%"
+		},
+		"create": {
+			"title": "Créer un devis",
+			"description": "Créer un nouveau devis pour un client.",
+			"backToQuotes": "Retour aux devis",
+			"sections": {
+				"client": "Client",
+				"trip": "Détails du trajet",
+				"vehicle": "Véhicule & Capacité",
+				"pricing": "Tarification",
+				"options": "Options"
+			},
+			"contact": "Contact",
+			"selectContact": "Sélectionner un contact...",
+			"searchContacts": "Rechercher des contacts...",
+			"noContactsFound": "Aucun contact trouvé",
+			"noContacts": "Aucun contact disponible",
+			"tripType": "Type de trajet",
+			"tripTypes": {
+				"transfer": "Transfert",
+				"excursion": "Excursion",
+				"dispo": "Mise à disposition",
+				"off_grid": "Hors grille"
+			},
+			"pickup": "Adresse de prise en charge",
+			"pickupPlaceholder": "Entrez l'adresse de prise en charge...",
+			"dropoff": "Adresse de destination",
+			"dropoffPlaceholder": "Entrez l'adresse de destination...",
+			"pickupDateTime": "Date et heure de prise en charge",
+			"pickupDateTimeHint": "Toutes les heures sont en fuseau Europe/Paris",
+			"vehicleCategory": "Catégorie de véhicule",
+			"selectVehicleCategory": "Sélectionner une catégorie...",
+			"noVehicleCategories": "Aucune catégorie de véhicule disponible",
+			"passengers": "Passagers",
+			"luggage": "Bagages",
+			"suggestedPrice": "Prix suggéré",
+			"useSuggested": "Utiliser",
+			"finalPrice": "Prix final",
+			"grossMargin": "Marge brute",
+			"marginPercent": "Marge %",
+			"validUntil": "Valide jusqu'au",
+			"notes": "Notes",
+			"notesPlaceholder": "Ajouter des notes pour ce devis...",
+			"optionalFeesComingSoon": "Frais optionnels et promotions bientôt disponibles",
+			"createQuote": "Créer le devis",
+			"creating": "Création...",
+			"success": "Devis créé avec succès",
+			"error": "Échec de la création du devis",
+			"pricingError": "Échec du calcul du tarif",
+			"pricingMode": {
+				"fixedGrid": "Prix grille",
+				"dynamic": "Dynamique"
+			},
+			"addressManualEntry": "Adresse saisie manuellement (sans coordonnées)",
+			"validation": {
+				"contactRequired": "Veuillez sélectionner un contact",
+				"pickupRequired": "Veuillez entrer une adresse de prise en charge",
+				"dropoffRequired": "Veuillez entrer une adresse de destination",
+				"dateTimeRequired": "Veuillez sélectionner une date et heure",
+				"vehicleRequired": "Veuillez sélectionner une catégorie de véhicule",
+				"priceRequired": "Veuillez entrer un prix final"
+			},
+			"tripTransparency": {
+				"title": "Transparence du trajet",
+				"empty": {
+					"title": "Pas encore de données tarifaires",
+					"description": "Remplissez les détails du trajet pour calculer le tarif"
+				},
+				"distance": "Distance",
+				"duration": "Durée",
+				"internalCost": "Coût interne",
+				"margin": "Marge",
+				"suggestedPrice": "Prix suggéré",
+				"grossMargin": "Marge brute",
+				"from": "depuis",
+				"tabs": {
+					"overview": "Aperçu",
+					"route": "Itinéraire",
+					"costs": "Coûts"
+				},
+				"segment": "Segment",
+				"cost": "Coût",
+				"total": "Total",
+				"totalCost": "Coût total",
+				"segments": {
+					"approach": "Approche",
+					"approachDesc": "Base → Prise en charge (à vide)",
+					"service": "Service",
+					"serviceDesc": "Prise en charge → Destination (client)",
+					"return": "Retour",
+					"returnDesc": "Destination → Base (à vide)"
+				},
+				"routingSource": "Source de l'itinéraire",
+				"vehicleSelection": "Sélection du véhicule",
+				"estimate": "Estimation",
+				"costType": "Type de coût",
+				"amount": "Montant",
+				"details": "Détails",
+				"costs": {
+					"fuel": "Carburant",
+					"tolls": "Péages",
+					"wear": "Usure",
+					"driver": "Chauffeur",
+					"parking": "Parking"
+				}
+			}
 		}
 	},
 	"fleet": {

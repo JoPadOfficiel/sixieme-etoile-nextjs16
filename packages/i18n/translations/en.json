@@ -1319,6 +1319,112 @@
 			"lossTooltip": "This quote is below cost",
 			"margin": "Margin",
 			"thresholds": "Green ≥ {green}%, Orange ≥ {orange}%"
+		},
+		"create": {
+			"title": "Create Quote",
+			"description": "Create a new quote for a client.",
+			"backToQuotes": "Back to Quotes",
+			"sections": {
+				"client": "Client",
+				"trip": "Trip Details",
+				"vehicle": "Vehicle & Capacity",
+				"pricing": "Pricing",
+				"options": "Options"
+			},
+			"contact": "Contact",
+			"selectContact": "Select a contact...",
+			"searchContacts": "Search contacts...",
+			"noContactsFound": "No contacts found",
+			"noContacts": "No contacts available",
+			"tripType": "Trip Type",
+			"tripTypes": {
+				"transfer": "Transfer",
+				"excursion": "Excursion",
+				"dispo": "Mise à disposition",
+				"off_grid": "Off-grid"
+			},
+			"pickup": "Pickup Address",
+			"pickupPlaceholder": "Enter pickup address...",
+			"dropoff": "Dropoff Address",
+			"dropoffPlaceholder": "Enter dropoff address...",
+			"pickupDateTime": "Pickup Date & Time",
+			"pickupDateTimeHint": "All times are in Europe/Paris timezone",
+			"vehicleCategory": "Vehicle Category",
+			"selectVehicleCategory": "Select a vehicle category...",
+			"noVehicleCategories": "No vehicle categories available",
+			"passengers": "Passengers",
+			"luggage": "Luggage",
+			"suggestedPrice": "Suggested Price",
+			"useSuggested": "Use",
+			"finalPrice": "Final Price",
+			"grossMargin": "Gross Margin",
+			"marginPercent": "Margin %",
+			"validUntil": "Valid Until",
+			"notes": "Notes",
+			"notesPlaceholder": "Add any notes for this quote...",
+			"optionalFeesComingSoon": "Optional fees and promotions coming soon",
+			"createQuote": "Create Quote",
+			"creating": "Creating...",
+			"success": "Quote created successfully",
+			"error": "Failed to create quote",
+			"pricingError": "Failed to calculate pricing",
+			"pricingMode": {
+				"fixedGrid": "Grid Price",
+				"dynamic": "Dynamic"
+			},
+			"addressManualEntry": "Address entered manually (no coordinates)",
+			"validation": {
+				"contactRequired": "Please select a contact",
+				"pickupRequired": "Please enter a pickup address",
+				"dropoffRequired": "Please enter a dropoff address",
+				"dateTimeRequired": "Please select a pickup date and time",
+				"vehicleRequired": "Please select a vehicle category",
+				"priceRequired": "Please enter a final price"
+			},
+			"tripTransparency": {
+				"title": "Trip Transparency",
+				"empty": {
+					"title": "No pricing data yet",
+					"description": "Fill in the trip details to calculate pricing"
+				},
+				"distance": "Distance",
+				"duration": "Duration",
+				"internalCost": "Internal Cost",
+				"margin": "Margin",
+				"suggestedPrice": "Suggested Price",
+				"grossMargin": "Gross Margin",
+				"from": "from",
+				"tabs": {
+					"overview": "Overview",
+					"route": "Route",
+					"costs": "Costs"
+				},
+				"segment": "Segment",
+				"cost": "Cost",
+				"total": "Total",
+				"totalCost": "Total Cost",
+				"segments": {
+					"approach": "Approach",
+					"approachDesc": "Base → Pickup (deadhead)",
+					"service": "Service",
+					"serviceDesc": "Pickup → Dropoff (client trip)",
+					"return": "Return",
+					"returnDesc": "Dropoff → Base (deadhead)"
+				},
+				"routingSource": "Routing source",
+				"vehicleSelection": "Vehicle Selection",
+				"estimate": "Estimate",
+				"costType": "Cost Type",
+				"amount": "Amount",
+				"details": "Details",
+				"costs": {
+					"fuel": "Fuel",
+					"tolls": "Tolls",
+					"wear": "Wear & Tear",
+					"driver": "Driver",
+					"parking": "Parking"
+				}
+			}
 		}
 	},
 	"fleet": {
