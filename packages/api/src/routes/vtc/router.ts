@@ -6,6 +6,7 @@ import { disposRouter } from "./dispos";
 import { driversRouter } from "./drivers";
 import { excursionsRouter } from "./excursions";
 import { integrationsRouter } from "./integrations";
+import { invoicesRouter } from "./invoices";
 import { licenseCategoriesRouter } from "./license-categories";
 import { licenseRulesRouter } from "./license-rules";
 import { partnerContractsRouter } from "./partner-contracts";
@@ -41,6 +42,7 @@ export const vtcRouter = new Hono()
 	.route("/", routesCoverageRouter)
 	.route("/", zoneRoutesRouter)
 	.route("/", excursionsRouter)
-	.route("/", disposRouter);
+	.route("/", disposRouter)
+	.route("/", invoicesRouter);
 
 export type VtcRouter = typeof vtcRouter;

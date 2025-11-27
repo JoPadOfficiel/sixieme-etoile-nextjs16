@@ -1,0 +1,594 @@
+/**
+ * Invoices API Route (Story 2.4 + Story 7.1)
+ *
+ * Provides CRUD operations for invoices with contact linking.
+ * Invoices are immutable financial documents derived from accepted quotes.
+ */
+
+import { db } from "@repo/database";
+import type { Prisma } from "@prisma/client";
+import { Hono } from "hono";
+import { describeRoute } from "hono-openapi";
+import { validator } from "hono-openapi/zod";
+import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
+import {
+	withTenantCreate,
+	withTenantFilter,
+	withTenantId,
+} from "../../lib/tenant-prisma";
+import { organizationMiddleware } from "../../middleware/organization";
+
+// ============================================================================
+// Validation Schemas
+// ============================================================================
+
+const createInvoiceSchema = z.object({
+	contactId: z.string().min(1).describe("Contact ID for the invoice"),
+	quoteId: z.string().optional().nullable().describe("Source quote ID (optional)"),
+	issueDate: z.string().datetime().describe("Invoice issue date"),
+	dueDate: z.string().datetime().describe("Payment due date"),
+	totalExclVat: z.number().nonnegative().describe("Total excluding VAT in EUR"),
+	totalVat: z.number().nonnegative().describe("Total VAT amount in EUR"),
+	totalInclVat: z.number().nonnegative().describe("Total including VAT in EUR"),
+	commissionAmount: z.number().optional().nullable().describe("Commission amount for partner invoices"),
+	notes: z.string().optional().nullable().describe("Additional notes"),
+	lines: z.array(z.object({
+		description: z.string().min(1),
+		quantity: z.number().positive().default(1),
+		unitPriceExclVat: z.number().nonnegative(),
+		vatRate: z.number().nonnegative().default(20),
+		totalExclVat: z.number().nonnegative(),
+		totalVat: z.number().nonnegative(),
+		lineType: z.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"]).default("SERVICE"),
+		sortOrder: z.number().int().nonnegative().default(0),
+	})).optional().describe("Invoice line items"),
+});
+
+const updateInvoiceSchema = z.object({
+	status: z.enum(["DRAFT", "ISSUED", "PAID", "CANCELLED"]).optional(),
+	dueDate: z.string().datetime().optional(),
+	notes: z.string().optional().nullable(),
+});
+
+const listInvoicesSchema = z.object({
+	page: z.coerce.number().int().positive().default(1),
+	limit: z.coerce.number().int().positive().max(100).default(20),
+	status: z.enum(["DRAFT", "ISSUED", "PAID", "CANCELLED"]).optional(),
+	contactId: z.string().optional().describe("Filter by contact ID"),
+	search: z.string().optional().describe("Search in invoice number, contact name"),
+	dateFrom: z.string().datetime().optional().describe("Filter invoices issued from this date"),
+	dateTo: z.string().datetime().optional().describe("Filter invoices issued until this date"),
+});
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Generate next invoice number for organization
+ * Format: INV-YYYY-NNNN (e.g., INV-2025-0001)
+ */
+async function generateInvoiceNumber(organizationId: string): Promise<string> {
+	const year = new Date().getFullYear();
+	const prefix = `INV-${year}-`;
+
+	// Find the highest invoice number for this year
+	const lastInvoice = await db.invoice.findFirst({
+		where: {
+			organizationId,
+			number: { startsWith: prefix },
+		},
+		orderBy: { number: "desc" },
+	});
+
+	let nextNumber = 1;
+	if (lastInvoice) {
+		const lastNumberStr = lastInvoice.number.replace(prefix, "");
+		const lastNumber = parseInt(lastNumberStr, 10);
+		if (!isNaN(lastNumber)) {
+			nextNumber = lastNumber + 1;
+		}
+	}
+
+	return `${prefix}${nextNumber.toString().padStart(4, "0")}`;
+}
+
+// ============================================================================
+// Routes
+// ============================================================================
+
+export const invoicesRouter = new Hono()
+	.basePath("/invoices")
+	.use("*", organizationMiddleware)
+
+	// List invoices
+	.get(
+		"/",
+		validator("query", listInvoicesSchema),
+		describeRoute({
+			summary: "List invoices",
+			description: "Get a paginated list of invoices for the current organization",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { page, limit, status, contactId, search, dateFrom, dateTo } = c.req.valid("query");
+
+			const skip = (page - 1) * limit;
+
+			// Build where clause
+			const baseWhere: Prisma.InvoiceWhereInput = {
+				...(status && { status }),
+				...(contactId && { contactId }),
+			};
+
+			// Add search filter
+			if (search) {
+				baseWhere.OR = [
+					{ number: { contains: search, mode: "insensitive" } },
+					{ contact: { displayName: { contains: search, mode: "insensitive" } } },
+					{ contact: { companyName: { contains: search, mode: "insensitive" } } },
+				];
+			}
+
+			// Add date range filter
+			if (dateFrom || dateTo) {
+				baseWhere.issueDate = {
+					...(dateFrom && { gte: new Date(dateFrom) }),
+					...(dateTo && { lte: new Date(dateTo) }),
+				};
+			}
+
+			const where = withTenantFilter(baseWhere, organizationId);
+
+			const [invoices, total] = await Promise.all([
+				db.invoice.findMany({
+					where,
+					skip,
+					take: limit,
+					orderBy: { issueDate: "desc" },
+					include: {
+						contact: true,
+						quote: {
+							select: {
+								id: true,
+								pickupAddress: true,
+								dropoffAddress: true,
+								pickupAt: true,
+							},
+						},
+						_count: {
+							select: { lines: true },
+						},
+					},
+				}),
+				db.invoice.count({ where }),
+			]);
+
+			return c.json({
+				data: invoices,
+				meta: {
+					page,
+					limit,
+					total,
+					totalPages: Math.ceil(total / limit),
+				},
+			});
+		},
+	)
+
+	// Get single invoice
+	.get(
+		"/:id",
+		describeRoute({
+			summary: "Get invoice",
+			description: "Get a single invoice by ID with all details",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(id, organizationId),
+				include: {
+					contact: {
+						include: {
+							partnerContract: true,
+						},
+					},
+					quote: true,
+					lines: {
+						orderBy: { id: "asc" },
+					},
+					documents: true,
+				},
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, {
+					message: "Invoice not found",
+				});
+			}
+
+			return c.json(invoice);
+		},
+	)
+
+	// Create invoice
+	.post(
+		"/",
+		validator("json", createInvoiceSchema),
+		describeRoute({
+			summary: "Create invoice",
+			description: "Create a new invoice. Can be standalone or linked to a quote.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const data = c.req.valid("json");
+
+			// Verify contact belongs to this organization
+			const contact = await db.contact.findFirst({
+				where: withTenantId(data.contactId, organizationId),
+				include: {
+					partnerContract: true,
+				},
+			});
+
+			if (!contact) {
+				throw new HTTPException(400, {
+					message: "Contact not found",
+				});
+			}
+
+			// If quoteId provided, verify it exists and belongs to this org
+			if (data.quoteId) {
+				const quote = await db.quote.findFirst({
+					where: withTenantId(data.quoteId, organizationId),
+				});
+
+				if (!quote) {
+					throw new HTTPException(400, {
+						message: "Quote not found",
+					});
+				}
+
+				// Verify quote is ACCEPTED
+				if (quote.status !== "ACCEPTED") {
+					throw new HTTPException(400, {
+						message: "Only accepted quotes can be converted to invoices",
+					});
+				}
+
+				// Check if invoice already exists for this quote
+				const existingInvoice = await db.invoice.findFirst({
+					where: { quoteId: data.quoteId },
+				});
+
+				if (existingInvoice) {
+					throw new HTTPException(400, {
+						message: "An invoice already exists for this quote",
+					});
+				}
+			}
+
+			// Generate invoice number
+			const invoiceNumber = await generateInvoiceNumber(organizationId);
+
+			// Calculate commission if partner
+			let commissionAmount = data.commissionAmount;
+			if (contact.isPartner && contact.partnerContract && !commissionAmount) {
+				const commissionPercent = Number(contact.partnerContract.commissionPercent);
+				if (commissionPercent > 0) {
+					commissionAmount = (data.totalExclVat * commissionPercent) / 100;
+				}
+			}
+
+			// Create invoice with lines in a transaction
+			const invoice = await db.$transaction(async (tx) => {
+				const newInvoice = await tx.invoice.create({
+					data: withTenantCreate(
+						{
+							contactId: data.contactId,
+							quoteId: data.quoteId,
+							number: invoiceNumber,
+							status: "DRAFT",
+							issueDate: new Date(data.issueDate),
+							dueDate: new Date(data.dueDate),
+							totalExclVat: data.totalExclVat,
+							totalVat: data.totalVat,
+							totalInclVat: data.totalInclVat,
+							commissionAmount,
+							notes: data.notes,
+						},
+						organizationId,
+					),
+					include: {
+						contact: true,
+					},
+				});
+
+				// Create invoice lines if provided
+				if (data.lines && data.lines.length > 0) {
+					await tx.invoiceLine.createMany({
+						data: data.lines.map((line, index) => ({
+							invoiceId: newInvoice.id,
+							description: line.description,
+							quantity: line.quantity,
+							unitPriceExclVat: line.unitPriceExclVat,
+							vatRate: line.vatRate,
+							totalExclVat: line.totalExclVat,
+							totalVat: line.totalVat,
+							lineType: line.lineType,
+							sortOrder: line.sortOrder ?? index,
+						})),
+					});
+				}
+
+				return newInvoice;
+			});
+
+			// Fetch complete invoice with lines
+			const completeInvoice = await db.invoice.findFirst({
+				where: { id: invoice.id },
+				include: {
+					contact: true,
+					quote: true,
+					lines: true,
+				},
+			});
+
+			return c.json(completeInvoice, 201);
+		},
+	)
+
+	// Create invoice from quote (convenience endpoint)
+	.post(
+		"/from-quote/:quoteId",
+		describeRoute({
+			summary: "Create invoice from quote",
+			description: "Convert an accepted quote to an invoice with deep-copy semantics",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const quoteId = c.req.param("quoteId");
+
+			// Get the quote with all details
+			const quote = await db.quote.findFirst({
+				where: withTenantId(quoteId, organizationId),
+				include: {
+					contact: {
+						include: {
+							partnerContract: true,
+						},
+					},
+					vehicleCategory: true,
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, {
+					message: "Quote not found",
+				});
+			}
+
+			if (quote.status !== "ACCEPTED") {
+				throw new HTTPException(400, {
+					message: "Only accepted quotes can be converted to invoices",
+				});
+			}
+
+			// Check if invoice already exists
+			const existingInvoice = await db.invoice.findFirst({
+				where: { quoteId },
+			});
+
+			if (existingInvoice) {
+				throw new HTTPException(400, {
+					message: "An invoice already exists for this quote",
+				});
+			}
+
+			// Generate invoice number
+			const invoiceNumber = await generateInvoiceNumber(organizationId);
+
+			// Calculate amounts
+			const totalExclVat = Number(quote.finalPrice);
+			const vatRate = 10; // Transport VAT rate in France
+			const totalVat = totalExclVat * (vatRate / 100);
+			const totalInclVat = totalExclVat + totalVat;
+
+			// Calculate commission for partners
+			let commissionAmount: number | null = null;
+			if (quote.contact.isPartner && quote.contact.partnerContract) {
+				const commissionPercent = Number(quote.contact.partnerContract.commissionPercent);
+				if (commissionPercent > 0) {
+					commissionAmount = (totalExclVat * commissionPercent) / 100;
+				}
+			}
+
+			// Set due date based on payment terms
+			const issueDate = new Date();
+			let dueDate = new Date(issueDate);
+			if (quote.contact.partnerContract) {
+				const paymentTerms = quote.contact.partnerContract.paymentTerms;
+				switch (paymentTerms) {
+					case "IMMEDIATE":
+						break;
+					case "DAYS_15":
+						dueDate.setDate(dueDate.getDate() + 15);
+						break;
+					case "DAYS_30":
+						dueDate.setDate(dueDate.getDate() + 30);
+						break;
+					case "DAYS_45":
+						dueDate.setDate(dueDate.getDate() + 45);
+						break;
+					case "DAYS_60":
+						dueDate.setDate(dueDate.getDate() + 60);
+						break;
+					case "END_OF_MONTH":
+						dueDate = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0);
+						break;
+				}
+			} else {
+				// Default: 30 days for private clients
+				dueDate.setDate(dueDate.getDate() + 30);
+			}
+
+			// Create invoice with transport line
+			const invoice = await db.$transaction(async (tx) => {
+				const newInvoice = await tx.invoice.create({
+					data: withTenantCreate(
+						{
+							contactId: quote.contactId,
+							quoteId: quote.id,
+							number: invoiceNumber,
+							status: "DRAFT",
+							issueDate,
+							dueDate,
+							totalExclVat,
+							totalVat,
+							totalInclVat,
+							commissionAmount,
+							notes: `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
+						},
+						organizationId,
+					),
+				});
+
+				// Create transport line
+				await tx.invoiceLine.create({
+					data: {
+						invoiceId: newInvoice.id,
+						description: `Transport: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
+						quantity: 1,
+						unitPriceExclVat: totalExclVat,
+						vatRate,
+						totalExclVat,
+						totalVat,
+						lineType: "SERVICE",
+						sortOrder: 0,
+					},
+				});
+
+				return newInvoice;
+			});
+
+			// Fetch complete invoice
+			const completeInvoice = await db.invoice.findFirst({
+				where: { id: invoice.id },
+				include: {
+					contact: true,
+					quote: true,
+					lines: true,
+				},
+			});
+
+			return c.json(completeInvoice, 201);
+		},
+	)
+
+	// Update invoice
+	.patch(
+		"/:id",
+		validator("json", updateInvoiceSchema),
+		describeRoute({
+			summary: "Update invoice",
+			description: "Update invoice status or notes. Amounts are immutable after creation.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+			const data = c.req.valid("json");
+
+			const existing = await db.invoice.findFirst({
+				where: withTenantId(id, organizationId),
+			});
+
+			if (!existing) {
+				throw new HTTPException(404, {
+					message: "Invoice not found",
+				});
+			}
+
+			// Validate status transitions
+			if (data.status) {
+				const validTransitions: Record<string, string[]> = {
+					DRAFT: ["ISSUED", "CANCELLED"],
+					ISSUED: ["PAID", "CANCELLED"],
+					PAID: [], // Terminal state
+					CANCELLED: [], // Terminal state
+				};
+
+				const allowed = validTransitions[existing.status] || [];
+				if (!allowed.includes(data.status)) {
+					throw new HTTPException(400, {
+						message: `Cannot transition from ${existing.status} to ${data.status}`,
+					});
+				}
+			}
+
+			const invoice = await db.invoice.update({
+				where: { id },
+				data: {
+					...(data.status && { status: data.status }),
+					...(data.dueDate && { dueDate: new Date(data.dueDate) }),
+					...(data.notes !== undefined && { notes: data.notes }),
+				},
+				include: {
+					contact: true,
+					quote: true,
+					lines: true,
+				},
+			});
+
+			return c.json(invoice);
+		},
+	)
+
+	// Delete invoice (only drafts)
+	.delete(
+		"/:id",
+		describeRoute({
+			summary: "Delete invoice",
+			description: "Delete a draft invoice by ID",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			const existing = await db.invoice.findFirst({
+				where: withTenantId(id, organizationId),
+			});
+
+			if (!existing) {
+				throw new HTTPException(404, {
+					message: "Invoice not found",
+				});
+			}
+
+			if (existing.status !== "DRAFT") {
+				throw new HTTPException(400, {
+					message: "Only draft invoices can be deleted",
+				});
+			}
+
+			// Delete lines first, then invoice
+			await db.$transaction(async (tx) => {
+				await tx.invoiceLine.deleteMany({
+					where: { invoiceId: id },
+				});
+				await tx.invoice.delete({
+					where: { id },
+				});
+			});
+
+			return c.json({ success: true });
+		},
+	);

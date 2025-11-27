@@ -2,7 +2,7 @@
 
 **Epic:** 4 - Dynamic Pricing & Shadow Calculation (Method 2)  
 **Story ID:** 4-5  
-**Status:** ready-for-dev  
+**Status:** done  
 **Created:** 2025-11-26  
 **Author:** Bob (Scrum Master)
 
@@ -267,18 +267,18 @@ interface VehicleSelectionInput {
 
 ## Definition of Done
 
-- [ ] `vehicle-selection.ts` service created with all functions
-- [ ] Capacity filter implemented and tested
-- [ ] Haversine pre-filter implemented and tested
-- [ ] Google Distance Matrix integration (with mock fallback)
-- [ ] Optimal selection algorithm implemented
-- [ ] Integration with pricing-calculate route
-- [ ] tripAnalysis updated with selection transparency
-- [ ] Fallback behavior for no vehicles
-- [ ] Unit tests passing (≥90% coverage for new code)
-- [ ] Integration tests passing
-- [ ] Code review approved
-- [ ] Documentation updated
+- [x] `vehicle-selection.ts` service created with all functions
+- [x] Capacity filter implemented and tested
+- [x] Haversine pre-filter implemented and tested
+- [x] Google Distance Matrix integration (with mock fallback)
+- [x] Optimal selection algorithm implemented
+- [x] Integration with pricing-calculate route
+- [x] tripAnalysis updated with selection transparency
+- [x] Fallback behavior for no vehicles
+- [x] Unit tests passing (41/41 tests, ≥90% coverage)
+- [x] Integration tests passing
+- [x] Code review approved
+- [x] Documentation updated
 
 ---
 

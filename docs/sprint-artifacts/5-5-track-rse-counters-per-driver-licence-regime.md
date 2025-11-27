@@ -1,7 +1,7 @@
 # Story 5.5: Track RSE Counters Per Driver & Licence Regime
 
 **Epic:** 5 - Fleet & RSE Compliance Engine  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 8
 
@@ -379,3 +379,20 @@ interface ComplianceSnapshot {
 | T9      | AC4 | Driver drawer shows audit logs          | Recent decisions with reasons             |
 | T10     | AC5 | Counters filtered by organizationId     | Only org's counters returned              |
 | T11     | AC5 | Cross-org access blocked                | 404 or forbidden response                 |
+
+---
+
+## Definition of Done
+
+- [x] DriverRSECounter model created in Prisma schema
+- [x] ComplianceAuditLog model created in Prisma schema
+- [x] Migration applied successfully (tables exist in DB)
+- [x] RSE Counter Service created (`rse-counter.ts`)
+- [x] Drivers API extended with counter endpoints
+- [x] Compliance API extended with cumulative check
+- [x] ComplianceSnapshot component created
+- [x] ComplianceAuditLogList component created
+- [x] DriverDrawer extended with Compliance tab
+- [x] Translations added (EN/FR)
+- [x] Unit tests passing (26/26 tests)
+- [x] Multi-tenancy enforced on all endpoints

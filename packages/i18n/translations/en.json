@@ -1260,6 +1260,25 @@
 				"enableGridPricing": "Enable grid-based pricing (Method 1) for future quotes",
 				"allowCommercialSettings": "Allow you to configure commercial settings (billing, payment terms, commission)"
 			}
+		},
+		"tabs": {
+			"details": "Details",
+			"timeline": "Activity",
+			"contract": "Contract"
+		},
+		"timeline": {
+			"title": "Activity Timeline",
+			"recentActivity": "Recent Activity",
+			"noActivity": "No quotes or invoices yet for this contact.",
+			"quote": "Quote",
+			"invoice": "Invoice",
+			"quotes": "Quotes",
+			"invoices": "Invoices",
+			"accepted": "accepted",
+			"paid": "paid",
+			"viewDetails": "View Details",
+			"fetchError": "Failed to load activity timeline.",
+			"retry": "Retry"
 		}
 	},
 	"quotes": {

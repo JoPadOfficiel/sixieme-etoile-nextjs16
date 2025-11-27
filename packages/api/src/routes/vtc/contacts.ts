@@ -269,4 +269,153 @@ export const contactsRouter = new Hono()
 
 			return c.json({ success: true });
 		},
+	)
+
+	// ============================================================================
+	// Story 2.4: Contact Timeline (Quotes & Invoices)
+	// ============================================================================
+
+	// Get contact timeline
+	.get(
+		"/:id/timeline",
+		validator(
+			"query",
+			z.object({
+				limit: z.coerce.number().int().positive().max(50).default(20),
+			})
+		),
+		describeRoute({
+			summary: "Get contact timeline",
+			description:
+				"Get a combined timeline of quotes and invoices for a contact, sorted by date",
+			tags: ["VTC - Contacts"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const contactId = c.req.param("id");
+			const { limit } = c.req.valid("query");
+
+			// Verify contact exists and belongs to this organization
+			const contact = await db.contact.findFirst({
+				where: withTenantId(contactId, organizationId),
+			});
+
+			if (!contact) {
+				throw new HTTPException(404, {
+					message: "Contact not found",
+				});
+			}
+
+			// Fetch quotes and invoices in parallel
+			const [quotes, invoices] = await Promise.all([
+				db.quote.findMany({
+					where: { contactId, organizationId },
+					orderBy: { createdAt: "desc" },
+					take: limit,
+					select: {
+						id: true,
+						status: true,
+						pickupAddress: true,
+						dropoffAddress: true,
+						pickupAt: true,
+						finalPrice: true,
+						marginPercent: true,
+						pricingMode: true,
+						createdAt: true,
+						sentAt: true,
+						acceptedAt: true,
+						vehicleCategory: {
+							select: {
+								name: true,
+								code: true,
+							},
+						},
+					},
+				}),
+				db.invoice.findMany({
+					where: { contactId, organizationId },
+					orderBy: { issueDate: "desc" },
+					take: limit,
+					select: {
+						id: true,
+						number: true,
+						status: true,
+						issueDate: true,
+						dueDate: true,
+						totalExclVat: true,
+						totalInclVat: true,
+						quoteId: true,
+						createdAt: true,
+					},
+				}),
+			]);
+
+			// Transform to timeline items
+			type TimelineItem = {
+				id: string;
+				type: "QUOTE" | "INVOICE";
+				date: Date;
+				status: string;
+				amount: number;
+				description: string;
+				metadata: Record<string, unknown>;
+			};
+
+			const quoteItems: TimelineItem[] = quotes.map((q) => ({
+				id: q.id,
+				type: "QUOTE" as const,
+				date: q.createdAt,
+				status: q.status,
+				amount: Number(q.finalPrice),
+				description: `${q.pickupAddress} → ${q.dropoffAddress}`,
+				metadata: {
+					pickupAt: q.pickupAt,
+					vehicleCategory: q.vehicleCategory?.name,
+					pricingMode: q.pricingMode,
+					marginPercent: q.marginPercent ? Number(q.marginPercent) : null,
+					sentAt: q.sentAt,
+					acceptedAt: q.acceptedAt,
+				},
+			}));
+
+			const invoiceItems: TimelineItem[] = invoices.map((i) => ({
+				id: i.id,
+				type: "INVOICE" as const,
+				date: i.issueDate,
+				status: i.status,
+				amount: Number(i.totalInclVat),
+				description: `Invoice ${i.number}`,
+				metadata: {
+					number: i.number,
+					dueDate: i.dueDate,
+					totalExclVat: Number(i.totalExclVat),
+					quoteId: i.quoteId,
+				},
+			}));
+
+			// Combine and sort by date (most recent first)
+			const timeline = [...quoteItems, ...invoiceItems]
+				.sort((a, b) => b.date.getTime() - a.date.getTime())
+				.slice(0, limit);
+
+			// Calculate summary stats
+			const summary = {
+				totalQuotes: quotes.length,
+				totalInvoices: invoices.length,
+				quotesValue: quotes.reduce((sum, q) => sum + Number(q.finalPrice), 0),
+				invoicesValue: invoices.reduce((sum, i) => sum + Number(i.totalInclVat), 0),
+				acceptedQuotes: quotes.filter((q) => q.status === "ACCEPTED").length,
+				paidInvoices: invoices.filter((i) => i.status === "PAID").length,
+			};
+
+			return c.json({
+				timeline,
+				summary,
+				meta: {
+					contactId,
+					limit,
+					totalItems: timeline.length,
+				},
+			});
+		},
 	);

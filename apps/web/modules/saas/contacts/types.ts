@@ -87,3 +87,48 @@ export interface PartnerContractFormData {
   excursionPackageIds: string[];
   dispoPackageIds: string[];
 }
+
+/**
+ * Timeline types (Story 2.4)
+ */
+export type TimelineItemType = "QUOTE" | "INVOICE";
+
+export interface TimelineItem {
+  id: string;
+  type: TimelineItemType;
+  date: string;
+  status: string;
+  amount: number;
+  description: string;
+  metadata: {
+    pickupAt?: string;
+    vehicleCategory?: string;
+    pricingMode?: string;
+    marginPercent?: number | null;
+    sentAt?: string | null;
+    acceptedAt?: string | null;
+    number?: string;
+    dueDate?: string;
+    totalExclVat?: number;
+    quoteId?: string | null;
+  };
+}
+
+export interface TimelineSummary {
+  totalQuotes: number;
+  totalInvoices: number;
+  quotesValue: number;
+  invoicesValue: number;
+  acceptedQuotes: number;
+  paidInvoices: number;
+}
+
+export interface ContactTimelineResponse {
+  timeline: TimelineItem[];
+  summary: TimelineSummary;
+  meta: {
+    contactId: string;
+    limit: number;
+    totalItems: number;
+  };
+}

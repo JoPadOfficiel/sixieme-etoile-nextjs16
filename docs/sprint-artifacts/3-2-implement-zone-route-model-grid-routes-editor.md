@@ -1,6 +1,6 @@
 # Story 3.2: Implement ZoneRoute Model & Grid Routes Editor
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -56,31 +56,31 @@ Status: in-progress
 
 ### Task 1: API Routes
 
-- [ ] Create `/api/vtc/pricing/routes` route file
-- [ ] Implement GET (list with pagination and filters)
-- [ ] Implement GET /:id (single route with relations)
-- [ ] Implement POST (create route)
-- [ ] Implement PATCH /:id (update route)
-- [ ] Implement DELETE /:id (delete route)
-- [ ] Add to router
+- [x] Create `/api/vtc/pricing/routes` route file
+- [x] Implement GET (list with pagination and filters)
+- [x] Implement GET /:id (single route with relations)
+- [x] Implement POST (create route)
+- [x] Implement PATCH /:id (update route)
+- [x] Implement DELETE /:id (delete route)
+- [x] Add to router
 
 ### Task 2: Frontend - Routes List
 
-- [ ] Create `/app/[orgSlug]/routes/page.tsx`
-- [ ] Create `RoutesTable` component with filters
-- [ ] Create `RouteDrawer` component for add/edit
-- [ ] Create `RouteForm` component
-- [ ] Add navigation link in NavBar
+- [x] Create `/app/[orgSlug]/routes/page.tsx`
+- [x] Create `RoutesTable` component with filters
+- [x] Create `RouteDrawer` component for add/edit
+- [x] Create `RouteForm` component
+- [x] Add navigation link in NavBar
 
 ### Task 3: Translations
 
-- [ ] Add route-related translations (EN/FR)
+- [x] Add route-related translations (EN/FR)
 
 ### Task 4: Tests
 
-- [ ] Vitest: API tests for routes CRUD
-- [ ] Playwright MCP: UI tests for routes management
-- [ ] curl + DB verification
+- [x] Vitest: API tests for routes CRUD (17/17 tests passing)
+- [x] Playwright MCP: UI tests for routes management
+- [x] curl + DB verification
 
 ## Data Model (Already in Schema)
 

@@ -1,7 +1,7 @@
 # Story 4.7: Compute & Expose Profitability Indicator
 
 **Epic:** 4 – Dynamic Pricing & Shadow Calculation (Method 2)  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 5
 
@@ -167,16 +167,16 @@ Thresholds: Green ≥20%, Orange ≥0%, Red <0%
 
 ## Definition of Done
 
-- [ ] Prisma schema updated with threshold fields
-- [ ] Migration applied successfully
-- [ ] `calculateProfitabilityIndicator` enhanced with configurable thresholds
-- [ ] `ProfitabilityIndicatorData` interface created
-- [ ] React `ProfitabilityIndicator` component created with all variants
-- [ ] Tooltip displays margin % and thresholds
-- [ ] API returns full profitability data
-- [ ] Unit tests pass with >90% coverage on profitability logic
-- [ ] Component exported and documented
-- [ ] Accessibility: icon + label + color (not color alone)
+- [x] Prisma schema updated with threshold fields
+- [x] Migration applied successfully
+- [x] `calculateProfitabilityIndicator` enhanced with configurable thresholds
+- [x] `ProfitabilityIndicatorData` interface created
+- [x] React `ProfitabilityIndicator` component created with all variants
+- [x] Tooltip displays margin % and thresholds
+- [x] API returns full profitability data
+- [x] Unit tests pass with >90% coverage (107/107 tests passing)
+- [x] Component exported and documented
+- [x] Accessibility: icon + label + color (not color alone)
 
 ---
 

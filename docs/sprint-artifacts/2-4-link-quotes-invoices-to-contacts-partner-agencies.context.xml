@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="2-4-link-quotes-invoices-to-contacts-partner-agencies" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2.4</storyId>
+    <title>Link Quotes and Invoices to Contacts &amp; Partner Agencies</title>
+    <status>done</status>
+    <generatedAt>2025-11-27</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/2-4-link-quotes-invoices-to-contacts-partner-agencies.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>finance user</asA>
+    <iWant>each quote and invoice to be clearly linked to a contact (and partner agency where relevant)</iWant>
+    <soThat>I can navigate from CRM to financial documents and back</soThat>
+    <tasks>
+      <task id="1">Create Invoices API Route with CRUD operations and contact linking</task>
+      <task id="2">Add Contact Timeline Endpoint returning combined quotes/invoices</task>
+      <task id="3">Create ContactTimeline Component with summary cards and timeline items</task>
+      <task id="4">Update ContactDrawer with Timeline tab/section</task>
+      <task id="5">Write unit tests for invoices API and timeline endpoint</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Quote-Contact Link">
+      Given I create a quote from the Quotes cockpit, when I select a contact, then the quote stores contactId and the Quotes list shows the contact name and type.
+    </criterion>
+    <criterion id="AC2" title="Invoice-Contact Link">
+      Given I convert an accepted quote to an invoice, when the invoice is created, then it copies the contactId from the quote and the Invoices list shows that client.
+    </criterion>
+    <criterion id="AC3" title="Contact Timeline">
+      Given a Contact detail screen, when I open it, then I can see a timeline of related quotes and invoices with links to open them.
+    </criterion>
+    <criterion id="AC4" title="Invoices API">
+      Given the invoices API, when I list or get invoices, then they include contact information and can be filtered by contactId.
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 2: CRM &amp; Partner Contracts</title>
+        <section>Story 2.4</section>
+        <snippet>Link Quotes and Invoices to Contacts - ensures financial documents are traceable to CRM contacts for navigation and reporting.</snippet>
+      </doc>
+      <doc>
+        <path>packages/database/prisma/schema.prisma</path>
+        <title>Prisma Schema</title>
+        <section>Contact, Quote, Invoice models</section>
+        <snippet>Defines Contact with quotes/invoices relations, Quote with contactId FK, Invoice with contactId and quoteId FKs.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>packages/api/src/routes/vtc/invoices.ts</path>
+        <kind>api-route</kind>
+        <symbol>invoicesRouter</symbol>
+        <reason>Main invoices API with CRUD, from-quote conversion, and contact filtering</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/contacts.ts</path>
+        <kind>api-route</kind>
+        <symbol>contactsRouter</symbol>
+        <lines>274-350</lines>
+        <reason>Timeline endpoint GET /contacts/:id/timeline</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/quotes.ts</path>
+        <kind>api-route</kind>
+        <symbol>quotesRouter</symbol>
+        <reason>Existing quotes API with contactId linking</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <reason>Central VTC router registering invoicesRouter</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/components/ContactTimeline.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactTimeline</symbol>
+        <reason>Timeline component displaying quotes/invoices for a contact</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/components/ContactDrawer.tsx</path>
+        <kind>component</kind>
+        <symbol>ContactDrawer</symbol>
+        <reason>Drawer with Details/Activity/Contract tabs including timeline</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/contacts/types.ts</path>
+        <kind>types</kind>
+        <symbol>TimelineItem, TimelineSummary, ContactTimelineResponse</symbol>
+        <reason>TypeScript interfaces for timeline data</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/__tests__/invoices.test.ts</path>
+        <kind>test</kind>
+        <symbol>Invoices API tests</symbol>
+        <reason>15 unit tests covering CRUD, from-quote, status transitions, multi-tenancy</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>@repo/database</package>
+        <version>workspace:*</version>
+        <usage>Prisma client for Contact, Quote, Invoice models</usage>
+      </node>
+      <node>
+        <package>hono</package>
+        <version>^4.6.0</version>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.23.0</version>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>@hono/zod-openapi</package>
+        <version>^0.18.0</version>
+        <usage>OpenAPI schema generation</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="multi-tenancy">All API endpoints must filter by organizationId from session context</constraint>
+    <constraint type="pattern">Follow existing Hono route patterns from contacts.ts and quotes.ts</constraint>
+    <constraint type="validation">Use Zod schemas matching Prisma model fields exactly</constraint>
+    <constraint type="status-machine">Invoice status transitions: DRAFT→ISSUED→PAID, DRAFT→CANCELLED only</constraint>
+    <constraint type="referential">Invoice from quote must copy contactId and link via quoteId (unique)</constraint>
+    <constraint type="number-format">Invoice numbers: INV-YYYY-NNNN auto-generated</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/invoices</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/invoices?page=1&amp;limit=20&amp;contactId=&amp;status=&amp;search=</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/invoices/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/invoices/:id → Invoice with contact, quote, lines</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/invoices</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/invoices { contactId, issueDate, dueDate, totals, lines? }</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/invoices/from-quote/:quoteId</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/invoices/from-quote/:quoteId → Creates invoice from accepted quote</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/invoices/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>PATCH /api/vtc/invoices/:id { status?, dueDate?, notes? }</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/invoices/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/vtc/invoices/:id (DRAFT only)</signature>
+      <path>packages/api/src/routes/vtc/invoices.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/contacts/:id/timeline</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/contacts/:id/timeline?limit=20 → { timeline, summary, meta }</signature>
+      <path>packages/api/src/routes/vtc/contacts.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Vitest for unit/integration tests. Mock Prisma client and auth module.
+      Follow existing test patterns from contacts.test.ts and quotes.test.ts.
+      Test multi-tenancy isolation, validation errors, and business logic.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/invoices.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/contacts.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test quote creation stores contactId correctly</idea>
+      <idea ac="AC2">Test invoice from-quote copies contactId and links quoteId</idea>
+      <idea ac="AC2">Test invoice from non-accepted quote is rejected</idea>
+      <idea ac="AC2">Test duplicate invoice for same quote is rejected</idea>
+      <idea ac="AC3">Test timeline returns combined quotes and invoices sorted by date</idea>
+      <idea ac="AC3">Test timeline summary counts are accurate</idea>
+      <idea ac="AC4">Test invoices list filtered by contactId</idea>
+      <idea ac="AC4">Test invoice detail includes contact data</idea>
+      <idea ac="AC4">Test invoice status transitions are validated</idea>
+      <idea ac="multi-tenancy">Test cross-organization access is blocked</idea>
+    </ideas>
+  </tests>
+</story-context>

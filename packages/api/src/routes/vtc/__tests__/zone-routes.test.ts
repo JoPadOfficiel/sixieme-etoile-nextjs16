@@ -308,8 +308,8 @@ describe("Zone Routes API", () => {
 
 			expect(res.status).toBe(200);
 			const json = await res.json();
-			expect((json as typeof mockRoute).fixedPrice.toNumber()).toBe(95.0);
-			expect((json as typeof mockRoute).isActive).toBe(false);
+			expect(Number((json as any).fixedPrice)).toBe(95.0);
+			expect((json as any).isActive).toBe(false);
 		});
 
 		it("should return 404 for non-existent route", async () => {

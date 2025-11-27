@@ -1260,6 +1260,25 @@
 				"enableGridPricing": "Activer la tarification grille (Méthode 1) pour les futurs devis",
 				"allowCommercialSettings": "Permettre de configurer les paramètres commerciaux (facturation, conditions de paiement, commission)"
 			}
+		},
+		"tabs": {
+			"details": "Détails",
+			"timeline": "Activité",
+			"contract": "Contrat"
+		},
+		"timeline": {
+			"title": "Historique d'activité",
+			"recentActivity": "Activité récente",
+			"noActivity": "Aucun devis ou facture pour ce contact.",
+			"quote": "Devis",
+			"invoice": "Facture",
+			"quotes": "Devis",
+			"invoices": "Factures",
+			"accepted": "acceptés",
+			"paid": "payées",
+			"viewDetails": "Voir les détails",
+			"fetchError": "Échec du chargement de l'historique.",
+			"retry": "Réessayer"
 		}
 	},
 	"quotes": {
