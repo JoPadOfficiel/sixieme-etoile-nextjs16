@@ -109,7 +109,18 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
         throw new Error("Failed to fetch quotes");
       }
       
-      return response.json() as Promise<QuotesResponse>;
+      const data = await response.json();
+      // Transform API response to add optional status transition timestamps
+      return {
+        ...data,
+        data: data.data.map((quote: Record<string, unknown>) => ({
+          ...quote,
+          sentAt: (quote.sentAt as string | null) ?? null,
+          viewedAt: (quote.viewedAt as string | null) ?? null,
+          acceptedAt: (quote.acceptedAt as string | null) ?? null,
+          rejectedAt: (quote.rejectedAt as string | null) ?? null,
+        })),
+      } as QuotesResponse;
     },
     enabled: isSessionSynced,
   });
@@ -131,12 +142,9 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
 
   const { toast } = useToast();
 
-  const handleRowClick = (_quote: Quote) => {
-    // TODO: Implement quote detail/edit page in Story 6.3
-    toast({
-      title: t("quotes.actions.viewEditComingSoon"),
-    });
-    // Future: router.push(`/app/${activeOrganization?.slug}/quotes/${_quote.id}`);
+  const handleRowClick = (quote: Quote) => {
+    // Story 6.3: Navigate to quote detail page
+    router.push(`/app/${activeOrganization?.slug}/quotes/${quote.id}`);
   };
 
   const handleDuplicate = (quote: Quote, e: React.MouseEvent) => {

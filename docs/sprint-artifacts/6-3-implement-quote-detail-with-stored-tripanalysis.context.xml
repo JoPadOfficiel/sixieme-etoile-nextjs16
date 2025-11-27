@@ -1,0 +1,251 @@
+<story-context id="6-3-implement-quote-detail-with-stored-tripanalysis" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>6.3</storyId>
+    <title>Implement Quote Detail with Stored tripAnalysis</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T09:45:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-3-implement-quote-detail-with-stored-tripanalysis.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a quote detail screen that shows stored analysis and history</iWant>
+    <soThat>I can understand exactly how a quote was built and evolved</soThat>
+    <tasks>
+      <task id="1">Create quotes/[id] page route at apps/web/app/(saas)/app/(organizations)/[organizationSlug]/quotes/[id]/page.tsx</task>
+      <task id="2">Create QuoteDetailPage component with 3-column layout</task>
+      <task id="3">Create QuoteHeader component with status badge and action buttons (Send, Accept, Reject, Convert to Invoice)</task>
+      <task id="4">Create QuoteCommercialSummary component (left column) showing immutable commercial data</task>
+      <task id="5">Reuse TripTransparencyPanel (center column) to render stored tripAnalysis</task>
+      <task id="6">Create QuoteActivityLog component (right column) showing timeline of events</task>
+      <task id="7">Implement quote status transition actions via API</task>
+      <task id="8">Add translations (EN/FR) for all new UI elements</task>
+      <task id="9">Write Vitest unit tests for new components</task>
+      <task id="10">Write Playwright E2E tests for quote detail flow</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Quote Detail Page Layout">
+      <given>/dashboard/quotes/[id] page</given>
+      <when>I open an existing quote</when>
+      <then>I see:
+        - Header with status badge and main actions (Send, Mark as Accepted, Convert to Invoice)
+        - Left column: immutable commercial summary (prices, surcharges, applied promos)
+        - Center column: TripTransparencyPanel rendering stored tripAnalysis (segments A/B/C, costs)
+        - Right column: activity log (when created/sent/viewed/accepted), internal notes</then>
+    </criterion>
+    <criterion id="AC2" title="Immutable Commercial Data for Sent/Accepted Quotes">
+      <given>a quote with status SENT or ACCEPTED</given>
+      <when>I view the quote detail</when>
+      <then>the commercial summary shows frozen values (prices, costs, margin) and does NOT recompute pricing from current configuration</then>
+    </criterion>
+    <criterion id="AC3" title="TripTransparency from Stored tripAnalysis">
+      <given>a quote with stored tripAnalysis JSON</given>
+      <when>I view the center column</when>
+      <then>TripTransparencyPanel displays the stored segments (approach, service, return), cost breakdown, and profitability indicator from the stored data</then>
+    </criterion>
+    <criterion id="AC4" title="Activity Log Timeline">
+      <given>a quote with status history</given>
+      <when>I view the right column</when>
+      <then>I see a timeline showing: creation date, sent date (if applicable), viewed date (if applicable), accepted/rejected date (if applicable), with user info where available</then>
+    </criterion>
+    <criterion id="AC5" title="Status Transition Actions">
+      <given>a DRAFT quote</given>
+      <when>I click "Send Quote"</when>
+      <then>the quote status changes to SENT via API and the UI updates to reflect the new status with frozen commercial values</then>
+    </criterion>
+    <criterion id="AC6" title="Accept/Reject Actions">
+      <given>a SENT or VIEWED quote</given>
+      <when>I click "Mark as Accepted" or "Mark as Rejected"</when>
+      <then>the quote status changes accordingly via API and the UI updates</then>
+    </criterion>
+    <criterion id="AC7" title="Convert to Invoice Action">
+      <given>an ACCEPTED quote</given>
+      <when>I click "Convert to Invoice"</when>
+      <then>I am redirected to invoice creation flow (placeholder for Epic 7) or shown a coming soon message</then>
+    </criterion>
+    <criterion id="AC8" title="Notes Display and Edit">
+      <given>a quote with notes</given>
+      <when>I view the detail page</when>
+      <then>I see the notes displayed and can edit them if the quote is still in DRAFT status</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR31-FR33 Quote Lifecycle</section>
+        <snippet>Quotes shall follow a lifecycle with at least the states Draft, Sent, Viewed, Accepted, Rejected and Expired. Draft quotes shall remain editable, while Sent or Accepted quotes shall remain commercially fixed.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR21-FR24 Shadow Calculation</section>
+        <snippet>The full trip analysis (segments, distances, durations, costs and key decisions) shall be stored in a structured field associated with the quote.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>Appendix D - Quote-to-Invoice Lifecycle</section>
+        <snippet>Status Workflow: Draft -> Sent -> Viewed -> Accepted -> Rejected -> Expired. A Sent quote must remain fixed. When an Invoice is created, the system must COPY all calculated values.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 6 - Quotes and Operator Cockpit</title>
+        <section>Story 6.3</section>
+        <snippet>Implement Quote Detail with Stored tripAnalysis. Do not recompute pricing silently on load for Sent/Accepted quotes; use stored values per FR32. Activity log should be designed to be extendable.</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/CreateQuoteCockpit.tsx</path>
+        <kind>component</kind>
+        <symbol>CreateQuoteCockpit</symbol>
+        <reason>Reference for 3-column layout pattern and form state management</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx</path>
+        <kind>component</kind>
+        <symbol>TripTransparencyPanel</symbol>
+        <reason>Reusable component to display stored tripAnalysis in center column</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/components/QuoteStatusBadge.tsx</path>
+        <kind>component</kind>
+        <symbol>QuoteStatusBadge</symbol>
+        <reason>Status badge component for header display</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/quotes/types.ts</path>
+        <kind>types</kind>
+        <symbol>Quote, QuoteStatus, TripAnalysis</symbol>
+        <reason>Type definitions for quotes including tripAnalysis structure</reason>
+      </artifact>
+      <artifact>
+        <path>packages/api/src/routes/vtc/quotes.ts</path>
+        <kind>api-route</kind>
+        <symbol>quotesRouter, updateQuoteSchema</symbol>
+        <reason>API endpoints for getting and updating quotes, including status transitions</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+        <kind>component</kind>
+        <symbol>ProfitabilityIndicator</symbol>
+        <reason>Profitability indicator component for commercial summary</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/quotes/page.tsx</path>
+        <kind>page</kind>
+        <symbol>QuotesPage</symbol>
+        <reason>Existing quotes list page for navigation context</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching for quote detail and mutations for status updates</usage>
+      </node>
+      <node>
+        <package>next-intl</package>
+        <usage>Internationalization with useTranslations hook</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons for actions and timeline</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>shadcn/ui components: Card, Button, Badge, Separator, Skeleton</usage>
+      </node>
+      <node>
+        <package>date-fns</package>
+        <usage>Date formatting for activity log timeline</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Follow existing module structure: apps/web/modules/saas/quotes/components/</constraint>
+    <constraint type="pattern">Use React Query for API calls with skeleton loading pattern</constraint>
+    <constraint type="pattern">Reuse TripTransparencyPanel for displaying stored tripAnalysis</constraint>
+    <constraint type="pattern">Use shadcn/ui components consistently (Card, Button, Badge)</constraint>
+    <constraint type="i18n">All user-facing strings must use useTranslations hook</constraint>
+    <constraint type="currency">All monetary values in EUR, formatted consistently</constraint>
+    <constraint type="timezone">All datetime values in Europe/Paris business time, no conversion</constraint>
+    <constraint type="tenancy">All API calls scoped to current organization via organizationMiddleware</constraint>
+    <constraint type="immutability">SENT/ACCEPTED quotes must display stored values, never recompute</constraint>
+    <constraint type="accessibility">All interactive elements must have proper aria-labels</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/quotes/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Response: Quote object with contact, vehicleCategory, tripAnalysis, appliedRules
+      </signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/quotes/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Body: { status?: QuoteStatus, notes?: string, validUntil?: string }
+        Response: Updated Quote object
+      </signature>
+      <path>packages/api/src/routes/vtc/quotes.ts</path>
+    </interface>
+    <interface>
+      <name>TripTransparencyPanel</name>
+      <kind>React component</kind>
+      <signature>Props: { pricingResult: PricingResult | null, isLoading: boolean }</signature>
+      <path>apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx</path>
+    </interface>
+    <interface>
+      <name>QuoteStatusBadge</name>
+      <kind>React component</kind>
+      <signature>Props: { status: QuoteStatus }</signature>
+      <path>apps/web/modules/saas/quotes/components/QuoteStatusBadge.tsx</path>
+    </interface>
+    <interface>
+      <name>ProfitabilityIndicator</name>
+      <kind>React component</kind>
+      <signature>Props: { marginPercent: number, greenThreshold?: number, orangeThreshold?: number, compact?: boolean }</signature>
+      <path>apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests with React Testing Library for component tests.
+      Use Playwright MCP for E2E browser automation tests.
+      Follow existing test patterns in packages/api/src/services/__tests__/.
+      Component tests should verify rendering, user interactions, and state changes.
+      E2E tests should cover the full quote detail and status transition flow.
+    </standards>
+    <locations>
+      <location>apps/web/modules/saas/quotes/components/__tests__/</location>
+      <location>packages/api/src/routes/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test 3-column layout renders correctly with all sections visible</idea>
+      <idea acId="AC2">Test that SENT/ACCEPTED quotes display stored values without API recomputation</idea>
+      <idea acId="AC3">Test TripTransparencyPanel displays stored tripAnalysis correctly</idea>
+      <idea acId="AC4">Test activity log timeline shows correct events in order</idea>
+      <idea acId="AC5">Test Send Quote action updates status to SENT</idea>
+      <idea acId="AC6">Test Accept/Reject actions update status correctly</idea>
+      <idea acId="AC7">Test Convert to Invoice action (placeholder behavior)</idea>
+      <idea acId="AC8">Test notes display and edit functionality</idea>
+      <idea>Playwright: Navigate to quote detail, verify all sections display correctly</idea>
+      <idea>Playwright: Test status transition flow from DRAFT to SENT to ACCEPTED</idea>
+      <idea>Playwright: Verify immutable data for SENT quotes</idea>
+    </ideas>
+  </tests>
+</story-context>

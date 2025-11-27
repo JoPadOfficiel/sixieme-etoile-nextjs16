@@ -1426,6 +1426,63 @@
 					"parking": "Parking"
 				}
 			}
+		},
+		"detail": {
+			"title": "Quote",
+			"backToQuotes": "Back to Quotes",
+			"notFound": "Quote not found",
+			"notFoundDescription": "The quote you are looking for does not exist or has been deleted.",
+			"actions": {
+				"send": "Send Quote",
+				"accept": "Mark as Accepted",
+				"reject": "Mark as Rejected",
+				"convertToInvoice": "Convert to Invoice",
+				"sendSuccess": "Quote sent successfully",
+				"sendError": "Failed to send quote",
+				"acceptSuccess": "Quote marked as accepted",
+				"acceptError": "Failed to accept quote",
+				"rejectSuccess": "Quote marked as rejected",
+				"rejectError": "Failed to reject quote",
+				"invoiceComingSoon": "Invoice creation coming soon",
+				"notesUpdated": "Notes updated",
+				"notesError": "Failed to update notes"
+			},
+			"commercial": {
+				"pricing": "Pricing",
+				"suggestedPrice": "Suggested Price",
+				"finalPrice": "Final Price",
+				"internalCost": "Internal Cost",
+				"grossMargin": "Gross Margin",
+				"marginPercent": "Margin %",
+				"appliedRules": "Applied Rules",
+				"moreRules": "more rules",
+				"tripDetails": "Trip Details",
+				"pickup": "Pickup",
+				"dropoff": "Dropoff"
+			},
+			"activity": {
+				"title": "Activity",
+				"events": {
+					"created": "Quote created",
+					"sent": "Quote sent",
+					"viewed": "Quote viewed",
+					"accepted": "Quote accepted",
+					"rejected": "Quote rejected",
+					"expired": "Quote expired"
+				}
+			},
+			"validity": {
+				"title": "Validity",
+				"validUntil": "Valid until"
+			},
+			"notes": {
+				"title": "Notes",
+				"edit": "Edit",
+				"save": "Save",
+				"cancel": "Cancel",
+				"placeholder": "Add notes about this quote...",
+				"empty": "No notes"
+			}
 		}
 	},
 	"fleet": {

@@ -1426,6 +1426,63 @@
 					"parking": "Parking"
 				}
 			}
+		},
+		"detail": {
+			"title": "Devis",
+			"backToQuotes": "Retour aux devis",
+			"notFound": "Devis introuvable",
+			"notFoundDescription": "Le devis que vous recherchez n'existe pas ou a été supprimé.",
+			"actions": {
+				"send": "Envoyer le devis",
+				"accept": "Marquer comme accepté",
+				"reject": "Marquer comme refusé",
+				"convertToInvoice": "Convertir en facture",
+				"sendSuccess": "Devis envoyé avec succès",
+				"sendError": "Échec de l'envoi du devis",
+				"acceptSuccess": "Devis marqué comme accepté",
+				"acceptError": "Échec de l'acceptation du devis",
+				"rejectSuccess": "Devis marqué comme refusé",
+				"rejectError": "Échec du refus du devis",
+				"invoiceComingSoon": "Création de facture bientôt disponible",
+				"notesUpdated": "Notes mises à jour",
+				"notesError": "Échec de la mise à jour des notes"
+			},
+			"commercial": {
+				"pricing": "Tarification",
+				"suggestedPrice": "Prix suggéré",
+				"finalPrice": "Prix final",
+				"internalCost": "Coût interne",
+				"grossMargin": "Marge brute",
+				"marginPercent": "Marge %",
+				"appliedRules": "Règles appliquées",
+				"moreRules": "règles supplémentaires",
+				"tripDetails": "Détails du trajet",
+				"pickup": "Prise en charge",
+				"dropoff": "Dépose"
+			},
+			"activity": {
+				"title": "Activité",
+				"events": {
+					"created": "Devis créé",
+					"sent": "Devis envoyé",
+					"viewed": "Devis consulté",
+					"accepted": "Devis accepté",
+					"rejected": "Devis refusé",
+					"expired": "Devis expiré"
+				}
+			},
+			"validity": {
+				"title": "Validité",
+				"validUntil": "Valide jusqu'au"
+			},
+			"notes": {
+				"title": "Notes",
+				"edit": "Modifier",
+				"save": "Enregistrer",
+				"cancel": "Annuler",
+				"placeholder": "Ajouter des notes sur ce devis...",
+				"empty": "Aucune note"
+			}
 		}
 	},
 	"fleet": {

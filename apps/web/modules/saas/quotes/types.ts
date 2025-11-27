@@ -48,12 +48,17 @@ export interface Quote {
   finalPrice: string;
   internalCost: string | null;
   marginPercent: string | null;
-  tripAnalysis: Record<string, unknown> | null;
+  tripAnalysis: TripAnalysis | null;
   appliedRules: Record<string, unknown> | null;
   validUntil: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  // Story 6.3: Status transition timestamps
+  sentAt: string | null;
+  viewedAt: string | null;
+  acceptedAt: string | null;
+  rejectedAt: string | null;
 }
 
 export interface QuotesResponse {
