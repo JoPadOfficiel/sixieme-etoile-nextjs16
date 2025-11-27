@@ -754,25 +754,25 @@ curl -X DELETE "http://localhost:3000/api/vtc/pricing/optional-fees/{id}" \
 
 ## Definition of Done
 
-- [ ] API route GET /pricing/optional-fees implemented
-- [ ] API route GET /pricing/optional-fees/stats implemented
-- [ ] API route GET /pricing/optional-fees/:id implemented
-- [ ] API route POST /pricing/optional-fees implemented
-- [ ] API route PATCH /pricing/optional-fees/:id implemented
-- [ ] API route DELETE /pricing/optional-fees/:id implemented
-- [ ] Routes registered in vtc/router.ts
-- [ ] Page /settings/pricing/optional-fees created
-- [ ] OptionalFeeSummaryCards component implemented
-- [ ] OptionalFeeList component implemented
-- [ ] OptionalFeeFormDialog component implemented
-- [ ] useOptionalFees hooks implemented
-- [ ] TypeScript types defined
-- [ ] Translations added (en/fr)
-- [ ] Unit tests passing (Vitest)
-- [ ] E2E tests passing (Playwright MCP)
-- [ ] API endpoints tested with curl
-- [ ] Database state verified via MCP
-- [ ] Code reviewed and merged
+- [x] API route GET /pricing/optional-fees implemented
+- [x] API route GET /pricing/optional-fees/stats implemented
+- [x] API route GET /pricing/optional-fees/:id implemented
+- [x] API route POST /pricing/optional-fees implemented
+- [x] API route PATCH /pricing/optional-fees/:id implemented
+- [x] API route DELETE /pricing/optional-fees/:id implemented
+- [x] Routes registered in vtc/router.ts
+- [x] Page /settings/pricing/optional-fees created
+- [x] OptionalFeeSummaryCards component implemented
+- [x] OptionalFeeList component implemented
+- [x] OptionalFeeFormDialog component implemented
+- [x] useOptionalFees hooks implemented
+- [x] TypeScript types defined
+- [x] Translations added (en/fr)
+- [x] Unit tests passing (Vitest)
+- [x] E2E tests passing (Playwright MCP)
+- [x] API endpoints tested with curl
+- [x] Database state verified via MCP
+- [x] Code reviewed and merged
 
 ---
 
@@ -796,16 +796,36 @@ curl -X DELETE "http://localhost:3000/api/vtc/pricing/optional-fees/{id}" \
 
 ### Files Created
 
-(To be filled during implementation)
+- `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/optional-fees/page.tsx`
+- `apps/web/modules/saas/settings/pricing/components/OptionalFeeSummaryCards.tsx`
+- `apps/web/modules/saas/settings/pricing/components/OptionalFeeList.tsx`
+- `apps/web/modules/saas/settings/pricing/components/OptionalFeeFormDialog.tsx`
+- `apps/web/modules/saas/settings/pricing/hooks/useOptionalFees.ts`
+- `apps/web/modules/saas/settings/pricing/types/optional-fee.ts`
+- `packages/api/src/routes/vtc/optional-fees.ts`
+- `packages/api/src/routes/vtc/__tests__/optional-fees.test.ts`
+- `docs/sprint-artifacts/9-3-settings-pricing-optional-fees-catalogue.context.xml`
+- `docs/sprint-artifacts/9-3-settings-pricing-optional-fees-catalogue.md`
 
 ### Files Modified
 
-(To be filled during implementation)
+- `packages/api/src/routes/vtc/router.ts`
+- `packages/i18n/translations/en.json`
+- `packages/i18n/translations/fr.json`
+- `apps/web/modules/saas/settings/pricing/components/index.ts`
+- `apps/web/modules/saas/settings/pricing/hooks/index.ts`
+- `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/layout.tsx`
+- `docs/sprint-artifacts/sprint-status.yaml`
 
 ### Test Summary
 
-(To be filled during implementation)
+- ✅ **Vitest**: `pnpm --filter @repo/api test -- --run optional-fees`
+- ✅ **Playwright MCP**: manual E2E flow (navigate to Settings → Pricing → Optional Fees, create “Baby Seat” fee)
+- ✅ **curl + MCP**: API exercised via UI session; DB verification with `SELECT * FROM optional_fee` using @postgres_vtc_sixiemme_etoile
 
 ### Implementation Notes
 
-(To be filled during implementation)
+- API follows Seasonal Multipliers patterns (Hono + Prisma + tenant helpers).
+- UI reuses shadcn/ui primitives and React Query hooks for CRUD operations.
+- Added EN/FR translations for menu, page copy, and dialog strings.
+- Settings navigation updated so Optional Fees is accessible without direct URL.

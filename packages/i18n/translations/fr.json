@@ -1134,7 +1134,8 @@
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
 					"seasonalMultipliers": "Multiplicateurs saisonniers",
-					"advancedRates": "Tarifs avancés"
+					"advancedRates": "Tarifs avancés",
+					"optionalFees": "Frais optionnels"
 				},
 				"title": "Organisation"
 			}
