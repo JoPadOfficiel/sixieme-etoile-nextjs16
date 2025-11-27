@@ -1,7 +1,7 @@
 # Story 8.1: Implement Dispatch Screen Layout (Missions List + Map + Transparency)
 
 **Epic:** Epic 8 – Dispatch & Strategic Optimisation  
-**Status:** ready-for-dev  
+**Status:** done  
 **Created:** 2025-11-27  
 **Priority:** High
 
@@ -457,20 +457,20 @@ curl -X GET "http://localhost:3000/api/vtc/operating-bases" \
 
 ## Definition of Done
 
-- [ ] Dispatch page route created and accessible
-- [ ] 3-zone layout implemented and responsive
-- [ ] Missions list displays accepted quotes with future pickupAt
-- [ ] Filters work correctly (date, category, client type)
-- [ ] Mission selection updates map and transparency panel
-- [ ] Dispatch badges display correctly
-- [ ] TripTransparencyPanel reused successfully
-- [ ] VehicleAssignmentPanel shows current assignment
-- [ ] Empty and loading states implemented
-- [ ] Translations added (en/fr)
-- [ ] Unit tests passing
-- [ ] E2E tests passing
-- [ ] API endpoints tested with curl
-- [ ] Code reviewed and merged
+- [x] Dispatch page route created and accessible
+- [x] 3-zone layout implemented and responsive
+- [x] Missions list displays accepted quotes with future pickupAt
+- [x] Filters work correctly (date, category, client type)
+- [x] Mission selection updates map and transparency panel
+- [x] Dispatch badges display correctly
+- [x] TripTransparencyPanel reused successfully
+- [x] VehicleAssignmentPanel shows current assignment
+- [x] Empty and loading states implemented
+- [x] Translations added (en/fr)
+- [x] Unit tests passing
+- [x] E2E tests passing
+- [x] API endpoints tested with curl
+- [x] Code reviewed and merged
 
 ---
 
