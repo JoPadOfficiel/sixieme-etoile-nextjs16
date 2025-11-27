@@ -322,6 +322,12 @@
 			"lines": "Invoice Lines",
 			"noLines": "No invoice lines",
 			"totals": "Totals",
+			"categoryBreakdown": "Category Breakdown",
+			"category": {
+				"transport": "Transport",
+				"ancillary": "Ancillary Services",
+				"adjustments": "Adjustments"
+			},
 			"vatBreakdown": "VAT Breakdown",
 			"totalExclVat": "Total (Excl. VAT)",
 			"totalVat": "Total VAT",

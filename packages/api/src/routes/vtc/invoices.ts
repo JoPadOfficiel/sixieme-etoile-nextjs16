@@ -18,6 +18,13 @@ import {
 	withTenantId,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import {
+	parseAppliedRules,
+	buildInvoiceLines,
+	calculateInvoiceTotals,
+	calculateTransportAmount,
+	TRANSPORT_VAT_RATE,
+} from "../../services/invoice-line-builder";
 
 // ============================================================================
 // Validation Schemas
@@ -395,18 +402,30 @@ export const invoicesRouter = new Hono()
 			// Generate invoice number
 			const invoiceNumber = await generateInvoiceNumber(organizationId);
 
-			// Calculate amounts
-			const totalExclVat = Number(quote.finalPrice);
-			const vatRate = 10; // Transport VAT rate in France
-			const totalVat = totalExclVat * (vatRate / 100);
-			const totalInclVat = totalExclVat + totalVat;
+			// Story 7.3: Parse appliedRules to extract optional fees and promotions
+			const parsedRules = parseAppliedRules(quote.appliedRules);
+			const finalPrice = Number(quote.finalPrice);
 
-			// Calculate commission for partners
+			// Calculate transport amount (finalPrice minus fees, plus promotions back)
+			const transportAmount = calculateTransportAmount(finalPrice, parsedRules);
+
+			// Build invoice lines with appropriate VAT rates
+			const invoiceLines = buildInvoiceLines(
+				transportAmount,
+				quote.pickupAddress,
+				quote.dropoffAddress,
+				parsedRules,
+			);
+
+			// Calculate totals from lines (ensures consistency)
+			const totals = calculateInvoiceTotals(invoiceLines);
+
+			// Calculate commission for partners (based on total excl. VAT)
 			let commissionAmount: number | null = null;
 			if (quote.contact.isPartner && quote.contact.partnerContract) {
 				const commissionPercent = Number(quote.contact.partnerContract.commissionPercent);
 				if (commissionPercent > 0) {
-					commissionAmount = (totalExclVat * commissionPercent) / 100;
+					commissionAmount = Math.round((totals.totalExclVat * commissionPercent) / 100 * 100) / 100;
 				}
 			}
 
@@ -439,7 +458,7 @@ export const invoicesRouter = new Hono()
 				dueDate.setDate(dueDate.getDate() + 30);
 			}
 
-			// Create invoice with transport line
+			// Create invoice with all lines in a transaction
 			const invoice = await db.$transaction(async (tx) => {
 				const newInvoice = await tx.invoice.create({
 					data: withTenantCreate(
@@ -450,9 +469,9 @@ export const invoicesRouter = new Hono()
 							status: "DRAFT",
 							issueDate,
 							dueDate,
-							totalExclVat,
-							totalVat,
-							totalInclVat,
+							totalExclVat: totals.totalExclVat,
+							totalVat: totals.totalVat,
+							totalInclVat: totals.totalInclVat,
 							commissionAmount,
 							notes: `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
 						},
@@ -460,20 +479,22 @@ export const invoicesRouter = new Hono()
 					),
 				});
 
-				// Create transport line
-				await tx.invoiceLine.create({
-					data: {
-						invoiceId: newInvoice.id,
-						description: `Transport: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
-						quantity: 1,
-						unitPriceExclVat: totalExclVat,
-						vatRate,
-						totalExclVat,
-						totalVat,
-						lineType: "SERVICE",
-						sortOrder: 0,
-					},
-				});
+				// Create all invoice lines (transport + optional fees + promotions)
+				if (invoiceLines.length > 0) {
+					await tx.invoiceLine.createMany({
+						data: invoiceLines.map((line) => ({
+							invoiceId: newInvoice.id,
+							description: line.description,
+							quantity: line.quantity,
+							unitPriceExclVat: line.unitPriceExclVat,
+							vatRate: line.vatRate,
+							totalExclVat: line.totalExclVat,
+							totalVat: line.totalVat,
+							lineType: line.lineType,
+							sortOrder: line.sortOrder,
+						})),
+					});
+				}
 
 				return newInvoice;
 			});

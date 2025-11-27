@@ -37,8 +37,14 @@ export function InvoiceLinesList({
 }: InvoiceLinesListProps) {
   const t = useTranslations("invoices.detail");
 
-  // Calculate VAT breakdown by rate
-  const { vatBreakdown } = calculateLineTotals(lines);
+  // Calculate VAT breakdown by rate and category breakdown
+  const { vatBreakdown, categoryBreakdown } = calculateLineTotals(lines);
+
+  // Check if we have multiple categories (for showing breakdown)
+  const hasMultipleCategories = 
+    (categoryBreakdown.transport !== 0 ? 1 : 0) +
+    (categoryBreakdown.ancillary !== 0 ? 1 : 0) +
+    (categoryBreakdown.adjustments !== 0 ? 1 : 0) > 1;
 
   return (
     <div className="space-y-6">
@@ -102,6 +108,39 @@ export function InvoiceLinesList({
           <CardTitle className="text-lg">{t("totals")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Category Breakdown - Story 7.3 */}
+          {hasMultipleCategories && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                {t("categoryBreakdown")}
+              </h4>
+              <div className="space-y-1">
+                {categoryBreakdown.transport !== 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t("category.transport")}</span>
+                    <span>{formatPrice(categoryBreakdown.transport)}</span>
+                  </div>
+                )}
+                {categoryBreakdown.ancillary !== 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t("category.ancillary")}</span>
+                    <span>{formatPrice(categoryBreakdown.ancillary)}</span>
+                  </div>
+                )}
+                {categoryBreakdown.adjustments !== 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t("category.adjustments")}</span>
+                    <span className={categoryBreakdown.adjustments < 0 ? "text-green-600" : ""}>
+                      {formatPrice(categoryBreakdown.adjustments)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {hasMultipleCategories && <div className="border-t border-border" />}
+
           {/* VAT Breakdown */}
           {Object.keys(vatBreakdown).length > 0 && (
             <div className="space-y-2">

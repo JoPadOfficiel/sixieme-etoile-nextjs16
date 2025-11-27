@@ -218,6 +218,16 @@ export function getLineTypeLabel(lineType: InvoiceLineType): string {
 }
 
 /**
+ * Category breakdown for invoice lines
+ * Story 7.3: VAT Breakdown for Transport & Ancillary Services
+ */
+export interface CategoryBreakdown {
+  transport: number;
+  ancillary: number;
+  adjustments: number;
+}
+
+/**
  * Calculate totals from invoice lines
  */
 export function calculateLineTotals(lines: InvoiceLine[]): {
@@ -225,10 +235,16 @@ export function calculateLineTotals(lines: InvoiceLine[]): {
   totalVat: number;
   totalInclVat: number;
   vatBreakdown: Record<string, { rate: number; base: number; vat: number }>;
+  categoryBreakdown: CategoryBreakdown;
 } {
   let totalExclVat = 0;
   let totalVat = 0;
   const vatBreakdown: Record<string, { rate: number; base: number; vat: number }> = {};
+  const categoryBreakdown: CategoryBreakdown = {
+    transport: 0,
+    ancillary: 0,
+    adjustments: 0,
+  };
 
   for (const line of lines) {
     const lineExclVat = parseFloat(line.totalExclVat);
@@ -238,12 +254,27 @@ export function calculateLineTotals(lines: InvoiceLine[]): {
     totalExclVat += lineExclVat;
     totalVat += lineVat;
 
+    // VAT breakdown by rate
     const rateKey = vatRate.toFixed(0);
     if (!vatBreakdown[rateKey]) {
       vatBreakdown[rateKey] = { rate: vatRate, base: 0, vat: 0 };
     }
     vatBreakdown[rateKey].base += lineExclVat;
     vatBreakdown[rateKey].vat += lineVat;
+
+    // Category breakdown by line type
+    switch (line.lineType) {
+      case "SERVICE":
+        categoryBreakdown.transport += lineExclVat;
+        break;
+      case "OPTIONAL_FEE":
+      case "OTHER":
+        categoryBreakdown.ancillary += lineExclVat;
+        break;
+      case "PROMOTION_ADJUSTMENT":
+        categoryBreakdown.adjustments += lineExclVat;
+        break;
+    }
   }
 
   return {
@@ -251,6 +282,7 @@ export function calculateLineTotals(lines: InvoiceLine[]): {
     totalVat,
     totalInclVat: totalExclVat + totalVat,
     vatBreakdown,
+    categoryBreakdown,
   };
 }
 

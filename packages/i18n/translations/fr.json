@@ -322,6 +322,12 @@
 			"lines": "Lignes de facture",
 			"noLines": "Aucune ligne de facture",
 			"totals": "Totaux",
+			"categoryBreakdown": "Répartition par catégorie",
+			"category": {
+				"transport": "Transport",
+				"ancillary": "Services annexes",
+				"adjustments": "Ajustements"
+			},
 			"vatBreakdown": "Détail TVA",
 			"totalExclVat": "Total HT",
 			"totalVat": "Total TVA",

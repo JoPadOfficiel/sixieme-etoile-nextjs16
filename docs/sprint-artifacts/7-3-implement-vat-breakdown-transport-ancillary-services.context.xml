@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>7-3</story-id>
+    <story-name>Implement VAT Breakdown for Transport & Ancillary Services</story-name>
+    <epic>Epic 7 – Invoicing & Documents</epic>
+    <created>2025-11-27</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      L'API de conversion devis→facture crée une seule ligne avec TVA 10% hardcodée.
+      Les devis peuvent inclure des frais optionnels et promotions avec des taux TVA différents.
+      L'UI affiche déjà la ventilation TVA mais les données multi-lignes ne sont pas générées.
+    </summary>
+    <current-behavior>
+      POST /invoices/from-quote/:quoteId crée une facture avec:
+      - 1 ligne SERVICE (transport) avec TVA 10%
+      - Pas de lignes pour les frais optionnels
+      - Pas de lignes pour les promotions
+    </current-behavior>
+    <expected-behavior>
+      POST /invoices/from-quote/:quoteId doit créer:
+      - 1 ligne SERVICE (transport) avec TVA 10%
+      - N lignes OPTIONAL_FEE avec TVA selon configuration
+      - N lignes PROMOTION_ADJUSTMENT avec TVA appropriée
+      - Résumé par catégorie dans l'UI
+    </expected-behavior>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Étendre l'API pour créer des lignes multi-TVA depuis appliedRules</objective>
+    <objective id="2">Ajouter un résumé par catégorie (transport vs ancillaires) dans l'UI</objective>
+    <objective id="3">Garantir l'immutabilité des taux TVA (deep-copy)</objective>
+    <objective id="4">Assurer la cohérence des arrondis (somme lignes = total facture)</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification API invoices.ts pour lire appliedRules et créer lignes</item>
+      <item>Ajout résumé par catégorie dans InvoiceLinesList</item>
+      <item>Tests unitaires API</item>
+      <item>Tests E2E Playwright</item>
+      <item>Vérification DB via MCP postgres</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Configuration des OptionalFees (Epic 9)</item>
+      <item>Configuration des Promotions (Epic 9)</item>
+      <item>Modification du pricing engine</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint id="FR35">Taux TVA distincts par type de ligne</constraint>
+    <constraint id="FR34">Deep-copy obligatoire - valeurs figées à la création</constraint>
+    <constraint id="ROUNDING">Arrondis TVA cohérents (somme lignes = total facture)</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>appliedRules peut être null pour anciens devis</description>
+      <mitigation>Fallback sur comportement actuel (1 ligne transport)</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Incohérence arrondis TVA</description>
+      <mitigation>Arrondir à 2 décimales, ajuster dernière ligne si nécessaire</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-models>
+      <model name="InvoiceLine">
+        <field name="lineType">SERVICE | OPTIONAL_FEE | PROMOTION_ADJUSTMENT | OTHER</field>
+        <field name="vatRate">Decimal(5,2)</field>
+        <field name="totalExclVat">Decimal(10,2)</field>
+        <field name="totalVat">Decimal(10,2)</field>
+      </model>
+      <model name="OptionalFee">
+        <field name="vatRate">Decimal(5,2) default 20%</field>
+        <field name="isTaxable">Boolean default true</field>
+      </model>
+      <model name="Quote">
+        <field name="appliedRules">JSON - contient optional fees et promotions appliqués</field>
+      </model>
+    </existing-models>
+
+    <existing-api>
+      <endpoint path="POST /invoices/from-quote/:quoteId">
+        <location>packages/api/src/routes/vtc/invoices.ts:347-492</location>
+        <behavior>Crée 1 ligne SERVICE avec TVA 10%</behavior>
+      </endpoint>
+    </existing-api>
+
+    <existing-ui>
+      <component name="InvoiceLinesList">
+        <location>apps/web/modules/saas/invoices/components/InvoiceLinesList.tsx</location>
+        <feature>Affiche ventilation TVA par taux via calculateLineTotals()</feature>
+      </component>
+      <function name="calculateLineTotals">
+        <location>apps/web/modules/saas/invoices/types.ts:223-255</location>
+        <feature>Calcule vatBreakdown par taux</feature>
+      </function>
+    </existing-ui>
+  </technical-context>
+
+  <dependencies>
+    <completed>
+      <dependency>Story 7.1: Invoice & InvoiceLine models</dependency>
+      <dependency>Story 7.2: Convert quote to invoice</dependency>
+      <dependency>Story 6.4: Quote lifecycle (appliedRules populated)</dependency>
+    </completed>
+    <required>
+      <dependency>OptionalFee model exists in schema</dependency>
+      <dependency>Promotion model exists in schema</dependency>
+    </required>
+  </dependencies>
+
+  <test-strategy>
+    <unit-tests>
+      <test>API crée lignes multi-TVA depuis appliedRules</test>
+      <test>Fallback si appliedRules null</test>
+      <test>Arrondis TVA cohérents</test>
+    </unit-tests>
+    <e2e-tests>
+      <test>Conversion devis avec frais optionnels</test>
+      <test>Affichage ventilation TVA dans UI</test>
+      <test>Résumé par catégorie visible</test>
+    </e2e-tests>
+    <db-verification>
+      <test>Lignes créées avec bons lineType et vatRate</test>
+      <test>Somme lignes = totaux facture</test>
+    </db-verification>
+  </test-strategy>
+</story-context>
