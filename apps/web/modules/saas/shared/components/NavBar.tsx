@@ -53,6 +53,12 @@ export function NavBar() {
 						isActive: pathname.startsWith(`${basePath}/contacts`),
 					},
 					{
+						label: t("dispatch.title"),
+						href: `${basePath}/dispatch`,
+						icon: FolderIcon,
+						isActive: pathname.startsWith(`${basePath}/dispatch`),
+					},
+					{
 						label: t("quotes.title"),
 						href: `${basePath}/quotes`,
 						icon: FileTextIcon,
