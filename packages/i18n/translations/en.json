@@ -274,6 +274,82 @@
 			"subject": "You have been invited to join an organization"
 		}
 	},
+	"invoices": {
+		"title": "Invoices",
+		"description": "Manage your invoices, track payments, and generate exports.",
+		"addInvoice": "New invoice",
+		"search": "Search for an invoice...",
+		"overdue": "Overdue",
+		"dueToday": "Due today",
+		"dueIn": "Due in {days} days",
+		"notFound": "Invoice not found",
+		"statusUpdated": "Status updated",
+		"updateError": "Error updating status",
+		"unknownError": "An unknown error occurred",
+		"partner": "Partner",
+		"private": "Private Client",
+		"loadError": "Error loading invoices",
+		"noResults": "No invoices found",
+		"empty": "You don't have any invoices yet.",
+		"columns": {
+			"number": "Invoice No",
+			"client": "Client",
+			"issueDate": "Issue Date",
+			"dueDate": "Due Date",
+			"total": "Total (Inc. VAT)",
+			"vat": "VAT",
+			"status": "Status",
+			"sourceQuote": "Source Quote"
+		},
+		"status": {
+			"draft": "Draft",
+			"issued": "Issued",
+			"paid": "Paid",
+			"cancelled": "Cancelled"
+		},
+		"filters": {
+			"allStatuses": "All statuses",
+			"status": "Status",
+			"dateRange": "Date range"
+		},
+		"detail": {
+			"title": "Invoice",
+			"backToInvoices": "Back to invoices",
+			"billingInfo": "Billing Information",
+			"metadata": "Invoice Details",
+			"invoiceNumber": "Invoice Number",
+			"vatNumber": "VAT No",
+			"lines": "Invoice Lines",
+			"noLines": "No invoice lines",
+			"totals": "Totals",
+			"vatBreakdown": "VAT Breakdown",
+			"totalExclVat": "Total (Excl. VAT)",
+			"totalVat": "Total VAT",
+			"totalInclVat": "Total (Inc. VAT)",
+			"commission": "Partner Commission",
+			"sourceQuote": "Source Quote",
+			"viewQuote": "View quote",
+			"notes": "Notes",
+			"description": "Description",
+			"quantity": "Qty",
+			"unitPrice": "Unit Price (Excl. VAT)",
+			"vatRate": "VAT",
+			"total": "Total (Excl. VAT)"
+		},
+		"actions": {
+			"issue": "Issue Invoice",
+			"markPaid": "Mark as Paid",
+			"cancel": "Cancel",
+			"download": "Download PDF",
+			"menu": "Actions",
+			"view": "View detail",
+			"viewQuote": "View source quote"
+		},
+		"pagination": {
+			"showing": "Showing {from} to {to} of {total} invoices",
+			"page": "Page {current} of {total}"
+		}
+	},
 	"newsletter": {
 		"email": "Email",
 		"hints": {
