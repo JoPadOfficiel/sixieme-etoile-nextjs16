@@ -1,7 +1,7 @@
 # Story 8.3: Implement Multi-Base Optimisation & Visualisation
 
 **Epic:** Epic 8 – Dispatch & Strategic Optimisation  
-**Status:** ready-for-dev  
+**Status:** done  
 **Created:** 2025-11-27  
 **Priority:** High
 
@@ -454,22 +454,22 @@ curl -X GET "http://localhost:3000/api/vtc/missions/mission-id-123/candidates" \
 
 ## Definition of Done
 
-- [ ] API endpoint enhanced with baseLatitude, baseLongitude, segments
-- [ ] DispatchMap shows candidate bases with distinct markers
-- [ ] Route segments (approach/service/return) render correctly
-- [ ] Hover preview shows approach route
-- [ ] Selected candidate shows full A/B/C route
-- [ ] Click on map marker selects candidate in drawer
-- [ ] Cost comparison visible in candidate list
-- [ ] Map auto-fits to show all route segments
-- [ ] Loading states implemented
-- [ ] Empty state handled gracefully
-- [ ] Translations added (en/fr)
-- [ ] Unit tests passing (Vitest)
-- [ ] E2E tests passing (Playwright MCP)
-- [ ] API endpoints tested with curl
-- [ ] Database state verified via MCP
-- [ ] Code reviewed and merged
+- [x] API endpoint enhanced with baseLatitude, baseLongitude, segments
+- [x] DispatchMap shows candidate bases with distinct markers
+- [x] Route segments (approach/service/return) render correctly
+- [x] Hover preview shows approach route
+- [x] Selected candidate shows full A/B/C route
+- [x] Click on map marker selects candidate in drawer
+- [x] Cost comparison visible in candidate list
+- [x] Map auto-fits to show all route segments
+- [x] Loading states implemented
+- [x] Empty state handled gracefully
+- [x] Translations added (en/fr)
+- [x] Unit tests passing (Vitest)
+- [x] E2E tests passing (Playwright MCP)
+- [x] API endpoints tested with curl
+- [x] Database state verified via MCP
+- [x] Code reviewed and merged
 
 ---
 
