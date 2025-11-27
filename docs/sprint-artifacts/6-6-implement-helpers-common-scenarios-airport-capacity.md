@@ -102,70 +102,70 @@ The helpers are **transparent** (operators see exactly what's applied) and **non
 
 ## Technical Tasks
 
-1. [ ] **Create useScenarioHelpers hook**
+1. [x] **Create useScenarioHelpers hook**
 
    - Airport detection logic with regex patterns
    - Capacity validation against VehicleCategory
    - Upsell suggestion calculation
    - Integration with form state
 
-2. [ ] **Create AirportHelperPanel component**
+2. [x] **Create AirportHelperPanel component**
 
    - Collapsible panel below address fields
    - Flight number input with validation
    - Waiting time preset selector
    - Auto-applied fees display with checkboxes
 
-3. [ ] **Create CapacityWarningAlert component**
+3. [x] **Create CapacityWarningAlert component**
 
    - Non-blocking inline alert
    - Shows current vs required capacity
    - Suggested category with price delta
    - "Apply Suggestion" action button
 
-4. [ ] **Extend CreateQuoteFormData type**
+4. [x] **Extend CreateQuoteFormData type**
 
    - Add flightNumber?: string
    - Add isAirportTransfer: boolean
    - Add selectedOptionalFees: string[]
    - Add capacityWarning?: CapacityWarning
 
-5. [ ] **Create/Extend optional-fees API endpoint**
+5. [x] **Create/Extend optional-fees API endpoint**
 
    - GET /api/vtc/optional-fees with autoApplyRules filter
    - Return fees applicable for airport scenarios
 
-6. [ ] **Integrate helpers in QuoteBasicInfoPanel**
+6. [x] **Integrate helpers in QuoteBasicInfoPanel**
 
    - Add AirportHelperPanel conditionally
    - Add CapacityWarningAlert after vehicle selector
 
-7. [ ] **Integrate helpers in QuotePricingPanel**
+7. [x] **Integrate helpers in QuotePricingPanel**
 
    - Display selected optional fees with amounts
    - Show "Auto-applied" badge for helper-added fees
    - Allow manual toggle of fees
 
-8. [ ] **Update usePricingCalculation hook**
+8. [x] **Update usePricingCalculation hook**
 
    - Include optional fees in pricing request
    - Return fee breakdown in result
 
-9. [ ] **Add translations (FR/EN)**
+9. [x] **Add translations (FR/EN)**
 
    - Airport detection messages
    - Capacity warning messages
    - Upsell suggestion messages
    - Optional fee labels
 
-10. [ ] **Write unit tests**
+10. [x] **Write unit tests**
 
     - useScenarioHelpers hook tests
     - Airport detection regex tests
     - Capacity calculation tests
     - Component rendering tests
 
-11. [ ] **Write Playwright E2E tests**
+11. [x] **Write Playwright E2E tests**
     - Airport address detection flow
     - Capacity warning and upsell flow
     - Optional fee auto-application flow
