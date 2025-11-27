@@ -96,7 +96,7 @@ export const InvitationScalarFieldEnumSchema = z.enum(['id','organizationId','em
 
 export const PurchaseScalarFieldEnumSchema = z.enum(['id','organizationId','userId','type','customerId','subscriptionId','productId','status','createdAt','updatedAt']);
 
-export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','defaultClientType','notes','createdAt','updatedAt']);
+export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','isSubcontractor','defaultClientType','notes','createdAt','updatedAt']);
 
 export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
 
@@ -105,6 +105,12 @@ export const PartnerContractZoneRouteScalarFieldEnumSchema = z.enum(['id','partn
 export const PartnerContractExcursionPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','excursionPackageId']);
 
 export const PartnerContractDispoPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','dispoPackageId']);
+
+export const SubcontractorProfileScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','ratePerKm','ratePerHour','minimumFare','isActive','notes','createdAt','updatedAt']);
+
+export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','pricingZoneId']);
+
+export const SubcontractorVehicleCategoryScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','vehicleCategoryId']);
 
 export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','description','isActive','createdAt','updatedAt']);
 
@@ -140,7 +146,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','assignedAt','chainId','chainOrder','chainedWithId','createdAt','updatedAt','vehicleId','driverId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','createdAt','updatedAt','vehicleId','driverId']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','notes','createdAt','updatedAt']);
 
@@ -431,6 +437,7 @@ export const ContactSchema = z.object({
   siret: z.string().nullable(),
   billingAddress: z.string().nullable(),
   isPartner: z.boolean(),
+  isSubcontractor: z.boolean(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -503,6 +510,58 @@ export const PartnerContractDispoPackageSchema = z.object({
 })
 
 export type PartnerContractDispoPackage = z.infer<typeof PartnerContractDispoPackageSchema>
+
+/////////////////////////////////////////
+// SUBCONTRACTOR PROFILE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * SubcontractorProfile - Details for subcontractor contacts
+ */
+export const SubcontractorProfileSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  contactId: z.string(),
+  ratePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'ratePerKm' must be a Decimal. Location: ['Models', 'SubcontractorProfile']"}).nullable(),
+  ratePerHour: z.instanceof(Prisma.Decimal, { message: "Field 'ratePerHour' must be a Decimal. Location: ['Models', 'SubcontractorProfile']"}).nullable(),
+  minimumFare: z.instanceof(Prisma.Decimal, { message: "Field 'minimumFare' must be a Decimal. Location: ['Models', 'SubcontractorProfile']"}).nullable(),
+  isActive: z.boolean(),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type SubcontractorProfile = z.infer<typeof SubcontractorProfileSchema>
+
+/////////////////////////////////////////
+// SUBCONTRACTOR ZONE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * SubcontractorZone - Junction: SubcontractorProfile <-> PricingZone
+ */
+export const SubcontractorZoneSchema = z.object({
+  id: z.string().cuid(),
+  subcontractorProfileId: z.string(),
+  pricingZoneId: z.string(),
+})
+
+export type SubcontractorZone = z.infer<typeof SubcontractorZoneSchema>
+
+/////////////////////////////////////////
+// SUBCONTRACTOR VEHICLE CATEGORY SCHEMA
+/////////////////////////////////////////
+
+/**
+ * SubcontractorVehicleCategory - Junction: SubcontractorProfile <-> VehicleCategory
+ */
+export const SubcontractorVehicleCategorySchema = z.object({
+  id: z.string().cuid(),
+  subcontractorProfileId: z.string(),
+  vehicleCategoryId: z.string(),
+})
+
+export type SubcontractorVehicleCategory = z.infer<typeof SubcontractorVehicleCategorySchema>
 
 /////////////////////////////////////////
 // VEHICLE CATEGORY SCHEMA
@@ -973,6 +1032,11 @@ export const QuoteSchema = z.object({
   chainId: z.string().nullable(),
   chainOrder: z.number().int().nullable(),
   chainedWithId: z.string().nullable(),
+  isSubcontracted: z.boolean(),
+  subcontractorId: z.string().nullable(),
+  subcontractedPrice: z.instanceof(Prisma.Decimal, { message: "Field 'subcontractedPrice' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
+  subcontractedAt: z.coerce.date().nullable(),
+  subcontractingNotes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   vehicleId: z.string().nullable(),

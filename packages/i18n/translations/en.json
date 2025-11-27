@@ -2170,6 +2170,48 @@
 				"updateError": "Failed to update empty leg",
 				"deleteError": "Failed to delete empty leg"
 			}
+		},
+		"subcontracting": {
+			"title": "Subcontracting Options",
+			"unprofitableAlert": "This mission is unprofitable for internal execution",
+			"marginBelow": "Margin is {percent}% (below {threshold}% threshold)",
+			"noSuggestions": "No subcontractors available for this route",
+			"suggestion": {
+				"estimatedPrice": "Est. price: €{price}",
+				"resultingMargin": "Resulting margin: {percent}%",
+				"zoneMatch": {
+					"full": "Full zone match",
+					"pickup": "Pickup zone match",
+					"dropoff": "Dropoff zone match"
+				}
+			},
+			"comparison": {
+				"title": "Margin Comparison",
+				"internal": "Internal",
+				"subcontractor": "Subcontractor",
+				"sellingPrice": "Selling Price",
+				"cost": "Cost",
+				"margin": "Margin",
+				"recommendation": "Recommendation",
+				"loss": "Loss",
+				"profit": "Profit",
+				"review": "Review"
+			},
+			"action": {
+				"subcontract": "Subcontract to {name}",
+				"confirm": "Confirm Subcontracting",
+				"cancel": "Cancel"
+			},
+			"dialog": {
+				"title": "Confirm Subcontracting",
+				"description": "You are about to subcontract this mission to {name}",
+				"agreedPrice": "Agreed Price (EUR)",
+				"notes": "Notes (optional)",
+				"confirm": "Confirm",
+				"cancel": "Cancel",
+				"success": "Mission subcontracted successfully",
+				"error": "Failed to subcontract mission"
+			}
 		}
 	},
 	"documents": {

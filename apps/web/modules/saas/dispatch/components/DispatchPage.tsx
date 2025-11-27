@@ -11,6 +11,7 @@ import { DispatchMapGoogle } from "./DispatchMapGoogle";
 import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { EmptyLegsList } from "./EmptyLegsList";
+import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
@@ -228,6 +229,8 @@ export function DispatchPage() {
 						isLoading={missionDetailLoading}
 						className="flex-1"
 					/>
+					{/* Story 8.6: Subcontracting Suggestions */}
+					<SubcontractingSuggestions missionId={selectedMissionId} />
 					<VehicleAssignmentPanel
 						assignment={selectedMission?.assignment || null}
 						isLoading={missionDetailLoading}

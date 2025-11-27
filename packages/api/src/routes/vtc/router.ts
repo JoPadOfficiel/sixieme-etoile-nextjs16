@@ -17,6 +17,7 @@ import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { routesCoverageRouter } from "./routes-coverage";
+import { subcontractorsRouter, missionSubcontractingRoutes } from "./subcontractors";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
@@ -50,6 +51,8 @@ export const vtcRouter = new Hono()
 	.route("/", documentsRouter)
 	.route("/", missionsRouter)
 	.route("/", emptyLegsRouter)
-	.route("/", missionEmptyLegRouter);
+	.route("/", missionEmptyLegRouter)
+	.route("/", subcontractorsRouter)
+	.route("/", missionSubcontractingRoutes);
 
 export type VtcRouter = typeof vtcRouter;

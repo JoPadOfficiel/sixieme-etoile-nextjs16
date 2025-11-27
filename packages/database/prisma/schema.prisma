@@ -145,6 +145,7 @@ model Organization {
   documents                   Document[]
   integrationSettings         OrganizationIntegrationSettings?
   partnerContracts            PartnerContract[]
+  subcontractorProfiles       SubcontractorProfile[]
   driverRSECounters           DriverRSECounter[]
   complianceAuditLogs         ComplianceAuditLog[]
   quoteStatusAuditLogs        QuoteStatusAuditLog[]
@@ -362,6 +363,7 @@ model Contact {
 
   // Commercial flags
   isPartner         Boolean    @default(false)
+  isSubcontractor   Boolean    @default(false)
   defaultClientType ClientType @default(PRIVATE)
 
   // Metadata
@@ -370,13 +372,15 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   // Relations
-  quotes          Quote[]
-  invoices        Invoice[]
-  partnerContract PartnerContract?
+  quotes               Quote[]
+  invoices             Invoice[]
+  partnerContract      PartnerContract?
+  subcontractorProfile SubcontractorProfile?
 
   @@index([organizationId])
   @@index([email])
   @@index([isPartner])
+  @@index([isSubcontractor])
   @@map("contact")
 }
 
@@ -451,6 +455,68 @@ model PartnerContractDispoPackage {
 }
 
 // ----------------------------------------------------------------------------
+// SUBCONTRACTOR MODELS (Story 8.6)
+// ----------------------------------------------------------------------------
+
+/// SubcontractorProfile - Details for subcontractor contacts
+model SubcontractorProfile {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Link to Contact (1:1)
+  contactId String  @unique
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Indicative pricing (EUR)
+  ratePerKm   Decimal? @db.Decimal(8, 2)
+  ratePerHour Decimal? @db.Decimal(8, 2)
+  minimumFare Decimal? @db.Decimal(8, 2)
+
+  // Status
+  isActive Boolean @default(true)
+  notes    String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  operatingZones      SubcontractorZone[]
+  vehicleCategories   SubcontractorVehicleCategory[]
+  subcontractedQuotes Quote[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([isActive])
+  @@map("subcontractor_profile")
+}
+
+/// SubcontractorZone - Junction: SubcontractorProfile <-> PricingZone
+model SubcontractorZone {
+  id                     String               @id @default(cuid())
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  pricingZoneId          String
+  pricingZone            PricingZone          @relation(fields: [pricingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([subcontractorProfileId, pricingZoneId])
+  @@map("subcontractor_zone")
+}
+
+/// SubcontractorVehicleCategory - Junction: SubcontractorProfile <-> VehicleCategory
+model SubcontractorVehicleCategory {
+  id                     String               @id @default(cuid())
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  vehicleCategoryId      String
+  vehicleCategory        VehicleCategory      @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subcontractorProfileId, vehicleCategoryId])
+  @@map("subcontractor_vehicle_category")
+}
+
+// ----------------------------------------------------------------------------
 // FLEET & REGULATORY MODELS
 // ----------------------------------------------------------------------------
 
@@ -483,11 +549,12 @@ model VehicleCategory {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  vehicles          Vehicle[]
-  zoneRoutes        ZoneRoute[]
-  excursionPackages ExcursionPackage[]
-  dispoPackages     DispoPackage[]
-  quotes            Quote[]
+  vehicles                       Vehicle[]
+  zoneRoutes                     ZoneRoute[]
+  excursionPackages              ExcursionPackage[]
+  dispoPackages                  DispoPackage[]
+  quotes                         Quote[]
+  subcontractorVehicleCategories SubcontractorVehicleCategory[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -725,6 +792,7 @@ model PricingZone {
   advancedRates         AdvancedRate[]
   emptyLegFrom          EmptyLegOpportunity[] @relation("EmptyLegFrom")
   emptyLegTo            EmptyLegOpportunity[] @relation("EmptyLegTo")
+  subcontractorZones    SubcontractorZone[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1146,6 +1214,14 @@ model Quote {
   chainedWith   Quote?  @relation("ChainLink", fields: [chainedWithId], references: [id])
   chainedBy     Quote[] @relation("ChainLink")
 
+  // Subcontracting fields (Story 8.6)
+  isSubcontracted     Boolean               @default(false)
+  subcontractorId     String?
+  subcontractor       SubcontractorProfile? @relation(fields: [subcontractorId], references: [id])
+  subcontractedPrice  Decimal?              @db.Decimal(10, 2)
+  subcontractedAt     DateTime?
+  subcontractingNotes String?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1166,6 +1242,8 @@ model Quote {
   @@index([assignedVehicleId])
   @@index([assignedDriverId])
   @@index([chainId])
+  @@index([isSubcontracted])
+  @@index([subcontractorId])
   @@map("quote")
 }
 

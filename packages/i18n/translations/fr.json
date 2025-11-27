@@ -2170,6 +2170,48 @@
 				"updateError": "Échec de la mise à jour de l'empty-leg",
 				"deleteError": "Échec de la suppression de l'empty-leg"
 			}
+		},
+		"subcontracting": {
+			"title": "Options de sous-traitance",
+			"unprofitableAlert": "Cette mission n'est pas rentable en exécution interne",
+			"marginBelow": "La marge est de {percent}% (en dessous du seuil de {threshold}%)",
+			"noSuggestions": "Aucun sous-traitant disponible pour ce trajet",
+			"suggestion": {
+				"estimatedPrice": "Prix estimé : {price}€",
+				"resultingMargin": "Marge résultante : {percent}%",
+				"zoneMatch": {
+					"full": "Correspondance complète",
+					"pickup": "Zone de prise en charge",
+					"dropoff": "Zone de dépose"
+				}
+			},
+			"comparison": {
+				"title": "Comparaison des marges",
+				"internal": "Interne",
+				"subcontractor": "Sous-traitant",
+				"sellingPrice": "Prix de vente",
+				"cost": "Coût",
+				"margin": "Marge",
+				"recommendation": "Recommandation",
+				"loss": "Perte",
+				"profit": "Profit",
+				"review": "À revoir"
+			},
+			"action": {
+				"subcontract": "Sous-traiter à {name}",
+				"confirm": "Confirmer la sous-traitance",
+				"cancel": "Annuler"
+			},
+			"dialog": {
+				"title": "Confirmer la sous-traitance",
+				"description": "Vous êtes sur le point de sous-traiter cette mission à {name}",
+				"agreedPrice": "Prix convenu (EUR)",
+				"notes": "Notes (optionnel)",
+				"confirm": "Confirmer",
+				"cancel": "Annuler",
+				"success": "Mission sous-traitée avec succès",
+				"error": "Échec de la sous-traitance"
+			}
 		}
 	},
 	"documents": {

@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="8-6-integrate-subcontractor-directory-subcontracting-suggestions" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>6</storyId>
+    <title>Integrate Subcontractor Directory &amp; Subcontracting Suggestions</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-27T21:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md#story-8.6</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operations manager</asA>
+    <iWant>to register subcontractor partners with their operating zones and indicative price levels, and get suggestions when internal trips are structurally unprofitable</iWant>
+    <soThat>I can decide to subcontract with full margin visibility and avoid losses on unprofitable missions</soThat>
+    <tasks>
+      <task id="T1">Extend Contact model with subcontractor fields (isSubcontractor, operatingZones, indicativePrices)</task>
+      <task id="T2">Create SubcontractorProfile model for detailed subcontractor data</task>
+      <task id="T3">Create subcontractor-service.ts with detection and suggestion logic</task>
+      <task id="T4">Implement API endpoints for subcontractor CRUD and suggestions</task>
+      <task id="T5">Add Subcontractors management UI in Settings or Contacts</task>
+      <task id="T6">Integrate subcontracting suggestions in Dispatch screen</task>
+      <task id="T7">Calculate and display margin comparison (internal vs subcontractor)</task>
+      <task id="T8">Add unit tests for subcontractor service</task>
+      <task id="T9">Add E2E tests for subcontracting workflow</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Subcontractor Directory">
+      <given>The Contacts or Settings area</given>
+      <when>I navigate to subcontractor management</when>
+      <then>I see a list of registered subcontractor partners with:
+        - Company name and contact details
+        - Operating zones (list of PricingZones or geographic areas)
+        - Indicative price levels (per km, per hour, or flat rates)
+        - Status (Active/Inactive)
+      </then>
+    </criterion>
+    
+    <criterion id="AC2" title="Subcontractor Registration">
+      <given>The subcontractor management screen</given>
+      <when>I click "Add Subcontractor"</when>
+      <then>I can register a new subcontractor with:
+        - Contact details (name, email, phone)
+        - Operating zones (multi-select from PricingZones)
+        - Indicative pricing (rate per km, rate per hour, minimum fare)
+        - Vehicle categories they can serve
+        - Notes and special conditions
+      </then>
+      <and>The subcontractor is saved and visible in the directory</and>
+    </criterion>
+    
+    <criterion id="AC3" title="Unprofitable Mission Detection">
+      <given>A mission with negative or very low margin (below threshold)</given>
+      <when>The planning engine evaluates the mission</when>
+      <then>The system flags it as "structurally unprofitable" for internal fleet</then>
+      <and>The system searches for subcontractors that cover the mission's zones</and>
+    </criterion>
+    
+    <criterion id="AC4" title="Subcontracting Suggestions in Dispatch">
+      <given>A structurally unprofitable mission in the Dispatch screen</given>
+      <when>I view the mission details or assignment drawer</when>
+      <then>The system shows subcontracting suggestions with:
+        - Subcontractor name and contact
+        - Estimated subcontractor price
+        - Resulting margin if subcontracted
+        - Comparison with internal cost (savings/loss)
+      </then>
+    </criterion>
+    
+    <criterion id="AC5" title="Margin Comparison">
+      <given>A subcontracting suggestion for a mission</given>
+      <when>I view the suggestion details</when>
+      <then>I see a clear comparison:
+        | Metric | Internal | Subcontractor |
+        | Selling Price | €X | €X |
+        | Cost | €Y (internal) | €Z (subcontractor) |
+        | Margin | €M1 (%) | €M2 (%) |
+        | Recommendation | Loss | Profit |
+      </then>
+    </criterion>
+    
+    <criterion id="AC6" title="Subcontracting Decision Logging">
+      <given>I decide to subcontract a mission</given>
+      <when>I confirm the subcontracting action</when>
+      <then>The decision is logged with:
+        - Mission ID
+        - Subcontractor ID
+        - Agreed price
+        - Margin at decision time
+        - Operator who made the decision
+        - Timestamp
+      </then>
+      <and>The mission is marked as "Subcontracted"</and>
+    </criterion>
+    
+    <criterion id="AC7" title="API Endpoints">
+      <given>The subcontractor API endpoints</given>
+      <when>Called with valid authentication and organization context</when>
+      <then>They support:
+        | Method | Endpoint | Description |
+        | GET | /api/vtc/subcontractors | List subcontractors |
+        | GET | /api/vtc/subcontractors/:id | Get subcontractor detail |
+        | POST | /api/vtc/subcontractors | Create subcontractor |
+        | PATCH | /api/vtc/subcontractors/:id | Update subcontractor |
+        | DELETE | /api/vtc/subcontractors/:id | Delete subcontractor |
+        | GET | /api/vtc/missions/:id/subcontracting-suggestions | Get suggestions for mission |
+        | POST | /api/vtc/missions/:id/subcontract | Mark mission as subcontracted |
+      </then>
+    </criterion>
+    
+    <criterion id="AC8" title="Zone Matching">
+      <given>A subcontractor with configured operating zones</given>
+      <when>A mission's pickup or dropoff falls within those zones</when>
+      <then>The subcontractor is considered as a candidate for that mission</then>
+      <and>Subcontractors outside the zones are not suggested</and>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="FR54" snippet="The system shall support managing a directory of subcontractor partners with their typical operating zones and indicative price levels and, when a trip is structurally unprofitable with the internal fleet, shall suggest subcontracting options with an explicit margin comparison." />
+      <doc path="docs/bmad/epics.md" title="Epics" section="Story 8.6" snippet="Integrate Subcontractor Directory &amp; Subcontracting Suggestions - register subcontractor partners and get suggestions when internal trips are structurally unprofitable." />
+      <doc path="docs/sprint-artifacts/8-4-detect-suggest-trip-chaining-opportunities.md" title="Story 8.4" section="Implementation" snippet="Similar suggestion pattern - chaining suggestions in Dispatch with savings calculation." />
+      <doc path="docs/sprint-artifacts/8-5-model-surface-empty-leg-opportunities.md" title="Story 8.5" section="Implementation" snippet="Similar pattern for opportunity detection and display in Dispatch." />
+    </docs>
+    
+    <code>
+      <file path="packages/database/prisma/schema.prisma" kind="schema" symbol="Contact, PartnerContract" lines="342-415" reason="Extend Contact model or create SubcontractorProfile" />
+      <file path="packages/api/src/services/chaining-service.ts" kind="service" symbol="detectChainingOpportunities, ChainingSuggestion" lines="1-630" reason="Similar pattern for suggestion detection and calculation" />
+      <file path="packages/api/src/services/empty-leg-service.ts" kind="service" symbol="EmptyLegService" lines="1-500" reason="Similar service pattern for opportunity management" />
+      <file path="packages/api/src/services/pricing-engine.ts" kind="service" symbol="calculateInternalCost, PricingResult" reason="Use for margin calculation and profitability check" />
+      <file path="packages/api/src/routes/vtc/missions.ts" kind="router" symbol="missionsRouter" reason="Add subcontracting suggestions endpoint" />
+      <file path="packages/api/src/routes/vtc/contacts.ts" kind="router" symbol="contactsRouter" reason="Reference for CRUD pattern, extend for subcontractors" />
+      <file path="apps/web/modules/saas/dispatch/components/DispatchPage.tsx" kind="component" symbol="DispatchPage" lines="1-304" reason="Integrate subcontracting suggestions panel" />
+      <file path="apps/web/modules/saas/dispatch/components/ChainingSuggestions.tsx" kind="component" symbol="ChainingSuggestions" reason="Similar UI pattern for suggestions" />
+      <file path="apps/web/modules/saas/dispatch/components/EmptyLegsList.tsx" kind="component" symbol="EmptyLegsList" reason="Similar UI pattern for list display" />
+      <file path="apps/web/modules/saas/dispatch/hooks/useMissions.ts" kind="hook" symbol="useMissions" reason="Data fetching pattern" />
+      <file path="packages/api/src/lib/geo-utils.ts" kind="utility" symbol="haversineDistance, isPointInZone" reason="Zone matching calculations" />
+    </code>
+    
+    <dependencies>
+      <ecosystem name="node">
+        <package name="@tanstack/react-query" version="^5.0.0" />
+        <package name="hono" version="^4.0.0" />
+        <package name="zod" version="^3.22.0" />
+        <package name="@prisma/client" version="^5.0.0" />
+        <package name="lucide-react" version="^0.300.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Follow existing service pattern from chaining-service.ts and empty-leg-service.ts</constraint>
+    <constraint type="pattern">Use Hono router pattern from missions.ts for new endpoints</constraint>
+    <constraint type="pattern">Use React Query hooks pattern from useMissions.ts</constraint>
+    <constraint type="tenancy">All queries must be scoped by organizationId</constraint>
+    <constraint type="data">Reuse Contact model with isSubcontractor flag rather than creating separate entity</constraint>
+    <constraint type="ux">Subcontracting suggestions should be non-intrusive - shown as optional recommendations</constraint>
+    <constraint type="audit">All subcontracting decisions must be logged for later analysis</constraint>
+    <constraint type="pricing">Margin threshold for "unprofitable" should be configurable (default: 0% or negative)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="SubcontractorProfile" kind="Prisma model extension">
+      <signature>model SubcontractorProfile {
+  id             String       @id @default(cuid())
+  organizationId String
+  contactId      String       @unique
+  
+  // Operating zones (many-to-many)
+  operatingZones SubcontractorZone[]
+  
+  // Indicative pricing
+  ratePerKm      Decimal?     @db.Decimal(8, 2)
+  ratePerHour    Decimal?     @db.Decimal(8, 2)
+  minimumFare    Decimal?     @db.Decimal(8, 2)
+  
+  // Vehicle categories they serve
+  vehicleCategories SubcontractorVehicleCategory[]
+  
+  // Status
+  isActive       Boolean      @default(true)
+  notes          String?
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}</signature>
+    </interface>
+    
+    <interface name="GET /api/vtc/subcontractors" kind="REST endpoint">
+      <signature>GET /api/vtc/subcontractors</signature>
+      <response>{
+  "subcontractors": [
+    {
+      "id": "string",
+      "contact": { "id": "string", "displayName": "string", "email": "string", "phone": "string" },
+      "operatingZones": [{ "id": "string", "name": "string" }],
+      "ratePerKm": "number | null",
+      "ratePerHour": "number | null",
+      "minimumFare": "number | null",
+      "vehicleCategories": [{ "id": "string", "name": "string" }],
+      "isActive": "boolean"
+    }
+  ],
+  "total": "number"
+}</response>
+    </interface>
+    
+    <interface name="GET /api/vtc/missions/:id/subcontracting-suggestions" kind="REST endpoint">
+      <signature>GET /api/vtc/missions/:id/subcontracting-suggestions</signature>
+      <response>{
+  "mission": { "id": "string", "sellingPrice": "number", "internalCost": "number", "marginPercent": "number" },
+  "isUnprofitable": "boolean",
+  "unprofitableReason": "string | null",
+  "suggestions": [
+    {
+      "subcontractorId": "string",
+      "subcontractor": { "id": "string", "displayName": "string", "email": "string" },
+      "estimatedPrice": "number",
+      "marginIfSubcontracted": "number",
+      "marginPercentIfSubcontracted": "number",
+      "comparison": {
+        "internalCost": "number",
+        "subcontractorCost": "number",
+        "savings": "number",
+        "recommendation": "SUBCONTRACT" | "INTERNAL" | "REVIEW"
+      },
+      "zoneMatch": { "pickup": "boolean", "dropoff": "boolean" }
+    }
+  ]
+}</response>
+    </interface>
+    
+    <interface name="POST /api/vtc/missions/:id/subcontract" kind="REST endpoint">
+      <signature>POST /api/vtc/missions/:id/subcontract</signature>
+      <request>{ 
+  "subcontractorId": "string", 
+  "agreedPrice": "number",
+  "notes": "string?"
+}</request>
+      <response>{ 
+  "success": "boolean", 
+  "mission": { "id": "string", "status": "SUBCONTRACTED", "subcontractorId": "string" },
+  "auditLog": { "id": "string", "action": "SUBCONTRACT", "timestamp": "string" }
+}</response>
+    </interface>
+    
+    <interface name="SubcontractorService" kind="service">
+      <signature>findSubcontractorsForMission(missionId: string, organizationId: string): Promise&lt;SubcontractingSuggestion[]&gt;</signature>
+      <signature>calculateSubcontractorPrice(subcontractor: SubcontractorProfile, mission: Mission): number</signature>
+      <signature>compareMargins(mission: Mission, subcontractorPrice: number): MarginComparison</signature>
+      <signature>isStructurallyUnprofitable(mission: Mission, threshold?: number): boolean</signature>
+      <signature>logSubcontractingDecision(missionId: string, subcontractorId: string, agreedPrice: number, operatorId: string): Promise&lt;void&gt;</signature>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests in packages/api/src/services/__tests__/.
+      Use Playwright MCP for E2E tests.
+      Use curl for API endpoint testing with database verification via MCP @postgres_vtc_sixiemme_etoile.
+      All acceptance criteria must be covered by at least one test.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/subcontractor-service.test.ts</location>
+      <location>apps/web/modules/saas/dispatch/components/__tests__/SubcontractingSuggestions.test.tsx</location>
+      <location>apps/web/e2e/dispatch-subcontracting.spec.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test subcontractor list displays all registered subcontractors</idea>
+      <idea ac="AC2">Test subcontractor creation with all required fields</idea>
+      <idea ac="AC3">Test unprofitable mission detection with various margin thresholds</idea>
+      <idea ac="AC4">Test suggestions appear for unprofitable missions</idea>
+      <idea ac="AC5">Test margin comparison calculation accuracy</idea>
+      <idea ac="AC6">Test subcontracting decision is logged correctly</idea>
+      <idea ac="AC7">Test all API endpoints return correct responses</idea>
+      <idea ac="AC8">Test zone matching filters subcontractors correctly</idea>
+    </ideas>
+  </tests>
+</story-context>
