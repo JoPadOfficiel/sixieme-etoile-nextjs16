@@ -2009,14 +2009,56 @@
 			}
 		},
 		"assignment": {
-			"title": "Assignment",
+			"title": "Assign Vehicle & Driver",
+			"subtitle": "Select the best candidate for this mission",
 			"vehicle": "Vehicle",
 			"driver": "Driver",
 			"base": "Base",
 			"unassigned": "Not yet assigned",
 			"unassignedDescription": "Click 'Assign' to assign a vehicle and driver to this mission.",
 			"assignButton": "Assign",
-			"changeButton": "Change Assignment"
+			"changeButton": "Change Assignment",
+			"confirm": "Confirm Assignment",
+			"cancel": "Cancel",
+			"success": "Assignment confirmed successfully",
+			"error": "Failed to assign mission",
+			"noDriverAssigned": "No driver assigned",
+			"filters": {
+				"sortBy": "Sort by",
+				"score": "Flexibility Score",
+				"cost": "Estimated Cost",
+				"distance": "Distance",
+				"compliance": "Compliance",
+				"all": "All",
+				"okOnly": "OK only",
+				"includeWarnings": "Include warnings",
+				"search": "Search vehicle or driver..."
+			},
+			"candidate": {
+				"flexibilityScore": "Flexibility Score",
+				"estimatedCost": "Est. Cost",
+				"distance": "Distance",
+				"licenses": "Licenses",
+				"noDriverAssigned": "No driver assigned",
+				"scoreBreakdown": {
+					"title": "Score Breakdown",
+					"licenses": "Licenses",
+					"availability": "Availability",
+					"distance": "Distance",
+					"rseCapacity": "RSE Capacity"
+				},
+				"costBreakdown": {
+					"title": "Cost Breakdown",
+					"approach": "Approach",
+					"service": "Service",
+					"return": "Return",
+					"total": "Total"
+				}
+			},
+			"empty": {
+				"title": "No available candidates",
+				"description": "No vehicles or drivers match the requirements for this mission"
+			}
 		},
 		"map": {
 			"loading": "Loading map...",

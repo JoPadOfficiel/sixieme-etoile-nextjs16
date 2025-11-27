@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>8-2</story-id>
+    <story-title>Implement Assignment Drawer with Candidate Vehicles/Drivers &amp; Flexibility Score</story-title>
+    <epic>Epic 8 – Dispatch &amp; Strategic Optimisation</epic>
+    <created-date>2025-11-27</created-date>
+    <status>ready-for-development</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Les dispatchers ont besoin d'un drawer d'affectation qui affiche les candidats véhicules/chauffeurs 
+      avec des scores de pertinence, permettant une prise de décision rapide et éclairée pour l'affectation 
+      des missions.
+    </summary>
+    <business-context>
+      La Story 8.1 a implémenté l'écran Dispatch avec la liste des missions, la carte et le 
+      VehicleAssignmentPanel. Cependant, le bouton "Assign" est actuellement désactivé car le drawer 
+      d'affectation n'existe pas encore. Les dispatchers ne peuvent pas affecter de véhicules/chauffeurs 
+      aux missions depuis l'interface.
+    </business-context>
+    <user-pain-points>
+      <pain-point>Impossible d'affecter un véhicule/chauffeur à une mission depuis l'écran Dispatch</pain-point>
+      <pain-point>Pas de visibilité sur les candidats disponibles et leur adéquation</pain-point>
+      <pain-point>Pas de score de flexibilité pour guider le choix optimal</pain-point>
+      <pain-point>Pas de feedback sur l'impact coût/conformité de l'affectation</pain-point>
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary-objective>
+      Implémenter un drawer d'affectation qui affiche les candidats véhicules/chauffeurs avec un score 
+      de flexibilité/pertinence, permettant au dispatcher de sélectionner et confirmer une affectation.
+    </primary-objective>
+    <secondary-objectives>
+      <objective>Calculer un score de flexibilité basé sur les licences, la disponibilité, la distance et les compteurs RSE</objective>
+      <objective>Afficher l'indicateur de conformité et le coût interne estimé pour chaque candidat</objective>
+      <objective>Mettre à jour le shadow calculation et les badges après affectation</objective>
+      <objective>Persister l'affectation dans le Quote (vehicleId, driverId)</objective>
+    </secondary-objectives>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Composant AssignmentDrawer avec liste de candidats véhicules/chauffeurs</item>
+      <item>Calcul du score de flexibilité (licences, disponibilité, distance, RSE)</item>
+      <item>Affichage de l'indicateur de conformité par candidat</item>
+      <item>Affichage du coût interne estimé par candidat</item>
+      <item>API endpoint pour récupérer les candidats avec scores</item>
+      <item>API endpoint pour persister l'affectation</item>
+      <item>Mise à jour du VehicleAssignmentPanel après affectation</item>
+      <item>Mise à jour des DispatchBadges après affectation</item>
+      <item>Ajout des champs assignedVehicleId et assignedDriverId au modèle Quote</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Chaînage de missions (Story 8.4)</item>
+      <item>Empty legs (Story 8.5)</item>
+      <item>Suggestions de sous-traitance (Story 8.6)</item>
+      <item>Optimisation multi-base avancée avec visualisation carte (Story 8.3)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical-constraints>
+      <constraint>Réutiliser le service vehicle-selection.ts existant (Story 4.5)</constraint>
+      <constraint>Réutiliser les composants DispatchBadges et VehicleAssignmentPanel existants</constraint>
+      <constraint>Respecter le pattern multi-tenancy (organizationId)</constraint>
+      <constraint>Utiliser shadcn/ui Sheet pour le drawer</constraint>
+    </technical-constraints>
+    <business-constraints>
+      <constraint>Le score de flexibilité doit être compréhensible par les dispatchers</constraint>
+      <constraint>L'affectation ne doit pas violer les règles RSE pour les véhicules lourds</constraint>
+      <constraint>Les candidats non conformes doivent être marqués mais pas exclus (warning)</constraint>
+    </business-constraints>
+  </constraints>
+
+  <risks>
+    <risk priority="high">
+      <description>Performance si beaucoup de véhicules/chauffeurs à évaluer</description>
+      <mitigation>Utiliser le pré-filtre Haversine existant et limiter les candidats</mitigation>
+    </risk>
+    <risk priority="medium">
+      <description>Complexité du calcul de score de flexibilité</description>
+      <mitigation>Commencer par un score simple (somme pondérée) et itérer</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Incohérence entre l'affectation et le tripAnalysis</description>
+      <mitigation>Recalculer le shadow calculation après affectation</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component path="apps/web/modules/saas/dispatch/components/VehicleAssignmentPanel.tsx">
+        Panel affichant l'affectation actuelle avec bouton Assign/Change désactivé
+      </component>
+      <component path="apps/web/modules/saas/dispatch/components/DispatchBadges.tsx">
+        Badges de profitabilité, conformité et affectation
+      </component>
+      <component path="apps/web/modules/saas/dispatch/components/DispatchPage.tsx">
+        Page principale du dispatch avec layout 3 zones
+      </component>
+      <component path="packages/api/src/services/vehicle-selection.ts">
+        Service de sélection de véhicule avec pré-filtre Haversine et routing
+      </component>
+    </existing-components>
+
+    <data-models>
+      <model name="Quote">
+        Modèle existant - nécessite ajout de assignedVehicleId et assignedDriverId
+      </model>
+      <model name="Vehicle">
+        Modèle existant avec operatingBase, vehicleCategory, status
+      </model>
+      <model name="Driver">
+        Modèle existant avec driverLicenses, hourlyCost, isActive
+      </model>
+      <model name="DriverLicense">
+        Junction Driver-LicenseCategory avec validFrom/validTo
+      </model>
+    </data-models>
+
+    <api-patterns>
+      <pattern>Hono router avec organizationMiddleware</pattern>
+      <pattern>Zod validation schemas</pattern>
+      <pattern>withTenantFilter pour multi-tenancy</pattern>
+    </api-patterns>
+  </technical-context>
+
+  <dependencies>
+    <dependency status="done">Story 4.5 - Multi-Base Candidate Selection</dependency>
+    <dependency status="done">Story 4.6 - Shadow Calculation</dependency>
+    <dependency status="done">Story 5.1 - Fleet Models &amp; UI</dependency>
+    <dependency status="done">Story 5.2 - Drivers &amp; RSE Rules</dependency>
+    <dependency status="done">Story 8.1 - Dispatch Screen Layout</dependency>
+  </dependencies>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Drawer s'ouvre au clic sur "Assign" ou "Change Assignment"</criterion>
+    <criterion id="AC2">Liste des candidats véhicule/chauffeur avec score de flexibilité</criterion>
+    <criterion id="AC3">Score basé sur licences, disponibilité, distance, compteurs RSE</criterion>
+    <criterion id="AC4">Indicateur de conformité (OK/Warning/Violation) par candidat</criterion>
+    <criterion id="AC5">Coût interne estimé affiché par candidat</criterion>
+    <criterion id="AC6">Sélection d'un candidat met à jour l'affectation</criterion>
+    <criterion id="AC7">Shadow calculation recalculé après affectation</criterion>
+    <criterion id="AC8">Badges Dispatch mis à jour après affectation</criterion>
+  </acceptance-criteria-summary>
+
+  <related-frs>
+    <fr id="FR50">Driver flexibility scoring based on licenses and schedule slack</fr>
+    <fr id="FR51">Multi-base optimization with internal cost comparison</fr>
+    <fr id="FR17-FR20">Vehicle/base candidate selection</fr>
+    <fr id="FR25-FR30">RSE compliance validation</fr>
+  </related-frs>
+
+  <ux-references>
+    <reference section="8.8">Dispatch Screen - Assignment Drawer</reference>
+    <reference section="6.1.5">VehicleAssignmentPanel component</reference>
+    <reference section="6.1.6">Dispatch Badges pattern</reference>
+  </ux-references>
+</story-context>

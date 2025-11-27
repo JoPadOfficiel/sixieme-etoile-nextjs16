@@ -2009,14 +2009,56 @@
 			}
 		},
 		"assignment": {
-			"title": "Assignation",
+			"title": "Assigner Véhicule & Chauffeur",
+			"subtitle": "Sélectionnez le meilleur candidat pour cette mission",
 			"vehicle": "Véhicule",
 			"driver": "Chauffeur",
 			"base": "Base",
 			"unassigned": "Pas encore assigné",
 			"unassignedDescription": "Cliquez sur 'Assigner' pour assigner un véhicule et un chauffeur à cette mission.",
 			"assignButton": "Assigner",
-			"changeButton": "Modifier l'assignation"
+			"changeButton": "Modifier l'assignation",
+			"confirm": "Confirmer l'assignation",
+			"cancel": "Annuler",
+			"success": "Assignation confirmée avec succès",
+			"error": "Échec de l'assignation",
+			"noDriverAssigned": "Aucun chauffeur assigné",
+			"filters": {
+				"sortBy": "Trier par",
+				"score": "Score de flexibilité",
+				"cost": "Coût estimé",
+				"distance": "Distance",
+				"compliance": "Conformité",
+				"all": "Tous",
+				"okOnly": "OK uniquement",
+				"includeWarnings": "Inclure les avertissements",
+				"search": "Rechercher véhicule ou chauffeur..."
+			},
+			"candidate": {
+				"flexibilityScore": "Score de flexibilité",
+				"estimatedCost": "Coût est.",
+				"distance": "Distance",
+				"licenses": "Permis",
+				"noDriverAssigned": "Aucun chauffeur assigné",
+				"scoreBreakdown": {
+					"title": "Détail du score",
+					"licenses": "Permis",
+					"availability": "Disponibilité",
+					"distance": "Distance",
+					"rseCapacity": "Capacité RSE"
+				},
+				"costBreakdown": {
+					"title": "Détail des coûts",
+					"approach": "Approche",
+					"service": "Service",
+					"return": "Retour",
+					"total": "Total"
+				}
+			},
+			"empty": {
+				"title": "Aucun candidat disponible",
+				"description": "Aucun véhicule ou chauffeur ne correspond aux exigences de cette mission"
+			}
 		},
 		"map": {
 			"loading": "Chargement de la carte...",

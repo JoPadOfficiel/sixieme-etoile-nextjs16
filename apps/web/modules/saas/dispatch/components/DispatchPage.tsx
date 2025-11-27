@@ -9,6 +9,7 @@ import { MissionsList } from "./MissionsList";
 import { MissionsFilters } from "./MissionsFilters";
 import { DispatchMap } from "./DispatchMap";
 import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
+import { AssignmentDrawer } from "./AssignmentDrawer";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import type { MissionsFilters as Filters, MissionDetail } from "../types";
@@ -45,6 +46,7 @@ export function DispatchPage() {
 
 	const [filters, setFilters] = useState<Filters>(initialFilters);
 	const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+	const [isAssignmentDrawerOpen, setIsAssignmentDrawerOpen] = useState(false);
 
 	// Fetch data
 	const { data: missionsData, isLoading: missionsLoading } = useMissions({
@@ -84,6 +86,17 @@ export function DispatchPage() {
 	// Handle mission selection
 	const handleSelectMission = useCallback((missionId: string) => {
 		setSelectedMissionId(missionId);
+	}, []);
+
+	// Handle assignment drawer (Story 8.2)
+	const handleOpenAssignmentDrawer = useCallback(() => {
+		if (selectedMissionId) {
+			setIsAssignmentDrawerOpen(true);
+		}
+	}, [selectedMissionId]);
+
+	const handleCloseAssignmentDrawer = useCallback(() => {
+		setIsAssignmentDrawerOpen(false);
 	}, []);
 
 	// Convert mission detail to PricingResult for TripTransparencyPanel
@@ -137,10 +150,25 @@ export function DispatchPage() {
 					<VehicleAssignmentPanel
 						assignment={selectedMission?.assignment || null}
 						isLoading={missionDetailLoading}
-						// onAssign will be implemented in Story 8.2
+						onAssign={selectedMissionId ? handleOpenAssignmentDrawer : undefined}
 					/>
 				</div>
 			</div>
+		{/* Assignment Drawer (Story 8.2) */}
+			<AssignmentDrawer
+				isOpen={isAssignmentDrawerOpen}
+				onClose={handleCloseAssignmentDrawer}
+				missionId={selectedMissionId}
+				missionSummary={
+					selectedMission
+						? {
+								pickupAddress: selectedMission.pickupAddress,
+								dropoffAddress: selectedMission.dropoffAddress,
+								pickupAt: selectedMission.pickupAt,
+							}
+						: undefined
+				}
+			/>
 		</div>
 	);
 }

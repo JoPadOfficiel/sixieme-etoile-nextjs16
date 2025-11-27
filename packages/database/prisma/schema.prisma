@@ -566,6 +566,8 @@ model Vehicle {
 
   // Relations
   emptyLegOpportunities EmptyLegOpportunity[]
+  assignedQuotes        Quote[]               @relation("AssignedVehicle")
+  quotes                Quote[]
 
   @@unique([organizationId, registrationNumber])
   @@index([organizationId])
@@ -653,6 +655,8 @@ model Driver {
   driverLicenses      DriverLicense[]
   driverRSECounters   DriverRSECounter[]
   complianceAuditLogs ComplianceAuditLog[]
+  assignedQuotes      Quote[]              @relation("AssignedDriver")
+  quotes              Quote[]
 
   @@index([organizationId])
   @@index([isActive])
@@ -1106,6 +1110,13 @@ model Quote {
   rejectedAt DateTime?
   expiredAt  DateTime?
 
+  // Assignment fields (Story 8.2)
+  assignedVehicleId String?
+  assignedVehicle   Vehicle?  @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id])
+  assignedDriverId  String?
+  assignedDriver    Driver?   @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+  assignedAt        DateTime?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1114,11 +1125,17 @@ model Quote {
   invoice         Invoice?
   statusAuditLogs QuoteStatusAuditLog[]
   documents       Document[]
+  vehicle         Vehicle?              @relation(fields: [vehicleId], references: [id])
+  vehicleId       String?
+  driver          Driver?               @relation(fields: [driverId], references: [id])
+  driverId        String?
 
   @@index([organizationId])
   @@index([contactId])
   @@index([status])
   @@index([pickupAt])
+  @@index([assignedVehicleId])
+  @@index([assignedDriverId])
   @@map("quote")
 }
 
