@@ -181,6 +181,11 @@
 		"title": "Journal des modifications"
 	},
 	"common": {
+		"map": {
+			"noApiKey": "Clé API Google Maps non configurée",
+			"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations",
+			"loadError": "Échec du chargement de Google Maps"
+		},
 		"confirmation": {
 			"cancel": "Annuler",
 			"confirm": "Confirmer",
@@ -2077,6 +2082,7 @@
 			"base": "Base",
 			"nearbyBases": "Bases à proximité",
 			"selectMission": "Sélectionnez une mission pour voir les détails du trajet",
+			"noCoordinates": "Aucune coordonnée GPS disponible pour cette mission",
 			"candidateBase": "Base candidate",
 			"candidateBases": "Bases candidates",
 			"otherBase": "Autre base",
@@ -2089,6 +2095,81 @@
 			"loadingRoutes": "Chargement des trajets...",
 			"clickToSelect": "Cliquez pour sélectionner ce candidat",
 			"more": "autres"
+		},
+		"emptyLegs": {
+			"title": "Opportunités Empty-Leg",
+			"description": "{count, plural, =0 {Aucun empty-leg disponible} one {# empty-leg disponible} other {# empty-legs disponibles}}",
+			"add": "Ajouter un Empty-Leg",
+			"status": {
+				"available": "Disponible",
+				"expiringSoon": "Expire bientôt",
+				"expired": "Expiré"
+			},
+			"empty": {
+				"title": "Aucun Empty-Leg",
+				"description": "Créez des opportunités empty-leg à partir des missions terminées pour monétiser les trajets retour."
+			},
+			"detail": {
+				"title": "Détails Empty-Leg",
+				"corridor": "Corridor",
+				"vehicle": "Véhicule",
+				"timeWindow": "Fenêtre horaire",
+				"pricing": "Stratégie de tarification",
+				"distance": "Distance estimée",
+				"duration": "Durée estimée",
+				"notes": "Notes",
+				"sourceMission": "Mission source",
+				"created": "Créé le",
+				"updated": "Dernière mise à jour"
+			},
+			"form": {
+				"title": "Créer un Empty-Leg",
+				"editTitle": "Modifier l'Empty-Leg",
+				"vehicle": "Véhicule",
+				"vehiclePlaceholder": "Sélectionnez un véhicule",
+				"fromAddress": "Adresse de départ",
+				"toAddress": "Adresse d'arrivée",
+				"windowStart": "Disponible à partir de",
+				"windowEnd": "Disponible jusqu'à",
+				"pricingStrategy": "Stratégie de tarification",
+				"pricingType": {
+					"percentageDiscount": "Réduction en pourcentage",
+					"fixedPrice": "Prix fixe",
+					"costPlusMargin": "Coût + Marge"
+				},
+				"discountPercent": "Réduction %",
+				"fixedPrice": "Prix fixe (€)",
+				"marginPercent": "Marge %",
+				"notes": "Notes",
+				"notesPlaceholder": "Notes optionnelles sur cet empty-leg...",
+				"submit": "Créer l'Empty-Leg",
+				"update": "Mettre à jour l'Empty-Leg",
+				"cancel": "Annuler"
+			},
+			"actions": {
+				"edit": "Modifier",
+				"delete": "Supprimer",
+				"deactivate": "Désactiver",
+				"activate": "Activer",
+				"createFromMission": "Créer un Empty-Leg"
+			},
+			"match": {
+				"title": "Empty-Legs correspondants",
+				"description": "Empty-legs correspondant à cette demande de réservation",
+				"noMatches": "Aucun empty-leg correspondant trouvé",
+				"score": "Score de correspondance",
+				"pickupProximity": "Proximité prise en charge",
+				"dropoffProximity": "Proximité dépose",
+				"useEmptyLeg": "Utiliser cet Empty-Leg"
+			},
+			"toast": {
+				"created": "Empty-leg créé avec succès",
+				"updated": "Empty-leg mis à jour avec succès",
+				"deleted": "Empty-leg supprimé avec succès",
+				"createError": "Échec de la création de l'empty-leg",
+				"updateError": "Échec de la mise à jour de l'empty-leg",
+				"deleteError": "Échec de la suppression de l'empty-leg"
+			}
 		}
 	},
 	"documents": {

@@ -7,9 +7,10 @@ import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyP
 import { useVehicleCategories } from "@saas/quotes/hooks/useVehicleCategories";
 import { MissionsList } from "./MissionsList";
 import { MissionsFilters } from "./MissionsFilters";
-import { DispatchMap } from "./DispatchMap";
+import { DispatchMapGoogle } from "./DispatchMapGoogle";
 import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 import { AssignmentDrawer } from "./AssignmentDrawer";
+import { EmptyLegsList } from "./EmptyLegsList";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
@@ -22,15 +23,17 @@ import type { CandidateBase } from "../types/assignment";
  *
  * Story 8.1: Implement Dispatch Screen Layout
  * Story 8.3: Multi-Base Optimisation & Visualisation
+ * Story 8.5: Model & Surface Empty-Leg Opportunities
  *
  * Main 3-zone layout for the Dispatch screen:
- * - Left: Missions list with filters
+ * - Left: Missions list with filters + Empty-leg opportunities
  * - Right-top: Map showing route and bases
  * - Right-bottom: TripTransparencyPanel + VehicleAssignmentPanel
  *
  * @see UX Spec 8.8 Dispatch Screen
  * @see AC1: Dispatch Screen Layout
  * @see Story 8.3: Multi-base visualization on map
+ * @see Story 8.5: Empty-leg opportunities display
  */
 
 export function DispatchPage() {
@@ -190,13 +193,16 @@ export function DispatchPage() {
 					onSelectMission={handleSelectMission}
 					isLoading={missionsLoading}
 				/>
+
+				{/* Story 8.5: Empty-Leg Opportunities */}
+				<EmptyLegsList />
 			</div>
 
 			{/* Right Panel - Map + Transparency */}
 			<div className="w-3/5 flex flex-col gap-4" data-testid="dispatch-right-panel">
 				{/* Map */}
 				<div className="h-1/2">
-					<DispatchMap
+					<DispatchMapGoogle
 						mission={selectedMission || null}
 						bases={bases}
 						isLoading={basesLoading}

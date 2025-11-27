@@ -138,7 +138,7 @@ export const OptionalFeeScalarFieldEnumSchema = z.enum(['id','organizationId','n
 
 export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','code','description','discountType','value','validFrom','validTo','maxTotalUses','maxUsesPerContact','currentUses','isActive','createdAt','updatedAt']);
 
-export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','windowStart','windowEnd','pricingStrategy','isActive','createdAt','updatedAt']);
+export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
 export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','assignedAt','chainId','chainOrder','chainedWithId','createdAt','updatedAt','vehicleId','driverId']);
 
@@ -900,7 +900,7 @@ export type Promotion = z.infer<typeof PromotionSchema>
 /////////////////////////////////////////
 
 /**
- * EmptyLegOpportunity - Empty-leg segments that can be sold with special strategies
+ * EmptyLegOpportunity - Empty-leg segments that can be sold with special strategies (Story 8.5)
  */
 export const EmptyLegOpportunitySchema = z.object({
   id: z.string().cuid(),
@@ -908,10 +908,20 @@ export const EmptyLegOpportunitySchema = z.object({
   vehicleId: z.string(),
   fromZoneId: z.string().nullable(),
   toZoneId: z.string().nullable(),
+  fromAddress: z.string().nullable(),
+  fromLatitude: z.instanceof(Prisma.Decimal, { message: "Field 'fromLatitude' must be a Decimal. Location: ['Models', 'EmptyLegOpportunity']"}).nullable(),
+  fromLongitude: z.instanceof(Prisma.Decimal, { message: "Field 'fromLongitude' must be a Decimal. Location: ['Models', 'EmptyLegOpportunity']"}).nullable(),
+  toAddress: z.string().nullable(),
+  toLatitude: z.instanceof(Prisma.Decimal, { message: "Field 'toLatitude' must be a Decimal. Location: ['Models', 'EmptyLegOpportunity']"}).nullable(),
+  toLongitude: z.instanceof(Prisma.Decimal, { message: "Field 'toLongitude' must be a Decimal. Location: ['Models', 'EmptyLegOpportunity']"}).nullable(),
+  estimatedDistanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'estimatedDistanceKm' must be a Decimal. Location: ['Models', 'EmptyLegOpportunity']"}).nullable(),
+  estimatedDurationMins: z.number().int().nullable(),
   windowStart: z.coerce.date(),
   windowEnd: z.coerce.date(),
   pricingStrategy: JsonValueSchema.nullable(),
+  sourceMissionId: z.string().nullable(),
   isActive: z.boolean(),
+  notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

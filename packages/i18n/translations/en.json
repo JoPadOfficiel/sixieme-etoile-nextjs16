@@ -181,6 +181,11 @@
 		"title": "Changelog"
 	},
 	"common": {
+		"map": {
+			"noApiKey": "Google Maps API key not configured",
+			"configureInSettings": "Configure it in Organization Settings > Integrations",
+			"loadError": "Failed to load Google Maps"
+		},
 		"confirmation": {
 			"cancel": "Cancel",
 			"confirm": "Confirm",
@@ -2077,6 +2082,7 @@
 			"base": "Base",
 			"nearbyBases": "Nearby Bases",
 			"selectMission": "Select a mission to view route details",
+			"noCoordinates": "No GPS coordinates available for this mission",
 			"candidateBase": "Candidate Base",
 			"candidateBases": "Candidate Bases",
 			"otherBase": "Other Base",
@@ -2089,6 +2095,81 @@
 			"loadingRoutes": "Loading routes...",
 			"clickToSelect": "Click to select this candidate",
 			"more": "more"
+		},
+		"emptyLegs": {
+			"title": "Empty-Leg Opportunities",
+			"description": "{count, plural, =0 {No empty legs available} one {# empty leg available} other {# empty legs available}}",
+			"add": "Add Empty Leg",
+			"status": {
+				"available": "Available",
+				"expiringSoon": "Expiring Soon",
+				"expired": "Expired"
+			},
+			"empty": {
+				"title": "No Empty Legs",
+				"description": "Create empty-leg opportunities from completed missions to monetize return trips."
+			},
+			"detail": {
+				"title": "Empty-Leg Details",
+				"corridor": "Corridor",
+				"vehicle": "Vehicle",
+				"timeWindow": "Time Window",
+				"pricing": "Pricing Strategy",
+				"distance": "Estimated Distance",
+				"duration": "Estimated Duration",
+				"notes": "Notes",
+				"sourceMission": "Source Mission",
+				"created": "Created",
+				"updated": "Last Updated"
+			},
+			"form": {
+				"title": "Create Empty Leg",
+				"editTitle": "Edit Empty Leg",
+				"vehicle": "Vehicle",
+				"vehiclePlaceholder": "Select a vehicle",
+				"fromAddress": "From Address",
+				"toAddress": "To Address",
+				"windowStart": "Available From",
+				"windowEnd": "Available Until",
+				"pricingStrategy": "Pricing Strategy",
+				"pricingType": {
+					"percentageDiscount": "Percentage Discount",
+					"fixedPrice": "Fixed Price",
+					"costPlusMargin": "Cost + Margin"
+				},
+				"discountPercent": "Discount %",
+				"fixedPrice": "Fixed Price (€)",
+				"marginPercent": "Margin %",
+				"notes": "Notes",
+				"notesPlaceholder": "Optional notes about this empty leg...",
+				"submit": "Create Empty Leg",
+				"update": "Update Empty Leg",
+				"cancel": "Cancel"
+			},
+			"actions": {
+				"edit": "Edit",
+				"delete": "Delete",
+				"deactivate": "Deactivate",
+				"activate": "Activate",
+				"createFromMission": "Create Empty Leg"
+			},
+			"match": {
+				"title": "Matching Empty Legs",
+				"description": "Empty legs that match this booking request",
+				"noMatches": "No matching empty legs found",
+				"score": "Match Score",
+				"pickupProximity": "Pickup Proximity",
+				"dropoffProximity": "Dropoff Proximity",
+				"useEmptyLeg": "Use This Empty Leg"
+			},
+			"toast": {
+				"created": "Empty leg created successfully",
+				"updated": "Empty leg updated successfully",
+				"deleted": "Empty leg deleted successfully",
+				"createError": "Failed to create empty leg",
+				"updateError": "Failed to update empty leg",
+				"deleteError": "Failed to delete empty leg"
+			}
 		}
 	},
 	"documents": {

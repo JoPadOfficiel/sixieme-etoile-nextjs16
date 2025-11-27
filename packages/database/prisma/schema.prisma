@@ -1009,7 +1009,7 @@ model Promotion {
   @@map("promotion")
 }
 
-/// EmptyLegOpportunity - Empty-leg segments that can be sold with special strategies
+/// EmptyLegOpportunity - Empty-leg segments that can be sold with special strategies (Story 8.5)
 model EmptyLegOpportunity {
   id             String       @id @default(cuid())
   organizationId String
@@ -1019,27 +1019,49 @@ model EmptyLegOpportunity {
   vehicleId String
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
 
-  // Route
+  // Route - Zone-based (optional)
   fromZoneId String?
   fromZone   PricingZone? @relation("EmptyLegFrom", fields: [fromZoneId], references: [id])
   toZoneId   String?
   toZone     PricingZone? @relation("EmptyLegTo", fields: [toZoneId], references: [id])
+
+  // Route - Address-based (Story 8.5)
+  fromAddress   String?
+  fromLatitude  Decimal? @db.Decimal(10, 7)
+  fromLongitude Decimal? @db.Decimal(10, 7)
+  toAddress     String?
+  toLatitude    Decimal? @db.Decimal(10, 7)
+  toLongitude   Decimal? @db.Decimal(10, 7)
+
+  // Estimated metrics (Story 8.5)
+  estimatedDistanceKm   Decimal? @db.Decimal(8, 2)
+  estimatedDurationMins Int?
 
   // Time window
   windowStart DateTime
   windowEnd   DateTime
 
   // Pricing strategy (JSON)
+  // Example: { "type": "PERCENTAGE_DISCOUNT", "value": 30 }
+  // Example: { "type": "FIXED_PRICE", "value": 50 }
+  // Example: { "type": "COST_PLUS_MARGIN", "marginPercent": 10 }
   pricingStrategy Json?
 
+  // Source mission reference (Story 8.5)
+  sourceMissionId String?
+
   // Status
-  isActive  Boolean  @default(true)
+  isActive Boolean @default(true)
+
+  // Metadata
+  notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([organizationId])
   @@index([vehicleId])
   @@index([windowStart, windowEnd])
+  @@index([isActive])
   @@map("empty_leg_opportunity")
 }
 

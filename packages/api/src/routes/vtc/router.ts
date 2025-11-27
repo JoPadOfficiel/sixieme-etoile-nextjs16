@@ -4,6 +4,7 @@ import { complianceRouter } from "./compliance";
 import { contactsRouter } from "./contacts";
 import { disposRouter } from "./dispos";
 import { documentsRouter } from "./documents";
+import { emptyLegsRouter, missionEmptyLegRouter } from "./empty-legs";
 import { missionsRouter } from "./missions";
 import { driversRouter } from "./drivers";
 import { excursionsRouter } from "./excursions";
@@ -47,6 +48,8 @@ export const vtcRouter = new Hono()
 	.route("/", disposRouter)
 	.route("/", invoicesRouter)
 	.route("/", documentsRouter)
-	.route("/", missionsRouter);
+	.route("/", missionsRouter)
+	.route("/", emptyLegsRouter)
+	.route("/", missionEmptyLegRouter);
 
 export type VtcRouter = typeof vtcRouter;

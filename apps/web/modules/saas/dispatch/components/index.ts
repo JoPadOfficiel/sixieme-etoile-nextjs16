@@ -4,6 +4,7 @@ export * from "./MissionsFilters";
 export * from "./MissionRow";
 export * from "./DispatchBadges";
 export * from "./DispatchMap";
+export * from "./DispatchMapGoogle";
 export * from "./VehicleAssignmentPanel";
 // Story 8.2: Assignment Drawer
 export * from "./AssignmentDrawer";

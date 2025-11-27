@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>8-5</story-id>
+    <story-title>Model &amp; Surface Empty-Leg Opportunities</story-title>
+    <epic>Epic 8 – Dispatch &amp; Strategic Optimisation</epic>
+    <created>2025-11-27</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      When a VTC vehicle completes a one-way charter or transfer, the return segment to base 
+      is an "empty leg" - the vehicle travels without passengers, incurring costs without revenue.
+      Currently, there is no mechanism to:
+      1. Detect and track these empty-leg segments automatically
+      2. Surface them as sellable opportunities to dispatchers
+      3. Apply special pricing strategies to monetize these corridors
+      4. Match new booking requests against available empty legs
+    </summary>
+    <business-impact>
+      - Lost revenue on return segments (deadhead costs absorbed by operator)
+      - Missed opportunity to offer competitive prices on specific corridors
+      - No visibility into fleet utilization inefficiencies
+      - Competitors offering empty-leg deals gain market advantage
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Implement a system to detect, track, and surface empty-leg opportunities so that 
+      dispatchers can monetize return segments with special pricing strategies.
+    </primary>
+    <secondary>
+      - Provide UI for viewing and managing empty-leg opportunities in Dispatch
+      - Enable special "empty leg" pricing when new requests match available corridors
+      - Track empty-leg utilization metrics for yield optimization
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      - EmptyLegOpportunity model already exists in schema (extend if needed)
+      - Service to detect empty legs from confirmed one-way missions
+      - API endpoints for CRUD operations on empty-leg opportunities
+      - UI component to display empty legs in Dispatch screen
+      - Pricing strategy configuration for empty legs
+      - Manual marking of missions as generating empty legs
+      - Basic matching of new requests to available empty legs
+    </in-scope>
+    <out-of-scope>
+      - Automated real-time matching engine (future enhancement)
+      - External marketplace integration for empty legs
+      - Complex multi-leg chain optimization
+      - Customer-facing empty-leg booking portal
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      - Must use existing EmptyLegOpportunity Prisma model
+      - Must integrate with existing Dispatch screen layout (Story 8.1)
+      - Must respect multi-tenancy (organizationId scoping)
+      - Must follow existing API patterns (Hono routes, Zod validation)
+      - Must use existing pricing engine for cost calculations
+    </technical>
+    <business>
+      - Empty legs are time-sensitive (window expires after vehicle returns)
+      - Pricing must be configurable per organization
+      - Must not interfere with existing mission assignment workflow
+    </business>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Empty-leg detection may miss edge cases (multi-stop trips, partial returns)</description>
+      <mitigation>Start with manual marking + simple auto-detection, iterate based on feedback</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Pricing strategy complexity may delay implementation</description>
+      <mitigation>Implement simple percentage discount first, add complex strategies later</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-model>
+      <name>EmptyLegOpportunity</name>
+      <location>packages/database/prisma/schema.prisma</location>
+      <fields>
+        - id: String (cuid)
+        - organizationId: String (FK to Organization)
+        - vehicleId: String (FK to Vehicle)
+        - fromZoneId: String? (FK to PricingZone)
+        - toZoneId: String? (FK to PricingZone)
+        - windowStart: DateTime
+        - windowEnd: DateTime
+        - pricingStrategy: Json?
+        - isActive: Boolean
+        - createdAt, updatedAt: DateTime
+      </fields>
+    </existing-model>
+
+    <related-services>
+      <service>
+        <name>chaining-service.ts</name>
+        <location>packages/api/src/services/chaining-service.ts</location>
+        <relevance>Similar pattern for detecting opportunities between missions</relevance>
+      </service>
+      <service>
+        <name>vehicle-selection.ts</name>
+        <location>packages/api/src/services/vehicle-selection.ts</location>
+        <relevance>Haversine distance calculations, routing utilities</relevance>
+      </service>
+      <service>
+        <name>pricing-engine.ts</name>
+        <location>packages/api/src/services/pricing-engine.ts</location>
+        <relevance>Cost calculations for empty-leg pricing</relevance>
+      </service>
+    </related-services>
+
+    <existing-routes>
+      <route>
+        <path>/api/vtc/missions</path>
+        <file>packages/api/src/routes/vtc/missions.ts</file>
+        <relevance>Add empty-leg detection and endpoints here</relevance>
+      </route>
+    </existing-routes>
+
+    <ui-components>
+      <component>
+        <name>DispatchPage</name>
+        <location>apps/web/modules/saas/dispatch/components/DispatchPage.tsx</location>
+        <relevance>Add EmptyLegOpportunities panel</relevance>
+      </component>
+      <component>
+        <name>ChainingSuggestions</name>
+        <location>apps/web/modules/saas/dispatch/components/ChainingSuggestions.tsx</location>
+        <relevance>Similar UI pattern for suggestions panel</relevance>
+      </component>
+    </ui-components>
+  </technical-context>
+
+  <prd-references>
+    <fr id="FR53">
+      The planning engine shall detect confirmed empty-leg segments (for example return legs 
+      after a one-way charter) and allow the operator to define and apply special "empty leg" 
+      pricing strategies for new requests that match these corridors.
+    </fr>
+    <appendix-b>
+      The Multi-Base Model and Shadow Calculation already compute return segments (Segment C).
+      Empty legs are essentially Segment C when no return passenger is booked.
+    </appendix-b>
+  </prd-references>
+
+  <ux-references>
+    <section id="8.8">
+      Dispatch screen layout with mission list, map, and Trip Transparency panel.
+      Empty-leg opportunities should appear as suggestions in the assignment drawer or 
+      as a dedicated panel.
+    </section>
+    <section id="6.1.6">
+      Dispatch Badges pattern - can be reused for empty-leg status indicators.
+    </section>
+  </ux-references>
+
+  <dependencies>
+    <dependency status="done">Story 4.5 - Multi-Base Candidate Selection</dependency>
+    <dependency status="done">Story 4.6 - Shadow Calculation Segments A/B/C</dependency>
+    <dependency status="done">Story 8.1 - Dispatch Screen Layout</dependency>
+    <dependency status="done">Story 8.2 - Assignment Drawer</dependency>
+    <dependency status="done">Story 8.3 - Multi-Base Visualization</dependency>
+    <dependency status="done">Story 8.4 - Trip Chaining</dependency>
+  </dependencies>
+
+  <acceptance-criteria-preview>
+    <ac id="1">Empty-leg opportunities are created when one-way missions are confirmed</ac>
+    <ac id="2">Dispatchers can view available empty legs in the Dispatch screen</ac>
+    <ac id="3">Empty legs show corridor (from/to), time window, and vehicle info</ac>
+    <ac id="4">Operators can manually mark missions as generating empty legs</ac>
+    <ac id="5">Pricing strategy can be configured for empty-leg opportunities</ac>
+    <ac id="6">New requests can be matched against available empty legs</ac>
+    <ac id="7">Empty legs expire automatically when window passes</ac>
+    <ac id="8">API endpoints support CRUD for empty-leg opportunities</ac>
+  </acceptance-criteria-preview>
+</story-context>
