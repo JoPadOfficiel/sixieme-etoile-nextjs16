@@ -116,6 +116,10 @@ export interface VehicleCategory {
   name: string;
   code: string;
   regulatoryCategory: "LIGHT" | "HEAVY";
+  // Story 6.6: Capacity fields for upsell helpers
+  maxPassengers: number;
+  maxLuggageVolume: number | null; // in liters
+  priceMultiplier: number;
 }
 
 export interface Contact {
@@ -322,6 +326,7 @@ export function formatTripSummary(pickupAddress: string, dropoffAddress: string)
 
 /**
  * Form data for creating a new quote
+ * Story 6.6: Extended with airport helper and optional fees fields
  */
 export interface CreateQuoteFormData {
   contactId: string;
@@ -341,6 +346,10 @@ export interface CreateQuoteFormData {
   finalPrice: number;
   notes: string;
   validUntil: Date | null;
+  // Story 6.6: Airport helper fields
+  flightNumber: string;
+  waitingTimeMinutes: number;
+  selectedOptionalFeeIds: string[];
 }
 
 /**
@@ -364,6 +373,10 @@ export const initialCreateQuoteFormData: CreateQuoteFormData = {
   finalPrice: 0,
   notes: "",
   validUntil: null,
+  // Story 6.6: Airport helper defaults
+  flightNumber: "",
+  waitingTimeMinutes: 45, // Default 45 minutes for airport transfers
+  selectedOptionalFeeIds: [],
 };
 
 /**

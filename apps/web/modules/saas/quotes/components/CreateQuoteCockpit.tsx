@@ -11,7 +11,12 @@ import { QuoteBasicInfoPanel } from "./QuoteBasicInfoPanel";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
 import { QuotePricingPanel } from "./QuotePricingPanel";
 import { ComplianceAlertBanner } from "./ComplianceAlertBanner";
+import { AirportHelperPanel } from "./AirportHelperPanel";
+import { CapacityWarningAlert } from "./CapacityWarningAlert";
 import { usePricingCalculation } from "../hooks/usePricingCalculation";
+import { useScenarioHelpers } from "../hooks/useScenarioHelpers";
+import { useVehicleCategories } from "../hooks/useVehicleCategories";
+import { useOptionalFees } from "../hooks/useOptionalFees";
 import type { CreateQuoteFormData } from "../types";
 import { initialCreateQuoteFormData, hasBlockingViolations } from "../types";
 
@@ -24,9 +29,11 @@ import { initialCreateQuoteFormData, hasBlockingViolations } from "../types";
  * - Right: Pricing & options (price, notes, submit)
  * 
  * Story 6.5: Includes blocking banner for compliance violations
+ * Story 6.6: Includes airport helpers and capacity warnings
  * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
  * @see Story 6.5: Blocking and Non-Blocking Alerts
+ * @see Story 6.6: Helpers for Common Scenarios
  * @see UX Spec 8.3.2 Create Quote
  */
 export function CreateQuoteCockpit() {
@@ -43,6 +50,33 @@ export function CreateQuoteCockpit() {
   const { pricingResult, isCalculating, error: pricingError, calculate } = usePricingCalculation({
     debounceMs: 500,
   });
+
+  // Story 6.6: Vehicle categories and optional fees for helpers
+  const { categories: allVehicleCategories } = useVehicleCategories();
+  const { fees: optionalFees } = useOptionalFees();
+  
+  // Story 6.6: Scenario helpers (airport detection, capacity validation)
+  const { airportDetection, capacityWarning, getApplicableFees } = useScenarioHelpers(
+    formData,
+    allVehicleCategories
+  );
+
+  // Story 6.6: Get applicable fees for current scenario
+  const applicableFees = getApplicableFees(optionalFees, airportDetection);
+
+  // Story 6.6: Auto-select applicable fees when airport is detected
+  const previousAirportRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (airportDetection.isAirportTransfer && !previousAirportRef.current) {
+      // Auto-select all applicable fees
+      const feeIds = applicableFees.map(f => f.id);
+      setFormData(prev => ({
+        ...prev,
+        selectedOptionalFeeIds: feeIds,
+      }));
+    }
+    previousAirportRef.current = airportDetection.isAirportTransfer;
+  }, [airportDetection.isAirportTransfer, applicableFees]);
 
   // Update form field
   const handleFormChange = useCallback(<K extends keyof CreateQuoteFormData>(
@@ -177,12 +211,47 @@ export function CreateQuoteCockpit() {
       {/* 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Basic Info */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <QuoteBasicInfoPanel
             formData={formData}
             onFormChange={handleFormChange}
             disabled={createQuoteMutation.isPending}
           />
+
+          {/* Story 6.6: Airport Helper Panel */}
+          <AirportHelperPanel
+            airportDetection={airportDetection}
+            flightNumber={formData.flightNumber}
+            onFlightNumberChange={(value) => handleFormChange("flightNumber", value)}
+            waitingTimeMinutes={formData.waitingTimeMinutes}
+            onWaitingTimeChange={(value) => handleFormChange("waitingTimeMinutes", value)}
+            applicableFees={applicableFees}
+            selectedFeeIds={formData.selectedOptionalFeeIds}
+            onFeeToggle={(feeId, checked) => {
+              setFormData(prev => ({
+                ...prev,
+                selectedOptionalFeeIds: checked
+                  ? [...prev.selectedOptionalFeeIds, feeId]
+                  : prev.selectedOptionalFeeIds.filter(id => id !== feeId),
+              }));
+            }}
+            disabled={createQuoteMutation.isPending}
+          />
+
+          {/* Story 6.6: Capacity Warning Alert */}
+          {capacityWarning && formData.vehicleCategory && (
+            <CapacityWarningAlert
+              warning={capacityWarning}
+              currentCategoryName={formData.vehicleCategory.name}
+              onApplySuggestion={() => {
+                if (capacityWarning.suggestedCategory) {
+                  handleFormChange("vehicleCategoryId", capacityWarning.suggestedCategory.id);
+                  handleFormChange("vehicleCategory", capacityWarning.suggestedCategory);
+                }
+              }}
+              disabled={createQuoteMutation.isPending}
+            />
+          )}
         </div>
 
         {/* Center Column - Trip Transparency */}

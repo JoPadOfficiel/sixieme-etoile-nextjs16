@@ -1547,6 +1547,42 @@
 			"blockedTooltip": "Ce trajet ne peut pas être créé en raison de violations réglementaires. Veuillez consulter les alertes bloquantes ci-dessus.",
 			"cannotCreate": "Impossible de créer le devis",
 			"resolveViolations": "Veuillez résoudre les violations de conformité avant de créer ce devis."
+		},
+		"helpers": {
+			"airport": {
+				"detected": "Transfert aéroport détecté",
+				"pickup": "Prise en charge",
+				"dropoff": "Dépose",
+				"flightNumber": "Numéro de vol",
+				"optional": "optionnel",
+				"flightNumberHint": "Entrez le numéro de vol pour le suivi",
+				"waitingTime": "Temps d'attente",
+				"waitingTimeHint": "Temps d'attente standard inclus pour les transferts aéroport",
+				"customWaiting": "Personnalisé",
+				"waitingPresets": {
+					"30min": "30 minutes",
+					"45min": "45 minutes (standard)",
+					"60min": "60 minutes",
+					"90min": "90 minutes"
+				},
+				"autoAppliedFees": "Frais appliqués automatiquement",
+				"auto": "Auto",
+				"feesHint": "Ces frais sont automatiquement appliqués pour les transferts aéroport. Vous pouvez les décocher si nécessaire."
+			},
+			"capacity": {
+				"passengerExceeded": "Capacité passagers dépassée",
+				"luggageExceeded": "Capacité bagages dépassée",
+				"selected": "Sélectionné",
+				"required": "Requis",
+				"passengersMax": "{count} passagers max",
+				"passengersRequired": "{count} passagers",
+				"luggageMax": "{count} bagages max",
+				"luggageRequired": "{count} bagages",
+				"suggested": "Suggéré",
+				"passengers": "passagers",
+				"applySuggestion": "Appliquer la suggestion",
+				"noSuggestion": "Aucune catégorie de véhicule adaptée trouvée pour cette capacité."
+			}
 		}
 	},
 	"fleet": {

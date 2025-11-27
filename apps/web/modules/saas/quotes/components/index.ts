@@ -18,3 +18,7 @@ export { QuoteActivityLog } from "./QuoteActivityLog";
 // Story 6.5: Compliance Alerts
 export { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 export { ComplianceWarningAlert } from "./ComplianceWarningAlert";
+
+// Story 6.6: Scenario Helpers
+export { AirportHelperPanel } from "./AirportHelperPanel";
+export { CapacityWarningAlert } from "./CapacityWarningAlert";

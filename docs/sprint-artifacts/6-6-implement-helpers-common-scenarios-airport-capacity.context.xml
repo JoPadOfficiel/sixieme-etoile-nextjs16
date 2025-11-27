@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>6-6</story-id>
+    <story-title>Implement Helpers for Common Scenarios (Airport & Capacity)</story-title>
+    <epic>Epic 6 - Quotes & Operator Cockpit</epic>
+    <created-date>2025-11-27</created-date>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les opérateurs VTC passent un temps significatif à configurer manuellement les devis pour des scénarios récurrents :
+      1. **Transferts aéroport** : Nécessitent des règles d'attente spécifiques, des frais optionnels (parking, attente), et parfois un numéro de vol
+      2. **Dépassement de capacité** : Quand les passagers/bagages dépassent la capacité d'une berline, l'opérateur doit manuellement changer de catégorie de véhicule
+      
+      Ces tâches répétitives sont sources d'erreurs et de perte de temps.
+    </description>
+    <business-impact>
+      - Temps perdu sur des configurations manuelles répétitives
+      - Risque d'oubli de frais optionnels (parking aéroport, attente)
+      - Opportunités d'upsell manquées quand la capacité est dépassée
+      - Incohérence dans l'application des règles métier
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">
+      Détecter automatiquement les adresses d'aéroport (CDG, Orly, etc.) et proposer des presets adaptés
+    </objective>
+    <objective id="2">
+      Permettre la saisie d'un numéro de vol pour les transferts aéroport
+    </objective>
+    <objective id="3">
+      Appliquer automatiquement les frais optionnels pertinents (attente aéroport, parking)
+    </objective>
+    <objective id="4">
+      Détecter quand la capacité passagers/bagages dépasse celle du véhicule sélectionné
+    </objective>
+    <objective id="5">
+      Proposer automatiquement un upsell vers une catégorie de véhicule adaptée
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Détection d'adresses aéroport via pattern matching sur les adresses</item>
+      <item>Champ de saisie numéro de vol (optionnel) pour les transferts aéroport</item>
+      <item>Presets de temps d'attente configurables par aéroport</item>
+      <item>Auto-application des OptionalFee avec autoApplyRules pour aéroport</item>
+      <item>Validation de capacité passagers vs VehicleCategory.maxPassengers</item>
+      <item>Validation de capacité bagages vs VehicleCategory.maxLuggageVolume</item>
+      <item>Suggestion d'upsell avec catégorie recommandée et delta de prix</item>
+      <item>Composant CapacityWarningAlert pour afficher les alertes de capacité</item>
+      <item>Composant AirportHelperPanel pour les options aéroport</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Intégration API temps réel des vols (FlightAware, etc.) - future story</item>
+      <item>Configuration admin des aéroports reconnus - utiliser les zones existantes</item>
+      <item>Gestion multi-aéroport dans un même devis</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Les helpers doivent être transparents : l'opérateur voit exactement quels frais/règles sont appliqués
+    </constraint>
+    <constraint type="technical">
+      Les suggestions d'upsell ne doivent pas bloquer le flux - l'opérateur peut ignorer
+    </constraint>
+    <constraint type="business">
+      Les frais optionnels doivent provenir du catalogue OptionalFee existant (FR56)
+    </constraint>
+    <constraint type="ux">
+      Les helpers ne doivent pas surcharger l'interface - utiliser des sections collapsibles
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      Faux positifs dans la détection d'aéroport (adresses proches mais pas à l'aéroport)
+    </risk>
+    <risk severity="low">
+      Performance si trop de validations synchrones à chaque changement de champ
+    </risk>
+    <risk severity="low">
+      Confusion utilisateur si trop de suggestions automatiques
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-models>
+      <model name="VehicleCategory">
+        <field>maxPassengers: Int</field>
+        <field>maxLuggageVolume: Int? (en litres)</field>
+        <field>priceMultiplier: Decimal</field>
+      </model>
+      <model name="OptionalFee">
+        <field>name: String</field>
+        <field>amountType: AmountType (FIXED/PERCENTAGE)</field>
+        <field>amount: Decimal</field>
+        <field>autoApplyRules: Json? (conditions d'application automatique)</field>
+        <field>isTaxable: Boolean</field>
+        <field>vatRate: Decimal</field>
+      </model>
+      <model name="PricingZone">
+        <field>name: String</field>
+        <field>code: String</field>
+        <field>zoneType: ZoneType</field>
+        <field>geometry: Json?</field>
+        <field>centerLatitude/centerLongitude: Decimal</field>
+      </model>
+    </existing-models>
+
+    <existing-components>
+      <component path="apps/web/modules/saas/quotes/components/QuoteBasicInfoPanel.tsx">
+        Panel gauche du cockpit - contient les champs passagers/bagages
+      </component>
+      <component path="apps/web/modules/saas/quotes/components/VehicleCategorySelector.tsx">
+        Sélecteur de catégorie de véhicule avec badge LIGHT/HEAVY
+      </component>
+      <component path="apps/web/modules/saas/quotes/components/QuotePricingPanel.tsx">
+        Panel droit - placeholder pour frais optionnels (ligne 241-244)
+      </component>
+      <component path="apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts">
+        Hook de calcul de prix - peut être étendu pour inclure les suggestions
+      </component>
+      <component path="apps/web/modules/saas/quotes/types.ts">
+        Types CreateQuoteFormData avec passengerCount, luggageCount
+      </component>
+    </existing-components>
+
+    <api-endpoints>
+      <endpoint method="GET" path="/api/vtc/vehicle-categories">
+        Liste des catégories avec capacités
+      </endpoint>
+      <endpoint method="GET" path="/api/vtc/optional-fees">
+        Catalogue des frais optionnels (à créer si inexistant)
+      </endpoint>
+      <endpoint method="GET" path="/api/vtc/pricing-zones">
+        Zones de pricing incluant les aéroports
+      </endpoint>
+    </api-endpoints>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" title="Détection automatique d'aéroport">
+      Given une adresse de pickup ou dropoff contenant "CDG", "Roissy", "Orly", "Le Bourget"
+      When l'adresse est sélectionnée via l'autocomplete
+      Then le système détecte qu'il s'agit d'un transfert aéroport
+      And affiche le panneau AirportHelperPanel avec les options spécifiques
+    </criterion>
+    
+    <criterion id="AC2" title="Saisie du numéro de vol">
+      Given un transfert aéroport détecté
+      When je saisis un numéro de vol (ex: AF1234)
+      Then le champ accepte le format et le stocke dans le formulaire
+      And le numéro de vol est inclus dans les notes ou métadonnées du devis
+    </criterion>
+    
+    <criterion id="AC3" title="Application automatique des frais aéroport">
+      Given un transfert aéroport détecté
+      And des OptionalFee avec autoApplyRules configurés pour "airport"
+      When le pricing est calculé
+      Then les frais optionnels applicables sont automatiquement cochés
+      And l'opérateur peut les décocher manuellement si nécessaire
+    </criterion>
+    
+    <criterion id="AC4" title="Alerte de dépassement de capacité passagers">
+      Given une catégorie de véhicule sélectionnée (ex: Berline, maxPassengers=3)
+      When je saisis un nombre de passagers supérieur (ex: 5)
+      Then une alerte non-bloquante s'affiche
+      And suggère une catégorie adaptée (ex: Van, maxPassengers=7)
+      And affiche le delta de prix estimé
+    </criterion>
+    
+    <criterion id="AC5" title="Alerte de dépassement de capacité bagages">
+      Given une catégorie de véhicule sélectionnée avec maxLuggageVolume défini
+      When je saisis un nombre de bagages dépassant la capacité estimée
+      Then une alerte non-bloquante s'affiche avec suggestion d'upsell
+    </criterion>
+    
+    <criterion id="AC6" title="Application de l'upsell suggéré">
+      Given une suggestion d'upsell affichée
+      When je clique sur "Appliquer la suggestion"
+      Then la catégorie de véhicule est automatiquement changée
+      And le pricing est recalculé avec la nouvelle catégorie
+    </criterion>
+    
+    <criterion id="AC7" title="Transparence des helpers">
+      Given des frais ou suggestions appliqués automatiquement
+      When je consulte le panneau Trip Transparency ou Pricing
+      Then je vois clairement quels éléments ont été ajoutés par les helpers
+      And je peux les modifier ou supprimer
+    </criterion>
+  </acceptance-criteria>
+
+  <implementation-notes>
+    <note category="architecture">
+      Créer un hook useScenarioHelpers qui encapsule la logique de détection et suggestions
+    </note>
+    <note category="detection">
+      Utiliser un pattern matching simple sur les adresses pour la détection aéroport.
+      Patterns suggérés: /CDG|Roissy|Charles de Gaulle|Orly|Le Bourget|aéroport/i
+    </note>
+    <note category="capacity">
+      Estimer la capacité bagages: 1 bagage standard ≈ 50L, 1 bagage cabine ≈ 20L
+      Formule: luggageCount * 50 > maxLuggageVolume → alerte
+    </note>
+    <note category="upsell">
+      Trier les catégories par maxPassengers croissant pour trouver la plus petite catégorie adaptée
+    </note>
+    <note category="i18n">
+      Ajouter les traductions FR/EN pour tous les messages d'alerte et suggestions
+    </note>
+  </implementation-notes>
+
+  <related-stories>
+    <story id="6.2">Create Quote 3-Column Cockpit (provides UI structure)</story>
+    <story id="9.3">Optional Fees Catalogue (provides fee data)</story>
+    <story id="5.1">Fleet Models (provides vehicle capacities)</story>
+    <story id="4.7">Profitability Indicator (pattern for warnings)</story>
+  </related-stories>
+
+  <related-frs>
+    <fr id="FR45">Helpers pour scénarios aéroport et upsell bagages</fr>
+    <fr id="FR56">Catalogue de frais optionnels avec triggers automatiques</fr>
+    <fr id="FR58">Modificateurs de tarifs avancés</fr>
+    <fr id="FR60">Multiplicateurs de catégories de véhicules</fr>
+  </related-frs>
+</story-context>

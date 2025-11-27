@@ -79,3 +79,4 @@ development_status:
   6-3-implement-quote-detail-with-stored-tripanalysis: done
   6-4-implement-quote-lifecycle-status-transitions: done
   6-5-implement-blocking-non-blocking-alerts: done
+  6-6-implement-helpers-common-scenarios-airport-capacity: done
