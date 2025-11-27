@@ -1,7 +1,7 @@
 # Story 7.1: Implement Invoice & InvoiceLine Models and Invoices UI
 
 **Epic:** Epic 7 – Invoicing & Documents  
-**Status:** ready-for-dev  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2025-11-27
