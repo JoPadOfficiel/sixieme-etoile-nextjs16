@@ -1961,6 +1961,73 @@
 			}
 		}
 	},
+	"dispatch": {
+		"title": "Dispatch",
+		"subtitle": "{count, plural, =0 {No missions} one {# mission} other {# missions}} to dispatch",
+		"missions": {
+			"title": "Missions",
+			"partner": "Partner",
+			"private": "Private",
+			"unassigned": "Unassigned",
+			"columns": {
+				"timeWindow": "Time",
+				"route": "Route",
+				"client": "Client",
+				"vehicleDriver": "Vehicle / Driver",
+				"badges": "Status"
+			},
+			"empty": {
+				"title": "No missions found",
+				"description": "Adjust your filters or wait for new accepted quotes"
+			}
+		},
+		"filters": {
+			"searchPlaceholder": "Search missions...",
+			"dateFrom": "From",
+			"dateTo": "To",
+			"vehicleCategory": "Vehicle Category",
+			"clientType": "Client Type",
+			"all": "All",
+			"partner": "Partner",
+			"private": "Private",
+			"clear": "Clear"
+		},
+		"badges": {
+			"profitability": {
+				"green": "Profitable",
+				"orange": "Low margin",
+				"red": "Loss"
+			},
+			"compliance": {
+				"ok": "Compliant",
+				"warning": "Warning",
+				"violation": "Violation"
+			},
+			"assignment": {
+				"assigned": "Assigned",
+				"unassigned": "Unassigned"
+			}
+		},
+		"assignment": {
+			"title": "Assignment",
+			"vehicle": "Vehicle",
+			"driver": "Driver",
+			"base": "Base",
+			"unassigned": "Not yet assigned",
+			"unassignedDescription": "Click 'Assign' to assign a vehicle and driver to this mission.",
+			"assignButton": "Assign",
+			"changeButton": "Change Assignment"
+		},
+		"map": {
+			"loading": "Loading map...",
+			"pickup": "Pickup",
+			"dropoff": "Dropoff",
+			"route": "Route",
+			"base": "Base",
+			"nearbyBases": "Nearby Bases",
+			"selectMission": "Select a mission to view route details"
+		}
+	},
 	"documents": {
 		"title": "Documents",
 		"description": "View and download generated documents (quotes, invoices, mission orders).",

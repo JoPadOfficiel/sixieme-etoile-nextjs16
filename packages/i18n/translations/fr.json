@@ -1961,6 +1961,73 @@
 			}
 		}
 	},
+	"dispatch": {
+		"title": "Dispatch",
+		"subtitle": "{count, plural, =0 {Aucune mission} one {# mission} other {# missions}} à dispatcher",
+		"missions": {
+			"title": "Missions",
+			"partner": "Partenaire",
+			"private": "Privé",
+			"unassigned": "Non assigné",
+			"columns": {
+				"timeWindow": "Heure",
+				"route": "Trajet",
+				"client": "Client",
+				"vehicleDriver": "Véhicule / Chauffeur",
+				"badges": "Statut"
+			},
+			"empty": {
+				"title": "Aucune mission trouvée",
+				"description": "Ajustez vos filtres ou attendez de nouveaux devis acceptés"
+			}
+		},
+		"filters": {
+			"searchPlaceholder": "Rechercher des missions...",
+			"dateFrom": "Du",
+			"dateTo": "Au",
+			"vehicleCategory": "Catégorie de véhicule",
+			"clientType": "Type de client",
+			"all": "Tous",
+			"partner": "Partenaires",
+			"private": "Privés",
+			"clear": "Effacer"
+		},
+		"badges": {
+			"profitability": {
+				"green": "Rentable",
+				"orange": "Marge faible",
+				"red": "Perte"
+			},
+			"compliance": {
+				"ok": "Conforme",
+				"warning": "Avertissement",
+				"violation": "Violation"
+			},
+			"assignment": {
+				"assigned": "Assigné",
+				"unassigned": "Non assigné"
+			}
+		},
+		"assignment": {
+			"title": "Assignation",
+			"vehicle": "Véhicule",
+			"driver": "Chauffeur",
+			"base": "Base",
+			"unassigned": "Pas encore assigné",
+			"unassignedDescription": "Cliquez sur 'Assigner' pour assigner un véhicule et un chauffeur à cette mission.",
+			"assignButton": "Assigner",
+			"changeButton": "Modifier l'assignation"
+		},
+		"map": {
+			"loading": "Chargement de la carte...",
+			"pickup": "Prise en charge",
+			"dropoff": "Dépose",
+			"route": "Trajet",
+			"base": "Base",
+			"nearbyBases": "Bases à proximité",
+			"selectMission": "Sélectionnez une mission pour voir les détails du trajet"
+		}
+	},
 	"documents": {
 		"title": "Documents",
 		"description": "Consultez et téléchargez les documents générés (devis, factures, ordres de mission).",

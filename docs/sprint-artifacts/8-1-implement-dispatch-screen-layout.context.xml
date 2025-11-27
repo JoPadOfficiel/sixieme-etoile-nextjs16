@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>8-1</story-id>
+    <story-key>8-1-implement-dispatch-screen-layout</story-key>
+    <epic>Epic 8 – Dispatch & Strategic Optimisation</epic>
+    <created>2025-11-27</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem>
+    <summary>
+      Les opérateurs n'ont actuellement aucun écran dédié pour gérer les missions de dispatch.
+      Ils doivent naviguer entre plusieurs écrans (Quotes, Vehicles, Drivers) pour prendre des
+      décisions d'affectation, ce qui est inefficace et source d'erreurs.
+    </summary>
+    <pain-points>
+      <point>Pas de vue consolidée des missions à dispatcher</point>
+      <point>Pas de visualisation cartographique des routes et bases</point>
+      <point>Pas d'accès rapide à la transparence des coûts par mission</point>
+      <point>Pas de badges de profitabilité/conformité sur les missions</point>
+    </pain-points>
+  </problem>
+
+  <objectives>
+    <objective priority="1">
+      Créer un écran Dispatch avec layout 3 zones : liste missions (gauche), carte (droite-haut),
+      TripTransparencyPanel + VehicleAssignmentPanel (droite-bas)
+    </objective>
+    <objective priority="2">
+      Implémenter la liste des missions avec filtres (status, date/heure, catégorie véhicule, partner/private)
+    </objective>
+    <objective priority="3">
+      Intégrer Google Maps pour afficher la route de la mission sélectionnée et les bases pertinentes
+    </objective>
+    <objective priority="4">
+      Réutiliser TripTransparencyPanel existant pour afficher les données de la mission sélectionnée
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Route `/dashboard/[organizationSlug]/dispatch`</item>
+      <item>Layout 3 zones responsive (≥1280px full, ~1024px 2-col)</item>
+      <item>Liste missions avec colonnes : Time window, pickup/dropoff, client, vehicle/driver, badges</item>
+      <item>Filtres : status, date range, vehicle category, partner/private</item>
+      <item>Carte Google Maps avec route mission et markers bases</item>
+      <item>TripTransparencyPanel en mode lecture (données du Quote accepté)</item>
+      <item>VehicleAssignmentPanel basique (affichage assignation courante)</item>
+      <item>Badges Dispatch : profitabilité, conformité, assignation</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Assignment Drawer avec candidats (Story 8.2)</item>
+      <item>Multi-base optimisation visualisation (Story 8.3)</item>
+      <item>Chaining suggestions (Story 8.4)</item>
+      <item>Empty-leg opportunities (Story 8.5)</item>
+      <item>Subcontracting suggestions (Story 8.6)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Réutiliser TripTransparencyPanel et ProfitabilityIndicator existants
+    </constraint>
+    <constraint type="technical">
+      Multi-tenancy obligatoire (organizationId sur toutes les requêtes)
+    </constraint>
+    <constraint type="technical">
+      Europe/Paris timezone pour tous les affichages datetime
+    </constraint>
+    <constraint type="ux">
+      Layout UX Spec 8.8 : Left missions list, Right-top map, Right-bottom transparency
+    </constraint>
+    <constraint type="dependency">
+      Dépend de Google Maps integration (Story 1.5 done)
+    </constraint>
+    <constraint type="dependency">
+      Dépend de Quote model avec tripAnalysis (Epic 6 done)
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Pas de modèle Mission distinct - utiliser Quote avec status ACCEPTED</description>
+      <mitigation>Créer une vue "missions" basée sur les quotes acceptés avec pickupAt futur</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance avec beaucoup de missions</description>
+      <mitigation>Pagination et filtres côté serveur</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Panneau Trip Transparency avec tabs Overview/Route/Costs/Compliance
+      </component>
+      <component path="apps/web/modules/saas/shared/components/ProfitabilityIndicator.tsx">
+        Badge profitabilité green/orange/red avec tooltip
+      </component>
+      <component path="apps/web/modules/saas/quotes/components/CreateQuoteCockpit.tsx">
+        Exemple de layout 3 colonnes à réutiliser comme pattern
+      </component>
+    </existing-components>
+
+    <data-models>
+      <model name="Quote">
+        Contient tripAnalysis JSON, marginPercent, internalCost, status, pickupAt, etc.
+        Les missions sont des Quote avec status=ACCEPTED et pickupAt dans le futur
+      </model>
+      <model name="Vehicle">
+        vehicleCategoryId, operatingBaseId, status, passengerCapacity
+      </model>
+      <model name="Driver">
+        firstName, lastName, driverLicenses[], isActive
+      </model>
+      <model name="OperatingBase">
+        name, latitude, longitude, addressLine1, city
+      </model>
+    </data-models>
+
+    <api-patterns>
+      <pattern>
+        GET /api/vtc/missions - Liste des quotes ACCEPTED avec pickupAt futur
+        Filtres: status, dateFrom, dateTo, vehicleCategoryId, clientType
+      </pattern>
+      <pattern>
+        GET /api/vtc/missions/[id] - Détail mission avec tripAnalysis
+      </pattern>
+      <pattern>
+        GET /api/vtc/operating-bases - Liste des bases pour markers carte
+      </pattern>
+    </api-patterns>
+
+    <ui-patterns>
+      <pattern name="DataTable">
+        shadcn Table avec sticky header, filtres toolbar, row selection
+      </pattern>
+      <pattern name="Badge">
+        shadcn Badge pour status et indicateurs
+      </pattern>
+      <pattern name="Tabs">
+        shadcn Tabs pour TripTransparencyPanel
+      </pattern>
+      <pattern name="Card">
+        shadcn Card pour panels et summary cards
+      </pattern>
+    </ui-patterns>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given `/dashboard/[organizationSlug]/dispatch`
+      When I open the page
+      Then I see a 3-zone layout: missions list (left), map (right-top), transparency panel (right-bottom)
+    </criterion>
+    <criterion id="AC2">
+      Given the missions list
+      When I view it
+      Then I see columns: Time window, Pickup→Dropoff, Client, Vehicle/Driver, Dispatch Badges
+    </criterion>
+    <criterion id="AC3">
+      Given the filters toolbar
+      When I filter by status, date range, vehicle category, or client type
+      Then the missions list updates accordingly
+    </criterion>
+    <criterion id="AC4">
+      Given a mission selected in the list
+      When I click on it
+      Then the map shows the mission route and relevant bases
+      And the TripTransparencyPanel shows the mission's stored tripAnalysis
+    </criterion>
+    <criterion id="AC5">
+      Given the Dispatch Badges on each mission row
+      When I view them
+      Then I see profitability (green/orange/red), compliance (OK/Warning/Violation), assignment (Assigned/Unassigned)
+    </criterion>
+  </acceptance-criteria>
+
+  <related-frs>
+    <fr id="FR50">Driver flexibility scoring for assignment</fr>
+    <fr id="FR51">Multi-base simulation for optimal assignment</fr>
+    <fr id="FR42">Structured quote builder UI (reused patterns)</fr>
+    <fr id="FR43">Visual representation of trip with segments</fr>
+    <fr id="FR44">Transparent cost breakdown</fr>
+    <fr id="FR24">Profitability indicator</fr>
+  </related-frs>
+
+  <dependencies>
+    <dependency type="story" status="done">4.6 - Shadow Calculation Segments A/B/C</dependency>
+    <dependency type="story" status="done">4.7 - Profitability Indicator</dependency>
+    <dependency type="story" status="done">5.1 - Fleet Models & Fleet/Bases UI</dependency>
+    <dependency type="story" status="done">5.2 - Drivers, Licence Categories & RSE Rules</dependency>
+    <dependency type="story" status="done">6.7 - TripTransparencyPanel Integration</dependency>
+    <dependency type="integration" status="done">Google Maps API integration</dependency>
+  </dependencies>
+</story-context>
