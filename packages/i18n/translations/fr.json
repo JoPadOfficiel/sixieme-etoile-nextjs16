@@ -1302,6 +1302,7 @@
 		"actions": {
 			"menu": "Actions",
 			"viewEdit": "Voir / Modifier",
+			"viewEditComingSoon": "Page de détails du devis bientôt disponible",
 			"duplicate": "Dupliquer",
 			"convertToInvoice": "Convertir en facture",
 			"cancel": "Annuler le devis"

@@ -255,7 +255,7 @@ export function CreateQuoteCockpit() {
           internalCost: pricingResult?.internalCost ?? null,
           marginPercent: pricingResult?.marginPercent ?? null,
           tripAnalysis: pricingResult?.tripAnalysis as unknown as Record<string, unknown> | null ?? null,
-          appliedRules: pricingResult?.appliedRules as unknown as Record<string, unknown> | null ?? null,
+          appliedRules: pricingResult?.appliedRules ? { rules: pricingResult.appliedRules } : null,
           validUntil: formData.validUntil?.toISOString() ?? null,
           notes: formData.notes || null,
         },

@@ -1302,6 +1302,7 @@
 		"actions": {
 			"menu": "Actions",
 			"viewEdit": "View / Edit",
+			"viewEditComingSoon": "Quote details page coming soon",
 			"duplicate": "Duplicate",
 			"convertToInvoice": "Convert to Invoice",
 			"cancel": "Cancel Quote"

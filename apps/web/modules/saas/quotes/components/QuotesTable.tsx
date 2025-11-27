@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@ui/components/dropdown-menu";
+import { useToast } from "@ui/hooks/use-toast";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { apiClient } from "@shared/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
@@ -128,8 +129,14 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
     setPage(1);
   };
 
-  const handleRowClick = (quote: Quote) => {
-    router.push(`/${activeOrganization?.slug}/quotes/${quote.id}`);
+  const { toast } = useToast();
+
+  const handleRowClick = (_quote: Quote) => {
+    // TODO: Implement quote detail/edit page in Story 6.3
+    toast({
+      title: t("quotes.actions.viewEditComingSoon"),
+    });
+    // Future: router.push(`/app/${activeOrganization?.slug}/quotes/${_quote.id}`);
   };
 
   const handleDuplicate = (quote: Quote, e: React.MouseEvent) => {
