@@ -12,6 +12,7 @@ import { db } from "@repo/database";
 import { Hono } from "hono";
 import { validator } from "hono-openapi/zod";
 import { z } from "zod";
+import { organizationMiddleware } from "../../middleware/organization";
 import {
 	listSubcontractors,
 	getSubcontractorById,
@@ -68,16 +69,12 @@ const suggestionsQuerySchema = z.object({
 
 export const subcontractorsRouter = new Hono()
 	.basePath("/subcontractors")
+	.use("*", organizationMiddleware)
 	// -------------------------------------------------------------------------
 	// GET /api/vtc/subcontractors - List all subcontractors
 	// -------------------------------------------------------------------------
 	.get("/", validator("query", listSubcontractorsQuerySchema), async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-
-		if (!organizationId) {
-			return c.json({ error: "Organization not found" }, 401);
-		}
+		const organizationId = c.get("organizationId");
 
 		const { includeInactive } = c.req.valid("query");
 
@@ -100,13 +97,7 @@ export const subcontractorsRouter = new Hono()
 	// GET /api/vtc/subcontractors/:id - Get subcontractor by ID
 	// -------------------------------------------------------------------------
 	.get("/:id", async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-
-		if (!organizationId) {
-			return c.json({ error: "Organization not found" }, 401);
-		}
-
+		const organizationId = c.get("organizationId");
 		const subcontractorId = c.req.param("id");
 
 		try {
@@ -155,13 +146,7 @@ export const subcontractorsRouter = new Hono()
 	// POST /api/vtc/subcontractors - Create subcontractor
 	// -------------------------------------------------------------------------
 	.post("/", validator("json", createSubcontractorSchema), async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-
-		if (!organizationId) {
-			return c.json({ error: "Organization not found" }, 401);
-		}
-
+		const organizationId = c.get("organizationId");
 		const data = c.req.valid("json");
 
 		try {
@@ -204,13 +189,7 @@ export const subcontractorsRouter = new Hono()
 	// PATCH /api/vtc/subcontractors/:id - Update subcontractor
 	// -------------------------------------------------------------------------
 	.patch("/:id", validator("json", updateSubcontractorSchema), async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-
-		if (!organizationId) {
-			return c.json({ error: "Organization not found" }, 401);
-		}
-
+		const organizationId = c.get("organizationId");
 		const subcontractorId = c.req.param("id");
 		const data = c.req.valid("json");
 
@@ -251,13 +230,7 @@ export const subcontractorsRouter = new Hono()
 	// DELETE /api/vtc/subcontractors/:id - Delete subcontractor
 	// -------------------------------------------------------------------------
 	.delete("/:id", async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-
-		if (!organizationId) {
-			return c.json({ error: "Organization not found" }, 401);
-		}
-
+		const organizationId = c.get("organizationId");
 		const subcontractorId = c.req.param("id");
 
 		try {
@@ -276,6 +249,7 @@ export const subcontractorsRouter = new Hono()
 
 export const missionSubcontractingRoutes = new Hono()
 	.basePath("/missions")
+	.use("*", organizationMiddleware)
 	// -------------------------------------------------------------------------
 	// GET /api/vtc/missions/:id/subcontracting-suggestions
 	// -------------------------------------------------------------------------
@@ -283,13 +257,7 @@ export const missionSubcontractingRoutes = new Hono()
 		"/:id/subcontracting-suggestions",
 		validator("query", suggestionsQuerySchema),
 		async (c) => {
-			const session = c.get("session");
-			const organizationId = session?.session?.activeOrganizationId;
-
-			if (!organizationId) {
-				return c.json({ error: "Organization not found" }, 401);
-			}
-
+			const organizationId = c.get("organizationId");
 			const missionId = c.req.param("id");
 			const { threshold, maxSuggestions } = c.req.valid("query");
 
@@ -321,14 +289,9 @@ export const missionSubcontractingRoutes = new Hono()
 	// POST /api/vtc/missions/:id/subcontract
 	// -------------------------------------------------------------------------
 	.post("/:id/subcontract", validator("json", subcontractMissionSchema), async (c) => {
-		const session = c.get("session");
-		const organizationId = session?.session?.activeOrganizationId;
-		const userId = session?.user?.id;
-
-		if (!organizationId || !userId) {
-			return c.json({ error: "Authentication required" }, 401);
-		}
-
+		const organizationId = c.get("organizationId");
+		const user = c.get("user");
+		const userId = user.id;
 		const missionId = c.req.param("id");
 		const { subcontractorId, agreedPrice, notes } = c.req.valid("json");
 
