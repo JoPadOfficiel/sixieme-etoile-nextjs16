@@ -1130,12 +1130,13 @@
 				"pricing": {
 					"title": "Tarification",
 					"zones": "Zones",
-					"routes": "Routes",
+					"routes": "Itinéraires",
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
 					"seasonalMultipliers": "Multiplicateurs saisonniers",
 					"advancedRates": "Tarifs avancés",
-					"optionalFees": "Frais optionnels"
+					"optionalFees": "Frais optionnels",
+					"promotions": "Promotions"
 				},
 				"title": "Organisation"
 			}
@@ -1396,6 +1397,89 @@
 				"actions": {
 					"edit": "Modifier",
 					"delete": "Supprimer"
+				}
+			},
+			"promotions": {
+				"title": "Promotions",
+				"description": "Configurez les codes promo et réductions pour les devis et factures",
+				"addButton": "Ajouter une promotion",
+				"stats": {
+					"active": "Actives",
+					"expired": "Expirées",
+					"upcoming": "À venir",
+					"totalUses": "Utilisations totales"
+				},
+				"table": {
+					"code": "Code",
+					"description": "Description",
+					"type": "Type",
+					"value": "Valeur",
+					"validFrom": "Valide du",
+					"validTo": "Valide jusqu'au",
+					"usage": "Utilisation",
+					"status": "Statut",
+					"actions": "Actions"
+				},
+				"types": {
+					"FIXED": "Fixe",
+					"PERCENTAGE": "Pourcentage"
+				},
+				"status": {
+					"all": "Tous",
+					"active": "Actif",
+					"expired": "Expiré",
+					"upcoming": "À venir",
+					"inactive": "Inactif"
+				},
+				"form": {
+					"createTitle": "Créer une promotion",
+					"editTitle": "Modifier la promotion",
+					"code": "Code promo",
+					"codePlaceholder": "ex: ETE2024",
+					"codeHelp": "Code unique que les clients saisiront",
+					"description": "Description",
+					"descriptionPlaceholder": "Description optionnelle...",
+					"discountType": "Type de réduction",
+					"discountTypePlaceholder": "Sélectionner le type...",
+					"value": "Valeur",
+					"valueHelp": "Entrez le montant en EUR pour fixe, ou la valeur en pourcentage",
+					"validFrom": "Valide du",
+					"validTo": "Valide jusqu'au",
+					"validityHelp": "La promotion n'est valide que pendant cette période",
+					"maxTotalUses": "Utilisations max totales",
+					"maxTotalUsesHelp": "Laisser vide pour illimité",
+					"maxUsesPerContact": "Utilisations max par contact",
+					"maxUsesPerContactHelp": "Limiter les utilisations par client",
+					"isActive": "Actif",
+					"currentUses": "Utilisations actuelles",
+					"create": "Créer",
+					"save": "Enregistrer",
+					"cancel": "Annuler"
+				},
+				"delete": {
+					"title": "Supprimer la promotion",
+					"message": "Êtes-vous sûr de vouloir supprimer le code promo \"{code}\" ? Cette action est irréversible.",
+					"usageWarning": "Cette promotion a été utilisée {count} fois.",
+					"confirm": "Supprimer",
+					"cancel": "Annuler"
+				},
+				"toast": {
+					"createSuccess": "Promotion créée avec succès",
+					"updateSuccess": "Promotion mise à jour avec succès",
+					"deleteSuccess": "Promotion supprimée avec succès",
+					"error": "Une erreur est survenue",
+					"codeExists": "Ce code promo existe déjà"
+				},
+				"empty": {
+					"title": "Aucune promotion configurée",
+					"description": "Créez votre premier code promo pour offrir des réductions."
+				},
+				"actions": {
+					"edit": "Modifier",
+					"delete": "Supprimer"
+				},
+				"usage": {
+					"unlimited": "∞"
 				}
 			}
 		}

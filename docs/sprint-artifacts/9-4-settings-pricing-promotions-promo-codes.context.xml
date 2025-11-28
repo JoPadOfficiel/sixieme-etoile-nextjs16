@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="9-4-settings-pricing-promotions-promo-codes" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>4</storyId>
+    <title>Settings → Pricing – Promotions &amp; Promo Codes</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-28T00:15:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/9-4-settings-pricing-promotions-promo-codes.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>marketing/commerce owner</asA>
+    <iWant>to configure promo codes and discounts</iWant>
+    <soThat>promotions are applied consistently and remain traceable on quotes and invoices</soThat>
+    <tasks>
+      <task id="1">Create API routes for Promotion CRUD operations</task>
+      <task id="2">Create PromotionSummaryCards component</task>
+      <task id="3">Create PromotionList component with data table</task>
+      <task id="4">Create PromotionFormDialog component</task>
+      <task id="5">Create usePromotions React Query hooks</task>
+      <task id="6">Create Settings page at /settings/pricing/promotions</task>
+      <task id="7">Add translations (EN/FR)</task>
+      <task id="8">Write unit tests (Vitest)</task>
+      <task id="9">Write E2E tests (Playwright MCP)</task>
+      <task id="10">Test API with curl and verify DB state via MCP</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Page Navigation &amp; Layout - Page at /app/{orgSlug}/settings/pricing/promotions with title, add button, summary cards, data table</criterion>
+    <criterion id="AC2">Summary Cards - Active Promos, Expired, Total Uses, Upcoming counts</criterion>
+    <criterion id="AC3">Data Table - Columns: Code, Description, Type, Value, Valid From/To, Usage (current/max), Status, Actions; sortable, filterable, searchable</criterion>
+    <criterion id="AC4">Create Promo Dialog - Form with code (unique per org), description, discountType, value, validFrom, validTo, maxTotalUses, maxUsesPerContact, isActive</criterion>
+    <criterion id="AC5">Edit Promo Dialog - Pre-populated fields, code uniqueness validation</criterion>
+    <criterion id="AC6">Delete Promo - Confirmation dialog, success toast</criterion>
+    <criterion id="AC7">API Endpoints - GET list, GET stats, GET by id, POST create, PATCH update, DELETE</criterion>
+    <criterion id="AC8">Multi-Tenancy Isolation - Organization-scoped data access, code unique per org</criterion>
+    <criterion id="AC9">Code Uniqueness - Promo code must be unique within organization (@@unique([organizationId, code]))</criterion>
+    <criterion id="AC10">Usage Tracking - Display currentUses vs maxTotalUses, prevent creation if limits exceeded</criterion>
+    <criterion id="AC11">Validity Period - Date range picker for validFrom/validTo, status derived from dates</criterion>
+    <criterion id="AC12">Translations - EN/FR support for all labels and messages</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR57 - Promotions</section>
+        <snippet>The system shall support promotional discounts via promo codes with configurable values (fixed or percentage), eligibility rules and usage limits, and shall apply them transparently to quotes and invoices while keeping original price and discount traceable.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>Promotion Model</section>
+        <snippet>Promotion - Promo codes and discounts per FR57. Key fields: code (unique per org), description, discountType (FIXED/PERCENTAGE), value, validFrom, validTo, maxTotalUses, maxUsesPerContact, currentUses.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 9.4</section>
+        <snippet>Implement Settings → Pricing – Promotions &amp; Promo Codes. As a marketing/commerce owner, I want to configure promo codes and discounts, so that promotions are applied consistently and remain traceable.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/9-3-settings-pricing-optional-fees-catalogue.md</path>
+        <title>Story 9.3 - Optional Fees</title>
+        <section>Reference Implementation</section>
+        <snippet>Reference for API patterns, component structure, hooks, and translations. Follow same patterns for Promotions.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Promotion</symbol>
+        <lines>1046-1078</lines>
+        <reason>Prisma model definition for Promotion with all fields including @@unique([organizationId, code])</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>enum</kind>
+        <symbol>AmountType</symbol>
+        <lines>258-262</lines>
+        <reason>Enum for FIXED/PERCENTAGE discount types (reused from OptionalFee)</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/optional-fees.ts</path>
+        <kind>api-route</kind>
+        <symbol>optionalFeesRouter</symbol>
+        <lines>1-393</lines>
+        <reason>Reference implementation for pricing config API routes - follow same patterns</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <reason>Main VTC router where promotions routes must be registered</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>withTenantFilter, withTenantCreate, withTenantId</symbol>
+        <reason>Multi-tenancy helpers for Prisma queries</reason>
+      </file>
+      <file>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <reason>Middleware that extracts organizationId from session</reason>
+      </file>
+      <file>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/optional-fees/page.tsx</path>
+        <kind>page</kind>
+        <symbol>OptionalFeesPage</symbol>
+        <reason>Reference page structure for pricing settings</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/OptionalFeeSummaryCards.tsx</path>
+        <kind>component</kind>
+        <symbol>OptionalFeeSummaryCards</symbol>
+        <reason>Reference component for summary cards pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/OptionalFeeList.tsx</path>
+        <kind>component</kind>
+        <symbol>OptionalFeeList</symbol>
+        <reason>Reference component for data table pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/components/OptionalFeeFormDialog.tsx</path>
+        <kind>component</kind>
+        <symbol>OptionalFeeFormDialog</symbol>
+        <reason>Reference component for create/edit dialog pattern</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/hooks/useOptionalFees.ts</path>
+        <kind>hook</kind>
+        <symbol>useOptionalFees, useOptionalFeeStats</symbol>
+        <reason>Reference hooks for React Query patterns</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/settings/pricing/types/optional-fee.ts</path>
+        <kind>types</kind>
+        <symbol>OptionalFee, OptionalFeeStats</symbol>
+        <reason>Reference TypeScript types structure</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/__tests__/optional-fees.test.ts</path>
+        <kind>test</kind>
+        <symbol>OptionalFees API tests</symbol>
+        <reason>Reference test structure and patterns</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/en.json</path>
+        <kind>i18n</kind>
+        <symbol>settings.pricing.optionalFees</symbol>
+        <reason>Reference translation structure - add promotions section</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/fr.json</path>
+        <kind>i18n</kind>
+        <symbol>settings.pricing.optionalFees</symbol>
+        <reason>Reference translation structure - add promotions section</reason>
+      </file>
+      <file>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>SettingsLayout</symbol>
+        <reason>Settings navigation - add Promotions menu item</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>@repo/database</package>
+        <usage>Prisma client for Promotion CRUD</usage>
+      </node>
+      <node>
+        <package>hono</package>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>hono-openapi</package>
+        <usage>OpenAPI documentation decorators</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching and caching hooks</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons: Tag, Percent, Calendar, Users, Plus, Pencil, Trash2, Gift</usage>
+      </node>
+      <node>
+        <package>shadcn/ui</package>
+        <usage>Card, Table, Dialog, Badge, Button, Input, Select, DatePicker, Textarea</usage>
+      </node>
+      <node>
+        <package>date-fns</package>
+        <usage>Date formatting and comparison for validity periods</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Follow existing patterns from optional-fees implementation</constraint>
+    <constraint>All API routes must use organizationMiddleware for multi-tenancy</constraint>
+    <constraint>Use withTenantFilter, withTenantCreate, withTenantId helpers for Prisma queries</constraint>
+    <constraint>Validate all inputs with Zod schemas</constraint>
+    <constraint>Use shadcn/ui components for consistent UI</constraint>
+    <constraint>Support both EN and FR translations</constraint>
+    <constraint>Promo code must be unique per organization (@@unique([organizationId, code]))</constraint>
+    <constraint>Value stored as Decimal(10,4) - convert to number for JSON responses</constraint>
+    <constraint>validFrom and validTo are DateTime - Europe/Paris business time</constraint>
+    <constraint>currentUses is read-only from UI, incremented by pricing engine when promo applied</constraint>
+    <constraint>Status derived from: isActive AND now() between validFrom and validTo AND currentUses &lt; maxTotalUses</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/pricing/promotions</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/promotions?page=1&amp;limit=50&amp;type=FIXED|PERCENTAGE&amp;status=active|expired|upcoming|inactive&amp;search=string</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing/promotions/stats</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/promotions/stats -> { active, expired, upcoming, totalUses }</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing/promotions/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/promotions/:id -> Promotion</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/pricing/promotions</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/pricing/promotions { code, description?, discountType, value, validFrom, validTo, maxTotalUses?, maxUsesPerContact?, isActive? }</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/pricing/promotions/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>PATCH /api/vtc/pricing/promotions/:id { ...partial fields except currentUses }</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/pricing/promotions/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/vtc/pricing/promotions/:id -> { success: true }</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing/promotions/validate/:code</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing/promotions/validate/:code -> { valid: boolean, promotion?: Promotion, reason?: string }</signature>
+      <path>packages/api/src/routes/vtc/promotions.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests following existing patterns in packages/api/src/routes/vtc/__tests__/.
+      Use Playwright MCP for E2E tests.
+      Use curl for API endpoint verification.
+      Use MCP @postgres_vtc_sixiemme_etoile for database state verification.
+      All tests must cover multi-tenancy isolation and code uniqueness.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/promotions.test.ts</location>
+      <location>apps/web/e2e/settings-promotions.spec.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test page renders with correct layout elements</idea>
+      <idea acId="AC2">Test stats endpoint returns correct counts (active, expired, upcoming, totalUses)</idea>
+      <idea acId="AC3">Test table displays all columns, sorting, filtering, search</idea>
+      <idea acId="AC4">Test create dialog validation and submission</idea>
+      <idea acId="AC5">Test edit dialog pre-population and update</idea>
+      <idea acId="AC6">Test delete confirmation and success</idea>
+      <idea acId="AC7">Test all API endpoints with valid/invalid data</idea>
+      <idea acId="AC8">Test organization isolation - cannot access other org's promos</idea>
+      <idea acId="AC9">Test code uniqueness - reject duplicate codes within same org</idea>
+      <idea acId="AC10">Test usage display shows currentUses/maxTotalUses correctly</idea>
+      <idea acId="AC11">Test date picker for validity period, status derivation</idea>
+      <idea acId="AC12">Test translations switch between EN/FR</idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -3,6 +3,7 @@
  * Story 9.1: Settings → Pricing – Seasonal Multipliers
  * Story 9.2: Settings → Pricing – Advanced Rate Modifiers
  * Story 9.3: Settings → Pricing – Optional Fees Catalogue
+ * Story 9.4: Settings → Pricing – Promotions & Promo Codes
  */
 
 export {
@@ -34,3 +35,14 @@ export {
 	useDeleteOptionalFee,
 	optionalFeeKeys,
 } from "./useOptionalFees";
+
+export {
+	usePromotions,
+	usePromotionStats,
+	usePromotion,
+	useValidatePromoCode,
+	useCreatePromotion,
+	useUpdatePromotion,
+	useDeletePromotion,
+	promotionKeys,
+} from "./usePromotions";

@@ -1135,7 +1135,8 @@
 					"dispos": "Disposals",
 					"seasonalMultipliers": "Seasonal Multipliers",
 					"advancedRates": "Advanced Rates",
-					"optionalFees": "Optional Fees"
+					"optionalFees": "Optional Fees",
+					"promotions": "Promotions"
 				},
 				"title": "Organization"
 			}
@@ -1396,6 +1397,89 @@
 				"actions": {
 					"edit": "Edit",
 					"delete": "Delete"
+				}
+			},
+			"promotions": {
+				"title": "Promotions",
+				"description": "Configure promo codes and discounts for quotes and invoices",
+				"addButton": "Add Promotion",
+				"stats": {
+					"active": "Active",
+					"expired": "Expired",
+					"upcoming": "Upcoming",
+					"totalUses": "Total Uses"
+				},
+				"table": {
+					"code": "Code",
+					"description": "Description",
+					"type": "Type",
+					"value": "Value",
+					"validFrom": "Valid From",
+					"validTo": "Valid To",
+					"usage": "Usage",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"types": {
+					"FIXED": "Fixed",
+					"PERCENTAGE": "Percentage"
+				},
+				"status": {
+					"all": "All",
+					"active": "Active",
+					"expired": "Expired",
+					"upcoming": "Upcoming",
+					"inactive": "Inactive"
+				},
+				"form": {
+					"createTitle": "Create Promotion",
+					"editTitle": "Edit Promotion",
+					"code": "Promo Code",
+					"codePlaceholder": "e.g., SUMMER2024",
+					"codeHelp": "Unique code that customers will enter",
+					"description": "Description",
+					"descriptionPlaceholder": "Optional description...",
+					"discountType": "Discount Type",
+					"discountTypePlaceholder": "Select type...",
+					"value": "Value",
+					"valueHelp": "Enter amount in EUR for fixed, or percentage value",
+					"validFrom": "Valid From",
+					"validTo": "Valid To",
+					"validityHelp": "Promotion is only valid during this period",
+					"maxTotalUses": "Max Total Uses",
+					"maxTotalUsesHelp": "Leave empty for unlimited uses",
+					"maxUsesPerContact": "Max Uses Per Contact",
+					"maxUsesPerContactHelp": "Limit uses per customer",
+					"isActive": "Active",
+					"currentUses": "Current Uses",
+					"create": "Create",
+					"save": "Save Changes",
+					"cancel": "Cancel"
+				},
+				"delete": {
+					"title": "Delete Promotion",
+					"message": "Are you sure you want to delete promo code \"{code}\"? This action cannot be undone.",
+					"usageWarning": "This promotion has been used {count} times.",
+					"confirm": "Delete",
+					"cancel": "Cancel"
+				},
+				"toast": {
+					"createSuccess": "Promotion created successfully",
+					"updateSuccess": "Promotion updated successfully",
+					"deleteSuccess": "Promotion deleted successfully",
+					"error": "An error occurred",
+					"codeExists": "Promo code already exists"
+				},
+				"empty": {
+					"title": "No promotions configured",
+					"description": "Create your first promo code to offer discounts."
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
+				},
+				"usage": {
+					"unlimited": "∞"
 				}
 			}
 		}
