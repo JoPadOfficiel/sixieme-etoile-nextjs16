@@ -1638,7 +1638,8 @@
 			"email": "Email",
 			"phone": "Téléphone",
 			"quotes": "Devis",
-			"invoices": "Factures"
+			"invoices": "Factures",
+			"margin": "Marge"
 		},
 		"types": {
 			"individual": "Particulier",
@@ -1716,7 +1717,38 @@
 		"tabs": {
 			"details": "Détails",
 			"timeline": "Activité",
+			"commercial": "Commercial",
 			"contract": "Contrat"
+		},
+		"margin": {
+			"profitable": "Rentable ({margin} de marge)",
+			"lowMargin": "Marge faible ({margin})",
+			"loss": "Perte ({margin})",
+			"unknown": "Pas de données de marge"
+		},
+		"commercial": {
+			"title": "Résumé commercial",
+			"averageMargin": "Marge moyenne",
+			"totalRevenue": "Chiffre d'affaires",
+			"fromQuotes": "Sur {count} devis",
+			"invoiceSummary": "Résumé des factures",
+			"totalInvoices": "Total factures",
+			"paidAmount": "Montant payé",
+			"totalAmount": "Montant total",
+			"commission": "Taux de commission",
+			"commissionDescription": "Appliqué aux factures de ce partenaire",
+			"typicalGrids": "Grilles assignées",
+			"zoneRoutes": "Routes de zone",
+			"excursions": "Excursions",
+			"dispoPackages": "Forfaits mise à disposition",
+			"noGridsAssigned": "Aucune grille assignée à ce partenaire.",
+			"fetchError": "Échec du chargement des métriques commerciales.",
+			"profitability": {
+				"profitable": "Rentable - au-dessus de la marge cible",
+				"lowMargin": "Marge faible - en dessous de la cible",
+				"loss": "Perte - marge négative",
+				"unknown": "Pas de données de marge disponibles"
+			}
 		},
 		"timeline": {
 			"title": "Historique d'activité",

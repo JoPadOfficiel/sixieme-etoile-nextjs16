@@ -23,6 +23,10 @@ import {
   SearchIcon,
   UserIcon,
   UsersIcon,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  MinusIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -78,6 +82,63 @@ export function ContactsTable({ onAddContact, onEditContact }: ContactsTableProp
     setPage(1); // Reset to first page on search
   };
 
+  // Story 2.5: Render profitability badge based on average margin
+  const renderProfitabilityBadge = (
+    band: ContactWithCounts["profitabilityBand"],
+    margin: ContactWithCounts["averageMarginPercent"]
+  ) => {
+    const formattedMargin = margin !== null && margin !== undefined
+      ? `${margin.toFixed(1)}%`
+      : "—";
+
+    switch (band) {
+      case "green":
+        return (
+          <Badge
+            variant="outline"
+            className="gap-1 border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+            title={t("contacts.margin.profitable", { margin: formattedMargin })}
+          >
+            <TrendingUp className="size-3" />
+            {formattedMargin}
+          </Badge>
+        );
+      case "orange":
+        return (
+          <Badge
+            variant="outline"
+            className="gap-1 border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400"
+            title={t("contacts.margin.lowMargin", { margin: formattedMargin })}
+          >
+            <AlertTriangle className="size-3" />
+            {formattedMargin}
+          </Badge>
+        );
+      case "red":
+        return (
+          <Badge
+            variant="outline"
+            className="gap-1 border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400"
+            title={t("contacts.margin.loss", { margin: formattedMargin })}
+          >
+            <TrendingDown className="size-3" />
+            {formattedMargin}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="gap-1 text-muted-foreground"
+            title={t("contacts.margin.unknown")}
+          >
+            <MinusIcon className="size-3" />
+            —
+          </Badge>
+        );
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with search and add button */}
@@ -119,12 +180,13 @@ export function ContactsTable({ onAddContact, onEditContact }: ContactsTableProp
                   <TableHead>{t("contacts.columns.phone")}</TableHead>
                   <TableHead className="text-center">{t("contacts.columns.quotes")}</TableHead>
                   <TableHead className="text-center">{t("contacts.columns.invoices")}</TableHead>
+                  <TableHead className="text-center">{t("contacts.columns.margin")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data?.data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                       {search ? t("contacts.noResults") : t("contacts.empty")}
                     </TableCell>
                   </TableRow>
@@ -162,6 +224,9 @@ export function ContactsTable({ onAddContact, onEditContact }: ContactsTableProp
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">{contact._count.invoices}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {renderProfitabilityBadge(contact.profitabilityBand, contact.averageMarginPercent)}
                       </TableCell>
                     </TableRow>
                   ))

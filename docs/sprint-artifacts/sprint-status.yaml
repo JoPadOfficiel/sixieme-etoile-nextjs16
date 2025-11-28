@@ -51,7 +51,7 @@ development_status:
   2-2-store-partner-contract-data-rate-grid-links: done
   2-3-allow-safe-reclassification-partner-private: done
   2-4-link-quotes-invoices-to-contacts-partner-agencies: done
-  2-5-expose-commercial-context-crm-views: backlog
+  2-5-expose-commercial-context-crm-views: done
   epic-3: contexted
   3-1-implement-pricing-zone-model-zones-editor-ui: done
   3-2-implement-zone-route-model-grid-routes-editor: done

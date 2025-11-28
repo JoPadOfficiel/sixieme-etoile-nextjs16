@@ -10,10 +10,11 @@ import {
 } from "@ui/components/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useTranslations } from "next-intl";
-import { User, TrendingUp, Briefcase } from "lucide-react";
+import { User, TrendingUp, Briefcase, BarChart3 } from "lucide-react";
 import { ContactForm } from "./ContactForm";
 import { PartnerContractForm } from "./PartnerContractForm";
 import { ContactTimeline } from "./ContactTimeline";
+import { ContactCommercialSummary } from "./ContactCommercialSummary";
 import type { Contact } from "../types";
 
 interface ContactDrawerProps {
@@ -58,7 +59,7 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
 
         {contact ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 {t("contacts.tabs.details")}
@@ -66,6 +67,10 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
               <TabsTrigger value="timeline" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 {t("contacts.tabs.timeline")}
+              </TabsTrigger>
+              <TabsTrigger value="commercial" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                {t("contacts.tabs.commercial")}
               </TabsTrigger>
               {contact.isPartner && (
                 <TabsTrigger value="contract" className="flex items-center gap-2">
@@ -85,6 +90,13 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
 
             <TabsContent value="timeline" className="mt-4">
               <ContactTimeline contactId={contact.id} />
+            </TabsContent>
+
+            <TabsContent value="commercial" className="mt-4">
+              <ContactCommercialSummary
+                contactId={contact.id}
+                isPartner={contact.isPartner}
+              />
             </TabsContent>
 
             {contact.isPartner && (

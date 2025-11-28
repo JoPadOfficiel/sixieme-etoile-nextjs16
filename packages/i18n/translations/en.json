@@ -1638,7 +1638,8 @@
 			"email": "Email",
 			"phone": "Phone",
 			"quotes": "Quotes",
-			"invoices": "Invoices"
+			"invoices": "Invoices",
+			"margin": "Margin"
 		},
 		"types": {
 			"individual": "Individual",
@@ -1716,7 +1717,38 @@
 		"tabs": {
 			"details": "Details",
 			"timeline": "Activity",
+			"commercial": "Commercial",
 			"contract": "Contract"
+		},
+		"margin": {
+			"profitable": "Profitable ({margin} margin)",
+			"lowMargin": "Low margin ({margin})",
+			"loss": "Loss ({margin})",
+			"unknown": "No margin data"
+		},
+		"commercial": {
+			"title": "Commercial Summary",
+			"averageMargin": "Average Margin",
+			"totalRevenue": "Total Revenue",
+			"fromQuotes": "From {count} quotes",
+			"invoiceSummary": "Invoice Summary",
+			"totalInvoices": "Total Invoices",
+			"paidAmount": "Paid Amount",
+			"totalAmount": "Total Amount",
+			"commission": "Commission Rate",
+			"commissionDescription": "Applied to invoices for this partner",
+			"typicalGrids": "Assigned Grids",
+			"zoneRoutes": "Zone Routes",
+			"excursions": "Excursions",
+			"dispoPackages": "Dispo Packages",
+			"noGridsAssigned": "No grids assigned to this partner.",
+			"fetchError": "Failed to load commercial metrics.",
+			"profitability": {
+				"profitable": "Profitable - above target margin",
+				"lowMargin": "Low margin - below target",
+				"loss": "Loss - negative margin",
+				"unknown": "No margin data available"
+			}
 		},
 		"timeline": {
 			"title": "Activity Timeline",

@@ -94,8 +94,45 @@ export const contactsRouter = new Hono()
 				db.contact.count({ where }),
 			]);
 
+			// Story 2.5: Calculate average margin for each contact
+			// Use a single query to get all margins for efficiency
+			const contactIds = contacts.map((c) => c.id);
+			const marginsByContact = await db.quote.groupBy({
+				by: ["contactId"],
+				where: {
+					contactId: { in: contactIds },
+					organizationId,
+					status: { in: ["SENT", "VIEWED", "ACCEPTED"] },
+					marginPercent: { not: null },
+				},
+				_avg: { marginPercent: true },
+			});
+
+			// Create a map for quick lookup
+			const marginMap = new Map(
+				marginsByContact.map((m) => [m.contactId, m._avg.marginPercent])
+			);
+
+			// Calculate profitability band
+			const getProfitabilityBand = (margin: number | null): "green" | "orange" | "red" | "unknown" => {
+				if (margin === null) return "unknown";
+				if (margin >= 20) return "green";
+				if (margin >= 0) return "orange";
+				return "red";
+			};
+
+			// Enrich contacts with margin data
+			const enrichedContacts = contacts.map((contact) => {
+				const avgMargin = marginMap.get(contact.id) ?? null;
+				return {
+					...contact,
+					averageMarginPercent: avgMargin ? Number(avgMargin) : null,
+					profitabilityBand: getProfitabilityBand(avgMargin ? Number(avgMargin) : null),
+				};
+			});
+
 			return c.json({
-				data: contacts,
+				data: enrichedContacts,
 				meta: {
 					page,
 					limit,
@@ -415,6 +452,153 @@ export const contactsRouter = new Hono()
 					contactId,
 					limit,
 					totalItems: timeline.length,
+				},
+			});
+		},
+	)
+
+	// ============================================================================
+	// Story 2.5: Commercial Metrics for Contact
+	// ============================================================================
+
+	// Get contact commercial metrics
+	.get(
+		"/:id/commercial-metrics",
+		describeRoute({
+			summary: "Get contact commercial metrics",
+			description:
+				"Get aggregated commercial metrics for a contact including average margin, revenue, and typical grids",
+			tags: ["VTC - Contacts"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const contactId = c.req.param("id");
+
+			// Verify contact exists and belongs to this organization
+			const contact = await db.contact.findFirst({
+				where: withTenantId(contactId, organizationId),
+				include: {
+					partnerContract: {
+						include: {
+							zoneRoutes: {
+								include: {
+									zoneRoute: {
+										include: {
+											fromZone: { select: { id: true, name: true, code: true } },
+											toZone: { select: { id: true, name: true, code: true } },
+										},
+									},
+								},
+							},
+							excursionPackages: {
+								include: {
+									excursionPackage: { select: { id: true, name: true } },
+								},
+							},
+							dispoPackages: {
+								include: {
+									dispoPackage: { select: { id: true, name: true } },
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!contact) {
+				throw new HTTPException(404, {
+					message: "Contact not found",
+				});
+			}
+
+			// Aggregate quote metrics
+			const quoteMetrics = await db.quote.aggregate({
+				where: {
+					contactId,
+					organizationId,
+					status: { in: ["SENT", "VIEWED", "ACCEPTED"] },
+				},
+				_count: { id: true },
+				_sum: { finalPrice: true },
+				_avg: { marginPercent: true },
+			});
+
+			// Aggregate invoice metrics
+			const invoiceMetrics = await db.invoice.aggregate({
+				where: { contactId, organizationId },
+				_count: { id: true },
+				_sum: { totalInclVat: true },
+			});
+
+			// Aggregate paid invoices separately
+			const paidInvoiceMetrics = await db.invoice.aggregate({
+				where: { contactId, organizationId, status: "PAID" },
+				_sum: { totalInclVat: true },
+			});
+
+			// Calculate profitability band
+			const avgMargin = quoteMetrics._avg.marginPercent
+				? Number(quoteMetrics._avg.marginPercent)
+				: null;
+			
+			let profitabilityBand: "green" | "orange" | "red" | "unknown" = "unknown";
+			if (avgMargin !== null) {
+				if (avgMargin >= 20) {
+					profitabilityBand = "green";
+				} else if (avgMargin >= 0) {
+					profitabilityBand = "orange";
+				} else {
+					profitabilityBand = "red";
+				}
+			}
+
+			// Build typical grids for partners
+			let typicalGrids = null;
+			if (contact.isPartner && contact.partnerContract) {
+				typicalGrids = {
+					zoneRoutes: contact.partnerContract.zoneRoutes.map((zr) => ({
+						id: zr.zoneRoute.id,
+						fromZone: zr.zoneRoute.fromZone.name,
+						toZone: zr.zoneRoute.toZone.name,
+					})),
+					excursionPackages: contact.partnerContract.excursionPackages.map((ep) => ({
+						id: ep.excursionPackage.id,
+						name: ep.excursionPackage.name,
+					})),
+					dispoPackages: contact.partnerContract.dispoPackages.map((dp) => ({
+						id: dp.dispoPackage.id,
+						name: dp.dispoPackage.name,
+					})),
+				};
+			}
+
+			return c.json({
+				contactId,
+				metrics: {
+					// Quote metrics
+					totalQuotes: quoteMetrics._count.id,
+					totalQuotesValue: quoteMetrics._sum.finalPrice
+						? Number(quoteMetrics._sum.finalPrice)
+						: 0,
+					averageMarginPercent: avgMargin,
+					profitabilityBand,
+
+					// Invoice metrics
+					totalInvoices: invoiceMetrics._count.id,
+					totalInvoicesValue: invoiceMetrics._sum.totalInclVat
+						? Number(invoiceMetrics._sum.totalInclVat)
+						: 0,
+					paidInvoicesValue: paidInvoiceMetrics._sum.totalInclVat
+						? Number(paidInvoiceMetrics._sum.totalInclVat)
+						: 0,
+
+					// Partner-specific
+					commissionPercent: contact.partnerContract
+						? Number(contact.partnerContract.commissionPercent)
+						: null,
+
+					// Typical grids
+					typicalGrids,
 				},
 			});
 		},

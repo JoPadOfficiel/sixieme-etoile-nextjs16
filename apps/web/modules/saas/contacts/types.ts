@@ -26,6 +26,55 @@ export interface ContactWithCounts extends Contact {
     quotes: number;
     invoices: number;
   };
+  /** Average margin from quotes (Story 2.5) */
+  averageMarginPercent?: number | null;
+  /** Profitability band based on average margin (Story 2.5) */
+  profitabilityBand?: "green" | "orange" | "red" | "unknown";
+}
+
+/**
+ * Commercial metrics types (Story 2.5)
+ */
+export type ProfitabilityBand = "green" | "orange" | "red" | "unknown";
+
+export interface TypicalGrids {
+  zoneRoutes: Array<{
+    id: string;
+    fromZone: string;
+    toZone: string;
+  }>;
+  excursionPackages: Array<{
+    id: string;
+    name: string;
+  }>;
+  dispoPackages: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
+export interface CommercialMetrics {
+  // Quote metrics
+  totalQuotes: number;
+  totalQuotesValue: number;
+  averageMarginPercent: number | null;
+  profitabilityBand: ProfitabilityBand;
+  
+  // Invoice metrics
+  totalInvoices: number;
+  totalInvoicesValue: number;
+  paidInvoicesValue: number;
+  
+  // Partner-specific
+  commissionPercent: number | null;
+  
+  // Typical grids (partners only)
+  typicalGrids: TypicalGrids | null;
+}
+
+export interface CommercialMetricsResponse {
+  contactId: string;
+  metrics: CommercialMetrics;
 }
 
 export interface ContactsResponse {
