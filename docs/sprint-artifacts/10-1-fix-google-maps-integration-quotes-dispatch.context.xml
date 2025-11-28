@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>10-1</story-id>
+    <title>Fix Google Maps Integration for Quotes & Dispatch</title>
+    <created>2025-11-28T13:55:00+01:00</created>
+    <priority>CRITICAL</priority>
+  </metadata>
+
+  <problem-summary>
+    <issue type="critical">
+      Google Maps Places API is never loaded, causing address autocomplete to fail.
+      All quotes have NULL coordinates, breaking dispatch and pricing.
+    </issue>
+    <impact>
+      - Quote creation: No address suggestions, no coordinates captured
+      - Dispatch: Empty screen, no missions visible
+      - Pricing: Cannot calculate real distances/routes
+      - Maps: Not displayed in quote details
+    </impact>
+  </problem-summary>
+
+  <investigation-findings>
+    <finding id="1" severity="critical">
+      <title>Google Maps Script Not Loaded</title>
+      <description>
+        AddressAutocomplete.tsx checks for window.google?.maps?.places but the 
+        Google Maps JavaScript API is never loaded globally in the application.
+      </description>
+      <file>apps/web/modules/saas/shared/components/AddressAutocomplete.tsx</file>
+      <code-snippet line="59-67">
+        useEffect(() => {
+          if (typeof window !== "undefined" && window.google?.maps?.places) {
+            autocompleteService.current = new google.maps.places.AutocompleteService();
+            const dummyDiv = document.createElement("div");
+            placesService.current = new google.maps.places.PlacesService(dummyDiv);
+            setIsGoogleLoaded(true);
+          }
+        }, []);
+      </code-snippet>
+    </finding>
+
+    <finding id="2" severity="critical">
+      <title>Places Library Not Included</title>
+      <description>
+        When Google Maps is loaded in GoogleMap.tsx and DispatchMapGoogle.tsx, 
+        only the 'geometry' library is loaded, not 'places'.
+      </description>
+      <file>apps/web/modules/saas/shared/components/GoogleMap.tsx</file>
+      <code-snippet line="103-104">
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&amp;libraries=geometry`;
+      </code-snippet>
+    </finding>
+
+    <finding id="3" severity="critical">
+      <title>All Quotes Have NULL Coordinates</title>
+      <description>
+        Database query shows all quotes have NULL for pickupLatitude, pickupLongitude,
+        dropoffLatitude, dropoffLongitude.
+      </description>
+      <evidence>
+        SQL: SELECT pickupLatitude, pickupLongitude FROM quote WHERE organizationId = 'da786f45-0557-475d-b402-888602f4c176'
+        Result: All rows have NULL for coordinates
+      </evidence>
+    </finding>
+
+    <finding id="4" severity="high">
+      <title>Seed Data Missing Coordinates</title>
+      <description>
+        The seed script creates quotes with address strings but no coordinates.
+      </description>
+      <file>packages/database/prisma/seed-vtc-complete.ts</file>
+    </finding>
+
+    <finding id="5" severity="info">
+      <title>API Key Configured and Working</title>
+      <description>
+        Google Maps API key is properly configured in organization_integration_settings
+        and has been tested successfully (status: 'connected').
+      </description>
+      <evidence>
+        googleMapsApiKey: AIzaSyAEDO_LN6RMESjJWYyFOlbYICkGygUWGeY
+        googleMapsStatus: connected
+        googleMapsTestedAt: 2025-11-28T11:38:53.277Z
+      </evidence>
+    </finding>
+  </investigation-findings>
+
+  <existing-code-analysis>
+    <component name="AddressAutocomplete">
+      <path>apps/web/modules/saas/shared/components/AddressAutocomplete.tsx</path>
+      <status>Partially implemented - expects Google Maps to be pre-loaded</status>
+      <issue>Never receives Google Maps because script is not loaded</issue>
+    </component>
+
+    <component name="GoogleMap">
+      <path>apps/web/modules/saas/shared/components/GoogleMap.tsx</path>
+      <status>Works when apiKey is passed, but only loads geometry library</status>
+      <issue>Does not load places library needed for autocomplete</issue>
+    </component>
+
+    <component name="DispatchMapGoogle">
+      <path>apps/web/modules/saas/dispatch/components/DispatchMapGoogle.tsx</path>
+      <status>Works for map display but no missions have coordinates</status>
+      <issue>Same library loading issue as GoogleMap</issue>
+    </component>
+
+    <hook name="useGoogleMapsApiKey">
+      <path>apps/web/modules/saas/shared/hooks/useGoogleMapsApiKey.ts</path>
+      <status>Working - fetches API key from backend</status>
+    </hook>
+
+    <api name="integrations/google-maps-key">
+      <path>packages/api/src/routes/vtc/integrations.ts</path>
+      <status>Working - returns unmasked API key for client use</status>
+    </api>
+
+    <service name="vehicle-selection">
+      <path>packages/api/src/services/vehicle-selection.ts</path>
+      <status>Has Google Maps routing support but never receives valid coordinates</status>
+    </service>
+  </existing-code-analysis>
+
+  <solution-architecture>
+    <component name="GoogleMapsProvider" type="new">
+      <purpose>
+        Central provider that loads Google Maps JS API with all required libraries
+        (places, geometry) and provides loading state to children.
+      </purpose>
+      <location>apps/web/modules/saas/shared/providers/GoogleMapsProvider.tsx</location>
+      <integration>
+        Wrap organization layout to ensure Google Maps is available for all
+        organization-scoped pages.
+      </integration>
+    </component>
+
+    <modification name="AddressAutocomplete">
+      <change>Use useGoogleMaps() hook instead of direct window check</change>
+      <change>Show proper loading/error states</change>
+      <change>Ensure coordinates are always captured on selection</change>
+    </modification>
+
+    <modification name="GoogleMap">
+      <change>Add 'places' to libraries parameter</change>
+      <change>Check for existing script with correct libraries before loading</change>
+    </modification>
+
+    <modification name="seed-vtc-complete">
+      <change>Add realistic Paris coordinates to all seed quotes</change>
+      <change>Ensure future-dated ACCEPTED quotes exist for dispatch testing</change>
+    </modification>
+  </solution-architecture>
+
+  <paris-coordinates-reference>
+    <location name="CDG Airport Terminal 2" lat="49.0097" lng="2.5479" />
+    <location name="Orly Airport" lat="48.7262" lng="2.3652" />
+    <location name="Tour Eiffel" lat="48.8584" lng="2.2945" />
+    <location name="Gare de Lyon" lat="48.8443" lng="2.3739" />
+    <location name="Château de Versailles" lat="48.8049" lng="2.1204" />
+    <location name="Hôtel Ritz Place Vendôme" lat="48.8683" lng="2.3285" />
+    <location name="Four Seasons George V" lat="48.8693" lng="2.3008" />
+    <location name="Opéra Garnier" lat="48.8720" lng="2.3316" />
+    <location name="Champs-Élysées" lat="48.8698" lng="2.3075" />
+    <location name="Giverny" lat="49.0758" lng="1.5339" />
+    <location name="Arc de Triomphe" lat="48.8738" lng="2.2950" />
+    <location name="Sacré-Cœur" lat="48.8867" lng="2.3431" />
+    <location name="Notre-Dame" lat="48.8530" lng="2.3499" />
+    <location name="Louvre" lat="48.8606" lng="2.3376" />
+  </paris-coordinates-reference>
+
+  <implementation-order>
+    <step order="1">Create GoogleMapsProvider component</step>
+    <step order="2">Update organization layout to use provider</step>
+    <step order="3">Update AddressAutocomplete to use provider context</step>
+    <step order="4">Update GoogleMap and DispatchMapGoogle to include places library</step>
+    <step order="5">Update seed script with coordinates</step>
+    <step order="6">Re-run seed to populate test data</step>
+    <step order="7">Test full flow: create quote → dispatch → map display</step>
+  </implementation-order>
+
+  <testing-scenarios>
+    <scenario id="1">
+      <name>Address Autocomplete</name>
+      <steps>
+        1. Navigate to /app/vtc-premium-paris/quotes/new
+        2. Start typing "Aéroport Charles de Gaulle"
+        3. Verify suggestions appear from Google Places
+        4. Select a suggestion
+        5. Verify address field is populated
+        6. Verify coordinates are captured (check form state)
+      </steps>
+    </scenario>
+
+    <scenario id="2">
+      <name>Quote Creation with Coordinates</name>
+      <steps>
+        1. Create a new quote with pickup and dropoff addresses
+        2. Submit the quote
+        3. Query database to verify coordinates are saved
+        4. Verify tripAnalysis includes distance/duration
+      </steps>
+    </scenario>
+
+    <scenario id="3">
+      <name>Dispatch Screen</name>
+      <steps>
+        1. Navigate to /app/vtc-premium-paris/dispatch
+        2. Verify missions list shows accepted quotes
+        3. Select a mission
+        4. Verify map shows pickup/dropoff markers
+        5. Verify route is displayed on map
+      </steps>
+    </scenario>
+
+    <scenario id="4">
+      <name>Quote Detail Map</name>
+      <steps>
+        1. Navigate to a quote detail page
+        2. Verify map is displayed (not "Pas encore de données tarifaires")
+        3. Verify pickup and dropoff markers are shown
+      </steps>
+    </scenario>
+  </testing-scenarios>
+</story-context>
