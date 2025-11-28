@@ -139,6 +139,11 @@ export async function getIntegrationSettingsMasked(organizationId: string): Prom
   collectApiKey: string | null;
   hasGoogleMapsKey: boolean;
   hasCollectApiKey: boolean;
+  preferredFuelType: string | null;
+  googleMapsStatus: string | null;
+  googleMapsTestedAt: Date | null;
+  collectApiStatus: string | null;
+  collectApiTestedAt: Date | null;
   updatedAt: Date | null;
 }> {
   const settings = await db.organizationIntegrationSettings.findUnique({
@@ -157,6 +162,11 @@ export async function getIntegrationSettingsMasked(organizationId: string): Prom
     collectApiKey: maskApiKey(collectApiKey),
     hasGoogleMapsKey: !!googleMapsKey,
     hasCollectApiKey: !!collectApiKey,
+    preferredFuelType: settings?.preferredFuelType || "DIESEL",
+    googleMapsStatus: settings?.googleMapsStatus || null,
+    googleMapsTestedAt: settings?.googleMapsTestedAt || null,
+    collectApiStatus: settings?.collectApiStatus || null,
+    collectApiTestedAt: settings?.collectApiTestedAt || null,
     updatedAt: settings?.updatedAt || null,
   };
 }

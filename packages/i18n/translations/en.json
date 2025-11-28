@@ -547,7 +547,15 @@
 				"collectApi": {
 					"title": "CollectAPI Key",
 					"description": "Used for fuel price data retrieval.",
-					"newKey": "Enter new API key"
+					"newKey": "Enter new API key",
+					"fuelType": "Preferred fuel type",
+					"pricesFrom": "Fuel prices from"
+				},
+				"testConnection": {
+					"button": "Test Connection",
+					"success": "Connection successful",
+					"failed": "Connection failed",
+					"testing": "Testing connection..."
 				},
 				"notifications": {
 					"updated": "Integration settings updated successfully.",

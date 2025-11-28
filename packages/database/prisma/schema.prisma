@@ -1414,6 +1414,15 @@ model OrganizationIntegrationSettings {
   googleMapsApiKey String?
   collectApiKey    String?
 
+  // Preferences
+  preferredFuelType String? @default("DIESEL") // DIESEL, GASOLINE, LPG
+
+  // Connection status cache (updated after test)
+  googleMapsStatus   String? // connected, invalid, unknown
+  googleMapsTestedAt DateTime?
+  collectApiStatus   String? // connected, invalid, unknown
+  collectApiTestedAt DateTime?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

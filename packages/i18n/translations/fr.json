@@ -547,7 +547,15 @@
 				"collectApi": {
 					"title": "Clé CollectAPI",
 					"description": "Utilisée pour récupérer les prix du carburant.",
-					"newKey": "Entrer une nouvelle clé API"
+					"newKey": "Entrer une nouvelle clé API",
+					"fuelType": "Type de carburant préféré",
+					"pricesFrom": "Prix du carburant de"
+				},
+				"testConnection": {
+					"button": "Tester la connexion",
+					"success": "Connexion réussie",
+					"failed": "Échec de la connexion",
+					"testing": "Test de connexion en cours..."
 				},
 				"notifications": {
 					"updated": "Paramètres d'intégration mis à jour avec succès.",

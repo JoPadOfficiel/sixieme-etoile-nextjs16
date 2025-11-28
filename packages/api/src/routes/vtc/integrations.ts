@@ -23,6 +23,8 @@ import {
   resolveApiKey,
   type IntegrationKeyType,
 } from "../../lib/integration-keys";
+import { testCollectAPIConnection } from "../../lib/collectapi-client";
+import { testGoogleMapsConnection } from "../../lib/google-maps-client";
 import { organizationMiddleware } from "../../middleware/organization";
 
 /**
@@ -177,6 +179,76 @@ export const integrationsRouter = new Hono()
 
       return c.json({
         key,
+      });
+    }
+  )
+
+  // Test connection for a specific API key
+  .post(
+    "/test/:keyType",
+    validator("param", keyTypeParamSchema),
+    describeRoute({
+      summary: "Test API connection",
+      description:
+        "Test the connectivity of a specific API key (Google Maps or CollectAPI). Only admin/owner roles can access.",
+      tags: ["VTC - Settings"],
+      responses: {
+        200: {
+          description: "Test result with connection status",
+        },
+        404: {
+          description: "No API key configured for this integration",
+        },
+        403: {
+          description: "Access denied - admin/owner role required",
+        },
+      },
+    }),
+    async (c) => {
+      const organizationId = c.get("organizationId");
+      const { keyType } = c.req.valid("param");
+
+      // Get the API key
+      const apiKey = await resolveApiKey(organizationId, keyType as IntegrationKeyType);
+
+      if (!apiKey) {
+        throw new HTTPException(404, {
+          message: `No ${keyType === "googleMaps" ? "Google Maps" : "CollectAPI"} key configured`,
+        });
+      }
+
+      // Test the connection
+      let testResult;
+      if (keyType === "googleMaps") {
+        testResult = await testGoogleMapsConnection(apiKey);
+      } else {
+        testResult = await testCollectAPIConnection(apiKey);
+      }
+
+      // Update the status in database
+      const statusField = keyType === "googleMaps" ? "googleMapsStatus" : "collectApiStatus";
+      const testedAtField = keyType === "googleMaps" ? "googleMapsTestedAt" : "collectApiTestedAt";
+
+      await db.organizationIntegrationSettings.upsert({
+        where: { organizationId },
+        create: {
+          organizationId,
+          [statusField]: testResult.status,
+          [testedAtField]: new Date(),
+        },
+        update: {
+          [statusField]: testResult.status,
+          [testedAtField]: new Date(),
+        },
+      });
+
+      return c.json({
+        success: testResult.success,
+        status: testResult.status,
+        latencyMs: testResult.latencyMs,
+        message: testResult.message,
+        details: testResult.details,
+        error: testResult.error,
       });
     }
   )

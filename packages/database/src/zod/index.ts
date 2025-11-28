@@ -158,7 +158,7 @@ export const DocumentScalarFieldEnumSchema = z.enum(['id','organizationId','docu
 
 export const FuelPriceCacheScalarFieldEnumSchema = z.enum(['id','countryCode','latitude','longitude','fuelType','pricePerLitre','currency','source','fetchedAt']);
 
-export const OrganizationIntegrationSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','googleMapsApiKey','collectApiKey','createdAt','updatedAt']);
+export const OrganizationIntegrationSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','googleMapsApiKey','collectApiKey','preferredFuelType','googleMapsStatus','googleMapsTestedAt','collectApiStatus','collectApiTestedAt','createdAt','updatedAt']);
 
 export const DriverRSECounterScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','date','regulatoryCategory','licenseCategoryId','drivingMinutes','amplitudeMinutes','breakMinutes','restMinutes','workStartTime','workEndTime','createdAt','updatedAt']);
 
@@ -1167,6 +1167,11 @@ export const OrganizationIntegrationSettingsSchema = z.object({
   organizationId: z.string(),
   googleMapsApiKey: z.string().nullable(),
   collectApiKey: z.string().nullable(),
+  preferredFuelType: z.string().nullable(),
+  googleMapsStatus: z.string().nullable(),
+  googleMapsTestedAt: z.coerce.date().nullable(),
+  collectApiStatus: z.string().nullable(),
+  collectApiTestedAt: z.coerce.date().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

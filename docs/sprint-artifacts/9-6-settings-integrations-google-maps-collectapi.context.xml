@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0" generated="2025-11-28T06:59:00+01:00">
+  <metadata>
+    <story-key>9-6-settings-integrations-google-maps-collectapi</story-key>
+    <epic>Epic 9 - Advanced Pricing Configuration & Reporting</epic>
+    <title>Settings → Integrations (Google Maps & CollectAPI)</title>
+    <priority>high</priority>
+    <complexity>medium</complexity>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Les administrateurs d'organisation n'ont actuellement aucun moyen de vérifier 
+      si leurs clés API (Google Maps et CollectAPI) sont valides et fonctionnelles.
+      L'interface existante permet de sauvegarder les clés mais ne propose pas de 
+      test de connectivité, ce qui peut entraîner des erreurs silencieuses lors 
+      du calcul des prix (fuel) ou de l'affichage des cartes.
+    </description>
+    <business-impact>
+      - Erreurs de pricing si CollectAPI ne fonctionne pas (fallback sur prix par défaut)
+      - Cartes non affichées si Google Maps key invalide
+      - Pas de visibilité sur l'état de santé des intégrations
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">
+      Ajouter un bouton "Test connection" pour chaque intégration (Google Maps, CollectAPI)
+    </objective>
+    <objective id="2">
+      Afficher des indicateurs de statut clairs (Connected/Invalid/Unknown)
+    </objective>
+    <objective id="3">
+      Créer un client CollectAPI pour appeler l'endpoint /fromCoordinates
+    </objective>
+    <objective id="4">
+      Intégrer la clé CollectAPI fournie dans l'organisation vtc-qa-orga1
+    </objective>
+    <objective id="5">
+      Permettre la sélection du type de carburant préféré (diesel/gasoline/lpg)
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>API endpoint POST /settings/integrations/test/:keyType</item>
+      <item>Client CollectAPI avec appel à /fromCoordinates</item>
+      <item>UI: Bouton "Test connection" avec feedback visuel</item>
+      <item>UI: Indicateurs de statut (badge Connected/Invalid/Unknown)</item>
+      <item>UI: Sélecteur de type de carburant préféré</item>
+      <item>Traductions EN/FR pour les nouveaux éléments</item>
+      <item>Insertion de la clé CollectAPI en base pour vtc-qa-orga1</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Job de rafraîchissement automatique du cache fuel (Story 9.7)</item>
+      <item>Gestion multi-devises (EUR uniquement)</item>
+      <item>Autres intégrations que Google Maps et CollectAPI</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="security">
+      Les clés API ne doivent jamais être exposées en clair côté client 
+      (sauf Google Maps pour l'initialisation JS)
+    </constraint>
+    <constraint type="api">
+      CollectAPI: Utiliser l'endpoint /fromCoordinates avec currency implicite 
+      (retourne USD, conversion nécessaire ou utilisation du prix brut)
+    </constraint>
+    <constraint type="fallback">
+      Si pas de clé org-specific, utiliser la variable d'environnement
+    </constraint>
+    <constraint type="ux">
+      Le test de connexion doit donner un feedback immédiat (loading state)
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>CollectAPI peut avoir des limites de rate limiting</description>
+      <mitigation>Implémenter un délai entre les tests successifs</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Les coordonnées de test peuvent ne pas retourner de résultat</description>
+      <mitigation>Utiliser des coordonnées connues (Paris: 48.8566, 2.3522)</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component name="OrganizationIntegrationSettings" type="model">
+        Modèle Prisma existant avec googleMapsApiKey et collectApiKey
+      </component>
+      <component name="integrationsRouter" type="api">
+        Routes GET/PUT/DELETE existantes dans packages/api/src/routes/vtc/integrations.ts
+      </component>
+      <component name="IntegrationSettingsForm" type="ui">
+        Composant React existant avec gestion des clés (sans test connection)
+      </component>
+      <component name="FuelPriceService" type="service">
+        Service existant qui lit le FuelPriceCache
+      </component>
+      <component name="integration-keys.ts" type="lib">
+        Utilitaires pour résolution et masquage des clés API
+      </component>
+    </existing-components>
+
+    <api-documentation>
+      <api name="CollectAPI Gas Prices">
+        <endpoint>GET https://api.collectapi.com/gasPrice/fromCoordinates</endpoint>
+        <params>
+          <param name="lat" required="true">Latitude (ex: 48.8566)</param>
+          <param name="lng" required="true">Longitude (ex: 2.3522)</param>
+          <param name="type" required="false">Gas type filter (gasoline, diesel, lpg)</param>
+        </params>
+        <headers>
+          <header name="authorization">apikey YOUR_TOKEN</header>
+          <header name="content-type">application/json</header>
+        </headers>
+        <response>
+          {
+            "success": true,
+            "result": [{
+              "country": "France",
+              "gasoline": "1.85",
+              "currency": "usd",
+              "diesel": "1.75",
+              "lpg": "0.95"
+            }]
+          }
+        </response>
+      </api>
+      <api name="Google Maps">
+        <documentation>https://developers.google.com/maps/documentation</documentation>
+        <test-method>Appel à l'API Geocoding avec une adresse connue</test-method>
+      </api>
+    </api-documentation>
+
+    <provided-credentials>
+      <credential name="CollectAPI Key" organization="vtc-qa-orga1">
+        2LVzUXXQNYVv57lQiKOk5V:3PZwjHYcedBHxrK7BN5wai
+      </credential>
+    </provided-credentials>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given /dashboard/settings/integrations,
+      When I open it,
+      Then I see cards for Google Maps and CollectAPI with:
+        - Fields for API keys
+        - Optional fuel type preference selector
+        - "Test connection" button
+        - Status indicators (Connected/Invalid/Unknown)
+    </criterion>
+    <criterion id="AC2">
+      Given a configured CollectAPI key,
+      When I click "Test connection",
+      Then the system calls CollectAPI /fromCoordinates with Paris coordinates
+      And displays success/failure status
+    </criterion>
+    <criterion id="AC3">
+      Given a configured Google Maps key,
+      When I click "Test connection",
+      Then the system validates the key via Geocoding API
+      And displays success/failure status
+    </criterion>
+    <criterion id="AC4">
+      Given saving changes,
+      When I update keys or preferences,
+      Then OrganizationIntegrationSettings is updated
+      And the test connection uses these new values
+    </criterion>
+  </acceptance-criteria>
+
+  <test-strategy>
+    <test type="unit">
+      CollectAPI client: mock responses, error handling
+    </test>
+    <test type="integration">
+      API endpoint /test/:keyType avec vraies clés
+    </test>
+    <test type="e2e">
+      Playwright: flow complet de test de connexion
+    </test>
+    <test type="curl">
+      Test direct des endpoints API
+    </test>
+    <test type="db">
+      Vérification MCP de l'état en base après opérations
+    </test>
+  </test-strategy>
+</story-context>
