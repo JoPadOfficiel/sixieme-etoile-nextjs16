@@ -26,6 +26,7 @@ import {
 import { testCollectAPIConnection } from "../../lib/collectapi-client";
 import { testGoogleMapsConnection } from "../../lib/google-maps-client";
 import { organizationMiddleware } from "../../middleware/organization";
+import { refreshFuelPriceCache, getFuelCacheStatus } from "../../jobs/refresh-fuel-cache";
 
 /**
  * Allowed roles for integration settings management
@@ -294,6 +295,77 @@ export const integrationsRouter = new Hono()
       return c.json({
         success: true,
         deletedKey: keyType,
+      });
+    }
+  )
+
+  // Refresh fuel price cache
+  .post(
+    "/fuel-cache/refresh",
+    describeRoute({
+      summary: "Refresh fuel price cache",
+      description:
+        "Manually trigger a refresh of the fuel price cache from CollectAPI. Only admin/owner roles can access.",
+      tags: ["VTC - Settings"],
+      responses: {
+        200: {
+          description: "Refresh completed (may include partial failures)",
+        },
+        403: {
+          description: "Access denied - admin/owner role required",
+        },
+        500: {
+          description: "Refresh failed completely",
+        },
+      },
+    }),
+    async (c) => {
+      const organizationId = c.get("organizationId");
+
+      const result = await refreshFuelPriceCache({ organizationId });
+
+      return c.json({
+        success: result.success,
+        updatedCount: result.updatedCount,
+        failedCount: result.failedCount,
+        totalTypes: result.totalTypes,
+        results: result.results,
+        errors: result.errors,
+        timestamp: result.timestamp.toISOString(),
+        durationMs: result.durationMs,
+      });
+    }
+  )
+
+  // Get fuel cache status
+  .get(
+    "/fuel-cache/status",
+    describeRoute({
+      summary: "Get fuel cache status",
+      description:
+        "Get the current status of the fuel price cache including staleness info. Only admin/owner roles can access.",
+      tags: ["VTC - Settings"],
+      responses: {
+        200: {
+          description: "Cache status with entries and staleness info",
+        },
+        403: {
+          description: "Access denied - admin/owner role required",
+        },
+      },
+    }),
+    async (c) => {
+      const status = await getFuelCacheStatus();
+
+      return c.json({
+        entries: status.entries.map((e) => ({
+          fuelType: e.fuelType,
+          pricePerLitre: e.pricePerLitre,
+          fetchedAt: e.fetchedAt.toISOString(),
+          isStale: e.isStale,
+        })),
+        lastRefresh: status.lastRefresh?.toISOString() || null,
+        stalenessThresholdHours: status.stalenessThresholdHours,
       });
     }
   );

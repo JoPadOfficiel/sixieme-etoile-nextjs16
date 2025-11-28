@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0" generated="2025-11-28T08:30:00+01:00">
+  <metadata>
+    <story-key>9-7-fuel-price-cache-refresh-staleness-rules</story-key>
+    <epic>Epic 9 - Advanced Pricing Configuration & Reporting</epic>
+    <title>Fuel Price Cache Refresh & Staleness Rules</title>
+    <priority>high</priority>
+    <complexity>medium</complexity>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Le système dispose d'un cache de prix de carburant (FuelPriceCache) et d'un client 
+      CollectAPI fonctionnel (Story 9.6), mais il n'existe pas de mécanisme automatique 
+      pour rafraîchir ce cache. Les prix de carburant doivent être mis à jour régulièrement 
+      (quotidiennement à 04:00 Europe/Paris) pour que le pricing engine utilise des données 
+      à jour sans appeler l'API en temps réel pendant les calculs de devis.
+    </description>
+    <business-impact>
+      - Prix de carburant obsolètes dans les calculs de coût interne
+      - Marges incorrectes si les prix réels ont significativement changé
+      - Pas de visibilité sur la fraîcheur des données de prix
+      - Fallback sur prix par défaut si le cache est vide
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">
+      Implémenter un job de rafraîchissement automatique du cache de prix de carburant
+    </objective>
+    <objective id="2">
+      Exécuter le job quotidiennement à 04:00 Europe/Paris via cron
+    </objective>
+    <objective id="3">
+      Appeler CollectAPI avec les coordonnées de référence (Paris) pour chaque type de carburant
+    </objective>
+    <objective id="4">
+      Mettre à jour la table FuelPriceCache avec les nouveaux prix
+    </objective>
+    <objective id="5">
+      Implémenter des règles de staleness configurables (seuil par défaut: 48h)
+    </objective>
+    <objective id="6">
+      Gérer les erreurs gracieusement avec logs et fallback
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Job/script de rafraîchissement du cache fuel</item>
+      <item>Configuration cron pour exécution à 04:00 Europe/Paris</item>
+      <item>Appel CollectAPI pour DIESEL, GASOLINE, LPG</item>
+      <item>Insertion/mise à jour dans FuelPriceCache</item>
+      <item>Règles de staleness (seuil configurable, marquage isStale)</item>
+      <item>Logging des succès/échecs</item>
+      <item>Fallback gracieux si API indisponible</item>
+      <item>Tests unitaires et d'intégration</item>
+    </in-scope>
+    <out-of-scope>
+      <item>UI pour visualiser l'état du cache (peut être ajouté plus tard)</item>
+      <item>Rafraîchissement par zone géographique (v1 = Paris uniquement)</item>
+      <item>Multi-devises (EUR uniquement)</item>
+      <item>Alertes/notifications en cas d'échec</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="timing">
+      Le job doit s'exécuter à 04:00 Europe/Paris pour minimiser l'impact 
+      sur les opérations quotidiennes
+    </constraint>
+    <constraint type="api">
+      CollectAPI retourne les prix en USD - conversion en EUR nécessaire 
+      (taux fixe 0.92 ou configurable)
+    </constraint>
+    <constraint type="idempotency">
+      Le job doit être idempotent - plusieurs exécutions ne doivent pas 
+      créer de doublons
+    </constraint>
+    <constraint type="fallback">
+      Si CollectAPI échoue, le cache existant reste valide mais marqué stale
+    </constraint>
+    <constraint type="performance">
+      Le job ne doit pas bloquer les opérations de pricing - exécution asynchrone
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>CollectAPI peut être indisponible ou retourner des erreurs</description>
+      <mitigation>Retry avec backoff exponentiel, logs détaillés, fallback sur cache existant</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Rate limiting de CollectAPI</description>
+      <mitigation>Délai entre les appels pour chaque type de carburant</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Décalage horaire si le serveur n'est pas en Europe/Paris</description>
+      <mitigation>Utiliser une librairie de timezone (date-fns-tz) pour le scheduling</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component name="FuelPriceCache" type="model" path="packages/database/prisma/schema.prisma">
+        Modèle Prisma existant avec countryCode, fuelType, pricePerLitre, fetchedAt
+      </component>
+      <component name="collectapi-client.ts" type="lib" path="packages/api/src/lib/collectapi-client.ts">
+        Client CollectAPI avec fetchFuelPrices() et conversion USD→EUR
+      </component>
+      <component name="fuel-price-service.ts" type="service" path="packages/api/src/services/fuel-price-service.ts">
+        Service de lecture du cache avec getFuelPrice(), staleness check, fallback
+      </component>
+      <component name="OrganizationIntegrationSettings" type="model">
+        Stocke la clé CollectAPI par organisation
+      </component>
+      <component name="integration-keys.ts" type="lib" path="packages/api/src/lib/integration-keys.ts">
+        Résolution des clés API (org-specific ou env fallback)
+      </component>
+    </existing-components>
+
+    <existing-constants>
+      <constant name="FUEL_PRICE_STALENESS_HOURS" value="48">
+        Seuil de staleness en heures (défini dans fuel-price-service.ts)
+      </constant>
+      <constant name="DEFAULT_TEST_COORDINATES" value="{lat: 48.8566, lng: 2.3522}">
+        Coordonnées de Paris pour les requêtes CollectAPI
+      </constant>
+      <constant name="USD_TO_EUR_RATE" value="0.92">
+        Taux de conversion USD→EUR
+      </constant>
+    </existing-constants>
+
+    <fuel-types>
+      <type>DIESEL</type>
+      <type>GASOLINE</type>
+      <type>LPG</type>
+    </fuel-types>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      Given scheduled background jobs (e.g. daily at 04:00 Europe/Paris),
+      When the job runs,
+      Then it calls CollectAPI with EUR currency for Paris coordinates,
+      And updates FuelPriceCache entries for DIESEL, GASOLINE, LPG,
+      And records fetchedAt timestamp
+    </criterion>
+    <criterion id="AC2">
+      Given the pricing engine queries the cache (Story 4.8),
+      When it reads a cache entry,
+      Then it respects staleness rules (e.g. max age 48h),
+      And marks the result as isStale if older than threshold
+    </criterion>
+    <criterion id="AC3">
+      Given CollectAPI is unavailable,
+      When the refresh job runs,
+      Then it logs the error,
+      And does not delete existing cache entries,
+      And the pricing engine continues using stale data with warning
+    </criterion>
+    <criterion id="AC4">
+      Given multiple executions of the job,
+      When it runs,
+      Then it is idempotent (no duplicate entries),
+      And updates existing entries or creates new ones
+    </criterion>
+  </acceptance-criteria>
+
+  <test-strategy>
+    <test type="unit">
+      - refreshFuelPriceCache() avec mock CollectAPI
+      - Gestion des erreurs (timeout, invalid key, network error)
+      - Conversion USD→EUR
+      - Idempotence (upsert logic)
+    </test>
+    <test type="integration">
+      - Job complet avec vraie clé CollectAPI
+      - Vérification des entrées en base après exécution
+    </test>
+    <test type="curl">
+      - Endpoint manuel de trigger du refresh (si exposé)
+    </test>
+    <test type="db">
+      - Vérification MCP de l'état FuelPriceCache après refresh
+    </test>
+  </test-strategy>
+
+  <implementation-hints>
+    <hint>
+      Utiliser un script dans packages/api/src/jobs/ ou tooling/scripts/
+    </hint>
+    <hint>
+      Pour le cron, utiliser node-cron ou un service externe (Vercel Cron, GitHub Actions)
+    </hint>
+    <hint>
+      Implémenter une fonction refreshFuelPriceCache() réutilisable
+    </hint>
+    <hint>
+      Utiliser upsert Prisma pour l'idempotence
+    </hint>
+    <hint>
+      Ajouter un endpoint API pour trigger manuel (utile pour tests)
+    </hint>
+  </implementation-hints>
+</story-context>

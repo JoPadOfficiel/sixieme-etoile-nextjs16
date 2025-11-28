@@ -51,6 +51,7 @@ development_status:
   2-2-store-partner-contract-data-rate-grid-links: done
   2-3-allow-safe-reclassification-partner-private: done
   2-4-link-quotes-invoices-to-contacts-partner-agencies: done
+  2-5-expose-commercial-context-crm-views: backlog
   epic-3: contexted
   3-1-implement-pricing-zone-model-zones-editor-ui: done
   3-2-implement-zone-route-model-grid-routes-editor: done
@@ -73,6 +74,7 @@ development_status:
   5-3-implement-heavy-vehicle-compliance-validator: done
   5-4-suggest-alternative-staffing-scheduling-options: done
   5-5-track-rse-counters-per-driver-licence-regime: done
+  5-6-surface-compliance-statuses-logs-ui: backlog
   epic-6: contexted
   6-1-implement-quotes-list-with-status-profitability: done
   6-2-implement-create-quote-3-column-cockpit: done
@@ -94,10 +96,13 @@ development_status:
   8-4-detect-suggest-trip-chaining-opportunities: done
   8-5-model-surface-empty-leg-opportunities: done
   8-6-integrate-subcontractor-directory-subcontracting-suggestions: done
+  8-7-surface-profitability-compliance-badges-missions: backlog
   epic-9: contexted
   9-1-settings-pricing-seasonal-multipliers: done
   9-2-settings-pricing-advanced-rate-modifiers: done
   9-3-settings-pricing-optional-fees-catalogue: done
   9-4-settings-pricing-promotions-promo-codes: done
   9-5-settings-fleet-regulatory-configuration: done
-  9-6-settings-integrations-google-maps-collectapi: in-progress
+  9-6-settings-integrations-google-maps-collectapi: done
+  9-7-fuel-price-cache-refresh-staleness-rules: done
+  9-8-basic-profitability-yield-reporting: backlog

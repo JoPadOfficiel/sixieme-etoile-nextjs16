@@ -1399,7 +1399,7 @@ model FuelPriceCache {
   // Timestamp
   fetchedAt DateTime
 
-  @@index([countryCode, fuelType])
+  @@unique([countryCode, fuelType])
   @@index([fetchedAt])
   @@map("fuel_price_cache")
 }

@@ -16,6 +16,7 @@
 	"private": true,
 	"scripts": {
 		"seed": "dotenv -c -e ../../.env -- tsx ./src/seed.ts",
+		"refresh-fuel-cache": "dotenv -c -e ../../.env -- tsx ./src/refresh-fuel-cache.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"version": "0.0.0"
