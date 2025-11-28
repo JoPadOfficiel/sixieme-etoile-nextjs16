@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="9-5-settings-fleet-regulatory-configuration" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>5</storyId>
+    <title>Settings → Fleet &amp; Regulatory Configuration</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-28T04:15:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/9-5-settings-fleet-regulatory-configuration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>fleet/compliance manager</asA>
+    <iWant>a central screen for vehicle categories, base cost parameters and RSE rules</iWant>
+    <soThat>pricing and compliance share a single source of truth</soThat>
+    <tasks>
+      <task id="1">Extend existing /settings/fleet page with Vehicle Categories tab</task>
+      <task id="2">Create VehicleCategoriesSection component with CRUD operations</task>
+      <task id="3">Create API routes for VehicleCategory CRUD</task>
+      <task id="4">Add Cost Parameters tab with OrganizationPricingSettings form</task>
+      <task id="5">Create API routes for OrganizationPricingSettings GET/PATCH</task>
+      <task id="6">Add configuration health summary component</task>
+      <task id="7">Add translations (EN/FR) for new sections</task>
+      <task id="8">Write unit tests (Vitest)</task>
+      <task id="9">Write E2E tests (Playwright)</task>
+      <task id="10">Test API with curl and verify DB state</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Page Navigation &amp; Layout - Page at /app/{orgSlug}/settings/fleet with tabs: License Categories, RSE Rules, Vehicle Categories, Cost Parameters</criterion>
+    <criterion id="AC2">Vehicle Categories Tab - Table with columns: Code, Name, Regulatory Category (LIGHT/HEAVY), Max Passengers, Price Multiplier, Default Rates, Status, Actions</criterion>
+    <criterion id="AC3">Vehicle Category Create/Edit Dialog - Form with code, name, regulatoryCategory, maxPassengers, maxLuggageVolume, priceMultiplier, defaultRatePerKm, defaultRatePerHour, description, isActive</criterion>
+    <criterion id="AC4">Cost Parameters Tab - Form with baseRatePerKm, baseRatePerHour, defaultMarginPercent, greenMarginThreshold, orangeMarginThreshold, minimumFare, roundingRule, operational cost params</criterion>
+    <criterion id="AC5">Configuration Health Summary - Display at top of page showing validation status (warnings for zero thresholds, missing required settings)</criterion>
+    <criterion id="AC6">API Endpoints - GET/POST/PATCH/DELETE for vehicle-categories, GET/PATCH for pricing-settings</criterion>
+    <criterion id="AC7">Multi-Tenancy Isolation - Organization-scoped data access for all entities</criterion>
+    <criterion id="AC8">Validation - Reject zero or negative thresholds, validate code uniqueness per organization</criterion>
+    <criterion id="AC9">Translations - EN/FR support for all labels and messages</criterion>
+    <criterion id="AC10">Integration - Changes reflect in subsequent pricing and compliance checks</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>FR38, FR60, FR25-FR30</section>
+        <snippet>FR38: Admins shall be able to configure vehicle categories, cost parameters and mapped regulatory rules per licence type. FR60: Vehicle categories using configurable price multipliers relative to a reference category.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/tech-spec.md</path>
+        <title>Technical Specification</title>
+        <section>VehicleCategory, OrganizationPricingSettings Models</section>
+        <snippet>VehicleCategory - Groups vehicles by commercial and regulatory category with priceMultiplier, defaultRatePerKm, defaultRatePerHour. OrganizationPricingSettings - Base commercial parameters per organisation including baseRatePerKm, baseRatePerHour, defaultMarginPercent, minimumFare.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 9.5</section>
+        <snippet>Implement Settings → Fleet &amp; Regulatory Configuration. As a fleet/compliance manager, I want a central screen for vehicle categories, base cost parameters and RSE rules, so that pricing and compliance share a single source of truth.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/9-3-settings-pricing-optional-fees-catalogue.md</path>
+        <title>Story 9.3 - Optional Fees</title>
+        <section>Reference Implementation</section>
+        <snippet>Reference for API patterns, component structure, hooks, and translations. Follow same patterns for VehicleCategories.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>VehicleCategory</symbol>
+        <lines>524-562</lines>
+        <reason>Prisma model for VehicleCategory with priceMultiplier, defaultRatePerKm, defaultRatePerHour, regulatoryCategory</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>OrganizationPricingSettings</symbol>
+        <lines>905-942</lines>
+        <reason>Prisma model for base commercial parameters including rates, margins, thresholds, and operational cost params</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>enum</kind>
+        <symbol>VehicleRegulatoryCategory</symbol>
+        <lines>264-268</lines>
+        <reason>Enum for LIGHT/HEAVY vehicle regulatory categories</reason>
+      </file>
+      <file>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/fleet/page.tsx</path>
+        <kind>page</kind>
+        <symbol>SettingsFleetPage</symbol>
+        <lines>1-720</lines>
+        <reason>Existing fleet settings page with License Categories and RSE Rules tabs - extend with Vehicle Categories and Cost Parameters</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/license-categories.ts</path>
+        <kind>api-route</kind>
+        <symbol>licenseCategoriesRouter</symbol>
+        <reason>Reference implementation for fleet-related API routes</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/license-rules.ts</path>
+        <kind>api-route</kind>
+        <symbol>licenseRulesRouter</symbol>
+        <reason>Reference implementation for RSE rules API routes</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/router.ts</path>
+        <kind>router</kind>
+        <symbol>vtcRouter</symbol>
+        <reason>Main VTC router where vehicle-categories and pricing-settings routes must be registered</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/tenant-prisma.ts</path>
+        <kind>utility</kind>
+        <symbol>withTenantFilter, withTenantCreate, withTenantId</symbol>
+        <reason>Multi-tenancy helpers for Prisma queries</reason>
+      </file>
+      <file>
+        <path>packages/api/src/middleware/organization.ts</path>
+        <kind>middleware</kind>
+        <symbol>organizationMiddleware</symbol>
+        <reason>Middleware that extracts organizationId from session</reason>
+      </file>
+      <file>
+        <path>apps/web/modules/saas/fleet/types/index.ts</path>
+        <kind>types</kind>
+        <symbol>LicenseCategoryFormData, LicenseRuleFormData</symbol>
+        <reason>Reference TypeScript types for fleet settings - add VehicleCategory and PricingSettings types</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/en.json</path>
+        <kind>i18n</kind>
+        <symbol>fleet.settings</symbol>
+        <reason>Existing fleet translations - extend with vehicleCategories and costParameters sections</reason>
+      </file>
+      <file>
+        <path>packages/i18n/translations/fr.json</path>
+        <kind>i18n</kind>
+        <symbol>fleet.settings</symbol>
+        <reason>Existing fleet translations - extend with vehicleCategories and costParameters sections</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>@repo/database</package>
+        <usage>Prisma client for VehicleCategory and OrganizationPricingSettings CRUD</usage>
+      </node>
+      <node>
+        <package>hono</package>
+        <usage>API routing framework</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <usage>Request/response validation schemas</usage>
+      </node>
+      <node>
+        <package>@tanstack/react-query</package>
+        <usage>Data fetching and caching hooks</usage>
+      </node>
+      <node>
+        <package>lucide-react</package>
+        <usage>Icons: Car, Settings, Euro, Percent, AlertTriangle, CheckCircle</usage>
+      </node>
+      <node>
+        <package>shadcn/ui</package>
+        <usage>Card, Table, Dialog, Badge, Button, Input, Select, Switch, Tabs, Alert</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Extend existing /settings/fleet page - do not create a new page</constraint>
+    <constraint>Follow existing patterns from license-categories and license-rules implementations</constraint>
+    <constraint>All API routes must use organizationMiddleware for multi-tenancy</constraint>
+    <constraint>Use withTenantFilter, withTenantCreate, withTenantId helpers for Prisma queries</constraint>
+    <constraint>Validate all inputs with Zod schemas</constraint>
+    <constraint>Use shadcn/ui components for consistent UI</constraint>
+    <constraint>Support both EN and FR translations</constraint>
+    <constraint>Decimal fields stored as Decimal - convert to number for JSON responses</constraint>
+    <constraint>VehicleCategory code must be unique per organization</constraint>
+    <constraint>OrganizationPricingSettings is singleton per organization (unique organizationId)</constraint>
+    <constraint>Validation must reject zero or negative values for thresholds and rates</constraint>
+    <constraint>Europe/Paris business time for all timestamps</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/vtc/vehicle-categories</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/vehicle-categories?page=1&amp;limit=50&amp;status=active|inactive&amp;regulatory=LIGHT|HEAVY&amp;search=string</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/vehicle-categories/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/vehicle-categories/:id -> VehicleCategory</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>POST /api/vtc/vehicle-categories</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/vtc/vehicle-categories { code, name, regulatoryCategory, maxPassengers, maxLuggageVolume?, priceMultiplier?, defaultRatePerKm?, defaultRatePerHour?, description?, isActive? }</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/vehicle-categories/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>PATCH /api/vtc/vehicle-categories/:id { ...partial fields }</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>DELETE /api/vtc/vehicle-categories/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/vtc/vehicle-categories/:id -> { success: true }</signature>
+      <path>packages/api/src/routes/vtc/vehicle-categories.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/vtc/pricing-settings</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/vtc/pricing-settings -> OrganizationPricingSettings | null</signature>
+      <path>packages/api/src/routes/vtc/pricing-settings.ts</path>
+    </interface>
+    <interface>
+      <name>PATCH /api/vtc/pricing-settings</name>
+      <kind>REST endpoint</kind>
+      <signature>PATCH /api/vtc/pricing-settings { baseRatePerKm?, baseRatePerHour?, defaultMarginPercent?, greenMarginThreshold?, orangeMarginThreshold?, minimumFare?, roundingRule?, fuelConsumptionL100km?, fuelPricePerLiter?, tollCostPerKm?, wearCostPerKm?, driverHourlyCost? } -> OrganizationPricingSettings (upsert)</signature>
+      <path>packages/api/src/routes/vtc/pricing-settings.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests following existing patterns in packages/api/src/routes/vtc/__tests__/.
+      Use Playwright MCP for E2E tests.
+      Use curl for API endpoint verification.
+      Use MCP @postgres_vtc_sixiemme_etoile for database state verification.
+      All tests must cover multi-tenancy isolation.
+    </standards>
+    <locations>
+      <location>packages/api/src/routes/vtc/__tests__/vehicle-categories.test.ts</location>
+      <location>packages/api/src/routes/vtc/__tests__/pricing-settings.test.ts</location>
+      <location>apps/web/e2e/settings-fleet.spec.ts</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test page renders with all four tabs</idea>
+      <idea acId="AC2">Test vehicle categories table displays all columns, sorting, filtering</idea>
+      <idea acId="AC3">Test vehicle category create/edit dialog validation and submission</idea>
+      <idea acId="AC4">Test cost parameters form loads existing settings and saves updates</idea>
+      <idea acId="AC5">Test configuration health summary shows warnings for invalid config</idea>
+      <idea acId="AC6">Test all API endpoints with valid/invalid data</idea>
+      <idea acId="AC7">Test organization isolation - cannot access other org's data</idea>
+      <idea acId="AC8">Test validation rejects zero/negative thresholds</idea>
+      <idea acId="AC9">Test translations switch between EN/FR</idea>
+      <idea acId="AC10">Test pricing engine uses updated settings</idea>
+    </ideas>
+  </tests>
+</story-context>

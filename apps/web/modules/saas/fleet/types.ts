@@ -426,3 +426,53 @@ export interface CumulativeComplianceResult {
 	decision: ComplianceDecision;
 	decisionLogged: boolean;
 }
+
+// ============================================================================
+// Organization Pricing Settings (Story 9.5)
+// ============================================================================
+
+export interface OrganizationPricingSettings {
+	id: string;
+	organizationId: string;
+	baseRatePerKm: number;
+	baseRatePerHour: number;
+	defaultMarginPercent: number;
+	greenMarginThreshold: number;
+	orangeMarginThreshold: number;
+	minimumFare: number;
+	roundingRule: string | null;
+	fuelConsumptionL100km: number | null;
+	fuelPricePerLiter: number | null;
+	tollCostPerKm: number | null;
+	wearCostPerKm: number | null;
+	driverHourlyCost: number | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface PricingSettingsFormData {
+	baseRatePerKm: number;
+	baseRatePerHour: number;
+	defaultMarginPercent: number;
+	greenMarginThreshold: number;
+	orangeMarginThreshold: number;
+	minimumFare: number;
+	roundingRule: string | null;
+	fuelConsumptionL100km: number | null;
+	fuelPricePerLiter: number | null;
+	tollCostPerKm: number | null;
+	wearCostPerKm: number | null;
+	driverHourlyCost: number | null;
+}
+
+export type ConfigHealthStatus = "ok" | "warning" | "error";
+
+export interface ConfigHealthResponse {
+	status: ConfigHealthStatus;
+	errors: string[];
+	warnings: string[];
+	details: {
+		hasPricingSettings: boolean;
+		vehicleCategoriesCount: number;
+	};
+}

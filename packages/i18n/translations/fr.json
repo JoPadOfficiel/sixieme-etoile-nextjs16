@@ -2245,10 +2245,12 @@
 		},
 		"settings": {
 			"title": "Configuration Flotte & Réglementation",
-			"description": "Configurez les catégories de permis et les règles de conformité RSE.",
+			"description": "Configurez les catégories de véhicules, paramètres de coûts, catégories de permis et règles de conformité RSE.",
 			"tabs": {
 				"licenseCategories": "Catégories de permis",
-				"rseRules": "Règles RSE"
+				"rseRules": "Règles RSE",
+				"vehicleCategories": "Catégories de véhicules",
+				"costParameters": "Paramètres de coûts"
 			},
 			"licenseCategories": {
 				"title": "Catégories de permis",
@@ -2295,6 +2297,97 @@
 					"cappedSpeedPlaceholder": "Laisser vide pour aucun plafond"
 				}
 			},
+			"vehicleCategories": {
+				"title": "Catégories de véhicules",
+				"description": "Configurez les catégories de véhicules avec les multiplicateurs de prix.",
+				"add": "Ajouter une catégorie",
+				"edit": "Modifier la catégorie",
+				"dialogDescription": "Configurez une catégorie de véhicule pour votre organisation.",
+				"empty": "Aucune catégorie de véhicule. Ajoutez votre première catégorie pour commencer.",
+				"columns": {
+					"code": "Code",
+					"name": "Nom",
+					"regulatory": "Réglementaire",
+					"maxPassengers": "Passagers max",
+					"priceMultiplier": "Multiplicateur",
+					"defaultRates": "Tarifs par défaut",
+					"vehicles": "Véhicules",
+					"status": "Statut"
+				},
+				"form": {
+					"code": "Code de catégorie",
+					"codePlaceholder": "ex: BERLINE",
+					"codeHelp": "Identifiant unique pour cette catégorie",
+					"name": "Nom d'affichage",
+					"regulatoryCategory": "Catégorie réglementaire",
+					"maxPassengers": "Passagers max",
+					"maxLuggageVolume": "Volume bagages max (L)",
+					"priceMultiplier": "Multiplicateur de prix",
+					"priceMultiplierHelp": "Multiplicateur appliqué au prix de base (1.0 = pas de changement)",
+					"defaultRatePerKm": "Tarif par défaut au Km (€)",
+					"defaultRatePerHour": "Tarif par défaut à l'heure (€)",
+					"description": "Description",
+					"isActive": "Actif"
+				},
+				"regulatory": {
+					"LIGHT": "Léger",
+					"HEAVY": "Lourd"
+				},
+				"deleteConfirm": "Êtes-vous sûr de vouloir supprimer la catégorie \"{name}\" ?",
+				"deleteWarning": "Cette catégorie a {count} véhicules assignés.",
+				"codeExists": "Ce code de catégorie existe déjà"
+			},
+			"costParameters": {
+				"title": "Paramètres de coûts",
+				"description": "Configurez les tarifs de base, marges et coûts opérationnels pour les calculs de prix.",
+				"sections": {
+					"baseRates": "Tarifs de base",
+					"margins": "Paramètres de marge",
+					"minimumFare": "Tarif minimum",
+					"operationalCosts": "Coûts opérationnels"
+				},
+				"fields": {
+					"baseRatePerKm": "Tarif de base au Km (€)",
+					"baseRatePerKmHelp": "Prix par défaut au kilomètre",
+					"baseRatePerHour": "Tarif de base à l'heure (€)",
+					"baseRatePerHourHelp": "Prix par défaut à l'heure",
+					"defaultMarginPercent": "Marge par défaut (%)",
+					"defaultMarginPercentHelp": "Marge bénéficiaire cible",
+					"greenMarginThreshold": "Seuil vert (%)",
+					"greenMarginThresholdHelp": "Marge au-dessus = rentable (vert)",
+					"orangeMarginThreshold": "Seuil orange (%)",
+					"orangeMarginThresholdHelp": "Marge en-dessous = perte (rouge)",
+					"minimumFare": "Tarif minimum (€)",
+					"minimumFareHelp": "Prix minimum d'un devis",
+					"roundingRule": "Règle d'arrondi",
+					"roundingRuleHelp": "Comment arrondir les prix finaux",
+					"fuelConsumptionL100km": "Consommation carburant (L/100km)",
+					"fuelPricePerLiter": "Prix carburant (€/L)",
+					"tollCostPerKm": "Coût péage (€/km)",
+					"wearCostPerKm": "Coût usure (€/km)",
+					"driverHourlyCost": "Coût horaire chauffeur (€/h)"
+				},
+				"roundingRules": {
+					"none": "Pas d'arrondi",
+					"NEAREST_5": "Au 5€ le plus proche",
+					"NEAREST_10": "Au 10€ le plus proche",
+					"CEIL_5": "Arrondi supérieur à 5€",
+					"CEIL_10": "Arrondi supérieur à 10€"
+				},
+				"save": "Enregistrer",
+				"saveSuccess": "Paramètres enregistrés avec succès",
+				"saveError": "Échec de l'enregistrement"
+			},
+			"configHealth": {
+				"title": "État de la configuration",
+				"ok": "Tous les paramètres sont correctement configurés",
+				"warnings": {
+					"noVehicleCategories": "Aucune catégorie de véhicule configurée",
+					"noBaseRates": "Tarifs de base non configurés",
+					"zeroMarginThreshold": "Un seuil de marge à zéro peut afficher tous les devis comme rentables",
+					"missingOperationalCosts": "Certains paramètres de coûts opérationnels sont manquants"
+				}
+			},
 			"notifications": {
 				"categoryCreated": "Catégorie de permis créée avec succès.",
 				"categoryCreateFailed": "Échec de la création de la catégorie de permis.",
@@ -2307,7 +2400,13 @@
 				"ruleUpdated": "Règle RSE mise à jour avec succès.",
 				"ruleUpdateFailed": "Échec de la mise à jour de la règle RSE.",
 				"ruleDeleted": "Règle RSE supprimée avec succès.",
-				"ruleDeleteFailed": "Échec de la suppression de la règle RSE."
+				"ruleDeleteFailed": "Échec de la suppression de la règle RSE.",
+				"vehicleCategoryCreated": "Catégorie de véhicule créée avec succès.",
+				"vehicleCategoryCreateFailed": "Échec de la création de la catégorie de véhicule.",
+				"vehicleCategoryUpdated": "Catégorie de véhicule mise à jour avec succès.",
+				"vehicleCategoryUpdateFailed": "Échec de la mise à jour de la catégorie de véhicule.",
+				"vehicleCategoryDeleted": "Catégorie de véhicule supprimée avec succès.",
+				"vehicleCategoryDeleteFailed": "Échec de la suppression de la catégorie de véhicule."
 			}
 		}
 	},

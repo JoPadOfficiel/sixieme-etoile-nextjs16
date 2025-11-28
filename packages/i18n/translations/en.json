@@ -2245,10 +2245,12 @@
 		},
 		"settings": {
 			"title": "Fleet & Regulatory Configuration",
-			"description": "Configure license categories and RSE compliance rules.",
+			"description": "Configure vehicle categories, cost parameters, license categories and RSE compliance rules.",
 			"tabs": {
 				"licenseCategories": "License Categories",
-				"rseRules": "RSE Rules"
+				"rseRules": "RSE Rules",
+				"vehicleCategories": "Vehicle Categories",
+				"costParameters": "Cost Parameters"
 			},
 			"licenseCategories": {
 				"title": "License Categories",
@@ -2295,6 +2297,97 @@
 					"cappedSpeedPlaceholder": "Leave empty for no cap"
 				}
 			},
+			"vehicleCategories": {
+				"title": "Vehicle Categories",
+				"description": "Configure vehicle categories with pricing multipliers.",
+				"add": "Add Category",
+				"edit": "Edit Category",
+				"dialogDescription": "Configure a vehicle category for your organization.",
+				"empty": "No vehicle categories yet. Add your first category to get started.",
+				"columns": {
+					"code": "Code",
+					"name": "Name",
+					"regulatory": "Regulatory",
+					"maxPassengers": "Max Passengers",
+					"priceMultiplier": "Price Multiplier",
+					"defaultRates": "Default Rates",
+					"vehicles": "Vehicles",
+					"status": "Status"
+				},
+				"form": {
+					"code": "Category Code",
+					"codePlaceholder": "e.g., SEDAN",
+					"codeHelp": "Unique identifier for this category",
+					"name": "Display Name",
+					"regulatoryCategory": "Regulatory Category",
+					"maxPassengers": "Max Passengers",
+					"maxLuggageVolume": "Max Luggage Volume (L)",
+					"priceMultiplier": "Price Multiplier",
+					"priceMultiplierHelp": "Multiplier applied to base price (1.0 = no change)",
+					"defaultRatePerKm": "Default Rate per Km (€)",
+					"defaultRatePerHour": "Default Rate per Hour (€)",
+					"description": "Description",
+					"isActive": "Active"
+				},
+				"regulatory": {
+					"LIGHT": "Light",
+					"HEAVY": "Heavy"
+				},
+				"deleteConfirm": "Are you sure you want to delete category \"{name}\"?",
+				"deleteWarning": "This category has {count} vehicles assigned.",
+				"codeExists": "Category code already exists"
+			},
+			"costParameters": {
+				"title": "Cost Parameters",
+				"description": "Configure base rates, margins, and operational costs for pricing calculations.",
+				"sections": {
+					"baseRates": "Base Rates",
+					"margins": "Margin Settings",
+					"minimumFare": "Minimum Fare",
+					"operationalCosts": "Operational Costs"
+				},
+				"fields": {
+					"baseRatePerKm": "Base Rate per Km (€)",
+					"baseRatePerKmHelp": "Default price per kilometer",
+					"baseRatePerHour": "Base Rate per Hour (€)",
+					"baseRatePerHourHelp": "Default price per hour",
+					"defaultMarginPercent": "Default Margin (%)",
+					"defaultMarginPercentHelp": "Target profit margin",
+					"greenMarginThreshold": "Green Threshold (%)",
+					"greenMarginThresholdHelp": "Margin above this is profitable (green)",
+					"orangeMarginThreshold": "Orange Threshold (%)",
+					"orangeMarginThresholdHelp": "Margin below this is a loss (red)",
+					"minimumFare": "Minimum Fare (€)",
+					"minimumFareHelp": "Minimum quote price",
+					"roundingRule": "Rounding Rule",
+					"roundingRuleHelp": "How to round final prices",
+					"fuelConsumptionL100km": "Fuel Consumption (L/100km)",
+					"fuelPricePerLiter": "Fuel Price (€/L)",
+					"tollCostPerKm": "Toll Cost (€/km)",
+					"wearCostPerKm": "Wear Cost (€/km)",
+					"driverHourlyCost": "Driver Hourly Cost (€/h)"
+				},
+				"roundingRules": {
+					"none": "No rounding",
+					"NEAREST_5": "Nearest 5€",
+					"NEAREST_10": "Nearest 10€",
+					"CEIL_5": "Round up to 5€",
+					"CEIL_10": "Round up to 10€"
+				},
+				"save": "Save Settings",
+				"saveSuccess": "Settings saved successfully",
+				"saveError": "Failed to save settings"
+			},
+			"configHealth": {
+				"title": "Configuration Health",
+				"ok": "All settings configured correctly",
+				"warnings": {
+					"noVehicleCategories": "No vehicle categories configured",
+					"noBaseRates": "Base rates not configured",
+					"zeroMarginThreshold": "Zero margin threshold may cause all quotes to show as profitable",
+					"missingOperationalCosts": "Some operational cost parameters are missing"
+				}
+			},
 			"notifications": {
 				"categoryCreated": "License category created successfully.",
 				"categoryCreateFailed": "Failed to create license category.",
@@ -2307,7 +2400,13 @@
 				"ruleUpdated": "RSE rule updated successfully.",
 				"ruleUpdateFailed": "Failed to update RSE rule.",
 				"ruleDeleted": "RSE rule deleted successfully.",
-				"ruleDeleteFailed": "Failed to delete RSE rule."
+				"ruleDeleteFailed": "Failed to delete RSE rule.",
+				"vehicleCategoryCreated": "Vehicle category created successfully.",
+				"vehicleCategoryCreateFailed": "Failed to create vehicle category.",
+				"vehicleCategoryUpdated": "Vehicle category updated successfully.",
+				"vehicleCategoryUpdateFailed": "Failed to update vehicle category.",
+				"vehicleCategoryDeleted": "Vehicle category deleted successfully.",
+				"vehicleCategoryDeleteFailed": "Failed to delete vehicle category."
 			}
 		}
 	},

@@ -17,6 +17,7 @@ import { licenseCategoriesRouter } from "./license-categories";
 import { licenseRulesRouter } from "./license-rules";
 import { partnerContractsRouter } from "./partner-contracts";
 import { pricingCalculateRouter } from "./pricing-calculate";
+import { pricingSettingsRouter } from "./pricing-settings";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { seasonalMultipliersRouter } from "./seasonal-multipliers";
@@ -61,6 +62,7 @@ export const vtcRouter = new Hono()
 	.route("/", seasonalMultipliersRouter)
 	.route("/", advancedRatesRouter)
 	.route("/", optionalFeesRouter)
-	.route("/", promotionsRouter);
+	.route("/", promotionsRouter)
+	.route("/", pricingSettingsRouter);
 
 export type VtcRouter = typeof vtcRouter;
