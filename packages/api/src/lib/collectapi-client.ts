@@ -2,13 +2,19 @@
  * CollectAPI Gas Prices Client
  *
  * Client for interacting with CollectAPI Gas Prices API.
- * Used to fetch fuel prices by coordinates for the pricing engine.
+ * Used to fetch fuel prices by GPS coordinates for the pricing engine.
  *
  * Story 9.6: Settings → Integrations (Google Maps & CollectAPI)
  *
  * API Documentation: https://collectapi.com/api/gasPrice/gas-prices-api
  *
+ * Uses /gasPrice/fromCoordinates endpoint which:
+ * - Returns prices based on GPS coordinates (lat/lng)
+ * - Prices in USD (conversion to EUR done separately)
+ * - Precise pricing per location
+ *
  * @see docs/bmad/prd.md#FR41 - Fuel price cache source
+ * @see docs/api/collectapi-technical-guide.md
  */
 
 // ============================================================================
@@ -33,6 +39,12 @@ export const DEFAULT_TEST_COORDINATES = {
  */
 export const REQUEST_TIMEOUT_MS = 10000;
 
+/**
+ * USD to EUR exchange rate (approximate)
+ * Updated periodically - for production, use a real-time exchange rate API
+ */
+export const USD_TO_EUR_RATE = 0.92;
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -44,16 +56,19 @@ export type CollectAPIFuelType = "gasoline" | "diesel" | "lpg";
 
 /**
  * Raw response from CollectAPI /fromCoordinates endpoint
+ * Returns a single result object based on coordinates
  */
 export interface CollectAPIResponse {
 	success: boolean;
-	result: Array<{
+	result: {
 		country: string;
 		gasoline: string;
 		diesel: string;
 		lpg: string;
 		currency: string;
-	}>;
+	};
+	error?: string;
+	message?: string;
 }
 
 /**
@@ -81,13 +96,12 @@ export interface ConnectionTestResult {
 }
 
 /**
- * Parameters for fetching fuel prices
+ * Parameters for fetching fuel prices by coordinates
  */
 export interface FetchFuelPricesParams {
 	apiKey: string;
 	lat: number;
 	lng: number;
-	fuelType?: CollectAPIFuelType;
 }
 
 // ============================================================================
@@ -142,20 +156,15 @@ function createAuthHeader(apiKey: string): string {
 /**
  * Build URL for /fromCoordinates endpoint
  */
-function buildCoordinatesUrl(lat: number, lng: number, fuelType?: CollectAPIFuelType): string {
-	const url = new URL(`${COLLECTAPI_BASE_URL}/fromCoordinates`);
-	url.searchParams.set("lat", lat.toString());
-	url.searchParams.set("lng", lng.toString());
-	if (fuelType) {
-		url.searchParams.set("type", fuelType);
-	}
-	return url.toString();
+function buildCoordinatesUrl(lat: number, lng: number): string {
+	return `${COLLECTAPI_BASE_URL}/fromCoordinates?lat=${lat}&lng=${lng}`;
 }
 
 /**
  * Parse numeric price from string
  */
 function parsePrice(value: string): number {
+	if (!value || value === "-") return 0;
 	const parsed = parseFloat(value);
 	return isNaN(parsed) ? 0 : parsed;
 }
@@ -165,7 +174,8 @@ function parsePrice(value: string): number {
 // ============================================================================
 
 /**
- * Fetch fuel prices from CollectAPI by coordinates
+ * Fetch fuel prices from CollectAPI using fromCoordinates endpoint
+ * Returns prices based on GPS coordinates
  *
  * @param params - Parameters including API key and coordinates
  * @returns Promise<FuelPrices> with parsed fuel prices
@@ -182,9 +192,9 @@ function parsePrice(value: string): number {
  * console.log(`Diesel price: ${prices.diesel} ${prices.currency}`);
  */
 export async function fetchFuelPrices(params: FetchFuelPricesParams): Promise<FuelPrices> {
-	const { apiKey, lat, lng, fuelType } = params;
+	const { apiKey, lat, lng } = params;
 
-	const url = buildCoordinatesUrl(lat, lng, fuelType);
+	const url = buildCoordinatesUrl(lat, lng);
 
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -218,22 +228,29 @@ export async function fetchFuelPrices(params: FetchFuelPricesParams): Promise<Fu
 
 		// Check API-level success
 		if (!data.success) {
-			throw new CollectAPIError("CollectAPI returned success: false", undefined, data);
+			const errorMsg = data.error || data.message || "CollectAPI returned success: false";
+			if (errorMsg.toLowerCase().includes("apikey")) {
+				throw new InvalidAPIKeyError(errorMsg);
+			}
+			throw new CollectAPIError(errorMsg, undefined, data);
 		}
 
-		// Check for results
-		if (!data.result || data.result.length === 0) {
+		// Check for result object
+		if (!data.result || !data.result.country) {
 			throw new CollectAPIError("No fuel price data returned for coordinates");
 		}
 
-		const result = data.result[0];
+		// Parse prices and convert from USD to EUR
+		const gasolineUsd = parsePrice(data.result.gasoline);
+		const dieselUsd = parsePrice(data.result.diesel);
+		const lpgUsd = parsePrice(data.result.lpg);
 
 		return {
-			country: result.country,
-			gasoline: parsePrice(result.gasoline),
-			diesel: parsePrice(result.diesel),
-			lpg: parsePrice(result.lpg),
-			currency: result.currency.toUpperCase(),
+			country: data.result.country,
+			gasoline: convertUsdToEur(gasolineUsd),
+			diesel: convertUsdToEur(dieselUsd),
+			lpg: convertUsdToEur(lpgUsd),
+			currency: "EUR", // Always return EUR after conversion
 			fetchedAt: new Date(),
 		};
 	} catch (error) {
@@ -326,15 +343,10 @@ export async function testCollectAPIConnection(
 }
 
 /**
- * Convert USD price to EUR (approximate)
- *
- * Note: For production, use a proper exchange rate API.
- * This is a rough conversion for display purposes only.
- *
+ * Convert USD price to EUR
  * @param usdPrice - Price in USD
- * @param exchangeRate - EUR/USD exchange rate (default: 0.92)
- * @returns Price in EUR
+ * @param rate - Exchange rate (default from USD_TO_EUR_RATE)
  */
-export function convertUsdToEur(usdPrice: number, exchangeRate = 0.92): number {
-	return Math.round(usdPrice * exchangeRate * 100) / 100;
+export function convertUsdToEur(usdPrice: number, rate = USD_TO_EUR_RATE): number {
+	return Math.round(usdPrice * rate * 100) / 100;
 }

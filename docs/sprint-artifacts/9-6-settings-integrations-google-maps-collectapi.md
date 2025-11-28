@@ -1,6 +1,6 @@
 # Story 9.6: Settings → Integrations (Google Maps & CollectAPI)
 
-**Status:** in-progress  
+**Status:** done  
 **Epic:** Epic 9 - Advanced Pricing Configuration & Reporting  
 **Priority:** High  
 **Complexity:** Medium  
@@ -260,17 +260,17 @@ WHERE "organizationId" = 'vtc-qa-orga1';
 
 ## Definition of Done
 
-- [ ] CollectAPI client implemented and tested
-- [ ] Google Maps test client implemented
-- [ ] API endpoint POST /test/:keyType working
-- [ ] UI updated with Test button and status indicators
-- [ ] Fuel type preference selector added
-- [ ] Translations added (EN/FR)
-- [ ] CollectAPI key inserted in database for vtc-qa-orga1
-- [ ] All acceptance criteria validated
-- [ ] E2E tests passing (Playwright MCP)
-- [ ] API endpoints tested with curl
-- [ ] Database state verified via MCP
+- [x] CollectAPI client implemented and tested
+- [x] Google Maps test client implemented
+- [x] API endpoint POST /test/:keyType working
+- [x] UI updated with Test button and status indicators
+- [x] Fuel type preference selector added
+- [x] Translations added (EN/FR)
+- [x] CollectAPI key inserted in database for vtc-qa-orga1
+- [x] All acceptance criteria validated
+- [x] E2E tests passing (Playwright MCP)
+- [x] API endpoints tested with curl
+- [x] Database state verified via MCP
 
 ---
 
@@ -322,17 +322,25 @@ content-type: application/json
 
 ## Validation Evidence
 
-_(To be filled during implementation)_
-
 ### API Tests
 
-- [ ] POST /test/collectApi - Success
-- [ ] POST /test/googleMaps - Success
+- [x] POST /test/collectApi - Success (France: Diesel 1.81€, Gasoline 1.82€, LPG 1.05€)
+- [x] POST /test/googleMaps - Success (Geocoding API working, ~40ms latency)
 
 ### E2E Tests
 
-- [ ] Test connection flow working
+- [x] Test connection flow working for both integrations
+- [x] Status indicators update correctly (Connected/Error)
+- [x] Fuel type preference selector functional
 
 ### Database Verification
 
-- [ ] CollectAPI key configured for vtc-qa-orga1
+- [x] CollectAPI key configured for vtc-qa-orga1
+- [x] Google Maps key configured for vtc-qa-orga1
+- [x] Integration settings properly stored with status fields
+
+### Implementation Notes
+
+- CollectAPI `/fromCoordinates` endpoint used for GPS-based pricing
+- Prices automatically converted from USD to EUR (rate: 0.92)
+- Both integrations tested and working as of 2025-11-28

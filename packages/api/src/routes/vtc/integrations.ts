@@ -226,21 +226,26 @@ export const integrationsRouter = new Hono()
       }
 
       // Update the status in database
-      const statusField = keyType === "googleMaps" ? "googleMapsStatus" : "collectApiStatus";
-      const testedAtField = keyType === "googleMaps" ? "googleMapsTestedAt" : "collectApiTestedAt";
-
-      await db.organizationIntegrationSettings.upsert({
-        where: { organizationId },
-        create: {
-          organizationId,
-          [statusField]: testResult.status,
-          [testedAtField]: new Date(),
-        },
-        update: {
-          [statusField]: testResult.status,
-          [testedAtField]: new Date(),
-        },
-      });
+      // Use explicit field names to avoid Prisma dynamic field issues
+      const now = new Date();
+      
+      if (keyType === "googleMaps") {
+        await db.organizationIntegrationSettings.update({
+          where: { organizationId },
+          data: {
+            googleMapsStatus: testResult.status,
+            googleMapsTestedAt: now,
+          },
+        });
+      } else {
+        await db.organizationIntegrationSettings.update({
+          where: { organizationId },
+          data: {
+            collectApiStatus: testResult.status,
+            collectApiTestedAt: now,
+          },
+        });
+      }
 
       return c.json({
         success: testResult.success,
