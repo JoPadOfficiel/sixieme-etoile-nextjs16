@@ -41,8 +41,20 @@ export function QuoteCommercialSummary({
   const finalPrice = parseFloat(quote.finalPrice);
 
   // Extract applied rules if available
-  const appliedRules = quote.appliedRules as { rules?: Array<{ type: string; description: string }> } | null;
+  const appliedRules = quote.appliedRules as { 
+    rules?: Array<{ type: string; description: string }>;
+    addedFees?: Array<{
+      id: string;
+      type: "fee" | "promotion";
+      name: string;
+      description?: string;
+      amount: number;
+      vatRate?: number;
+      promoCode?: string;
+    }>;
+  } | null;
   const rules = appliedRules?.rules || [];
+  const addedFees = appliedRules?.addedFees || [];
 
   // Format pickup date
   const pickupDate = new Date(quote.pickupAt);
@@ -118,6 +130,39 @@ export function QuoteCommercialSummary({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Added Fees & Promotions */}
+          {addedFees.length > 0 && (
+            <>
+              <hr className="border-border" />
+              <div className="space-y-2">
+                <span className="text-sm font-medium">
+                  {t("quotes.detail.commercial.addedFeesTitle")}
+                </span>
+                <div className="space-y-1">
+                  {addedFees.map((fee) => (
+                    <div key={fee.id} className="flex items-center justify-between text-xs">
+                      <span className={cn(
+                        "text-muted-foreground",
+                        fee.type === "promotion" && "text-green-600"
+                      )}>
+                        {fee.type === "promotion" && fee.promoCode 
+                          ? `${t("quotes.create.promotionPrefix")} ${fee.promoCode}`
+                          : fee.name
+                        }
+                      </span>
+                      <span className={cn(
+                        "font-medium",
+                        fee.type === "promotion" ? "text-green-600" : ""
+                      )}>
+                        {fee.type === "promotion" ? "-" : "+"}{formatPrice(Math.abs(fee.amount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Applied Rules */}

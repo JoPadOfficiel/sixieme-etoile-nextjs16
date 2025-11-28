@@ -201,6 +201,22 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
           <TripTransparencyPanel
             pricingResult={pricingResult}
             isLoading={false}
+            routeCoordinates={{
+              pickup: data.pickupLatitude && data.pickupLongitude
+                ? { 
+                    lat: parseFloat(data.pickupLatitude), 
+                    lng: parseFloat(data.pickupLongitude), 
+                    address: data.pickupAddress 
+                  }
+                : undefined,
+              dropoff: data.dropoffLatitude && data.dropoffLongitude
+                ? { 
+                    lat: parseFloat(data.dropoffLatitude), 
+                    lng: parseFloat(data.dropoffLongitude), 
+                    address: data.dropoffAddress 
+                  }
+                : undefined,
+            }}
           />
         </div>
 

@@ -9,16 +9,23 @@ import {
   TableRow,
 } from "@ui/components/table";
 import { Badge } from "@ui/components/badge";
+import { Button } from "@ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
+import { useToast } from "@ui/hooks/use-toast";
+import { Loader2Icon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { InvoiceLine } from "../types";
 import { formatPrice, formatVatRate, getLineTypeLabel, calculateLineTotals } from "../types";
+import { useDeleteInvoiceLine } from "../hooks/useInvoiceLines";
 
 export interface InvoiceLinesListProps {
   lines: InvoiceLine[];
-  totalExclVat: string;
-  totalVat: string;
-  totalInclVat: string;
+  totalExclVat?: string;
+  totalVat?: string;
+  totalInclVat?: string;
+  // Edit mode props
+  invoiceId?: string;
+  editable?: boolean;
 }
 
 /**
@@ -34,8 +41,22 @@ export function InvoiceLinesList({
   totalExclVat,
   totalVat,
   totalInclVat,
+  invoiceId,
+  editable = false,
 }: InvoiceLinesListProps) {
-  const t = useTranslations("invoices.detail");
+  const t = useTranslations("invoices");
+  const { toast } = useToast();
+  const deleteLineMutation = useDeleteInvoiceLine(invoiceId ?? "");
+
+  const handleDeleteLine = async (lineId: string) => {
+    if (!invoiceId) return;
+    try {
+      await deleteLineMutation.mutateAsync(lineId);
+      toast({ title: t("edit.lineDeleted") });
+    } catch {
+      toast({ title: t("edit.error"), variant: "error" });
+    }
+  };
 
   // Calculate VAT breakdown by rate and category breakdown
   const { vatBreakdown, categoryBreakdown } = calculateLineTotals(lines);
@@ -51,24 +72,25 @@ export function InvoiceLinesList({
       {/* Lines Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">{t("lines")}</CardTitle>
+          <CardTitle className="text-lg">{t("detail.lines")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50%]">{t("description")}</TableHead>
-                <TableHead className="text-right">{t("quantity")}</TableHead>
-                <TableHead className="text-right">{t("unitPrice")}</TableHead>
-                <TableHead className="text-right">{t("vatRate")}</TableHead>
-                <TableHead className="text-right">{t("totalExclVat")}</TableHead>
+                <TableHead className="w-[50%]">{t("detail.description")}</TableHead>
+                <TableHead className="text-right">{t("detail.quantity")}</TableHead>
+                <TableHead className="text-right">{t("detail.unitPrice")}</TableHead>
+                <TableHead className="text-right">{t("detail.vatRate")}</TableHead>
+                <TableHead className="text-right">{t("detail.total")}</TableHead>
+                {editable && <TableHead className="w-[60px]"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    {t("noLines")}
+                  <TableCell colSpan={editable ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    {t("detail.noLines")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -94,6 +116,23 @@ export function InvoiceLinesList({
                     <TableCell className="text-right font-medium">
                       {formatPrice(line.totalExclVat)}
                     </TableCell>
+                    {editable && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteLine(line.id)}
+                          disabled={deleteLineMutation.isPending}
+                        >
+                          {deleteLineMutation.isPending ? (
+                            <Loader2Icon className="size-4 animate-spin" />
+                          ) : (
+                            <TrashIcon className="size-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -102,84 +141,86 @@ export function InvoiceLinesList({
         </CardContent>
       </Card>
 
-      {/* Totals Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">{t("totals")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Category Breakdown - Story 7.3 */}
-          {hasMultipleCategories && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                {t("categoryBreakdown")}
-              </h4>
-              <div className="space-y-1">
-                {categoryBreakdown.transport !== 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("category.transport")}</span>
-                    <span>{formatPrice(categoryBreakdown.transport)}</span>
-                  </div>
-                )}
-                {categoryBreakdown.ancillary !== 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("category.ancillary")}</span>
-                    <span>{formatPrice(categoryBreakdown.ancillary)}</span>
-                  </div>
-                )}
-                {categoryBreakdown.adjustments !== 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("category.adjustments")}</span>
-                    <span className={categoryBreakdown.adjustments < 0 ? "text-green-600" : ""}>
-                      {formatPrice(categoryBreakdown.adjustments)}
-                    </span>
-                  </div>
-                )}
+      {/* Totals Card - Only show if totals are provided */}
+      {(totalExclVat || totalVat || totalInclVat) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">{t("detail.totals")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Category Breakdown - Story 7.3 */}
+            {hasMultipleCategories && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t("detail.categoryBreakdown")}
+                </h4>
+                <div className="space-y-1">
+                  {categoryBreakdown.transport !== 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t("detail.category.transport")}</span>
+                      <span>{formatPrice(categoryBreakdown.transport)}</span>
+                    </div>
+                  )}
+                  {categoryBreakdown.ancillary !== 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t("detail.category.ancillary")}</span>
+                      <span>{formatPrice(categoryBreakdown.ancillary)}</span>
+                    </div>
+                  )}
+                  {categoryBreakdown.adjustments !== 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t("detail.category.adjustments")}</span>
+                      <span className={categoryBreakdown.adjustments < 0 ? "text-green-600" : ""}>
+                        {formatPrice(categoryBreakdown.adjustments)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {hasMultipleCategories && <div className="border-t border-border" />}
+            {hasMultipleCategories && <div className="border-t border-border" />}
 
-          {/* VAT Breakdown */}
-          {Object.keys(vatBreakdown).length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                {t("vatBreakdown")}
-              </h4>
-              <div className="space-y-1">
-                {Object.entries(vatBreakdown).map(([rateKey, { rate, base, vat }]) => (
-                  <div key={rateKey} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      TVA {rate.toFixed(0)}% sur {formatPrice(base)}
-                    </span>
-                    <span>{formatPrice(vat)}</span>
-                  </div>
-                ))}
+            {/* VAT Breakdown */}
+            {Object.keys(vatBreakdown).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t("detail.vatBreakdown")}
+                </h4>
+                <div className="space-y-1">
+                  {Object.entries(vatBreakdown).map(([rateKey, { rate, base, vat }]) => (
+                    <div key={rateKey} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        TVA {rate.toFixed(0)}% sur {formatPrice(base)}
+                      </span>
+                      <span>{formatPrice(vat)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="border-t border-border" />
-
-          {/* Summary Totals */}
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("totalExclVat")}</span>
-              <span className="font-medium">{formatPrice(totalExclVat)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("totalVat")}</span>
-              <span className="font-medium">{formatPrice(totalVat)}</span>
-            </div>
             <div className="border-t border-border" />
-            <div className="flex justify-between text-lg">
-              <span className="font-semibold">{t("totalInclVat")}</span>
-              <span className="font-bold">{formatPrice(totalInclVat)}</span>
+
+            {/* Summary Totals */}
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("detail.totalExclVat")}</span>
+                <span className="font-medium">{formatPrice(totalExclVat)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("detail.totalVat")}</span>
+                <span className="font-medium">{formatPrice(totalVat)}</span>
+              </div>
+              <div className="border-t border-border" />
+              <div className="flex justify-between text-lg">
+                <span className="font-semibold">{t("detail.totalInclVat")}</span>
+                <span className="font-bold">{formatPrice(totalInclVat)}</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   DownloadIcon,
   FileTextIcon,
   Loader2Icon,
+  PencilIcon,
   SendIcon,
   XCircleIcon,
 } from "lucide-react";
@@ -47,9 +48,12 @@ export function QuoteHeader({
   const t = useTranslations();
   const { activeOrganization } = useActiveOrganization();
 
+  const canEdit = quote.status === "DRAFT";
   const canSend = quote.status === "DRAFT";
   const canAcceptReject = quote.status === "SENT" || quote.status === "VIEWED";
-  const canConvert = quote.status === "ACCEPTED";
+  // Can only convert if ACCEPTED and no invoice exists yet
+  const canConvert = quote.status === "ACCEPTED" && !quote.invoice;
+  const hasInvoice = !!quote.invoice;
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -78,6 +82,16 @@ export function QuoteHeader({
 
       {/* Right: Action buttons */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Edit button for DRAFT quotes */}
+        {canEdit && (
+          <Link href={`/app/${activeOrganization?.slug}/quotes/${quote.id}/edit`}>
+            <Button variant="outline" disabled={isLoading}>
+              <PencilIcon className="size-4 mr-2" />
+              {t("quotes.detail.actions.edit")}
+            </Button>
+          </Link>
+        )}
+
         {canSend && (
           <Button onClick={onSend} disabled={isLoading}>
             {isLoading ? (
@@ -119,6 +133,16 @@ export function QuoteHeader({
             )}
             {t("quotes.detail.actions.convertToInvoice")}
           </Button>
+        )}
+
+        {/* Show link to existing invoice if one exists */}
+        {hasInvoice && quote.invoice && (
+          <Link href={`/app/${activeOrganization?.slug}/invoices/${quote.invoice.id}`}>
+            <Button variant="outline">
+              <FileTextIcon className="size-4 mr-2" />
+              {t("quotes.detail.actions.viewInvoice")} {quote.invoice.number}
+            </Button>
+          </Link>
         )}
 
         {/* Story 7.5: PDF Download button */}

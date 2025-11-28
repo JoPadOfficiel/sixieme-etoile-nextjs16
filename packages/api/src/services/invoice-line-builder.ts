@@ -82,19 +82,23 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 
 	const rules = appliedRules as Record<string, unknown>;
 
-	// Parse optional fees
-	if (Array.isArray(rules.optionalFees)) {
-		for (const fee of rules.optionalFees) {
-			if (isValidOptionalFee(fee)) {
-				result.optionalFees.push({
-					id: String(fee.id || ""),
-					name: String(fee.name || "Optional Fee"),
-					description: fee.description ? String(fee.description) : undefined,
-					amount: Number(fee.amount) || 0,
-					vatRate: fee.vatRate !== undefined ? Number(fee.vatRate) : DEFAULT_ANCILLARY_VAT_RATE,
-					isTaxable: fee.isTaxable !== false, // Default to true
-				});
-			}
+	// Parse optional fees (check both legacy 'optionalFees' and new 'selectedOptionalFees' format)
+	const optionalFeesArray = Array.isArray(rules.optionalFees) 
+		? rules.optionalFees 
+		: Array.isArray(rules.selectedOptionalFees) 
+			? rules.selectedOptionalFees 
+			: [];
+	
+	for (const fee of optionalFeesArray) {
+		if (isValidOptionalFee(fee)) {
+			result.optionalFees.push({
+				id: String(fee.id || ""),
+				name: String(fee.name || "Optional Fee"),
+				description: fee.description ? String(fee.description) : undefined,
+				amount: Number(fee.amount) || 0,
+				vatRate: fee.vatRate !== undefined ? Number(fee.vatRate) : DEFAULT_ANCILLARY_VAT_RATE,
+				isTaxable: fee.isTaxable !== false, // Default to true
+			});
 		}
 	}
 
@@ -124,6 +128,35 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 				discountAmount: Math.abs(Number(promo.discountAmount) || 0),
 				discountType: promo.discountType === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
 			});
+		}
+	}
+
+	// Parse addedFees (manually added fees and promotions via dialog)
+	if (Array.isArray(rules.addedFees)) {
+		for (const addedFee of rules.addedFees) {
+			if (addedFee && typeof addedFee === "object") {
+				const fee = addedFee as Record<string, unknown>;
+				if (fee.type === "fee") {
+					// It's a fee
+					result.optionalFees.push({
+						id: String(fee.id || ""),
+						name: String(fee.name || "Custom Fee"),
+						description: fee.description ? String(fee.description) : undefined,
+						amount: Number(fee.amount) || 0,
+						vatRate: fee.vatRate !== undefined ? Number(fee.vatRate) : DEFAULT_ANCILLARY_VAT_RATE,
+						isTaxable: true,
+					});
+				} else if (fee.type === "promotion") {
+					// It's a promotion
+					result.promotions.push({
+						id: String(fee.id || ""),
+						code: fee.promoCode ? String(fee.promoCode) : "PROMO",
+						description: fee.description ? String(fee.description) : undefined,
+						discountAmount: Math.abs(Number(fee.amount) || 0),
+						discountType: fee.discountType === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
+					});
+				}
+			}
 		}
 	}
 
