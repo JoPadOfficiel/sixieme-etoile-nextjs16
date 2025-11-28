@@ -417,6 +417,97 @@ export const missionsRouter = new Hono()
 		},
 	)
 
+	// Story 5.6: Get mission compliance details
+	.get(
+		"/:id/compliance",
+		describeRoute({
+			summary: "Get mission compliance details",
+			description:
+				"Get detailed compliance information including validation result and audit logs for a mission",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			// Get the mission (quote) with vehicle category
+			const quote = await db.quote.findFirst({
+				where: {
+					...withTenantId(id, organizationId),
+					status: "ACCEPTED",
+				},
+				include: {
+					vehicleCategory: true,
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, {
+					message: "Mission not found",
+				});
+			}
+
+			// Get regulatory category from vehicle category
+			const regulatoryCategory = quote.vehicleCategory.regulatoryCategory as "LIGHT" | "HEAVY";
+
+			// Extract compliance validation result from tripAnalysis
+			let validationResult = null;
+			if (quote.tripAnalysis && typeof quote.tripAnalysis === "object") {
+				const analysis = quote.tripAnalysis as Record<string, unknown>;
+				const complianceResult = analysis.complianceResult as Record<string, unknown> | undefined;
+				
+				if (complianceResult) {
+					validationResult = {
+						isCompliant: complianceResult.isCompliant as boolean ?? true,
+						regulatoryCategory: (complianceResult.regulatoryCategory as string) ?? regulatoryCategory,
+						violations: (complianceResult.violations as unknown[]) ?? [],
+						warnings: (complianceResult.warnings as unknown[]) ?? [],
+						adjustedDurations: (complianceResult.adjustedDurations as Record<string, unknown>) ?? {
+							totalDrivingMinutes: 0,
+							totalAmplitudeMinutes: 0,
+							injectedBreakMinutes: 0,
+							cappedSpeedApplied: false,
+						},
+						rulesApplied: (complianceResult.rulesApplied as unknown[]) ?? [],
+					};
+				}
+			}
+
+			// Get audit logs for this mission (quoteId)
+			const auditLogs = await db.complianceAuditLog.findMany({
+				where: {
+					organizationId,
+					quoteId: id,
+				},
+				orderBy: {
+					timestamp: "desc",
+				},
+				take: 20,
+			});
+
+			// Transform audit logs
+			const transformedLogs = auditLogs.map((log) => ({
+				id: log.id,
+				timestamp: log.timestamp.toISOString(),
+				decision: log.decision as "APPROVED" | "BLOCKED" | "WARNING",
+				reason: log.reason,
+				regulatoryCategory: log.regulatoryCategory as "LIGHT" | "HEAVY",
+				violations: log.violations as unknown[] | null,
+				warnings: log.warnings as unknown[] | null,
+				quoteId: log.quoteId,
+				missionId: log.missionId,
+				countersSnapshot: log.countersSnapshot,
+			}));
+
+			return c.json({
+				missionId: id,
+				vehicleRegulatoryCategory: regulatoryCategory,
+				validationResult,
+				auditLogs: transformedLogs,
+			});
+		},
+	)
+
 	// Get assignment candidates for a mission (Story 8.2)
 	.get(
 		"/:id/candidates",

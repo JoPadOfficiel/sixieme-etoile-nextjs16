@@ -2703,6 +2703,56 @@
 				"success": "Mission sous-traitée avec succès",
 				"error": "Échec de la sous-traitance"
 			}
+		},
+		"compliance": {
+			"title": "Détails de conformité",
+			"noData": "Aucune donnée de conformité disponible",
+			"status": {
+				"ok": "Conforme",
+				"warning": "Avertissement",
+				"violation": "Violation"
+			},
+			"vehicleType": {
+				"light": "Véhicule léger",
+				"heavy": "Véhicule lourd"
+			},
+			"lightVehicle": {
+				"title": "Véhicule léger",
+				"description": "Les règles RSE ne s'appliquent pas aux véhicules légers (< 3,5t). Aucune limite de temps de conduite ou d'amplitude n'est imposée."
+			},
+			"totalDriving": "Conduite totale",
+			"totalAmplitude": "Amplitude totale",
+			"injectedBreaks": "Pauses injectées",
+			"cappedSpeedApplied": "Vitesse plafonnée à 85 km/h",
+			"violations": "Violations",
+			"warnings": "Avertissements",
+			"rulesChecked": "Règles vérifiées",
+			"auditLogs": "Journal d'audit",
+			"noAuditLogs": "Aucune vérification de conformité enregistrée pour cette mission",
+			"noRulesChecked": "Aucune règle n'a été vérifiée",
+			"allRulesPassed": "Toutes les règles de conformité sont respectées",
+			"ofLimit": "de la limite",
+			"threshold": "Seuil",
+			"result": {
+				"pass": "Réussi",
+				"fail": "Échoué",
+				"warning": "Avertissement"
+			},
+			"decision": {
+				"approved": "Approuvé",
+				"blocked": "Bloqué",
+				"warning": "Avertissement"
+			},
+			"violationType": {
+				"driving_time_exceeded": "Temps de conduite dépassé",
+				"amplitude_exceeded": "Amplitude dépassée",
+				"break_required": "Pause requise",
+				"speed_limit_exceeded": "Limite de vitesse dépassée"
+			},
+			"warningType": {
+				"approaching_limit": "Approche de la limite",
+				"break_recommended": "Pause recommandée"
+			}
 		}
 	},
 	"documents": {

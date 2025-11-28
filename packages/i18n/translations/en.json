@@ -2703,6 +2703,56 @@
 				"success": "Mission subcontracted successfully",
 				"error": "Failed to subcontract mission"
 			}
+		},
+		"compliance": {
+			"title": "Compliance Details",
+			"noData": "No compliance data available",
+			"status": {
+				"ok": "Compliant",
+				"warning": "Warning",
+				"violation": "Violation"
+			},
+			"vehicleType": {
+				"light": "Light Vehicle",
+				"heavy": "Heavy Vehicle"
+			},
+			"lightVehicle": {
+				"title": "Light Vehicle",
+				"description": "RSE compliance rules do not apply to light vehicles (< 3.5t). No driving time or amplitude limits are enforced."
+			},
+			"totalDriving": "Total Driving",
+			"totalAmplitude": "Total Amplitude",
+			"injectedBreaks": "Injected Breaks",
+			"cappedSpeedApplied": "Speed capped at 85 km/h",
+			"violations": "Violations",
+			"warnings": "Warnings",
+			"rulesChecked": "Rules Checked",
+			"auditLogs": "Audit Logs",
+			"noAuditLogs": "No compliance checks recorded for this mission",
+			"noRulesChecked": "No rules were checked",
+			"allRulesPassed": "All compliance rules passed",
+			"ofLimit": "of limit",
+			"threshold": "Threshold",
+			"result": {
+				"pass": "Pass",
+				"fail": "Fail",
+				"warning": "Warning"
+			},
+			"decision": {
+				"approved": "Approved",
+				"blocked": "Blocked",
+				"warning": "Warning"
+			},
+			"violationType": {
+				"driving_time_exceeded": "Driving Time Exceeded",
+				"amplitude_exceeded": "Amplitude Exceeded",
+				"break_required": "Break Required",
+				"speed_limit_exceeded": "Speed Limit Exceeded"
+			},
+			"warningType": {
+				"approaching_limit": "Approaching Limit",
+				"break_recommended": "Break Recommended"
+			}
 		}
 	},
 	"documents": {

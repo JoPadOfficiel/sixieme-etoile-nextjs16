@@ -12,7 +12,9 @@ import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { EmptyLegsList } from "./EmptyLegsList";
 import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
+import { MissionComplianceDetails } from "./MissionComplianceDetails";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
+import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import type { MissionsFilters as Filters, MissionDetail } from "../types";
@@ -78,6 +80,12 @@ export function DispatchPage() {
 	const { data: candidatesData, isLoading: candidatesLoading } = useAssignmentCandidates({
 		missionId: selectedMissionId,
 		enabled: isAssignmentDrawerOpen && !!selectedMissionId,
+	});
+
+	// Story 5.6: Fetch compliance details when mission is selected
+	const { data: complianceDetails, isLoading: complianceLoading } = useMissionCompliance({
+		missionId: selectedMissionId,
+		enabled: !!selectedMissionId,
 	});
 
 	// Story 8.3: Transform candidates to map-friendly format
@@ -222,13 +230,20 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Transparency + Assignment */}
+				{/* Transparency + Compliance + Assignment */}
 				<div className="h-1/2 overflow-auto flex flex-col gap-4">
 					<TripTransparencyPanel
 						pricingResult={pricingResult}
 						isLoading={missionDetailLoading}
 						className="flex-1"
 					/>
+					{/* Story 5.6: Compliance Details */}
+					{selectedMissionId && (
+						<MissionComplianceDetails
+							complianceDetails={complianceDetails ?? null}
+							isLoading={complianceLoading}
+						/>
+					)}
 					{/* Story 8.6: Subcontracting Suggestions */}
 					<SubcontractingSuggestions missionId={selectedMissionId} />
 					<VehicleAssignmentPanel

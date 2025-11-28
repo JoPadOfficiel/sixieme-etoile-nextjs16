@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>5-6</story-id>
+    <story-title>Surface Compliance Statuses & Logs in UI</story-title>
+    <epic>5 - Fleet & RSE Compliance Engine</epic>
+    <created-date>2025-11-28</created-date>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Operators and dispatchers need clear visibility into RSE compliance statuses and validation logs 
+      directly in the Dispatch and Drivers views. Currently, compliance data exists in the backend 
+      (Stories 5.3-5.5) but is not fully surfaced in the mission context within the Dispatch screen.
+    </summary>
+    <business-impact>
+      - Operators cannot quickly identify why a mission is blocked or risky
+      - Compliance violations may be missed without clear visual indicators
+      - Audit trail is not easily accessible for regulatory compliance
+      - Dispatchers lack context when making assignment decisions
+    </business-impact>
+    <user-pain-points>
+      - No detailed compliance breakdown when clicking on a mission
+      - Compliance badge shows status but not the underlying rules checked
+      - No way to see historical compliance decisions for a mission
+      - Driver compliance snapshot exists but mission-level details are missing
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Surface compliance statuses and validation logs in Dispatch and Drivers views so operators 
+      understand why a mission is blocked or risky.
+    </primary>
+    <secondary>
+      - Provide detailed compliance breakdown when clicking a mission
+      - Show which RSE rules were checked and their results
+      - Display warnings and violations with explicit reasons
+      - Enable access to compliance audit logs for missions
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Dispatch Screen: Enhanced compliance badge with detailed tooltip</item>
+      <item>Mission Detail: Compliance details panel showing rules checked and violations</item>
+      <item>Compliance Logs: List of recent validation decisions for a mission</item>
+      <item>Driver Drawer: Already implemented in Story 5.5 (ComplianceSnapshot + AuditLogList)</item>
+      <item>API: Endpoint for mission-level compliance details</item>
+      <item>Translations: EN/FR for all new UI elements</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modifying the compliance validator logic (Story 5.3)</item>
+      <item>RSE counter tracking logic (Story 5.5)</item>
+      <item>Alternative staffing suggestions (Story 5.4)</item>
+      <item>Full compliance reporting/analytics (Epic 9)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Must reuse existing DispatchBadges component pattern</item>
+      <item>Must integrate with existing MissionDetail type</item>
+      <item>Must use existing ComplianceValidationResult interface</item>
+      <item>Must respect multi-tenancy (organizationId scoping)</item>
+    </technical>
+    <ux>
+      <item>Compliance details should not overload the main screen</item>
+      <item>Use drawers or expandable sections for detailed logs</item>
+      <item>Follow UX spec 6.1.6 Dispatch Badges pattern</item>
+      <item>Use Lucide icons consistently (ShieldCheck, AlertTriangle, XCircle)</item>
+    </ux>
+    <performance>
+      <item>Compliance data can be cached (advisory, not real-time)</item>
+      <item>Avoid N+1 queries when loading mission list</item>
+    </performance>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Compliance data may not exist for all missions (LIGHT vehicles)</description>
+      <mitigation>Handle null/empty states gracefully with "N/A" or "Not applicable" indicators</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Performance impact of loading compliance logs for each mission</description>
+      <mitigation>Lazy load logs only when mission is selected/expanded</mitigation>
+    </risk>
+  </risks>
+
+  <dependencies>
+    <completed>
+      <item story="5.1">Fleet Models & Bases UI - Vehicle/Driver models exist</item>
+      <item story="5.2">Drivers, Licence Categories & RSE Rules - OrganizationLicenseRule exists</item>
+      <item story="5.3">Heavy-Vehicle Compliance Validator - ComplianceValidationResult interface</item>
+      <item story="5.4">Alternative Staffing Options - Suggestions available</item>
+      <item story="5.5">RSE Counters - DriverRSECounter, ComplianceAuditLog models, ComplianceSnapshot component</item>
+      <item story="8.1">Dispatch Screen Layout - DispatchPage, MissionsList, DispatchBadges exist</item>
+      <item story="6.5">Blocking & Non-Blocking Alerts - Alert patterns defined</item>
+    </completed>
+    <related>
+      <item story="8.7">Surface Profitability & Compliance Badges for Missions (backlog)</item>
+      <item story="9.8">Basic Profitability & Yield Reporting (backlog)</item>
+    </related>
+  </dependencies>
+
+  <existing-code-context>
+    <component path="apps/web/modules/saas/dispatch/components/DispatchBadges.tsx">
+      <description>Displays compact badges for profitability, compliance, and assignment status</description>
+      <relevant-types>MissionCompliance { status: "OK" | "WARNING" | "VIOLATION"; warnings: string[] }</relevant-types>
+      <note>ComplianceBadge already shows status and warnings in tooltip - needs enhancement for detailed view</note>
+    </component>
+
+    <component path="apps/web/modules/saas/dispatch/components/MissionRow.tsx">
+      <description>Individual mission row using DispatchBadges</description>
+      <note>Clicking row selects mission - need to show compliance details in detail panel</note>
+    </component>
+
+    <component path="apps/web/modules/saas/dispatch/types/mission.ts">
+      <description>Mission types including MissionCompliance interface</description>
+      <note>May need to extend MissionDetail with compliance details</note>
+    </component>
+
+    <component path="apps/web/modules/saas/fleet/components/ComplianceSnapshot.tsx">
+      <description>Displays RSE counters and compliance status for drivers</description>
+      <note>Can be reused/adapted for mission-level compliance display</note>
+    </component>
+
+    <component path="apps/web/modules/saas/fleet/components/ComplianceAuditLogList.tsx">
+      <description>List of compliance audit log entries</description>
+      <note>Can be reused for mission-level logs</note>
+    </component>
+
+    <service path="packages/api/src/services/compliance-validator.ts">
+      <description>Heavy-vehicle compliance validation service</description>
+      <interfaces>ComplianceValidationResult, ComplianceViolation, ComplianceWarning, AppliedComplianceRule</interfaces>
+    </service>
+
+    <service path="packages/api/src/services/rse-counter.ts">
+      <description>RSE counter service with audit logging</description>
+      <functions>logComplianceDecision(), getRecentAuditLogs()</functions>
+    </service>
+
+    <api path="packages/api/src/routes/vtc/compliance.ts">
+      <endpoints>
+        POST /vtc/compliance/validate - Validate a trip against RSE rules
+        GET /vtc/compliance/rules/:licenseCategoryId - Get rules for a license
+      </endpoints>
+    </api>
+  </existing-code-context>
+
+  <functional-requirements>
+    <fr id="FR30">Compliance checks and decisions (including violations prevented) shall be logged for audit purposes</fr>
+    <fr id="FR46">The UI shall provide blocking alerts when a requested trip is operationally or regulatorily impossible and guide the operator to adjust parameters or staffing</fr>
+    <fr id="FR47">Heavy-vehicle compliance validator that blocks non-compliant missions with explicit error reasons</fr>
+    <fr id="FR48">Generate and present alternative, legally compliant staffing or scheduling options</fr>
+    <fr id="FR49">Track service time separately for each relevant regulation regime per driver</fr>
+  </functional-requirements>
+
+  <ux-requirements>
+    <requirement source="UX Spec 6.1.6">
+      Dispatch Badges: Profitability + Compliance + Assignment badges on each mission row
+    </requirement>
+    <requirement source="UX Spec 8.8">
+      Dispatch Screen: 3-zone layout with missions list, map, and detail panels
+    </requirement>
+    <requirement source="PRD Appendix C">
+      RSE Rules: 10h driving limit, 14h amplitude, 45min break per 4h30, 85km/h capped speed
+    </requirement>
+  </ux-requirements>
+
+  <acceptance-criteria>
+    <ac id="AC1" title="Dispatch Compliance Badge with Details">
+      Given the Dispatch screen
+      When I look at the missions list
+      Then each mission shows a compliance badge (OK / Warning / Violation) with Lucide icons
+      And clicking the mission reveals details of which rules were checked and any warnings
+    </ac>
+    <ac id="AC2" title="Mission Compliance Details Panel">
+      Given a selected mission in the Dispatch screen
+      When I view the mission detail panel
+      Then I see a compliance section showing:
+        - Overall status (OK/Warning/Violation)
+        - List of rules checked with pass/fail status
+        - Violations with explicit reasons (type, actual vs limit)
+        - Warnings with percentage of limit reached
+    </ac>
+    <ac id="AC3" title="Compliance Audit Logs for Mission">
+      Given a mission with compliance checks
+      When I expand the compliance details
+      Then I see a list of recent validation decisions with:
+        - Timestamp
+        - Decision (APPROVED/BLOCKED/WARNING)
+        - Reason
+        - Counters snapshot at time of decision
+    </ac>
+    <ac id="AC4" title="Driver Compliance in Drawer">
+      Given the Drivers detail drawer
+      When I open it
+      Then I see a compliance snapshot (today's hours, amplitude, rest status)
+      And a list of recent validation decisions with reasons
+      (Already implemented in Story 5.5 - verify integration)
+    </ac>
+    <ac id="AC5" title="LIGHT Vehicle Handling">
+      Given a mission with a LIGHT vehicle
+      When compliance is displayed
+      Then the badge shows "N/A" or "OK" (no RSE rules apply)
+      And the details panel explains that RSE rules only apply to HEAVY vehicles
+    </ac>
+  </acceptance-criteria>
+
+  <technical-approach>
+    <api-changes>
+      <endpoint method="GET" path="/api/vtc/missions/:id/compliance">
+        <description>Get detailed compliance information for a mission</description>
+        <response>
+          {
+            missionId: string;
+            vehicleRegulatoryCategory: "LIGHT" | "HEAVY";
+            validationResult: ComplianceValidationResult | null;
+            auditLogs: ComplianceAuditLog[];
+          }
+        </response>
+      </endpoint>
+    </api-changes>
+
+    <frontend-changes>
+      <component name="MissionComplianceDetails" path="apps/web/modules/saas/dispatch/components/MissionComplianceDetails.tsx">
+        <description>New component showing detailed compliance for a selected mission</description>
+        <features>
+          - Overall status badge
+          - Rules checked list with pass/fail
+          - Violations/warnings expandable list
+          - Audit logs section
+        </features>
+      </component>
+
+      <component name="ComplianceRulesList" path="apps/web/modules/saas/dispatch/components/ComplianceRulesList.tsx">
+        <description>Reusable list of applied compliance rules with status</description>
+      </component>
+
+      <modification target="DispatchPage.tsx">
+        <description>Add MissionComplianceDetails to the detail panel when mission is selected</description>
+      </modification>
+
+      <modification target="dispatch/types/mission.ts">
+        <description>Extend MissionDetail with complianceDetails field</description>
+      </modification>
+    </frontend-changes>
+
+    <translations>
+      <namespace>dispatch.compliance</namespace>
+      <keys>
+        - status.ok, status.warning, status.violation
+        - rules.drivingTime, rules.amplitude, rules.breaks, rules.speed
+        - violations.drivingTimeExceeded, violations.amplitudeExceeded
+        - warnings.approachingLimit
+        - lightVehicle.noRulesApply
+        - auditLogs.title, auditLogs.empty
+      </keys>
+    </translations>
+  </technical-approach>
+
+  <test-strategy>
+    <unit-tests>
+      <test>MissionComplianceDetails renders correctly for HEAVY vehicle with violations</test>
+      <test>MissionComplianceDetails renders correctly for LIGHT vehicle (N/A state)</test>
+      <test>ComplianceRulesList shows pass/fail status for each rule</test>
+      <test>Audit logs display with correct formatting</test>
+    </unit-tests>
+    <api-tests>
+      <test>GET /api/vtc/missions/:id/compliance returns correct data</test>
+      <test>Multi-tenancy: Cannot access compliance for other org's missions</test>
+    </api-tests>
+    <e2e-tests>
+      <test>Select mission in Dispatch, verify compliance details appear</test>
+      <test>Verify compliance badge tooltip shows warnings</test>
+      <test>Verify audit logs are displayed when expanded</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

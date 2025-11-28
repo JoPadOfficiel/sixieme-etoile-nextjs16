@@ -15,3 +15,7 @@ export * from "./FlexibilityScore";
 // Story 8.4: Trip Chaining
 export * from "./ChainingSuggestions";
 export * from "./ChainBadge";
+// Story 5.6: Compliance Details
+export * from "./MissionComplianceDetails";
+export * from "./ComplianceRulesList";
+export * from "./MissionComplianceAuditLogs";

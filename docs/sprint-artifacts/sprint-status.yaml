@@ -74,7 +74,7 @@ development_status:
   5-3-implement-heavy-vehicle-compliance-validator: done
   5-4-suggest-alternative-staffing-scheduling-options: done
   5-5-track-rse-counters-per-driver-licence-regime: done
-  5-6-surface-compliance-statuses-logs-ui: backlog
+  5-6-surface-compliance-statuses-logs-ui: done
   epic-6: contexted
   6-1-implement-quotes-list-with-status-profitability: done
   6-2-implement-create-quote-3-column-cockpit: done
