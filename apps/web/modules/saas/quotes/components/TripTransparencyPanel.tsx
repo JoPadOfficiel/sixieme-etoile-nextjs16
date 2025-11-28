@@ -29,6 +29,7 @@ import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import { EditableCostRow } from "./EditableCostRow";
+import { RoutePreviewMap } from "./RoutePreviewMap";
 import type { PricingResult } from "../types";
 import { 
   formatPrice, 
@@ -41,6 +42,11 @@ import {
   getOriginalCost,
 } from "../types";
 
+interface RouteCoordinates {
+  pickup?: { lat: number; lng: number; address: string };
+  dropoff?: { lat: number; lng: number; address: string };
+}
+
 interface TripTransparencyPanelProps {
   pricingResult: PricingResult | null;
   isLoading: boolean;
@@ -49,6 +55,8 @@ interface TripTransparencyPanelProps {
   canEditCosts?: boolean;
   onCostUpdate?: (componentName: string, value: number) => Promise<void>;
   isCostUpdating?: boolean;
+  // Story 10.1: Route visualization
+  routeCoordinates?: RouteCoordinates;
 }
 
 /**
@@ -73,6 +81,7 @@ export function TripTransparencyPanel({
   canEditCosts = false,
   onCostUpdate,
   isCostUpdating = false,
+  routeCoordinates,
 }: TripTransparencyPanelProps) {
   const t = useTranslations();
 
@@ -262,6 +271,15 @@ export function TripTransparencyPanel({
 
         {/* Route Tab - Segments A/B/C */}
         <TabsContent value="route" className="mt-4">
+          {/* Route Map Preview */}
+          {routeCoordinates && (routeCoordinates.pickup || routeCoordinates.dropoff) && (
+            <div className="mb-4">
+              <RoutePreviewMap
+                pickup={routeCoordinates.pickup}
+                dropoff={routeCoordinates.dropoff}
+              />
+            </div>
+          )}
           <Card>
             <CardContent className="pt-4">
               <Table>

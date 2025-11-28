@@ -4,6 +4,7 @@ import { activeOrganizationQueryKey } from "@saas/organizations/lib/api";
 import { purchasesQueryKey } from "@saas/payments/lib/api";
 import { getPurchases } from "@saas/payments/lib/server";
 import { AppWrapper } from "@saas/shared/components/AppWrapper";
+import { OrganizationProviders } from "@saas/shared/components/OrganizationProviders";
 import { getQueryClient } from "@shared/lib/server";
 import { notFound } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -39,5 +40,9 @@ export default async function OrganizationLayout({
 		});
 	}
 
-	return <AppWrapper>{children}</AppWrapper>;
+	return (
+		<OrganizationProviders>
+			<AppWrapper>{children}</AppWrapper>
+		</OrganizationProviders>
+	);
 }
