@@ -177,7 +177,7 @@ interface AssignmentBadgeProps {
 }
 
 function AssignmentBadge({ assignment, t }: AssignmentBadgeProps) {
-	const isAssigned = assignment?.vehicleId !== null;
+	const isAssigned = assignment !== null && assignment.vehicleId !== null;
 	const config = isAssigned
 		? {
 				Icon: UserCheck,
