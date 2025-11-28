@@ -2,7 +2,7 @@
 
 **Epic:** 8 - Dispatch & Strategic Optimisation  
 **Story ID:** 8-7  
-**Status:** Completed  
+**Status:** done  
 **Created:** 2025-11-28  
 **Updated:** 2025-11-28
 
