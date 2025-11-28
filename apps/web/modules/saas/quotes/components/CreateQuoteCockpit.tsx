@@ -19,6 +19,7 @@ import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import { useOptionalFees } from "../hooks/useOptionalFees";
 import type { CreateQuoteFormData } from "../types";
 import { initialCreateQuoteFormData, hasBlockingViolations } from "../types";
+import type { AddedFee } from "./AddQuoteFeeDialog";
 
 /**
  * CreateQuoteCockpit Component
@@ -45,6 +46,9 @@ export function CreateQuoteCockpit() {
 
   // Form state
   const [formData, setFormData] = useState<CreateQuoteFormData>(initialCreateQuoteFormData);
+  
+  // Added fees and promotions (manual additions via dialog)
+  const [addedFees, setAddedFees] = useState<AddedFee[]>([]);
   
   // Pricing calculation hook
   const { pricingResult, isCalculating, error: pricingError, calculate } = usePricingCalculation({
@@ -86,12 +90,27 @@ export function CreateQuoteCockpit() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  // Handle adding a fee or promotion via dialog
+  const handleAddFee = useCallback((fee: AddedFee) => {
+    setAddedFees((prev) => [...prev, fee]);
+  }, []);
+
+  // Handle removing a fee or promotion
+  const handleRemoveFee = useCallback((feeId: string) => {
+    setAddedFees((prev) => prev.filter((f) => f.id !== feeId));
+  }, []);
+
   // Trigger pricing calculation when relevant fields change
   // Using a ref to track previous price to avoid cascading renders
   const previousPriceRef = useRef<number | null>(null);
+  
+  // Store calculate in a ref to avoid dependency issues
+  const calculateRef = useRef(calculate);
+  calculateRef.current = calculate;
 
   useEffect(() => {
-    calculate(formData);
+    // Use ref to avoid infinite loops from calculate dependency changes
+    calculateRef.current(formData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     formData.pickupAddress,
@@ -106,7 +125,7 @@ export function CreateQuoteCockpit() {
     formData.passengerCount,
     formData.luggageCount,
     formData.tripType,
-    calculate,
+    // Note: calculate is NOT a dependency - we use ref to avoid infinite loops
   ]);
 
   // Auto-set final price when pricing result changes (only if not already set)
@@ -135,6 +154,14 @@ export function CreateQuoteCockpit() {
   // Create quote mutation
   const createQuoteMutation = useMutation({
     mutationFn: async () => {
+      // Calculate total of added fees (positive for fees, negative for promotions)
+      const addedFeesTotal = addedFees.reduce((sum, fee) => {
+        return sum + (fee.type === "promotion" ? -Math.abs(fee.amount) : fee.amount);
+      }, 0);
+      
+      // Final price includes base price + added fees/promotions
+      const computedFinalPrice = formData.finalPrice + addedFeesTotal;
+      
       const response = await apiClient.vtc.quotes.$post({
         json: {
           contactId: formData.contactId,
@@ -151,11 +178,37 @@ export function CreateQuoteCockpit() {
           passengerCount: formData.passengerCount,
           luggageCount: formData.luggageCount,
           suggestedPrice: pricingResult?.price ?? formData.finalPrice,
-          finalPrice: formData.finalPrice,
+          finalPrice: computedFinalPrice,
           internalCost: pricingResult?.internalCost ?? null,
           marginPercent: pricingResult?.marginPercent ?? null,
           tripAnalysis: pricingResult?.tripAnalysis as unknown as Record<string, unknown> | null ?? null,
-          appliedRules: pricingResult?.appliedRules ? { rules: pricingResult.appliedRules } : null,
+          appliedRules: {
+            rules: pricingResult?.appliedRules ?? [],
+            selectedOptionalFeeIds: formData.selectedOptionalFeeIds,
+            // Snapshot the selected fees details for invoice generation
+            selectedOptionalFees: optionalFees
+              .filter(fee => formData.selectedOptionalFeeIds.includes(fee.id))
+              .map(fee => ({
+                id: fee.id,
+                name: fee.name,
+                description: fee.description,
+                amount: fee.amount,
+                amountType: fee.amountType,
+                isTaxable: fee.isTaxable,
+                vatRate: fee.vatRate,
+              })),
+            // Manually added fees and promotions via dialog
+            addedFees: addedFees.map(fee => ({
+              id: fee.id,
+              type: fee.type,
+              name: fee.name,
+              description: fee.description,
+              amount: fee.amount,
+              vatRate: fee.vatRate,
+              discountType: fee.discountType,
+              promoCode: fee.promoCode,
+            })),
+          },
           validUntil: formData.validUntil?.toISOString() ?? null,
           notes: formData.notes || null,
         },
@@ -259,6 +312,14 @@ export function CreateQuoteCockpit() {
           <TripTransparencyPanel
             pricingResult={pricingResult}
             isLoading={isCalculating}
+            routeCoordinates={{
+              pickup: formData.pickupLatitude && formData.pickupLongitude
+                ? { lat: formData.pickupLatitude, lng: formData.pickupLongitude, address: formData.pickupAddress }
+                : undefined,
+              dropoff: formData.dropoffLatitude && formData.dropoffLongitude
+                ? { lat: formData.dropoffLatitude, lng: formData.dropoffLongitude, address: formData.dropoffAddress }
+                : undefined,
+            }}
           />
         </div>
 
@@ -272,6 +333,9 @@ export function CreateQuoteCockpit() {
             onFormChange={handleFormChange}
             onSubmit={handleSubmit}
             hasBlockingViolations={hasViolations}
+            addedFees={addedFees}
+            onAddFee={handleAddFee}
+            onRemoveFee={handleRemoveFee}
           />
         </div>
       </div>

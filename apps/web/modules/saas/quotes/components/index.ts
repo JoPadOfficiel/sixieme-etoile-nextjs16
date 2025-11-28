@@ -22,3 +22,7 @@ export { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 // Story 6.6: Scenario Helpers
 export { AirportHelperPanel } from "./AirportHelperPanel";
 export { CapacityWarningAlert } from "./CapacityWarningAlert";
+
+// Optional Fees & Promotions
+export { AddQuoteFeeDialog, type AddedFee } from "./AddQuoteFeeDialog";
+export { AddedFeesList } from "./AddedFeesList";

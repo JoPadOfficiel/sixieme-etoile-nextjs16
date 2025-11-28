@@ -22,6 +22,8 @@ import {
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
+import { AddQuoteFeeDialog, type AddedFee } from "./AddQuoteFeeDialog";
+import { AddedFeesList } from "./AddedFeesList";
 import type { CreateQuoteFormData, PricingResult } from "../types";
 import { formatPrice } from "../types";
 
@@ -38,6 +40,12 @@ interface QuotePricingPanelProps {
   className?: string;
   // Story 6.5: Blocking violations flag
   hasBlockingViolations?: boolean;
+  // Custom submit label for edit mode
+  submitLabel?: string;
+  // Added fees and promotions
+  addedFees?: AddedFee[];
+  onAddFee?: (fee: AddedFee) => void;
+  onRemoveFee?: (feeId: string) => void;
 }
 
 /**
@@ -62,6 +70,10 @@ export function QuotePricingPanel({
   onSubmit,
   className,
   hasBlockingViolations = false,
+  submitLabel,
+  addedFees = [],
+  onAddFee,
+  onRemoveFee,
 }: QuotePricingPanelProps) {
   const t = useTranslations();
 
@@ -73,7 +85,15 @@ export function QuotePricingPanel({
 
   const internalCost = pricingResult?.internalCost ?? 0;
   const suggestedPrice = pricingResult?.price ?? 0;
-  const currentMargin = calculateMargin(formData.finalPrice, internalCost);
+  
+  // Calculate total of added fees (positive for fees, negative for promotions)
+  const addedFeesTotal = addedFees.reduce((sum, fee) => {
+    return sum + (fee.type === "promotion" ? -Math.abs(fee.amount) : fee.amount);
+  }, 0);
+  
+  // Total price including fees and promotions
+  const totalPriceWithFees = formData.finalPrice + addedFeesTotal;
+  const currentMargin = calculateMargin(totalPriceWithFees, internalCost);
 
   // Format date for date input
   const formatDateInput = (date: Date | null): string => {
@@ -174,15 +194,44 @@ export function QuotePricingPanel({
             </div>
           </div>
 
+          {/* Total with fees/promotions */}
+          {addedFeesTotal !== 0 && formData.finalPrice > 0 && (
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t("quotes.create.basePrice")}
+                </span>
+                <span>{formatPrice(formData.finalPrice)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className={addedFeesTotal > 0 ? "text-muted-foreground" : "text-green-600"}>
+                  {addedFeesTotal > 0 ? t("quotes.create.addedFeesLabel") : t("quotes.create.promotionsLabel")}
+                </span>
+                <span className={addedFeesTotal > 0 ? "" : "text-green-600"}>
+                  {addedFeesTotal > 0 ? "+" : ""}{formatPrice(addedFeesTotal)}
+                </span>
+              </div>
+              <hr className="border-border" />
+              <div className="flex items-center justify-between">
+                <span className="font-medium">
+                  {t("quotes.create.totalPrice")}
+                </span>
+                <span className="text-lg font-bold">
+                  {formatPrice(totalPriceWithFees)}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Live Margin Calculation */}
-          {formData.finalPrice > 0 && internalCost > 0 && (
+          {totalPriceWithFees > 0 && internalCost > 0 && (
             <div className="p-3 bg-muted/50 rounded-lg space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
                   {t("quotes.create.grossMargin")}
                 </span>
                 <span className="font-medium">
-                  {formatPrice(formData.finalPrice - internalCost)}
+                  {formatPrice(totalPriceWithFees - internalCost)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -238,12 +287,27 @@ export function QuotePricingPanel({
             />
           </div>
 
-          {/* Future: Optional Fees Checklist */}
-          <div className="text-xs text-muted-foreground border-t pt-3">
-            {t("quotes.create.optionalFeesComingSoon")}
-          </div>
         </CardContent>
       </Card>
+
+      {/* Added Fees and Promotions */}
+      {onAddFee && onRemoveFee && (
+        <>
+          <div className="flex justify-end">
+            <AddQuoteFeeDialog
+              onAdd={onAddFee}
+              disabled={isSubmitting}
+              existingFeeIds={addedFees.filter(f => f.type === "fee").map(f => f.id)}
+              existingPromotionIds={addedFees.filter(f => f.type === "promotion").map(f => f.id)}
+            />
+          </div>
+          <AddedFeesList
+            fees={addedFees}
+            onRemove={onRemoveFee}
+            disabled={isSubmitting}
+          />
+        </>
+      )}
 
       {/* Submit Button - Story 6.5: Disabled when blocking violations exist */}
       <TooltipProvider>
@@ -273,7 +337,7 @@ export function QuotePricingPanel({
                 ) : (
                   <>
                     <PlusIcon className="size-4 mr-2" />
-                    {t("quotes.create.createQuote")}
+                    {submitLabel || t("quotes.create.createQuote")}
                   </>
                 )}
               </Button>

@@ -9,10 +9,13 @@ export { InvoiceDetail } from "./components/InvoiceDetail";
 export { InvoiceStatusBadge } from "./components/InvoiceStatusBadge";
 export { InvoiceLinesList } from "./components/InvoiceLinesList";
 export { InvoiceHeader } from "./components/InvoiceHeader";
+export { EditInvoicePage } from "./components/EditInvoicePage";
+export { AddInvoiceFeeDialog } from "./components/AddInvoiceFeeDialog";
 
 // Hooks
 export { useInvoices } from "./hooks/useInvoices";
 export { useInvoiceDetail, useUpdateInvoice, useDeleteInvoice } from "./hooks/useInvoiceDetail";
+export { useAddInvoiceLine, useDeleteInvoiceLine } from "./hooks/useInvoiceLines";
 
 // Types
 export * from "./types";
