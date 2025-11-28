@@ -184,6 +184,7 @@ export async function updateIntegrationSettings(
   updates: {
     googleMapsApiKey?: string | null;
     collectApiKey?: string | null;
+    preferredFuelType?: string;
   }
 ): Promise<{ updatedAt: Date }> {
   const result = await db.organizationIntegrationSettings.upsert({
@@ -192,6 +193,7 @@ export async function updateIntegrationSettings(
       organizationId,
       googleMapsApiKey: updates.googleMapsApiKey ?? null,
       collectApiKey: updates.collectApiKey ?? null,
+      preferredFuelType: updates.preferredFuelType ?? "DIESEL",
     },
     update: {
       ...(updates.googleMapsApiKey !== undefined && {
@@ -199,6 +201,9 @@ export async function updateIntegrationSettings(
       }),
       ...(updates.collectApiKey !== undefined && {
         collectApiKey: updates.collectApiKey,
+      }),
+      ...(updates.preferredFuelType !== undefined && {
+        preferredFuelType: updates.preferredFuelType,
       }),
     },
     select: { updatedAt: true },

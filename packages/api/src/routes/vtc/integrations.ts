@@ -64,6 +64,7 @@ const requireAdminRole = async (c: any, next: () => Promise<void>) => {
 const updateIntegrationSettingsSchema = z.object({
   googleMapsApiKey: z.string().min(1).max(500).optional().nullable(),
   collectApiKey: z.string().min(1).max(500).optional().nullable(),
+  preferredFuelType: z.enum(["DIESEL", "GASOLINE", "LPG"]).optional(),
 });
 
 const keyTypeParamSchema = z.object({
@@ -130,16 +131,17 @@ export const integrationsRouter = new Hono()
       const organizationId = c.get("organizationId");
       const data = c.req.valid("json");
 
-      // Validate that at least one key is provided
-      if (data.googleMapsApiKey === undefined && data.collectApiKey === undefined) {
+      // Validate that at least one field is provided
+      if (data.googleMapsApiKey === undefined && data.collectApiKey === undefined && data.preferredFuelType === undefined) {
         throw new HTTPException(400, {
-          message: "At least one API key must be provided",
+          message: "At least one field must be provided",
         });
       }
 
       const result = await updateIntegrationSettings(organizationId, {
         googleMapsApiKey: data.googleMapsApiKey,
         collectApiKey: data.collectApiKey,
+        preferredFuelType: data.preferredFuelType,
       });
 
       return c.json({

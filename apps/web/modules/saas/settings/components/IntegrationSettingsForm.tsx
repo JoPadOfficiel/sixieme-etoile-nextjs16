@@ -118,7 +118,7 @@ export function IntegrationSettingsForm() {
 	});
 
 	const updateMutation = useMutation({
-		mutationFn: async (data: { googleMapsApiKey?: string | null; collectApiKey?: string | null }) => {
+		mutationFn: async (data: { googleMapsApiKey?: string | null; collectApiKey?: string | null; preferredFuelType?: string }) => {
 			const response = await apiClient.vtc.settings.integrations.$put({
 				json: data,
 			});
@@ -421,8 +421,7 @@ export function IntegrationSettingsForm() {
 									<Select
 										value={settings.preferredFuelType || "DIESEL"}
 										onValueChange={(value) => {
-											// TODO: Implement fuel type update
-											console.log("Fuel type changed to:", value);
+											updateMutation.mutate({ preferredFuelType: value });
 										}}
 									>
 										<SelectTrigger className="w-32">
