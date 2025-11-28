@@ -314,10 +314,6 @@ content-type: application/json
 
 **CollectAPI Key (for vtc-qa-orga1):**
 
-```
-2LVzUXXQNYVv57lQiKOk5V:3PZwjHYcedBHxrK7BN5wai
-```
-
 ---
 
 ## Validation Evidence

@@ -138,7 +138,7 @@
 
     <provided-credentials>
       <credential name="CollectAPI Key" organization="vtc-qa-orga1">
-        2LVzUXXQNYVv57lQiKOk5V:3PZwjHYcedBHxrK7BN5wai
+        ***
       </credential>
     </provided-credentials>
   </technical-context>

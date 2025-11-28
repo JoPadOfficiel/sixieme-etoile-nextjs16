@@ -191,6 +191,6 @@ export default function OrganizationLayout({ children }) {
 
 ## Notes
 
-- The API key `AIzaSyAEDO_LN6RMESjJWYyFOlbYICkGygUWGeY` is already configured and tested as "connected"
+- The API key `***` is already configured and tested as "connected"
 - CollectAPI for fuel prices is also configured and working
 - The backend pricing engine already supports Google Maps routing via `vehicle-selection.ts`

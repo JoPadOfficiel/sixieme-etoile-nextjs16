@@ -79,7 +79,7 @@
         and has been tested successfully (status: 'connected').
       </description>
       <evidence>
-        googleMapsApiKey: AIzaSyAEDO_LN6RMESjJWYyFOlbYICkGygUWGeY
+        googleMapsApiKey: ***
         googleMapsStatus: connected
         googleMapsTestedAt: 2025-11-28T11:38:53.277Z
       </evidence>
