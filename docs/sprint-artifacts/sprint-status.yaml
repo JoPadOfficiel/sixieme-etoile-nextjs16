@@ -96,7 +96,7 @@ development_status:
   8-4-detect-suggest-trip-chaining-opportunities: done
   8-5-model-surface-empty-leg-opportunities: done
   8-6-integrate-subcontractor-directory-subcontracting-suggestions: done
-  8-7-surface-profitability-compliance-badges-missions: backlog
+  8-7-surface-profitability-compliance-badges-missions: done
   epic-9: contexted
   9-1-settings-pricing-seasonal-multipliers: done
   9-2-settings-pricing-advanced-rate-modifiers: done
@@ -105,4 +105,4 @@ development_status:
   9-5-settings-fleet-regulatory-configuration: done
   9-6-settings-integrations-google-maps-collectapi: done
   9-7-fuel-price-cache-refresh-staleness-rules: done
-  9-8-basic-profitability-yield-reporting: backlog
+  9-8-basic-profitability-yield-reporting: done
