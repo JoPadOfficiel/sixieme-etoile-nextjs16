@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>8-7</story-id>
+    <story-title>Surface Profitability & Compliance Badges for Missions</story-title>
+    <epic>8 - Dispatch & Strategic Optimisation</epic>
+    <created-date>2025-11-28</created-date>
+    <status>completed</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Dispatchers need to quickly identify problematic assignments at a glance in the Dispatch screen.
+      Each mission should display visual badges for profitability (green/orange/red), compliance 
+      (OK/Warning/Violation), and assignment status (Assigned/Unassigned).
+    </summary>
+    <business-impact>
+      - Quick identification of loss-making missions
+      - Immediate visibility of compliance issues
+      - Clear view of unassigned missions requiring attention
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Display profitability and compliance badges visible on each mission in the Dispatch screen
+      so dispatchers can spot problematic assignments at a glance.
+    </primary>
+  </objectives>
+
+  <implementation-status>
+    <component name="DispatchBadges" status="complete">
+      <path>apps/web/modules/saas/dispatch/components/DispatchBadges.tsx</path>
+      <features>
+        - ProfitabilityBadge: green (≥20%), orange (0-20%), red (&lt;0%)
+        - ComplianceBadge: OK, WARNING, VIOLATION with Lucide icons
+        - AssignmentBadge: Assigned (blue), Unassigned (gray)
+        - Tooltips with detailed information
+      </features>
+    </component>
+
+    <component name="MissionRow" status="complete">
+      <path>apps/web/modules/saas/dispatch/components/MissionRow.tsx</path>
+      <integration>Uses DispatchBadges component for each mission row</integration>
+    </component>
+
+    <tests status="complete">
+      <path>apps/web/modules/saas/dispatch/components/__tests__/DispatchBadges.test.tsx</path>
+      <count>8 tests</count>
+      <coverage>
+        - Green/orange/red profitability badges
+        - OK/warning/violation compliance badges
+        - Assigned/unassigned badges
+        - All three badges render together
+      </coverage>
+    </tests>
+
+    <translations status="complete">
+      <namespace>dispatch.badges</namespace>
+      <languages>EN, FR</languages>
+      <keys>
+        - profitability.green, profitability.orange, profitability.red
+        - compliance.ok, compliance.warning, compliance.violation
+        - assignment.assigned, assignment.unassigned
+      </keys>
+    </translations>
+  </implementation-status>
+
+  <acceptance-criteria>
+    <ac id="AC1" title="Profitability Badge" status="passed">
+      Given the missions list in Dispatch
+      When I view it
+      Then each row shows a profitability badge (green/orange/red) with tooltip showing margin %
+    </ac>
+    <ac id="AC2" title="Compliance Badge" status="passed">
+      Given the missions list in Dispatch
+      When I view it
+      Then each row shows a compliance badge (OK/Warning/Violation) with Lucide icons
+      And clicking shows more detail via tooltip
+    </ac>
+    <ac id="AC3" title="Assignment Badge" status="passed">
+      Given the missions list in Dispatch
+      When I view it
+      Then each row shows an assignment badge (Assigned/Unassigned)
+      And tooltip shows vehicle/driver details when assigned
+    </ac>
+  </acceptance-criteria>
+
+  <functional-requirements>
+    <fr id="FR24">Profitability indicator (green/orange/red) based on margin</fr>
+    <fr id="FR47">Heavy-vehicle compliance validator with explicit error reasons</fr>
+    <fr id="FR48">Alternative staffing options when compliance fails</fr>
+    <fr id="FR49">Track service time per regulation regime</fr>
+    <fr id="FR50">Driver flexibility scoring</fr>
+  </functional-requirements>
+</story-context>

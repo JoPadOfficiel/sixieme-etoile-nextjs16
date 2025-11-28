@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>9-8</story-id>
+    <story-title>Basic Profitability & Yield Reporting</story-title>
+    <epic>9 - Advanced Pricing Configuration & Reporting</epic>
+    <created-date>2025-11-28</created-date>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Business owners need simple profitability and yield reports using Trip Transparency data
+      to see which clients, grids, and vehicle categories perform best. Currently, there is no
+      dedicated reporting view to analyze mission profitability across different dimensions.
+    </summary>
+    <business-impact>
+      - Cannot identify loss-making client segments
+      - No visibility on grid/route profitability
+      - Cannot optimize vehicle category pricing
+      - Missing data for commercial decisions
+    </business-impact>
+    <user-pain-points>
+      - No aggregated view of profitability by client
+      - Cannot filter to see only loss-making trips
+      - No way to compare performance across vehicle categories
+      - Missing export functionality for external analysis
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Provide simple profitability and yield reports using Trip Transparency data so business
+      owners can see which clients, grids, and vehicle categories perform best.
+    </primary>
+    <secondary>
+      - Table/chart of missions/quotes with margin grouped by client, grid, vehicle category, or period
+      - Filters to isolate loss-making trips, heavily discounted promos, or specific partners
+      - Profitability Indicator patterns for quick scanning
+      - Optional CSV/Excel export
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Reporting page at /dashboard/reports or /dashboard/documents area</item>
+      <item>Profitability report table with grouping options</item>
+      <item>Filters: date range, client, vehicle category, profitability level</item>
+      <item>Summary cards: total revenue, total cost, average margin, loss count</item>
+      <item>Profitability Indicator reuse from quotes/dispatch</item>
+      <item>API endpoint for aggregated profitability data</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Advanced analytics/BI dashboards (future epic)</item>
+      <item>Real-time streaming data</item>
+      <item>Predictive analytics</item>
+      <item>Multi-organization comparison</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Must use existing tripAnalysis data from quotes</item>
+      <item>Must respect multi-tenancy (organizationId scoping)</item>
+      <item>Aggregate queries should be performant (consider caching)</item>
+      <item>Reuse ProfitabilityIndicator component</item>
+    </technical>
+    <ux>
+      <item>Follow existing table patterns from quotes/invoices lists</item>
+      <item>Use consistent filter components</item>
+      <item>Summary cards at top like other settings pages</item>
+    </ux>
+  </constraints>
+
+  <risks>
+    <risk priority="medium">
+      <description>Performance with large datasets</description>
+      <mitigation>Use pagination, limit date ranges, consider background aggregation</mitigation>
+    </risk>
+    <risk priority="low">
+      <description>Data accuracy if tripAnalysis is incomplete</description>
+      <mitigation>Handle null/missing values gracefully, show "N/A" where needed</mitigation>
+    </risk>
+  </risks>
+
+  <dependencies>
+    <completed>
+      <item story="4.6">Shadow Calculation - tripAnalysis data available</item>
+      <item story="4.7">Profitability Indicator - Component exists</item>
+      <item story="2.5">Commercial Context in CRM - Client metrics</item>
+      <item story="7.1">Invoice Models - Invoice totals available</item>
+      <item story="6.1">Quotes List - Table patterns</item>
+    </completed>
+  </dependencies>
+
+  <existing-code-context>
+    <component path="apps/web/modules/saas/quotes/components/ProfitabilityIndicator.tsx">
+      <description>Reusable profitability indicator (green/orange/red)</description>
+    </component>
+
+    <component path="apps/web/modules/saas/dispatch/components/DispatchBadges.tsx">
+      <description>Badge patterns for profitability display</description>
+    </component>
+
+    <model path="packages/database/prisma/schema.prisma">
+      <entities>Quote (with tripAnalysis, marginPercent, internalCost), Invoice, Contact</entities>
+    </model>
+  </existing-code-context>
+
+  <functional-requirements>
+    <fr id="FR24">Profitability indicator (green/orange/red) based on margin</fr>
+    <fr id="FR37">Admin configuration for zones, routes, grids, margins</fr>
+    <fr id="FR55">Trip Transparency module exposing cost components</fr>
+    <fr id="FR56">Optional fees catalogue with taxation flags</fr>
+  </functional-requirements>
+
+  <acceptance-criteria>
+    <ac id="AC1" title="Profitability Report Page">
+      Given a Reporting or Documents area
+      When I open a profitability report
+      Then I can see a table or chart of missions/quotes with margin
+      And data can be grouped by client, grid, vehicle category, or period
+      And Profitability Indicator patterns are used for quick scanning
+    </ac>
+    <ac id="AC2" title="Filters for Report">
+      Given the profitability report
+      When I use filters
+      Then I can isolate loss-making trips (red profitability)
+      And I can filter by specific partners
+      And I can filter by date range
+    </ac>
+    <ac id="AC3" title="Summary Cards">
+      Given the profitability report
+      When I view the page
+      Then I see summary cards showing:
+        - Total Revenue
+        - Total Internal Cost
+        - Average Margin %
+        - Count of loss-making trips
+    </ac>
+    <ac id="AC4" title="Export (Stretch Goal)">
+      Given the profitability report with data
+      When I click Export
+      Then I can download the data as CSV or Excel
+    </ac>
+  </acceptance-criteria>
+
+  <technical-approach>
+    <api-changes>
+      <endpoint method="GET" path="/api/vtc/reports/profitability">
+        <description>Get aggregated profitability report data</description>
+        <query-params>
+          - dateFrom, dateTo: Date range filter
+          - groupBy: "client" | "vehicleCategory" | "period" | "none"
+          - profitabilityLevel: "all" | "green" | "orange" | "red"
+          - contactId: Filter by specific client
+        </query-params>
+        <response>
+          {
+            summary: { totalRevenue, totalCost, avgMargin, lossCount, totalCount },
+            data: [{ groupKey, groupLabel, revenue, cost, margin, count, profitabilityLevel }]
+          }
+        </response>
+      </endpoint>
+    </api-changes>
+
+    <frontend-changes>
+      <page path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/reports/page.tsx">
+        <description>New reports page</description>
+      </page>
+
+      <component name="ProfitabilityReport" path="apps/web/modules/saas/reports/components/ProfitabilityReport.tsx">
+        <description>Main report component with filters, summary, and table</description>
+      </component>
+
+      <component name="ReportSummaryCards" path="apps/web/modules/saas/reports/components/ReportSummaryCards.tsx">
+        <description>Summary cards for key metrics</description>
+      </component>
+
+      <component name="ReportFilters" path="apps/web/modules/saas/reports/components/ReportFilters.tsx">
+        <description>Filter controls for the report</description>
+      </component>
+    </frontend-changes>
+
+    <translations>
+      <namespace>reports</namespace>
+      <keys>
+        - title, description
+        - summary.totalRevenue, summary.totalCost, summary.avgMargin, summary.lossCount
+        - filters.dateRange, filters.groupBy, filters.profitability, filters.client
+        - groupBy.client, groupBy.vehicleCategory, groupBy.period, groupBy.none
+        - table.columns.*
+        - export.csv, export.excel
+      </keys>
+    </translations>
+  </technical-approach>
+
+  <test-strategy>
+    <unit-tests>
+      <test>ReportSummaryCards renders correct values</test>
+      <test>ReportFilters updates query params correctly</test>
+      <test>ProfitabilityReport handles empty data</test>
+    </unit-tests>
+    <api-tests>
+      <test>GET /api/vtc/reports/profitability returns correct aggregations</test>
+      <test>Filters work correctly (date range, profitability level)</test>
+      <test>Multi-tenancy: Cannot access other org's data</test>
+    </api-tests>
+    <e2e-tests>
+      <test>Navigate to reports, verify summary cards display</test>
+      <test>Apply filters, verify table updates</test>
+      <test>Group by client, verify grouping works</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

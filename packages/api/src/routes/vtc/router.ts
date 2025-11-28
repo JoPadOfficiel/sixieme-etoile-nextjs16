@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { advancedRatesRouter } from "./advanced-rates";
 import { optionalFeesRouter } from "./optional-fees";
 import { promotionsRouter } from "./promotions";
+import { reportsRouter } from "./reports";
 import { basesRouter } from "./bases";
 import { complianceRouter } from "./compliance";
 import { contactsRouter } from "./contacts";
@@ -63,6 +64,7 @@ export const vtcRouter = new Hono()
 	.route("/", advancedRatesRouter)
 	.route("/", optionalFeesRouter)
 	.route("/", promotionsRouter)
-	.route("/", pricingSettingsRouter);
+	.route("/", pricingSettingsRouter)
+	.route("/", reportsRouter);
 
 export type VtcRouter = typeof vtcRouter;

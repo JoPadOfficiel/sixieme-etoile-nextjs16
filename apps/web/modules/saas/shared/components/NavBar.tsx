@@ -6,6 +6,7 @@ import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
 import { cn } from "@ui/lib";
 import {
+	BarChart3Icon,
 	CarIcon,
 	ChevronRightIcon,
 	FileTextIcon,
@@ -75,6 +76,12 @@ export function NavBar() {
 						href: `${basePath}/documents`,
 						icon: FolderIcon,
 						isActive: pathname.startsWith(`${basePath}/documents`),
+					},
+					{
+						label: t("reports.title"),
+						href: `${basePath}/reports`,
+						icon: BarChart3Icon,
+						isActive: pathname.startsWith(`${basePath}/reports`),
 					},
 					{
 						label: t("fleet.vehicles.title"),

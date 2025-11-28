@@ -2787,5 +2787,58 @@
 		"generating": "Génération en cours...",
 		"generated": "Document généré avec succès",
 		"generateError": "Erreur lors de la génération du document"
+	},
+	"reports": {
+		"title": "Rapports",
+		"description": "Analysez la rentabilité et les performances de votre activité",
+		"profitabilityReport": {
+			"title": "Rapport de rentabilité",
+			"description": "Consultez les revenus, coûts et marges par client, catégorie de véhicule ou période"
+		},
+		"summary": {
+			"totalRevenue": "Chiffre d'affaires",
+			"totalCost": "Coût total",
+			"avgMargin": "Marge moyenne",
+			"lossCount": "Trajets déficitaires",
+			"fromQuotes": "{count, plural, =0 {Aucun devis} one {À partir de # devis} other {À partir de # devis}}",
+			"internalCosts": "Coûts internes",
+			"averageMargin": "Pourcentage de marge moyen",
+			"lossPercentage": "{percent}% du total"
+		},
+		"filters": {
+			"groupBy": "Grouper par",
+			"profitability": "Rentabilité",
+			"dateRange": "Période",
+			"clear": "Effacer",
+			"groupByOptions": {
+				"none": "Sans regroupement",
+				"client": "Client",
+				"vehicleCategory": "Catégorie de véhicule",
+				"period": "Période"
+			},
+			"profitabilityOptions": {
+				"all": "Tous",
+				"green": "Rentable",
+				"orange": "Marge faible",
+				"red": "Déficitaire"
+			}
+		},
+		"table": {
+			"columns": {
+				"group": "Groupe",
+				"count": "Nombre",
+				"date": "Date",
+				"client": "Client",
+				"vehicleCategory": "Catégorie de véhicule",
+				"revenue": "Revenus",
+				"cost": "Coût",
+				"margin": "Marge",
+				"status": "Statut"
+			}
+		},
+		"empty": {
+			"title": "Aucune donnée disponible",
+			"description": "Aucun devis ne correspond à vos filtres"
+		}
 	}
 }

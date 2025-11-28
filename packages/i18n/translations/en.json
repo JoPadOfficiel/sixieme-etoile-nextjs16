@@ -2787,5 +2787,58 @@
 		"generating": "Generating...",
 		"generated": "Document generated successfully",
 		"generateError": "Error generating document"
+	},
+	"reports": {
+		"title": "Reports",
+		"description": "Analyze profitability and performance across your business",
+		"profitabilityReport": {
+			"title": "Profitability Report",
+			"description": "View revenue, costs, and margins by client, vehicle category, or period"
+		},
+		"summary": {
+			"totalRevenue": "Total Revenue",
+			"totalCost": "Total Cost",
+			"avgMargin": "Average Margin",
+			"lossCount": "Loss-Making Trips",
+			"fromQuotes": "{count, plural, =0 {No quotes} one {From # quote} other {From # quotes}}",
+			"internalCosts": "Internal costs",
+			"averageMargin": "Average margin percentage",
+			"lossPercentage": "{percent}% of total"
+		},
+		"filters": {
+			"groupBy": "Group by",
+			"profitability": "Profitability",
+			"dateRange": "Date Range",
+			"clear": "Clear",
+			"groupByOptions": {
+				"none": "No grouping",
+				"client": "Client",
+				"vehicleCategory": "Vehicle Category",
+				"period": "Period"
+			},
+			"profitabilityOptions": {
+				"all": "All",
+				"green": "Profitable",
+				"orange": "Low Margin",
+				"red": "Loss"
+			}
+		},
+		"table": {
+			"columns": {
+				"group": "Group",
+				"count": "Count",
+				"date": "Date",
+				"client": "Client",
+				"vehicleCategory": "Vehicle Category",
+				"revenue": "Revenue",
+				"cost": "Cost",
+				"margin": "Margin",
+				"status": "Status"
+			}
+		},
+		"empty": {
+			"title": "No data available",
+			"description": "There are no quotes matching your filters"
+		}
 	}
 }
