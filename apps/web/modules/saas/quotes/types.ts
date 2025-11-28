@@ -168,6 +168,12 @@ export interface Quote {
   acceptedAt: string | null;
   rejectedAt: string | null;
   expiredAt: string | null;
+  // Story 7.2: Reference to invoice if one was created from this quote
+  invoice?: {
+    id: string;
+    number: string;
+    status: string;
+  } | null;
 }
 
 // ============================================================================

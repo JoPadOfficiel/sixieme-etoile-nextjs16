@@ -2,7 +2,7 @@
 
 /// <reference types="@types/google.maps" />
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@ui/components/card";
 import { Skeleton } from "@ui/components/skeleton";
 import { MapIcon, Loader2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { cn } from "@ui/lib";
 import type { MissionDetail } from "../types";
 import type { OperatingBase } from "../hooks/useOperatingBases";
 import type { CandidateBase, CandidateSegments } from "../types/assignment";
-import { useGoogleMapsApiKey } from "@saas/shared/hooks/useGoogleMapsApiKey";
+import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
 
 /**
  * DispatchMapGoogle Component
@@ -84,56 +84,63 @@ export function DispatchMapGoogle({
 	const t = useTranslations("dispatch.map");
 	const tCommon = useTranslations("common.map");
 	
-	// Fetch Google Maps API key
-	const { data: apiKey, isLoading: apiKeyLoading } = useGoogleMapsApiKey();
+	// Story 10.1: Use GoogleMapsProvider instead of loading script directly
+	const { isLoaded: isMapReady, isLoading: apiKeyLoading, error: mapError } = useGoogleMaps();
 	
-	const mapRef = useRef<HTMLDivElement>(null);
+	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const mapInstanceRef = useRef<google.maps.Map | null>(null);
 	const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 	const polylinesRef = useRef<Map<string, google.maps.Polyline>>(new Map());
-	const [isMapReady, setIsMapReady] = useState(false);
+	const [mapContainerReady, setMapContainerReady] = useState(false);
 
-	// Load Google Maps script
+	// Callback ref to detect when map container is mounted/unmounted
+	const mapRef = useCallback((node: HTMLDivElement | null) => {
+		if (node) {
+			mapContainerRef.current = node;
+			setMapContainerReady(true);
+		} else {
+			// Container unmounted - cleanup map instance
+			if (mapInstanceRef.current) {
+				// Clear markers and polylines
+				markersRef.current.forEach((marker) => marker.setMap(null));
+				markersRef.current.clear();
+				polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+				polylinesRef.current.clear();
+				mapInstanceRef.current = null;
+			}
+			mapContainerRef.current = null;
+			setMapContainerReady(false);
+		}
+	}, []);
+
+	// Initialize map when both Google Maps is ready AND container is mounted
 	useEffect(() => {
-		if (!apiKey) return;
-
-		if (window.google?.maps) {
-			window.setTimeout(() => setIsMapReady(true), 0);
+		if (!isMapReady || !mapContainerReady || !mapContainerRef.current) {
 			return;
 		}
 
-		const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-		if (existingScript) {
-			const handleLoad = () => setIsMapReady(true);
-			existingScript.addEventListener("load", handleLoad);
-			return () => existingScript.removeEventListener("load", handleLoad);
+		// If map already exists and container is the same, don't recreate
+		if (mapInstanceRef.current) {
+			return;
 		}
 
-		const script = document.createElement("script");
-		script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
-		script.async = true;
-		script.defer = true;
-		script.onload = () => setIsMapReady(true);
-		document.head.appendChild(script);
-	}, [apiKey]);
+		try {
+			const map = new google.maps.Map(mapContainerRef.current, {
+				center: { lat: 48.8566, lng: 2.3522 }, // Paris
+				zoom: 10,
+				streetViewControl: false,
+				fullscreenControl: true,
+				mapTypeControl: true,
+				mapTypeControlOptions: {
+					position: google.maps.ControlPosition.TOP_LEFT,
+				},
+			});
 
-	// Initialize map
-	useEffect(() => {
-		if (!isMapReady || !mapRef.current || mapInstanceRef.current) return;
-
-		const map = new google.maps.Map(mapRef.current, {
-			center: { lat: 48.8566, lng: 2.3522 }, // Paris
-			zoom: 10,
-			streetViewControl: false,
-			fullscreenControl: true,
-			mapTypeControl: true,
-			mapTypeControlOptions: {
-				position: google.maps.ControlPosition.TOP_LEFT,
-			},
-		});
-
-		mapInstanceRef.current = map;
-	}, [isMapReady]);
+			mapInstanceRef.current = map;
+		} catch (error) {
+			console.error("[DispatchMapGoogle] Error creating map:", error);
+		}
+	}, [isMapReady, mapContainerReady]);
 
 	// Get active candidate base
 	const activeCandidateBase = useMemo(() => {
@@ -382,14 +389,14 @@ export function DispatchMapGoogle({
 		return <DispatchMapSkeleton className={className} />;
 	}
 
-	// No API key
-	if (!apiKey) {
+	// No API key or error loading Google Maps
+	if (!isMapReady || mapError) {
 		return (
 			<Card className={cn("h-full", className)} data-testid="dispatch-map">
 				<CardContent className="h-full flex items-center justify-center">
 					<div className="text-center text-muted-foreground">
 						<MapIcon className="size-12 mx-auto mb-4 opacity-50" />
-						<p className="text-sm font-medium">{tCommon("noApiKey")}</p>
+						<p className="text-sm font-medium">{mapError || tCommon("noApiKey")}</p>
 						<p className="text-xs mt-1">{tCommon("configureInSettings")}</p>
 					</div>
 				</CardContent>
@@ -415,7 +422,7 @@ export function DispatchMapGoogle({
 	const hasCoordinates = mission.pickupLatitude && mission.pickupLongitude;
 
 	return (
-		<Card className={cn("h-full min-h-[300px] overflow-hidden relative", className)} data-testid="dispatch-map">
+		<Card className={cn("h-full min-h-[400px] overflow-hidden relative", className)} data-testid="dispatch-map">
 			{/* Loading indicator for routes */}
 			{isLoadingRoutes && (
 				<div className="absolute top-2 right-2 z-50 flex items-center gap-1 bg-background/80 px-2 py-1 rounded text-xs">
@@ -454,9 +461,19 @@ export function DispatchMapGoogle({
 
 			{/* Map container - must have explicit dimensions for Google Maps */}
 			{!isMapReady ? (
-				<Skeleton className="h-full w-full min-h-[300px]" />
+				<div className="h-full w-full min-h-[400px] flex items-center justify-center bg-muted/50">
+					<div className="text-center">
+						<Loader2 className="size-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+						<p className="text-sm text-muted-foreground">Loading Google Maps...</p>
+						{mapError && <p className="text-xs text-destructive mt-1">{mapError}</p>}
+					</div>
+				</div>
 			) : (
-				<div ref={mapRef} className="absolute inset-0" style={{ minHeight: "300px" }} />
+				<div 
+					ref={mapRef} 
+					className="w-full h-full" 
+					style={{ minHeight: "400px", height: "100%" }} 
+				/>
 			)}
 		</Card>
 	);

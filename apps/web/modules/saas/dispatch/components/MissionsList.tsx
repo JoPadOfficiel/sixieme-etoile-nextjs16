@@ -54,31 +54,30 @@ export function MissionsList({
 	}
 
 	return (
-		<Card className={cn("flex-1 overflow-hidden", className)} data-testid="missions-list">
+		<Card className={cn("overflow-hidden", className)} data-testid="missions-list">
 			<CardContent className="p-0">
-				<div className="overflow-auto max-h-[calc(100vh-16rem)]">
-					<Table>
-						<TableHeader className="sticky top-0 bg-background z-10">
-							<TableRow>
-								<TableHead className="w-[100px]">{t("columns.timeWindow")}</TableHead>
-								<TableHead>{t("columns.route")}</TableHead>
-								<TableHead>{t("columns.client")}</TableHead>
-								<TableHead>{t("columns.vehicleDriver")}</TableHead>
-								<TableHead className="w-[100px]">{t("columns.badges")}</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{missions.map((mission) => (
-								<MissionRow
-									key={mission.id}
-									mission={mission}
-									isSelected={mission.id === selectedMissionId}
-									onSelect={onSelectMission}
-								/>
-							))}
-						</TableBody>
-					</Table>
-				</div>
+				{/* No internal scroll - page scrolls instead */}
+				<Table>
+					<TableHeader className="bg-background">
+						<TableRow>
+							<TableHead className="w-[100px]">{t("columns.timeWindow")}</TableHead>
+							<TableHead>{t("columns.route")}</TableHead>
+							<TableHead>{t("columns.client")}</TableHead>
+							<TableHead>{t("columns.vehicleDriver")}</TableHead>
+							<TableHead className="w-[100px]">{t("columns.badges")}</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{missions.map((mission) => (
+							<MissionRow
+								key={mission.id}
+								mission={mission}
+								isSelected={mission.id === selectedMissionId}
+								onSelect={onSelectMission}
+							/>
+						))}
+					</TableBody>
+				</Table>
 			</CardContent>
 		</Card>
 	);

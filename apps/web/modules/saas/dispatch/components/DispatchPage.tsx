@@ -180,22 +180,25 @@ export function DispatchPage() {
 	const missions = missionsData?.data || [];
 
 	return (
-		<div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
+		<div className="min-h-screen flex gap-4 p-4">
 			{/* Left Panel - Missions List */}
 			<div className="w-2/5 flex flex-col gap-4" data-testid="dispatch-left-panel">
-				<div>
+				<div className="flex-shrink-0">
 					<h1 className="text-2xl font-bold tracking-tight mb-1">{t("title")}</h1>
 					<p className="text-sm text-muted-foreground">
 						{t("subtitle", { count: missions.length })}
 					</p>
 				</div>
 
-				<MissionsFilters
-					filters={filters}
-					onFiltersChange={handleFiltersChange}
-					vehicleCategories={vehicleCategories}
-				/>
+				<div className="flex-shrink-0">
+					<MissionsFilters
+						filters={filters}
+						onFiltersChange={handleFiltersChange}
+						vehicleCategories={vehicleCategories}
+					/>
+				</div>
 
+				{/* Missions list - shows all missions without internal scroll */}
 				<MissionsList
 					missions={missions}
 					selectedMissionId={selectedMissionId}
@@ -203,14 +206,14 @@ export function DispatchPage() {
 					isLoading={missionsLoading}
 				/>
 
-				{/* Story 8.5: Empty-Leg Opportunities */}
+				{/* Story 8.5: Empty-Leg Opportunities - compact */}
 				<EmptyLegsList />
 			</div>
 
-			{/* Right Panel - Map + Transparency */}
-			<div className="w-3/5 flex flex-col gap-4" data-testid="dispatch-right-panel">
-				{/* Map */}
-				<div className="h-1/2">
+			{/* Right Panel - Map + Transparency - sticky */}
+			<div className="w-3/5 sticky top-4 h-fit flex flex-col gap-4" data-testid="dispatch-right-panel">
+				{/* Map - fixed height */}
+				<div className="h-[350px]">
 					<DispatchMapGoogle
 						mission={selectedMission || null}
 						bases={bases}
@@ -230,12 +233,11 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Transparency + Compliance + Assignment */}
-				<div className="h-1/2 overflow-auto flex flex-col gap-4">
+				{/* Transparency + Compliance + Assignment - no internal scroll */}
+				<div className="flex flex-col gap-4">
 					<TripTransparencyPanel
 						pricingResult={pricingResult}
 						isLoading={missionDetailLoading}
-						className="flex-1"
 					/>
 					{/* Story 5.6: Compliance Details */}
 					{selectedMissionId && (
