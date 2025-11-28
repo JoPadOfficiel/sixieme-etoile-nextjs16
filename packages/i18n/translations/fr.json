@@ -1937,7 +1937,10 @@
 					"tolls": "Péages",
 					"wear": "Usure",
 					"driver": "Chauffeur",
-					"parking": "Parking"
+					"parking": "Parking",
+					"manuallyEdited": "Les coûts ont été modifiés manuellement",
+					"editedTooltip": "Ce coût a été ajusté manuellement",
+					"originalValue": "Valeur d'origine"
 				},
 				"commission": "Commission",
 				"netMargin": "Marge nette",
@@ -1945,6 +1948,12 @@
 					"title": "Résumé du trajet",
 					"segments": "Segments"
 				}
+			},
+			"recomputeWarning": {
+				"title": "Modifications manuelles détectées",
+				"description": "Ce devis contient des coûts modifiés manuellement :",
+				"warning": "Recalculer les tarifs remplacera ces valeurs par les valeurs calculées.",
+				"confirm": "Recalculer quand même"
 			}
 		},
 		"detail": {

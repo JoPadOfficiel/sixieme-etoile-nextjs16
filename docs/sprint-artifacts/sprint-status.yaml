@@ -83,6 +83,7 @@ development_status:
   6-5-implement-blocking-non-blocking-alerts: done
   6-6-implement-helpers-common-scenarios-airport-capacity: done
   6-7-integrate-triptransparencypanel-profitabilityindicator-across-screens: done
+  6-8-manual-editing-cost-components-trip-transparency: done
   epic-7: contexted
   7-1-implement-invoice-invoiceline-models-invoices-ui: done
   7-2-convert-accepted-quote-to-invoice-deep-copy: done
@@ -96,7 +97,7 @@ development_status:
   8-4-detect-suggest-trip-chaining-opportunities: done
   8-5-model-surface-empty-leg-opportunities: done
   8-6-integrate-subcontractor-directory-subcontracting-suggestions: done
-  8-7-surface-profitability-compliance-badges-missions: backlog
+  8-7-surface-profitability-compliance-badges-missions: done
   epic-9: contexted
   9-1-settings-pricing-seasonal-multipliers: done
   9-2-settings-pricing-advanced-rate-modifiers: done

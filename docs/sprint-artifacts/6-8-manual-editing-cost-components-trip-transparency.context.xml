@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>6.8</story-id>
+    <title>Manual Editing of Cost Components in Trip Transparency</title>
+    <epic>Epic 6 - Quotes &amp; Operator Cockpit</epic>
+    <created>2025-11-28</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Currently, the TripTransparencyPanel displays cost components (fuel, tolls, wear, driver, parking) 
+      in read-only mode. Senior operators and pricing managers need the ability to manually adjust 
+      these internal cost values to correct routing errors, account for special circumstances, 
+      or refine the cost model while maintaining accurate margin calculations.
+      
+      Without this capability:
+      - Operators cannot correct inaccurate toll estimates from Google Maps
+      - Special fuel arrangements or discounts cannot be reflected
+      - Unusual parking costs cannot be adjusted
+      - The profitability indicator may be misleading for edge cases
+    </description>
+    <business-impact>
+      - Inaccurate profitability analysis leads to poor pricing decisions
+      - Operators resort to manual spreadsheet calculations outside the system
+      - Loss of audit trail for cost adjustments
+      - Reduced trust in the system's cost estimates
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective priority="high">
+      Enable authorized users to edit internal cost components (fuel, tolls, wear, driver, parking) 
+      directly in the TripTransparencyPanel's Costs tab
+    </objective>
+    <objective priority="high">
+      Automatically recalculate total internal cost, margin, and profitability indicator 
+      when any cost component is modified
+    </objective>
+    <objective priority="high">
+      Persist manual cost overrides with full audit trail (original values, edited values, 
+      user ID, timestamp, optional reason)
+    </objective>
+    <objective priority="medium">
+      Restrict edit capability to authorized roles (pricing managers, org admins) via RBAC
+    </objective>
+    <objective priority="medium">
+      Prevent silent overwriting of manual edits by automatic recomputations
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Editable cost fields in TripTransparencyPanel Costs tab for authorized users</item>
+      <item>Real-time recalculation of internalCost, margin, marginPercent, profitabilityIndicator</item>
+      <item>Storage of cost overrides in tripAnalysis or dedicated field</item>
+      <item>Role-based access control for edit permission</item>
+      <item>Visual indication that costs have been manually edited</item>
+      <item>API endpoint to update cost components on a quote</item>
+      <item>Protection against silent overwrite of manual edits</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Editing costs on SENT/ACCEPTED quotes (immutable per FR32)</item>
+      <item>Bulk editing of costs across multiple quotes</item>
+      <item>Automatic cost correction suggestions (future enhancement)</item>
+      <item>Editing segment-level costs individually (only total per component)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Must integrate with existing TripTransparencyPanel component without breaking 
+      current read-only functionality for unauthorized users
+    </constraint>
+    <constraint type="technical">
+      Must use existing RBAC system (better-auth organization roles: admin, member, owner)
+    </constraint>
+    <constraint type="business">
+      Only DRAFT quotes can have costs edited; SENT/ACCEPTED quotes are immutable per FR32
+    </constraint>
+    <constraint type="business">
+      Manual edits must be clearly marked and auditable for compliance
+    </constraint>
+    <constraint type="ux">
+      Edit mode should be intuitive - inline editing with clear save/cancel actions
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Users may edit costs incorrectly, leading to inaccurate profitability</description>
+      <mitigation>Show original calculated values alongside edited values; require confirmation</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Automatic recomputation may overwrite manual edits unexpectedly</description>
+      <mitigation>Flag quotes with manual overrides; warn before recomputing; require explicit action</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Role-based restrictions may be too coarse-grained</description>
+      <mitigation>Start with org admin/owner roles; can add finer permissions later</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component name="TripTransparencyPanel" path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Displays cost breakdown in Costs tab with CostRow sub-component (read-only)
+      </component>
+      <component name="CostBreakdown" path="apps/web/modules/saas/quotes/types.ts">
+        Interface defining fuel, tolls, wear, driver, parking cost structures
+      </component>
+      <component name="PricingResult" path="apps/web/modules/saas/quotes/types.ts">
+        Contains tripAnalysis with costBreakdown, margin calculations
+      </component>
+      <component name="usePricingCalculation" path="apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts">
+        Hook for pricing API calls and result transformation
+      </component>
+      <component name="useActiveOrganization" path="apps/web/modules/saas/organizations/hooks/use-active-organization.ts">
+        Provides activeOrganizationUserRole and isOrganizationAdmin for RBAC
+      </component>
+    </existing-components>
+    
+    <api-endpoints>
+      <endpoint method="POST" path="/api/vtc/pricing/calculate">
+        Current pricing calculation endpoint
+      </endpoint>
+      <endpoint method="PATCH" path="/api/vtc/quotes/:id" status="exists">
+        Quote update endpoint - needs extension for cost overrides
+      </endpoint>
+    </api-endpoints>
+    
+    <data-model>
+      <model name="Quote">
+        Contains tripAnalysis JSON field where cost overrides will be stored
+      </model>
+      <model name="CostOverride" status="new">
+        Structure to track: originalValue, editedValue, editedBy, editedAt, reason
+      </model>
+    </data-model>
+  </technical-context>
+
+  <dependencies>
+    <dependency type="story" status="done">Story 4.2: Add Operational Cost Components to Internal Cost</dependency>
+    <dependency type="story" status="done">Story 4.7: Compute &amp; Expose Profitability Indicator</dependency>
+    <dependency type="story" status="done">Story 6.2: Create Quote 3-Column Cockpit</dependency>
+    <dependency type="story" status="done">Story 6.7: Integrate TripTransparencyPanel Across Screens</dependency>
+  </dependencies>
+
+  <acceptance-criteria-preview>
+    <criterion id="AC1">Authorized users see editable cost fields in Costs tab</criterion>
+    <criterion id="AC2">Editing a cost triggers immediate recalculation of margin and profitability</criterion>
+    <criterion id="AC3">Cost overrides are persisted with audit trail</criterion>
+    <criterion id="AC4">Unauthorized users see read-only costs (no edit capability)</criterion>
+    <criterion id="AC5">Visual indicator shows when costs have been manually edited</criterion>
+    <criterion id="AC6">Recompute action warns about losing manual overrides</criterion>
+    <criterion id="AC7">Only DRAFT quotes allow cost editing</criterion>
+  </acceptance-criteria-preview>
+
+  <related-frs>
+    <fr id="FR55">Trip Transparency with editable cost components for authorized users</fr>
+    <fr id="FR14">Internal cost with fuel, tolls, parking, other costs</fr>
+    <fr id="FR24">Profitability indicator based on real costs</fr>
+  </related-frs>
+</story-context>

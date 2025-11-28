@@ -21,6 +21,7 @@ import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingSettingsRouter } from "./pricing-settings";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
+import { quoteCostsRouter } from "./quote-costs";
 import { seasonalMultipliersRouter } from "./seasonal-multipliers";
 import { routesCoverageRouter } from "./routes-coverage";
 import { subcontractorsRouter, missionSubcontractingRoutes } from "./subcontractors";
@@ -45,6 +46,7 @@ export const vtcRouter = new Hono()
 	.route("/", licenseCategoriesRouter)
 	.route("/", licenseRulesRouter)
 	.route("/", quotesRouter)
+	.route("/", quoteCostsRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)
 	.route("/", pricingCalculateRouter)

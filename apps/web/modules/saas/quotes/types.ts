@@ -404,11 +404,52 @@ export interface CostBreakdown {
   total: number;
 }
 
+// ============================================================================
+// Story 6.8: Cost Override Types for Manual Editing
+// ============================================================================
+
+/**
+ * Individual cost override entry with audit trail
+ */
+export interface CostOverride {
+  componentName: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking';
+  originalValue: number;
+  editedValue: number;
+  editedBy: string; // User ID
+  editedAt: string; // ISO timestamp
+  reason?: string;
+}
+
+/**
+ * Collection of cost overrides with metadata
+ */
+export interface CostOverrides {
+  overrides: CostOverride[];
+  hasManualEdits: boolean;
+  lastEditedAt: string | null;
+  lastEditedBy: string | null;
+}
+
+/**
+ * Effective costs after applying overrides
+ */
+export interface EffectiveCosts {
+  fuel: number;
+  tolls: number;
+  wear: number;
+  driver: number;
+  parking: number;
+  total: number;
+}
+
 /**
  * Trip analysis from shadow calculation
  */
 export interface TripAnalysis {
   costBreakdown: CostBreakdown;
+  // Story 6.8: Cost overrides for manual editing
+  costOverrides?: CostOverrides;
+  effectiveCosts?: EffectiveCosts;
   vehicleSelection?: {
     selectedVehicle?: {
       vehicleId: string;
@@ -512,4 +553,72 @@ export function formatDistance(km: number | null | undefined): string {
     return "—";
   }
   return `${km.toFixed(1)} km`;
+}
+
+// ============================================================================
+// Story 6.8: Cost Override Helpers
+// ============================================================================
+
+/**
+ * Check if a trip analysis has manual cost overrides
+ */
+export function hasManualCostOverrides(tripAnalysis: TripAnalysis | null): boolean {
+  if (!tripAnalysis?.costOverrides) return false;
+  return tripAnalysis.costOverrides.hasManualEdits;
+}
+
+/**
+ * Get effective cost for a component (overridden or original)
+ */
+export function getEffectiveCost(
+  tripAnalysis: TripAnalysis,
+  component: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking'
+): number {
+  // Check for override first
+  const override = tripAnalysis.costOverrides?.overrides.find(
+    o => o.componentName === component
+  );
+  if (override) {
+    return override.editedValue;
+  }
+  
+  // Return original value
+  return tripAnalysis.costBreakdown[component].amount;
+}
+
+/**
+ * Get the original cost for a component
+ */
+export function getOriginalCost(
+  tripAnalysis: TripAnalysis,
+  component: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking'
+): number {
+  return tripAnalysis.costBreakdown[component].amount;
+}
+
+/**
+ * Check if a specific cost component has been overridden
+ */
+export function isCostOverridden(
+  tripAnalysis: TripAnalysis | null,
+  component: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking'
+): boolean {
+  if (!tripAnalysis?.costOverrides) return false;
+  return tripAnalysis.costOverrides.overrides.some(
+    o => o.componentName === component
+  );
+}
+
+/**
+ * Recalculate margin and profitability after cost override
+ */
+export function recalculateMargin(
+  price: number,
+  effectiveCosts: EffectiveCosts
+): { margin: number; marginPercent: number; profitabilityIndicator: ProfitabilityLevel } {
+  const margin = price - effectiveCosts.total;
+  const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+  const profitabilityIndicator = getProfitabilityLevel(marginPercent);
+  
+  return { margin, marginPercent, profitabilityIndicator };
 }

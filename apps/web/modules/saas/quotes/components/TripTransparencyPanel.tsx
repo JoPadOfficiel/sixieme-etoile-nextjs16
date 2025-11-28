@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { Badge } from "@ui/components/badge";
 import { Card, CardContent } from "@ui/components/card";
 import { Skeleton } from "@ui/components/skeleton";
@@ -18,6 +19,7 @@ import {
   FuelIcon,
   GaugeIcon,
   MapIcon,
+  PencilIcon,
   PercentIcon,
   RouteIcon,
   TruckIcon,
@@ -26,13 +28,27 @@ import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
+import { EditableCostRow } from "./EditableCostRow";
 import type { PricingResult } from "../types";
-import { formatPrice, formatDistance, formatDuration, hasComplianceWarnings } from "../types";
+import { 
+  formatPrice, 
+  formatDistance, 
+  formatDuration, 
+  hasComplianceWarnings,
+  hasManualCostOverrides,
+  isCostOverridden,
+  getEffectiveCost,
+  getOriginalCost,
+} from "../types";
 
 interface TripTransparencyPanelProps {
   pricingResult: PricingResult | null;
   isLoading: boolean;
   className?: string;
+  // Story 6.8: Cost editing props
+  canEditCosts?: boolean;
+  onCostUpdate?: (componentName: string, value: number) => Promise<void>;
+  isCostUpdating?: boolean;
 }
 
 /**
@@ -42,9 +58,11 @@ interface TripTransparencyPanelProps {
  * internal cost, margin, and segment breakdown.
  * 
  * Story 6.5: Includes compliance warnings section for non-blocking alerts.
+ * Story 6.8: Supports manual editing of cost components for authorized users.
  * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
  * @see Story 6.5: Blocking and Non-Blocking Alerts
+ * @see Story 6.8: Manual Editing of Cost Components
  * @see UX Spec 6.1.5 TripTransparencyPanel
  * @see FR21-FR24 Shadow Calculation and Profitability
  */
@@ -52,8 +70,18 @@ export function TripTransparencyPanel({
   pricingResult,
   isLoading,
   className,
+  canEditCosts = false,
+  onCostUpdate,
+  isCostUpdating = false,
 }: TripTransparencyPanelProps) {
   const t = useTranslations();
+
+  // Story 6.8: Handle cost save
+  const handleCostSave = useCallback(async (componentName: string, value: number) => {
+    if (onCostUpdate) {
+      await onCostUpdate(componentName, value);
+    }
+  }, [onCostUpdate]);
 
   if (isLoading) {
     return (
@@ -305,9 +333,19 @@ export function TripTransparencyPanel({
         </TabsContent>
 
         {/* Costs Tab - Cost Breakdown */}
+        {/* Story 6.8: Editable costs for authorized users */}
         <TabsContent value="costs" className="mt-4">
           <Card>
             <CardContent className="pt-4">
+              {/* Story 6.8: Manual Edit Badge */}
+              {hasManualCostOverrides(tripAnalysis) && (
+                <div className="flex items-center gap-2 mb-3 text-amber-700 bg-amber-50 px-3 py-2 rounded-md">
+                  <PencilIcon className="size-4" />
+                  <span className="text-sm font-medium">
+                    {t("quotes.create.tripTransparency.costs.manuallyEdited")}
+                  </span>
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -320,37 +358,67 @@ export function TripTransparencyPanel({
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  <CostRow
+                <TableBody className="group">
+                  <EditableCostRow
                     icon={FuelIcon}
                     label={t("quotes.create.tripTransparency.costs.fuel")}
-                    amount={tripAnalysis.costBreakdown.fuel.amount}
+                    amount={getEffectiveCost(tripAnalysis, 'fuel')}
+                    originalAmount={getOriginalCost(tripAnalysis, 'fuel')}
                     details={`${tripAnalysis.costBreakdown.fuel.distanceKm.toFixed(1)} km × ${tripAnalysis.costBreakdown.fuel.consumptionL100km} L/100km × ${formatPrice(tripAnalysis.costBreakdown.fuel.pricePerLiter)}/L`}
+                    componentName="fuel"
+                    isEditable={canEditCosts}
+                    isEdited={isCostOverridden(tripAnalysis, 'fuel')}
+                    isLoading={isCostUpdating}
+                    onSave={handleCostSave}
                   />
-                  <CostRow
+                  <EditableCostRow
                     icon={RouteIcon}
                     label={t("quotes.create.tripTransparency.costs.tolls")}
-                    amount={tripAnalysis.costBreakdown.tolls.amount}
+                    amount={getEffectiveCost(tripAnalysis, 'tolls')}
+                    originalAmount={getOriginalCost(tripAnalysis, 'tolls')}
                     details={`${tripAnalysis.costBreakdown.tolls.distanceKm.toFixed(1)} km × ${formatPrice(tripAnalysis.costBreakdown.tolls.ratePerKm)}/km`}
+                    componentName="tolls"
+                    isEditable={canEditCosts}
+                    isEdited={isCostOverridden(tripAnalysis, 'tolls')}
+                    isLoading={isCostUpdating}
+                    onSave={handleCostSave}
                   />
-                  <CostRow
+                  <EditableCostRow
                     icon={TruckIcon}
                     label={t("quotes.create.tripTransparency.costs.wear")}
-                    amount={tripAnalysis.costBreakdown.wear.amount}
+                    amount={getEffectiveCost(tripAnalysis, 'wear')}
+                    originalAmount={getOriginalCost(tripAnalysis, 'wear')}
                     details={`${tripAnalysis.costBreakdown.wear.distanceKm.toFixed(1)} km × ${formatPrice(tripAnalysis.costBreakdown.wear.ratePerKm)}/km`}
+                    componentName="wear"
+                    isEditable={canEditCosts}
+                    isEdited={isCostOverridden(tripAnalysis, 'wear')}
+                    isLoading={isCostUpdating}
+                    onSave={handleCostSave}
                   />
-                  <CostRow
+                  <EditableCostRow
                     icon={ClockIcon}
                     label={t("quotes.create.tripTransparency.costs.driver")}
-                    amount={tripAnalysis.costBreakdown.driver.amount}
+                    amount={getEffectiveCost(tripAnalysis, 'driver')}
+                    originalAmount={getOriginalCost(tripAnalysis, 'driver')}
                     details={`${formatDuration(tripAnalysis.costBreakdown.driver.durationMinutes)} × ${formatPrice(tripAnalysis.costBreakdown.driver.hourlyRate)}/h`}
+                    componentName="driver"
+                    isEditable={canEditCosts}
+                    isEdited={isCostOverridden(tripAnalysis, 'driver')}
+                    isLoading={isCostUpdating}
+                    onSave={handleCostSave}
                   />
                   {tripAnalysis.costBreakdown.parking.amount > 0 && (
-                    <CostRow
+                    <EditableCostRow
                       icon={MapIcon}
                       label={t("quotes.create.tripTransparency.costs.parking")}
-                      amount={tripAnalysis.costBreakdown.parking.amount}
+                      amount={getEffectiveCost(tripAnalysis, 'parking')}
+                      originalAmount={getOriginalCost(tripAnalysis, 'parking')}
                       details={tripAnalysis.costBreakdown.parking.description}
+                      componentName="parking"
+                      isEditable={canEditCosts}
+                      isEdited={isCostOverridden(tripAnalysis, 'parking')}
+                      isLoading={isCostUpdating}
+                      onSave={handleCostSave}
                     />
                   )}
                   {/* Total Row */}
@@ -359,7 +427,9 @@ export function TripTransparencyPanel({
                       {t("quotes.create.tripTransparency.totalCost")}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatPrice(tripAnalysis.costBreakdown.total)}
+                      {formatPrice(
+                        tripAnalysis.effectiveCosts?.total ?? tripAnalysis.costBreakdown.total
+                      )}
                     </TableCell>
                     <TableCell />
                   </TableRow>
@@ -447,29 +517,7 @@ function SegmentRow({ segment, label, description, isMain = false }: SegmentRowP
   );
 }
 
-interface CostRowProps {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  amount: number;
-  details: string;
-}
-
-function CostRow({ icon: Icon, label, amount, details }: CostRowProps) {
-  return (
-    <TableRow>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Icon className="size-4 text-muted-foreground" />
-          <span>{label}</span>
-        </div>
-      </TableCell>
-      <TableCell className="text-right">{formatPrice(amount)}</TableCell>
-      <TableCell className="text-right text-xs text-muted-foreground">
-        {details}
-      </TableCell>
-    </TableRow>
-  );
-}
+// Note: CostRow component moved to EditableCostRow.tsx
 
 function TripTransparencySkeleton() {
   return (

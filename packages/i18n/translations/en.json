@@ -1937,7 +1937,10 @@
 					"tolls": "Tolls",
 					"wear": "Wear & Tear",
 					"driver": "Driver",
-					"parking": "Parking"
+					"parking": "Parking",
+					"manuallyEdited": "Costs have been manually edited",
+					"editedTooltip": "This cost has been manually adjusted",
+					"originalValue": "Original value"
 				},
 				"commission": "Commission",
 				"netMargin": "Net Margin",
@@ -1945,6 +1948,12 @@
 					"title": "Trip Summary",
 					"segments": "Segments"
 				}
+			},
+			"recomputeWarning": {
+				"title": "Manual Cost Overrides Detected",
+				"description": "This quote has manually edited costs:",
+				"warning": "Recomputing pricing will replace these with calculated values.",
+				"confirm": "Recompute Anyway"
 			}
 		},
 		"detail": {
