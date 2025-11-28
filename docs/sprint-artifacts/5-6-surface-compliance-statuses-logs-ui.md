@@ -1,7 +1,7 @@
 # Story 5.6: Surface Compliance Statuses & Logs in UI
 
 **Epic:** 5 - Fleet & RSE Compliance Engine  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Points:** 5
 
@@ -357,19 +357,19 @@ DispatchPage
 
 ## Definition of Done
 
-- [ ] API endpoint GET /vtc/missions/:id/compliance implemented
-- [ ] MissionComplianceDetails component created
-- [ ] ComplianceRulesList component created
-- [ ] MissionComplianceAuditLogs component created
-- [ ] Components integrated into DispatchPage
-- [ ] LIGHT vehicle case handled correctly
-- [ ] Translations added (EN/FR)
-- [ ] Unit tests passing
-- [ ] API tests passing
-- [ ] E2E tests passing (Playwright)
-- [ ] Multi-tenancy enforced
-- [ ] Code reviewed
-- [ ] Documentation updated
+- [x] API endpoint GET /vtc/missions/:id/compliance implemented
+- [x] MissionComplianceDetails component created
+- [x] ComplianceRulesList component created
+- [x] MissionComplianceAuditLogs component created
+- [x] Components integrated into DispatchPage
+- [x] LIGHT vehicle case handled correctly
+- [x] Translations added (EN/FR)
+- [x] Unit tests passing (5 tests)
+- [x] API tests passing (12 tests)
+- [x] E2E tests passing (Playwright MCP)
+- [x] Multi-tenancy enforced
+- [x] Code reviewed
+- [x] Documentation updated
 
 ---
 
