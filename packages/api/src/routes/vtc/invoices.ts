@@ -620,4 +620,152 @@ export const invoicesRouter = new Hono()
 
 			return c.json({ success: true });
 		},
+	)
+
+	// Add line to invoice (only DRAFT)
+	.post(
+		"/:id/lines",
+		validator("json", z.object({
+			description: z.string().min(1),
+			quantity: z.number().positive().default(1),
+			unitPriceExclVat: z.number(),
+			vatRate: z.number().min(0).max(100).default(20),
+			lineType: z.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"]).default("OPTIONAL_FEE"),
+		})),
+		describeRoute({
+			summary: "Add line to invoice",
+			description: "Add a new line to a DRAFT invoice. Recalculates totals automatically.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const invoiceId = c.req.param("id");
+			const data = c.req.valid("json");
+
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(invoiceId, organizationId),
+				include: { lines: true },
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, { message: "Invoice not found" });
+			}
+
+			if (invoice.status !== "DRAFT") {
+				throw new HTTPException(400, { message: "Can only add lines to DRAFT invoices" });
+			}
+
+			// Calculate line totals
+			const totalExclVat = Math.round(data.quantity * data.unitPriceExclVat * 100) / 100;
+			const totalVat = Math.round(totalExclVat * (data.vatRate / 100) * 100) / 100;
+
+			// Get max sort order
+			const maxSortOrder = invoice.lines.reduce((max, line) => Math.max(max, line.sortOrder), 0);
+
+			// Create line and update invoice totals in transaction
+			const result = await db.$transaction(async (tx) => {
+				const newLine = await tx.invoiceLine.create({
+					data: {
+						invoiceId,
+						description: data.description,
+						quantity: data.quantity,
+						unitPriceExclVat: data.unitPriceExclVat,
+						vatRate: data.vatRate,
+						totalExclVat,
+						totalVat,
+						lineType: data.lineType,
+						sortOrder: maxSortOrder + 1,
+					},
+				});
+
+				// Recalculate invoice totals
+				const allLines = await tx.invoiceLine.findMany({ where: { invoiceId } });
+				const newTotalExclVat = allLines.reduce((sum, l) => sum + Number(l.totalExclVat), 0);
+				const newTotalVat = allLines.reduce((sum, l) => sum + Number(l.totalVat), 0);
+				const newTotalInclVat = Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
+
+				await tx.invoice.update({
+					where: { id: invoiceId },
+					data: {
+						totalExclVat: newTotalExclVat,
+						totalVat: newTotalVat,
+						totalInclVat: newTotalInclVat,
+					},
+				});
+
+				return newLine;
+			});
+
+			// Return updated invoice
+			const updatedInvoice = await db.invoice.findFirst({
+				where: { id: invoiceId },
+				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+			});
+
+			return c.json(updatedInvoice, 201);
+		},
+	)
+
+	// Delete line from invoice (only DRAFT)
+	.delete(
+		"/:id/lines/:lineId",
+		describeRoute({
+			summary: "Delete line from invoice",
+			description: "Remove a line from a DRAFT invoice. Recalculates totals automatically.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const invoiceId = c.req.param("id");
+			const lineId = c.req.param("lineId");
+
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(invoiceId, organizationId),
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, { message: "Invoice not found" });
+			}
+
+			if (invoice.status !== "DRAFT") {
+				throw new HTTPException(400, { message: "Can only delete lines from DRAFT invoices" });
+			}
+
+			// Verify line belongs to this invoice
+			const line = await db.invoiceLine.findFirst({
+				where: { id: lineId, invoiceId },
+			});
+
+			if (!line) {
+				throw new HTTPException(404, { message: "Invoice line not found" });
+			}
+
+			// Delete line and update invoice totals in transaction
+			await db.$transaction(async (tx) => {
+				await tx.invoiceLine.delete({ where: { id: lineId } });
+
+				// Recalculate invoice totals
+				const remainingLines = await tx.invoiceLine.findMany({ where: { invoiceId } });
+				const newTotalExclVat = remainingLines.reduce((sum, l) => sum + Number(l.totalExclVat), 0);
+				const newTotalVat = remainingLines.reduce((sum, l) => sum + Number(l.totalVat), 0);
+				const newTotalInclVat = Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
+
+				await tx.invoice.update({
+					where: { id: invoiceId },
+					data: {
+						totalExclVat: newTotalExclVat,
+						totalVat: newTotalVat,
+						totalInclVat: newTotalInclVat,
+					},
+				});
+			});
+
+			// Return updated invoice
+			const updatedInvoice = await db.invoice.findFirst({
+				where: { id: invoiceId },
+				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+			});
+
+			return c.json(updatedInvoice);
+		},
 	);

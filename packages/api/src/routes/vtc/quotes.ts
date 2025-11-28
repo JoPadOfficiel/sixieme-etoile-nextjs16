@@ -1,5 +1,5 @@
 import { db } from "@repo/database";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -85,7 +85,32 @@ const updateQuoteSchema = z.object({
 		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"])
 		.optional()
 		.describe("Quote lifecycle status"),
+	// Full edit fields (only for DRAFT quotes)
+	contactId: z.string().min(1).optional().describe("Contact ID for the quote"),
+	vehicleCategoryId: z.string().min(1).optional().describe("Vehicle category ID"),
+	tripType: z
+		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
+		.optional()
+		.describe("Type of trip"),
+	pickupAt: z
+		.string()
+		.datetime()
+		.optional()
+		.describe("Pickup date/time in Europe/Paris business time"),
+	pickupAddress: z.string().min(1).optional().describe("Pickup address"),
+	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
+	pickupLongitude: z.number().optional().nullable().describe("Pickup longitude"),
+	dropoffAddress: z.string().min(1).optional().describe("Dropoff address"),
+	dropoffLatitude: z.number().optional().nullable().describe("Dropoff latitude"),
+	dropoffLongitude: z.number().optional().nullable().describe("Dropoff longitude"),
+	passengerCount: z.number().int().positive().optional().describe("Number of passengers"),
+	luggageCount: z.number().int().nonnegative().optional().describe("Number of luggage pieces"),
+	suggestedPrice: z.number().positive().optional().describe("Suggested price in EUR"),
 	finalPrice: z.number().positive().optional().describe("Final price in EUR"),
+	internalCost: z.number().optional().nullable().describe("Internal cost in EUR"),
+	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
+	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details"),
+	appliedRules: z.record(z.unknown()).optional().nullable().describe("Applied pricing rules"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 	validUntil: z
 		.string()
@@ -390,6 +415,32 @@ export const quotesRouter = new Hono()
 				delete data.status;
 			}
 
+			// Check if trying to modify fields that require DRAFT status
+			const isFullEdit = data.contactId !== undefined ||
+				data.vehicleCategoryId !== undefined ||
+				data.tripType !== undefined ||
+				data.pickupAt !== undefined ||
+				data.pickupAddress !== undefined ||
+				data.pickupLatitude !== undefined ||
+				data.pickupLongitude !== undefined ||
+				data.dropoffAddress !== undefined ||
+				data.dropoffLatitude !== undefined ||
+				data.dropoffLongitude !== undefined ||
+				data.passengerCount !== undefined ||
+				data.luggageCount !== undefined ||
+				data.suggestedPrice !== undefined ||
+				data.internalCost !== undefined ||
+				data.marginPercent !== undefined ||
+				data.tripAnalysis !== undefined ||
+				data.appliedRules !== undefined;
+
+			// Block full edit for non-DRAFT quotes
+			if (isFullEdit && !QuoteStateMachine.isEditable(existing.status)) {
+				throw new HTTPException(400, {
+					message: "Cannot fully edit non-DRAFT quotes. Only notes and validUntil can be modified.",
+				});
+			}
+
 			// Story 6.4: Block commercial value changes for non-DRAFT quotes
 			if (
 				data.finalPrice !== undefined &&
@@ -411,9 +462,56 @@ export const quotesRouter = new Hono()
 				});
 			}
 
+			// Verify contact belongs to this organization if changing
+			if (data.contactId !== undefined) {
+				const contact = await db.contact.findFirst({
+					where: withTenantId(data.contactId, organizationId),
+				});
+				if (!contact) {
+					throw new HTTPException(400, { message: "Contact not found" });
+				}
+			}
+
+			// Verify vehicleCategory belongs to this organization if changing
+			if (data.vehicleCategoryId !== undefined) {
+				const category = await db.vehicleCategory.findFirst({
+					where: withTenantId(data.vehicleCategoryId, organizationId),
+				});
+				if (!category) {
+					throw new HTTPException(400, { message: "Vehicle category not found" });
+				}
+			}
+
 			const quote = await db.quote.update({
 				where: { id },
 				data: {
+					// Full edit fields (only for DRAFT) - use connect for relations
+					...(data.contactId !== undefined && { contact: { connect: { id: data.contactId } } }),
+					...(data.vehicleCategoryId !== undefined && { vehicleCategory: { connect: { id: data.vehicleCategoryId } } }),
+					...(data.tripType !== undefined && { tripType: data.tripType }),
+					...(data.pickupAt !== undefined && { pickupAt: new Date(data.pickupAt) }),
+					...(data.pickupAddress !== undefined && { pickupAddress: data.pickupAddress }),
+					...(data.pickupLatitude !== undefined && { pickupLatitude: data.pickupLatitude }),
+					...(data.pickupLongitude !== undefined && { pickupLongitude: data.pickupLongitude }),
+					...(data.dropoffAddress !== undefined && { dropoffAddress: data.dropoffAddress }),
+					...(data.dropoffLatitude !== undefined && { dropoffLatitude: data.dropoffLatitude }),
+					...(data.dropoffLongitude !== undefined && { dropoffLongitude: data.dropoffLongitude }),
+					...(data.passengerCount !== undefined && { passengerCount: data.passengerCount }),
+					...(data.luggageCount !== undefined && { luggageCount: data.luggageCount }),
+					...(data.suggestedPrice !== undefined && { suggestedPrice: data.suggestedPrice }),
+					...(data.internalCost !== undefined && { internalCost: data.internalCost }),
+					...(data.marginPercent !== undefined && { marginPercent: data.marginPercent }),
+					...(data.tripAnalysis !== undefined && { 
+						tripAnalysis: data.tripAnalysis === null 
+							? Prisma.JsonNull 
+							: data.tripAnalysis as Prisma.InputJsonValue 
+					}),
+					...(data.appliedRules !== undefined && { 
+						appliedRules: data.appliedRules === null 
+							? Prisma.JsonNull 
+							: data.appliedRules as Prisma.InputJsonValue 
+					}),
+					// Standard update fields
 					...(data.finalPrice !== undefined && { finalPrice: data.finalPrice }),
 					...(data.notes !== undefined && { notes: data.notes }),
 					...(data.validUntil !== undefined && {

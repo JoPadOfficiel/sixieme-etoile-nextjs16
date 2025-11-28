@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   DownloadIcon,
   Loader2Icon,
+  PencilIcon,
   SendIcon,
   XCircleIcon,
 } from "lucide-react";
@@ -42,6 +43,7 @@ export function InvoiceHeader({
   const { activeOrganization } = useActiveOrganization();
 
   const validTransitions = getValidInvoiceTransitions(invoice.status);
+  const canEdit = invoice.status === "DRAFT";
   const canIssue = validTransitions.includes("ISSUED");
   const canMarkPaid = validTransitions.includes("PAID");
   const canCancel = validTransitions.includes("CANCELLED");
@@ -73,6 +75,16 @@ export function InvoiceHeader({
 
       {/* Right: Action buttons */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Edit button for DRAFT invoices */}
+        {canEdit && (
+          <Link href={`/app/${activeOrganization?.slug}/invoices/${invoice.id}/edit`}>
+            <Button variant="outline" disabled={isLoading}>
+              <PencilIcon className="size-4 mr-2" />
+              {t("invoices.actions.edit")}
+            </Button>
+          </Link>
+        )}
+
         {canIssue && (
           <Button onClick={() => onStatusChange("ISSUED")} disabled={isLoading}>
             {isLoading ? (
