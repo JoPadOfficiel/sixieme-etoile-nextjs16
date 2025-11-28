@@ -20,6 +20,7 @@
 		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"db:seed": "dotenv -c -e ../../.env -- npx tsx prisma/seed.ts",
+		"db:seed:vtc": "dotenv -c -e ../../.env -- npx tsx prisma/seed-vtc-complete.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"types": "./**/.tsx",
