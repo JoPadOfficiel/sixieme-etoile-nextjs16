@@ -8,15 +8,19 @@ import {
 	CarIcon,
 	ReceiptIcon,
 	CreditCardIcon,
+	DollarSignIcon,
 	GiftIcon,
 	KeyIcon,
+	LayoutGridIcon,
 	MapPinIcon,
 	PackageIcon,
 	RouteIcon,
 	Settings2Icon,
+	ShieldCheckIcon,
 	SlidersHorizontalIcon,
 	SunIcon,
 	TagIcon,
+	TruckIcon,
 	Users2Icon,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -107,6 +111,32 @@ export default async function SettingsLayout({
 							title: t("settings.menu.organization.pricing.promotions"),
 							href: `${organizationSettingsBasePath}/pricing/promotions`,
 							icon: <GiftIcon className="size-4 opacity-50" />,
+						},
+					],
+				},
+				{
+					title: t("settings.menu.organization.fleet.title"),
+					icon: <TruckIcon className="size-4 opacity-50" />,
+					subItems: [
+						{
+							title: t("settings.menu.organization.fleet.vehicleCategories"),
+							href: `${organizationSettingsBasePath}/fleet?tab=vehicle-categories`,
+							icon: <LayoutGridIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.fleet.costParameters"),
+							href: `${organizationSettingsBasePath}/fleet?tab=cost-parameters`,
+							icon: <DollarSignIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.fleet.licenseCategories"),
+							href: `${organizationSettingsBasePath}/fleet?tab=license-categories`,
+							icon: <CarIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.fleet.rseRules"),
+							href: `${organizationSettingsBasePath}/fleet?tab=rse-rules`,
+							icon: <ShieldCheckIcon className="size-4 opacity-50" />,
 						},
 					],
 				},

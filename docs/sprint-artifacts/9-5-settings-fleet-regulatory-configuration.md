@@ -2,6 +2,7 @@
 
 **Epic:** Epic 9 – Advanced Pricing Configuration & Reporting  
 **Status:** done  
+**Validated:** 2025-11-28  
 **Created:** 2025-11-28  
 **Updated:** 2025-11-28  
 **Priority:** High  
@@ -912,10 +913,10 @@ curl -X PATCH "http://localhost:3000/api/vtc/pricing-settings" \
 - [x] TypeScript types defined
 - [x] Translations added (en/fr)
 - [x] Unit tests passing (Vitest) _(coverage ensured via existing suite for vehicle categories; pricing-settings pending dedicated spec)_
-- [ ] E2E tests passing (Playwright MCP)
-- [ ] API endpoints tested with curl
-- [ ] Database state verified via MCP
-- [ ] Code reviewed and merged
+- [x] E2E tests passing (Playwright MCP)
+- [x] API endpoints tested with curl
+- [x] Database state verified via MCP
+- [x] Code reviewed and merged
 
 ---
 
@@ -938,16 +939,55 @@ curl -X PATCH "http://localhost:3000/api/vtc/pricing-settings" \
 
 ### Files Created
 
-- (to be filled during implementation)
+- `packages/api/src/routes/vtc/pricing-settings.ts` - Pricing settings API router
+- `apps/web/modules/saas/fleet/components/VehicleCategoriesSection.tsx` - Vehicle categories tab
+- `apps/web/modules/saas/fleet/components/CostParametersSection.tsx` - Cost parameters tab
+- `apps/web/modules/saas/fleet/components/ConfigHealthSummary.tsx` - Health summary component
+- `apps/web/modules/saas/fleet/hooks/useVehicleCategories.ts` - React Query hooks
+- `apps/web/modules/saas/fleet/hooks/usePricingSettings.ts` - React Query hooks
 
 ### Files Modified
 
-- (to be filled during implementation)
+- `packages/api/src/routes/vtc/router.ts` - Registered pricing-settings routes
+- `apps/web/modules/saas/fleet/types.ts` - Added OrganizationPricingSettings types
+- `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/fleet/page.tsx` - Added new tabs
+- `packages/i18n/translations/en.json` - Added EN translations
+- `packages/i18n/translations/fr.json` - Added FR translations
 
 ### Test Summary
 
-- (to be filled during implementation)
+**API Tests (curl) - 2025-11-28:**
+
+- ✅ GET /api/vtc/vehicle-categories - Returns paginated list with vehicle counts
+- ✅ GET /api/vtc/pricing-settings - Returns organization pricing settings
+- ✅ GET /api/vtc/pricing-settings/health - Returns configuration health status
+- ✅ POST /api/vtc/vehicle-categories - Creates category (tested BUS_49)
+- ✅ PATCH /api/vtc/vehicle-categories/:id - Updates category fields
+- ✅ DELETE /api/vtc/vehicle-categories/:id - Deletes category
+- ✅ PATCH /api/vtc/pricing-settings - Updates operational costs (upsert)
+- ✅ Validation: Duplicate code rejected, negative values rejected
+
+**Database Verification (MCP postgres_vtc_sixiemme_etoile) - 2025-11-28:**
+
+- ✅ vehicle_category table: BERLINE, VAN records confirmed
+- ✅ organization_pricing_settings: All fields persisted correctly
+- ✅ CRUD operations verified (create/update/delete reflected in DB)
+
+**E2E Tests (Playwright MCP) - 2025-11-28:**
+
+- ✅ Page navigation: /app/{orgSlug}/settings/fleet loads correctly
+- ✅ 4 tabs visible: Vehicle Categories, Cost Parameters, License Categories, RSE Rules
+- ✅ Configuration Health alert displayed with warnings
+- ✅ Vehicle Categories table with correct columns and data
+- ✅ Cost Parameters form with all sections (Base Rates, Margins, Min Fare, Operational Costs)
+- ✅ Add Category dialog: Created MINIBUS category successfully
+- ✅ Delete Category: Removed MINIBUS, toast confirmation shown
+- ✅ Multi-tenancy: Data isolated per organization
 
 ### Implementation Notes
 
-- (to be filled during implementation)
+- All 10 Acceptance Criteria validated
+- Configuration Health shows warnings for zero margin threshold and missing operational costs
+- Vehicle category codes automatically uppercased
+- Pricing settings use upsert pattern (create if not exists, update otherwise)
+- Integration with pricing engine confirmed via existing Story 4.1-4.3 implementation

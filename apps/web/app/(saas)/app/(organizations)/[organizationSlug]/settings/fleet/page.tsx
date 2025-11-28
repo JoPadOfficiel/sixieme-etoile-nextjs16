@@ -49,6 +49,7 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import type {
 	ConfigHealthResponse,
@@ -66,8 +67,26 @@ import type {
 	VehicleRegulatoryCategory,
 } from "@saas/fleet/types";
 
+const VALID_TABS = ["vehicle-categories", "cost-parameters", "license-categories", "rse-rules"] as const;
+type TabValue = (typeof VALID_TABS)[number];
+
 export default function SettingsFleetPage() {
 	const t = useTranslations();
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+
+	// Get tab from URL or default to vehicle-categories
+	const tabParam = searchParams.get("tab");
+	const currentTab: TabValue = VALID_TABS.includes(tabParam as TabValue)
+		? (tabParam as TabValue)
+		: "vehicle-categories";
+
+	const handleTabChange = (value: string) => {
+		const params = new URLSearchParams(searchParams.toString());
+		params.set("tab", value);
+		router.push(`${pathname}?${params.toString()}`);
+	};
 
 	return (
 		<div className="container py-8">
@@ -83,7 +102,7 @@ export default function SettingsFleetPage() {
 			{/* Configuration Health Summary */}
 			<ConfigHealthSummary />
 
-			<Tabs defaultValue="vehicle-categories" className="space-y-6">
+			<Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
 				<TabsList className="grid w-full grid-cols-4">
 					<TabsTrigger value="vehicle-categories">
 						{t("fleet.settings.tabs.vehicleCategories")}

@@ -1138,6 +1138,13 @@
 					"optionalFees": "Frais optionnels",
 					"promotions": "Promotions"
 				},
+				"fleet": {
+					"title": "Flotte",
+					"vehicleCategories": "Catégories de véhicules",
+					"costParameters": "Paramètres de coûts",
+					"licenseCategories": "Catégories de permis",
+					"rseRules": "Règles RSE"
+				},
 				"title": "Organisation"
 			}
 		},
