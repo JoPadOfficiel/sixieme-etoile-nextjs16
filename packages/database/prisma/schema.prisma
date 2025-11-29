@@ -282,12 +282,11 @@ enum RouteDirection {
 }
 
 /// Advanced rate application scope
+/// Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
+/// Zone-based pricing now handled by PricingZone.priceMultiplier (Story 11.3)
 enum AdvancedRateAppliesTo {
   NIGHT
   WEEKEND
-  LONG_DISTANCE
-  ZONE_SCENARIO
-  HOLIDAY
 }
 
 /// Fuel type for price cache

@@ -1230,8 +1230,7 @@
 					"routes": "Routes",
 					"excursions": "Excursions",
 					"dispos": "Disposals",
-					"seasonalMultipliers": "Seasonal Multipliers",
-					"advancedRates": "Advanced Rates",
+					"adjustments": "Pricing Adjustments",
 					"optionalFees": "Optional Fees",
 					"promotions": "Promotions"
 				},
@@ -1321,9 +1320,28 @@
 					"description": "Create your first seasonal multiplier to adjust prices for specific periods."
 				}
 			},
+			"adjustments": {
+				"title": "Pricing Adjustments",
+				"description": "Manage seasonal multipliers and time-based rate modifiers",
+				"tabs": {
+					"seasonal": "Seasonal",
+					"timeBased": "Time-Based",
+					"timeBasedDesc": "Night and weekend rate modifiers"
+				},
+				"stats": {
+					"totalActive": "Total Active",
+					"totalActiveDesc": "All active adjustments",
+					"seasonal": "Seasonal",
+					"upcoming": "upcoming",
+					"nightRates": "Night Rates",
+					"nightRatesDesc": "After-hours pricing",
+					"weekendRates": "Weekend Rates",
+					"weekendRatesDesc": "Weekend pricing"
+				}
+			},
 			"advancedRates": {
-				"title": "Advanced Rate Modifiers",
-				"description": "Configure price adjustments based on time, distance, or zone conditions",
+				"title": "Time-Based Rates",
+				"description": "Configure price adjustments based on time conditions",
 				"addButton": "Add Rate Modifier",
 				"stats": {
 					"night": "Night Rates",

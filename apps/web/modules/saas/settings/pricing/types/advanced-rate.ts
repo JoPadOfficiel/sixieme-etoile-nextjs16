@@ -7,12 +7,9 @@
 // Core Types
 // ============================================================================
 
-export type AdvancedRateAppliesTo =
-	| "NIGHT"
-	| "WEEKEND"
-	| "LONG_DISTANCE"
-	| "ZONE_SCENARIO"
-	| "HOLIDAY";
+// Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
+// Zone-based pricing now handled by PricingZone.priceMultiplier (Story 11.3)
+export type AdvancedRateAppliesTo = "NIGHT" | "WEEKEND";
 
 export type AdjustmentType = "PERCENTAGE" | "FIXED_AMOUNT";
 
@@ -42,9 +39,6 @@ export interface AdvancedRate {
 export interface AdvancedRateStats {
 	night: number;
 	weekend: number;
-	longDistance: number;
-	zoneScenario: number;
-	holiday: number;
 	totalActive: number;
 }
 
@@ -98,13 +92,7 @@ export interface UpdateAdvancedRateRequest {
 // Filter Types
 // ============================================================================
 
-export type AdvancedRateTypeFilter =
-	| "all"
-	| "NIGHT"
-	| "WEEKEND"
-	| "LONG_DISTANCE"
-	| "ZONE_SCENARIO"
-	| "HOLIDAY";
+export type AdvancedRateTypeFilter = "all" | "NIGHT" | "WEEKEND";
 
 export type AdvancedRateStatusFilter = "all" | "active" | "inactive";
 
@@ -122,6 +110,7 @@ export interface AdvancedRateFilters {
 
 /**
  * Get type badge color classes
+ * Note: Only NIGHT and WEEKEND types supported (Story 11.4)
  */
 export function getTypeColor(type: AdvancedRateAppliesTo): string {
 	switch (type) {
@@ -129,12 +118,6 @@ export function getTypeColor(type: AdvancedRateAppliesTo): string {
 			return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
 		case "WEEKEND":
 			return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-		case "LONG_DISTANCE":
-			return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-		case "ZONE_SCENARIO":
-			return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200";
-		case "HOLIDAY":
-			return "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200";
 		default:
 			return "bg-gray-100 text-gray-800";
 	}
@@ -203,6 +186,7 @@ export function formatDistanceRange(
 
 /**
  * Get conditions display based on rate type
+ * Note: Only NIGHT and WEEKEND types supported (Story 11.4)
  */
 export function getConditionsDisplay(
 	rate: AdvancedRate,
@@ -212,14 +196,9 @@ export function getConditionsDisplay(
 		case "NIGHT":
 			return formatTimeRange(rate.startTime, rate.endTime);
 		case "WEEKEND":
-		case "HOLIDAY":
 			const time = formatTimeRange(rate.startTime, rate.endTime);
 			const days = formatDaysOfWeek(rate.daysOfWeek, dayNames);
 			return `${time} (${days})`;
-		case "LONG_DISTANCE":
-			return formatDistanceRange(rate.minDistanceKm, rate.maxDistanceKm);
-		case "ZONE_SCENARIO":
-			return rate.zoneName ? `Zone: ${rate.zoneName}` : "-";
 		default:
 			return "-";
 	}
@@ -227,30 +206,36 @@ export function getConditionsDisplay(
 
 /**
  * Check if time fields are required for a given type
+ * Note: Only NIGHT and WEEKEND types supported (Story 11.4)
  */
 export function requiresTimeFields(type: AdvancedRateAppliesTo): boolean {
-	return type === "NIGHT" || type === "WEEKEND" || type === "HOLIDAY";
+	return type === "NIGHT" || type === "WEEKEND";
 }
 
 /**
  * Check if days of week field is required for a given type
+ * Note: Only WEEKEND requires days of week (Story 11.4)
  */
 export function requiresDaysOfWeek(type: AdvancedRateAppliesTo): boolean {
-	return type === "WEEKEND" || type === "HOLIDAY";
+	return type === "WEEKEND";
 }
 
 /**
  * Check if distance fields are required for a given type
+ * Note: No longer used - LONG_DISTANCE removed (Story 11.4)
+ * @deprecated Distance-based pricing handled by zone multipliers
  */
-export function requiresDistanceFields(type: AdvancedRateAppliesTo): boolean {
-	return type === "LONG_DISTANCE";
+export function requiresDistanceFields(_type: AdvancedRateAppliesTo): boolean {
+	return false;
 }
 
 /**
  * Check if zone field is required for a given type
+ * Note: No longer used - ZONE_SCENARIO removed (Story 11.4)
+ * @deprecated Zone-based pricing handled by PricingZone.priceMultiplier
  */
-export function requiresZoneField(type: AdvancedRateAppliesTo): boolean {
-	return type === "ZONE_SCENARIO";
+export function requiresZoneField(_type: AdvancedRateAppliesTo): boolean {
+	return false;
 }
 
 /**

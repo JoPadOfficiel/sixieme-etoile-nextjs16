@@ -332,18 +332,23 @@ async function loadPricingSettings(
 
 /**
  * Load all active advanced rates for the organization (Story 4.3)
+ * Note: Only NIGHT and WEEKEND types are supported (Story 11.4)
  */
 async function loadAdvancedRates(organizationId: string): Promise<AdvancedRateData[]> {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const rates = (await db.advancedRate.findMany({
-		where: withTenantFilter({ isActive: true }, organizationId),
+		where: withTenantFilter({ 
+			isActive: true,
+			// Only load supported rate types (NIGHT, WEEKEND)
+			appliesTo: { in: ["NIGHT", "WEEKEND"] },
+		}, organizationId),
 		orderBy: { priority: "desc" },
 	})) as any[];
 
 	return rates.map((rate) => ({
 		id: rate.id,
 		name: rate.name,
-		appliesTo: rate.appliesTo as "NIGHT" | "WEEKEND" | "LONG_DISTANCE" | "ZONE_SCENARIO" | "HOLIDAY",
+		appliesTo: rate.appliesTo as "NIGHT" | "WEEKEND",
 		startTime: rate.startTime,
 		endTime: rate.endTime,
 		daysOfWeek: rate.daysOfWeek,

@@ -232,7 +232,7 @@ export const RouteDirectionSchema = z.enum(['BIDIRECTIONAL','A_TO_B','B_TO_A']);
 
 export type RouteDirectionType = `${z.infer<typeof RouteDirectionSchema>}`
 
-export const AdvancedRateAppliesToSchema = z.enum(['NIGHT','WEEKEND','LONG_DISTANCE','ZONE_SCENARIO','HOLIDAY']);
+export const AdvancedRateAppliesToSchema = z.enum(['NIGHT','WEEKEND']);
 
 export type AdvancedRateAppliesToType = `${z.infer<typeof AdvancedRateAppliesToSchema>}`
 

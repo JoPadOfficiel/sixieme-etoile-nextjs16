@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>11.4</story-id>
+    <title>Merge Seasonal Multipliers &amp; Advanced Rates Pages</title>
+    <epic>Epic 9: Advanced Pricing Configuration &amp; Reporting</epic>
+    <created>2025-11-29</created>
+    <author>Bob (Scrum Master)</author>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Currently, pricing adjustments are split across two separate pages:
+      - Seasonal Multipliers (/settings/pricing/seasonal-multipliers) - Date-based multipliers
+      - Advanced Rates (/settings/pricing/advanced-rates) - Night, Weekend, and deprecated types
+      
+      This separation creates unnecessary navigation complexity and makes it harder for operators
+      to see the full picture of pricing adjustments. Additionally, several Advanced Rate types
+      are now obsolete:
+      - LONG_DISTANCE: Replaced by zone-based pricing (Story 11.3)
+      - ZONE_SCENARIO: Replaced by PricingZone.priceMultiplier (Story 11.3)
+      - HOLIDAY: Not used in production, seasonal multipliers handle events better
+    </description>
+    <business-impact>
+      - Operators waste time navigating between pages
+      - Confusion about which adjustment type to use
+      - Dead code and unused types pollute the codebase
+      - Risk of pricing calculation errors from deprecated types
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Create a unified "Pricing Adjustments" page with tabbed interface combining
+      Seasonal Multipliers and Advanced Rates (NIGHT, WEEKEND only)
+    </primary>
+    <secondary>
+      <objective>Remove deprecated Advanced Rate types from enum and pricing engine</objective>
+      <objective>Implement URL redirects for backward compatibility</objective>
+      <objective>Update navigation to single menu item</objective>
+      <objective>Consolidate translations</objective>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>New unified page at /settings/pricing/adjustments</item>
+      <item>Tabbed interface: "Seasonal" and "Time-Based" tabs</item>
+      <item>Unified summary cards showing combined stats</item>
+      <item>Migration of existing components to new page structure</item>
+      <item>Removal of LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY from AdvancedRateAppliesTo enum</item>
+      <item>Cleanup of pricing engine evaluation logic for removed types</item>
+      <item>URL redirects from old pages to new page with appropriate tab</item>
+      <item>Deletion of old page files</item>
+      <item>Navigation update</item>
+      <item>Translation consolidation</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Zone multipliers (handled by Story 11.3)</item>
+      <item>Creating new adjustment types</item>
+      <item>Modifying the core pricing calculation logic</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <constraint>Must preserve existing NIGHT and WEEKEND rate functionality</constraint>
+      <constraint>Must preserve all seasonal multiplier functionality</constraint>
+      <constraint>Database migration required to remove enum values</constraint>
+      <constraint>Must handle existing data with deprecated types gracefully</constraint>
+    </technical>
+    <business>
+      <constraint>Zero downtime during migration</constraint>
+      <constraint>Existing bookmarks must redirect correctly</constraint>
+      <constraint>No data loss for active rates</constraint>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Existing advanced rates with deprecated types in database</description>
+      <mitigation>Soft-delete or migrate to appropriate type before enum removal</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Users may be confused by page reorganization</description>
+      <mitigation>Clear redirects and updated navigation labels</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <current-architecture>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/seasonal-multipliers/page.tsx">
+        Standalone page for seasonal multipliers
+      </file>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/advanced-rates/page.tsx">
+        Standalone page for advanced rates (all types)
+      </file>
+      <file path="packages/database/prisma/schema.prisma">
+        Contains AdvancedRateAppliesTo enum with NIGHT, WEEKEND, LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Contains evaluateAdvancedRate() function handling all rate types
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/types/advanced-rate.ts">
+        Frontend types including all rate types
+      </file>
+    </current-architecture>
+    <target-architecture>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/adjustments/page.tsx">
+        New unified page with tabs
+      </file>
+      <file path="packages/database/prisma/schema.prisma">
+        AdvancedRateAppliesTo enum with only NIGHT, WEEKEND
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Simplified evaluateAdvancedRate() handling only NIGHT, WEEKEND
+      </file>
+    </target-architecture>
+  </technical-context>
+
+  <dependencies>
+    <dependency type="completed">Story 11.3: Zone Pricing Multipliers (provides zone-based pricing)</dependency>
+    <dependency type="completed">Story 9.1: Seasonal Multipliers implementation</dependency>
+    <dependency type="completed">Story 9.2: Advanced Rate Modifiers implementation</dependency>
+  </dependencies>
+
+  <acceptance-criteria-preview>
+    <criterion id="AC1">Single page access via "Pricing Adjustments" menu item</criterion>
+    <criterion id="AC2">Tabbed interface with "Seasonal" and "Time-Based" tabs</criterion>
+    <criterion id="AC3">Unified summary cards showing combined stats</criterion>
+    <criterion id="AC4">Seasonal tab shows existing seasonal multiplier functionality</criterion>
+    <criterion id="AC5">Time-Based tab shows NIGHT and WEEKEND rates only</criterion>
+    <criterion id="AC6">Old URLs redirect to new page with correct tab</criterion>
+    <criterion id="AC7">All existing data preserved and accessible</criterion>
+    <criterion id="AC8">Deprecated rate types removed from enum and pricing logic</criterion>
+  </acceptance-criteria-preview>
+</story-context>

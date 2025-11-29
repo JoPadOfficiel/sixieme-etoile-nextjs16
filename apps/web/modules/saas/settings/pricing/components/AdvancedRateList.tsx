@@ -96,13 +96,6 @@ export function AdvancedRateList({
 						<SelectItem value="all">{t("status.all")}</SelectItem>
 						<SelectItem value="NIGHT">{t("types.NIGHT")}</SelectItem>
 						<SelectItem value="WEEKEND">{t("types.WEEKEND")}</SelectItem>
-						<SelectItem value="LONG_DISTANCE">
-							{t("types.LONG_DISTANCE")}
-						</SelectItem>
-						<SelectItem value="ZONE_SCENARIO">
-							{t("types.ZONE_SCENARIO")}
-						</SelectItem>
-						<SelectItem value="HOLIDAY">{t("types.HOLIDAY")}</SelectItem>
 					</SelectContent>
 				</Select>
 

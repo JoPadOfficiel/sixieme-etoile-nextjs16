@@ -1230,8 +1230,7 @@
 					"routes": "Itinéraires",
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
-					"seasonalMultipliers": "Multiplicateurs saisonniers",
-					"advancedRates": "Tarifs avancés",
+					"adjustments": "Ajustements de Prix",
 					"optionalFees": "Frais optionnels",
 					"promotions": "Promotions"
 				},
@@ -1321,9 +1320,28 @@
 					"description": "Créez votre premier multiplicateur saisonnier pour ajuster les prix sur des périodes spécifiques."
 				}
 			},
+			"adjustments": {
+				"title": "Ajustements de Prix",
+				"description": "Gérez les multiplicateurs saisonniers et les modificateurs de tarifs horaires",
+				"tabs": {
+					"seasonal": "Saisonniers",
+					"timeBased": "Horaires",
+					"timeBasedDesc": "Modificateurs de tarifs nuit et week-end"
+				},
+				"stats": {
+					"totalActive": "Total Actifs",
+					"totalActiveDesc": "Tous les ajustements actifs",
+					"seasonal": "Saisonniers",
+					"upcoming": "à venir",
+					"nightRates": "Tarifs Nuit",
+					"nightRatesDesc": "Tarification hors heures",
+					"weekendRates": "Tarifs Week-end",
+					"weekendRatesDesc": "Tarification week-end"
+				}
+			},
 			"advancedRates": {
-				"title": "Modificateurs de Tarifs Avancés",
-				"description": "Configurez les ajustements de prix selon les conditions de temps, distance ou zone",
+				"title": "Tarifs Horaires",
+				"description": "Configurez les ajustements de prix selon les conditions horaires",
 				"addButton": "Ajouter un modificateur",
 				"stats": {
 					"night": "Tarifs Nuit",

@@ -301,7 +301,9 @@ export interface OrganizationPricingSettings {
 // Multiplier Types (Story 4.3)
 // ============================================================================
 
-export type AdvancedRateAppliesTo = "NIGHT" | "WEEKEND" | "LONG_DISTANCE" | "ZONE_SCENARIO" | "HOLIDAY";
+// Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
+// Zone-based pricing now handled by PricingZone.priceMultiplier (Story 11.3)
+export type AdvancedRateAppliesTo = "NIGHT" | "WEEKEND";
 export type AdjustmentType = "PERCENTAGE" | "FIXED_AMOUNT";
 
 /**
@@ -1263,6 +1265,8 @@ export function isWithinDateRange(pickupAt: Date, startDate: Date, endDate: Date
 
 /**
  * Evaluate if an advanced rate applies to the given context
+ * Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
+ * Zone-based pricing now handled by PricingZone.priceMultiplier (Story 11.3)
  */
 export function evaluateAdvancedRate(
 	rate: AdvancedRateData,
@@ -1273,7 +1277,7 @@ export function evaluateAdvancedRate(
 		return false;
 	}
 
-	// Check based on rate type
+	// Check based on rate type (only NIGHT and WEEKEND supported)
 	switch (rate.appliesTo) {
 		case "NIGHT":
 			if (!context.pickupAt || !rate.startTime || !rate.endTime) {
@@ -1287,24 +1291,8 @@ export function evaluateAdvancedRate(
 			}
 			return isWeekend(context.pickupAt, rate.daysOfWeek);
 
-		case "LONG_DISTANCE":
-			return isLongDistance(context.distanceKm, rate.minDistanceKm, rate.maxDistanceKm);
-
-		case "ZONE_SCENARIO":
-			// Zone-based rate: applies if pickup or dropoff matches the configured zone
-			if (!rate.zoneId) {
-				return false;
-			}
-			return context.pickupZoneId === rate.zoneId || context.dropoffZoneId === rate.zoneId;
-
-		case "HOLIDAY":
-			// Holiday rates would need a holiday calendar - for now, use time-based check
-			if (!context.pickupAt || !rate.startTime || !rate.endTime) {
-				return false;
-			}
-			return isNightTime(context.pickupAt, rate.startTime, rate.endTime);
-
 		default:
+			// Unknown rate type - skip
 			return false;
 	}
 }

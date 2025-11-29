@@ -18,7 +18,6 @@ import {
 	Settings2Icon,
 	ShieldCheckIcon,
 	SlidersHorizontalIcon,
-	SunIcon,
 	TagIcon,
 	TruckIcon,
 	Users2Icon,
@@ -93,13 +92,8 @@ export default async function SettingsLayout({
 							icon: <PackageIcon className="size-4 opacity-50" />,
 						},
 						{
-							title: t("settings.menu.organization.pricing.seasonalMultipliers"),
-							href: `${organizationSettingsBasePath}/pricing/seasonal-multipliers`,
-							icon: <SunIcon className="size-4 opacity-50" />,
-						},
-						{
-							title: t("settings.menu.organization.pricing.advancedRates"),
-							href: `${organizationSettingsBasePath}/pricing/advanced-rates`,
+							title: t("settings.menu.organization.pricing.adjustments"),
+							href: `${organizationSettingsBasePath}/pricing/adjustments`,
 							icon: <SlidersHorizontalIcon className="size-4 opacity-50" />,
 						},
 						{

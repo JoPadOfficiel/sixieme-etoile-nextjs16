@@ -59,13 +59,9 @@ interface AdvancedRateFormDialogProps {
 	isSubmitting: boolean;
 }
 
-const RATE_TYPES: AdvancedRateAppliesTo[] = [
-	"NIGHT",
-	"WEEKEND",
-	"LONG_DISTANCE",
-	"ZONE_SCENARIO",
-	"HOLIDAY",
-];
+// Note: Only NIGHT and WEEKEND types supported (Story 11.4)
+// LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed - zone pricing handled by PricingZone.priceMultiplier
+const RATE_TYPES: AdvancedRateAppliesTo[] = ["NIGHT", "WEEKEND"];
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ["PERCENTAGE", "FIXED_AMOUNT"];
 

@@ -6,27 +6,42 @@
 **I want** Seasonal Multipliers and Advanced Rates combined into a single page  
 **So that** I can manage all time-based and condition-based pricing adjustments from one place
 
+## Status
+
+- **Sprint**: 11
+- **Priority**: High
+- **Estimate**: 5 points
+- **Related FRs**: FR58, FR59
+
 ## Background
 
 Currently, pricing adjustments are split across two separate pages:
 
 - **Seasonal Multipliers** (`/settings/pricing/seasonal-multipliers`) - Date-based multipliers
-- **Advanced Rates** (`/settings/pricing/advanced-rates`) - Night, Weekend, Long Distance rates
+- **Advanced Rates** (`/settings/pricing/advanced-rates`) - Night, Weekend, and deprecated types
 
-This separation creates unnecessary navigation and makes it harder to see the full picture of pricing adjustments. The user wants these merged into a single "Pricing Adjustments" or "Rate Modifiers" page with tabs or sections.
+This separation creates unnecessary navigation and makes it harder to see the full picture of pricing adjustments. Additionally, several Advanced Rate types are now obsolete:
+
+- **LONG_DISTANCE**: Replaced by zone-based pricing (Story 11.3)
+- **ZONE_SCENARIO**: Replaced by `PricingZone.priceMultiplier` (Story 11.3)
+- **HOLIDAY**: Not used in production, seasonal multipliers handle events better
 
 ## Tasks
 
-1. **Create unified PricingAdjustmentsPage** - New page combining both features
-2. **Implement tabbed interface** - Tabs for "Seasonal", "Night/Weekend", "Other"
-3. **Create unified summary cards** - Show combined stats across all adjustment types
-4. **Migrate seasonal multipliers components** - Move to new page structure
-5. **Migrate advanced rates components** - Move to new page structure (excluding deprecated types)
-6. **Update navigation** - Replace two menu items with single "Pricing Adjustments" item
-7. **Add redirects** - Redirect old URLs to new page
-8. **Remove old pages** - Delete deprecated page files
-9. **Update translations** - Consolidate and update translation keys
-10. **Write E2E tests** for merged page
+1. **Remove deprecated Advanced Rate types from Prisma enum** - Remove LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY
+2. **Update pricing engine** - Remove evaluation logic for deprecated types
+3. **Update frontend types** - Remove deprecated types from TypeScript definitions
+4. **Update UI components** - Remove deprecated type options from filters and forms
+5. **Create unified PricingAdjustmentsPage** - New page combining both features
+6. **Implement tabbed interface** - Tabs for "Seasonal" and "Time-Based"
+7. **Create unified summary cards** - Show combined stats across all adjustment types
+8. **Migrate seasonal multipliers components** - Move to new page structure
+9. **Migrate advanced rates components** - Move to new page structure (NIGHT/WEEKEND only)
+10. **Update navigation** - Replace two menu items with single "Pricing Adjustments" item
+11. **Add redirects** - Redirect old URLs to new page
+12. **Remove old pages** - Delete deprecated page files
+13. **Update translations** - Consolidate and update translation keys
+14. **Write E2E tests** for merged page
 
 ## Acceptance Criteria
 
@@ -44,8 +59,7 @@ This separation creates unnecessary navigation and makes it harder to see the fu
 **Then** I see tabs:
 
 - "Seasonal" - Date-based multipliers (events, holidays, high season)
-- "Time-Based" - Night rates, Weekend rates
-- "Other" - Any remaining advanced rate types (if applicable)
+- "Time-Based" - Night rates, Weekend rates only (NIGHT, WEEKEND types)
 
 ### AC3: Unified Summary Cards
 
@@ -143,24 +157,67 @@ Existing components can be reused with minimal changes:
 
 ## Out of Scope
 
-- Removing deprecated advanced rate types (Story 11.7)
-- Zone multipliers (Story 11.3)
+- Zone multipliers (handled by Story 11.3 via PricingZone.priceMultiplier)
 - Creating new adjustment types
+- Modifying core pricing calculation logic
 
 ## Dependencies
 
-- Story 11.7 (Remove Deprecated Advanced Rate Types) should be done first or in parallel
+- **Story 11.3** (Zone Pricing Multipliers) - Completed, provides zone-based pricing
+- **Story 9.1** (Seasonal Multipliers) - Completed
+- **Story 9.2** (Advanced Rate Modifiers) - Completed
+
+## Test Cases
+
+### TC1: Deprecated Types Removed from Pricing Engine
+
+```bash
+# Verify pricing calculation doesn't use deprecated types
+curl -X POST http://localhost:3000/api/vtc/pricing/calculate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authjs.session-token=<token>" \
+  -d '{"pickup": {...}, "dropoff": {...}, "vehicleCategoryId": "...", "pickupAt": "2025-12-01T23:00:00"}'
+# Should only apply NIGHT/WEEKEND rates, not LONG_DISTANCE/ZONE_SCENARIO/HOLIDAY
+```
+
+### TC2: Tab Navigation
+
+- Navigate to /settings/pricing/adjustments
+- Verify "Seasonal" tab is default
+- Click "Time-Based" tab
+- Verify URL updates to ?tab=time-based
+- Verify only NIGHT/WEEKEND rates shown
+
+### TC3: URL Redirects
+
+- Navigate to /settings/pricing/seasonal-multipliers
+- Verify redirect to /settings/pricing/adjustments?tab=seasonal
+- Navigate to /settings/pricing/advanced-rates
+- Verify redirect to /settings/pricing/adjustments?tab=time-based
+
+### TC4: CRUD Operations
+
+- Create seasonal multiplier → Verify saved
+- Edit seasonal multiplier → Verify updated
+- Delete seasonal multiplier → Verify removed
+- Create NIGHT rate → Verify saved
+- Create WEEKEND rate → Verify saved
+- Verify no option to create LONG_DISTANCE/ZONE_SCENARIO/HOLIDAY
 
 ## Definition of Done
 
-- [ ] New unified page created at `/settings/pricing/adjustments`
-- [ ] Tabbed interface implemented
-- [ ] Unified summary cards showing combined stats
-- [ ] Seasonal tab functional with existing features
-- [ ] Time-Based tab functional with existing features
-- [ ] Old URLs redirect to new page
-- [ ] Old page files removed
-- [ ] Navigation updated
-- [ ] Translations updated
-- [ ] E2E tests passing
-- [ ] Code reviewed and approved
+- [x] Deprecated types (LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY) removed from Prisma enum
+- [x] Pricing engine updated to only handle NIGHT/WEEKEND
+- [x] Frontend types updated
+- [x] UI components updated (filters, forms)
+- [x] New unified page created at `/settings/pricing/adjustments`
+- [x] Tabbed interface implemented
+- [x] Unified summary cards showing combined stats
+- [x] Seasonal tab functional with existing features
+- [x] Time-Based tab functional with NIGHT/WEEKEND only
+- [x] Old URLs redirect to new page
+- [x] Old page files removed
+- [x] Navigation updated
+- [x] Translations updated
+- [x] E2E tests passing
+- [x] Code reviewed and approved

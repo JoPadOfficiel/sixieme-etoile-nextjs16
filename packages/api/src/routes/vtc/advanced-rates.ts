@@ -78,13 +78,9 @@ const transformAdvancedRate = (rate: any) => ({
 // Validation Schemas
 // ============================================================================
 
-const appliesToEnum = z.enum([
-	"NIGHT",
-	"WEEKEND",
-	"LONG_DISTANCE",
-	"ZONE_SCENARIO",
-	"HOLIDAY",
-]);
+// Note: Only NIGHT and WEEKEND types supported (Story 11.4)
+// LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed - zone pricing handled by PricingZone.priceMultiplier
+const appliesToEnum = z.enum(["NIGHT", "WEEKEND"]);
 
 const adjustmentTypeEnum = z.enum(["PERCENTAGE", "FIXED_AMOUNT"]);
 
@@ -136,12 +132,8 @@ const createRateSchema = z
 	)
 	.refine(
 		(data) => {
-			// Validate required fields based on type
-			if (
-				data.appliesTo === "NIGHT" ||
-				data.appliesTo === "WEEKEND" ||
-				data.appliesTo === "HOLIDAY"
-			) {
+			// Validate required fields based on type (only NIGHT and WEEKEND supported)
+			if (data.appliesTo === "NIGHT" || data.appliesTo === "WEEKEND") {
 				if (!data.startTime || !data.endTime) {
 					return false;
 				}
@@ -149,42 +141,19 @@ const createRateSchema = z
 			return true;
 		},
 		{
-			message:
-				"Start time and end time are required for NIGHT, WEEKEND, and HOLIDAY types",
+			message: "Start time and end time are required for NIGHT and WEEKEND types",
 		}
 	)
 	.refine(
 		(data) => {
-			if (data.appliesTo === "WEEKEND" || data.appliesTo === "HOLIDAY") {
+			if (data.appliesTo === "WEEKEND") {
 				if (!data.daysOfWeek) {
 					return false;
 				}
 			}
 			return true;
 		},
-		{ message: "Days of week are required for WEEKEND and HOLIDAY types" }
-	)
-	.refine(
-		(data) => {
-			if (data.appliesTo === "LONG_DISTANCE") {
-				if (data.minDistanceKm === null || data.minDistanceKm === undefined) {
-					return false;
-				}
-			}
-			return true;
-		},
-		{ message: "Minimum distance is required for LONG_DISTANCE type" }
-	)
-	.refine(
-		(data) => {
-			if (data.appliesTo === "ZONE_SCENARIO") {
-				if (!data.zoneId) {
-					return false;
-				}
-			}
-			return true;
-		},
-		{ message: "Zone is required for ZONE_SCENARIO type" }
+		{ message: "Days of week are required for WEEKEND type" }
 	);
 
 const updateRateSchema = z
@@ -245,49 +214,31 @@ export const advancedRatesRouter = new Hono()
 		async (c) => {
 			const organizationId = c.get("organizationId");
 
-			const [night, weekend, longDistance, zoneScenario, holiday, totalActive] =
-				await Promise.all([
-					db.advancedRate.count({
-						where: withTenantFilter(
-							{ appliesTo: AdvancedRateAppliesTo.NIGHT },
-							organizationId
-						),
-					}),
-					db.advancedRate.count({
-						where: withTenantFilter(
-							{ appliesTo: AdvancedRateAppliesTo.WEEKEND },
-							organizationId
-						),
-					}),
-					db.advancedRate.count({
-						where: withTenantFilter(
-							{ appliesTo: AdvancedRateAppliesTo.LONG_DISTANCE },
-							organizationId
-						),
-					}),
-					db.advancedRate.count({
-						where: withTenantFilter(
-							{ appliesTo: AdvancedRateAppliesTo.ZONE_SCENARIO },
-							organizationId
-						),
-					}),
-					db.advancedRate.count({
-						where: withTenantFilter(
-							{ appliesTo: AdvancedRateAppliesTo.HOLIDAY },
-							organizationId
-						),
-					}),
-					db.advancedRate.count({
-						where: withTenantFilter({ isActive: true }, organizationId),
-					}),
-				]);
+			// Note: Only NIGHT and WEEKEND types supported (Story 11.4)
+			const [night, weekend, totalActive] = await Promise.all([
+				db.advancedRate.count({
+					where: withTenantFilter(
+						{ appliesTo: AdvancedRateAppliesTo.NIGHT },
+						organizationId
+					),
+				}),
+				db.advancedRate.count({
+					where: withTenantFilter(
+						{ appliesTo: AdvancedRateAppliesTo.WEEKEND },
+						organizationId
+					),
+				}),
+				db.advancedRate.count({
+					where: withTenantFilter(
+						{ isActive: true, appliesTo: { in: ["NIGHT", "WEEKEND"] } },
+						organizationId
+					),
+				}),
+			]);
 
 			return c.json({
 				night,
 				weekend,
-				longDistance,
-				zoneScenario,
-				holiday,
 				totalActive,
 			});
 		}
@@ -408,17 +359,8 @@ export const advancedRatesRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
-			// Validate zone exists if ZONE_SCENARIO
-			if (data.appliesTo === "ZONE_SCENARIO" && data.zoneId) {
-				const zone = await db.pricingZone.findFirst({
-					where: withTenantFilter({ id: data.zoneId }, organizationId),
-				});
-				if (!zone) {
-					throw new HTTPException(400, {
-						message: "Zone not found",
-					});
-				}
-			}
+			// Note: ZONE_SCENARIO validation removed (Story 11.4)
+			// Zone-based pricing now handled by PricingZone.priceMultiplier
 
 			const rate = await db.advancedRate.create({
 				data: withTenantCreate(
@@ -428,9 +370,10 @@ export const advancedRatesRouter = new Hono()
 						startTime: data.startTime ?? null,
 						endTime: data.endTime ?? null,
 						daysOfWeek: data.daysOfWeek ?? null,
-						minDistanceKm: data.minDistanceKm ?? null,
-						maxDistanceKm: data.maxDistanceKm ?? null,
-						zoneId: data.zoneId ?? null,
+						// Distance and zone fields kept for backward compatibility but not used
+						minDistanceKm: null,
+						maxDistanceKm: null,
+						zoneId: null,
 						adjustmentType: data.adjustmentType,
 						value: data.value,
 						priority: data.priority,
@@ -476,17 +419,8 @@ export const advancedRatesRouter = new Hono()
 				});
 			}
 
-			// Validate zone exists if ZONE_SCENARIO and zoneId is being updated
-			if (data.zoneId) {
-				const zone = await db.pricingZone.findFirst({
-					where: withTenantFilter({ id: data.zoneId }, organizationId),
-				});
-				if (!zone) {
-					throw new HTTPException(400, {
-						message: "Zone not found",
-					});
-				}
-			}
+			// Note: Zone validation removed (Story 11.4)
+			// Zone-based pricing now handled by PricingZone.priceMultiplier
 
 			const rate = await db.advancedRate.update({
 				where: withTenantId(id, organizationId),
