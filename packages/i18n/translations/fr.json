@@ -761,7 +761,29 @@
 			"statusActive": "Actives uniquement",
 			"statusInactive": "Inactives uniquement",
 			"noSearchResults": "Aucune zone ne correspond à votre recherche.",
-			"confirmDelete": "Êtes-vous sûr de vouloir supprimer la zone « {name} » ?"
+			"confirmDelete": "Êtes-vous sûr de vouloir supprimer la zone « {name} » ?",
+			"creationMethod": {
+				"draw": "Dessiner sur la carte",
+				"postalCodes": "Codes postaux"
+			},
+			"postalCodes": {
+				"label": "Codes postaux",
+				"placeholder": "Entrez un code postal (ex: 75001)",
+				"country": "Pays",
+				"countryHelp": "Seuls les codes postaux français sont pris en charge dans cette version.",
+				"inputHelp": "{count}/{max} codes postaux ajoutés",
+				"selected": "Codes postaux sélectionnés",
+				"alreadyAdded": "Ce code postal a déjà été ajouté.",
+				"maxReached": "Maximum de {max} codes postaux atteint.",
+				"invalidFormat": "Format de code postal invalide.",
+				"loadGeometry": "Charger les frontières de la zone",
+				"reloadGeometry": "Recharger les frontières de la zone",
+				"geometryLoaded": "Frontières de la zone chargées avec succès.",
+				"geometryError": "Échec du chargement des frontières. Veuillez vérifier les codes postaux.",
+				"preview": "Aperçu de la zone",
+				"usedCodes": "Codes postaux utilisés",
+				"editTitle": "Codes postaux"
+			}
 		}
 	},
 	"routes": {

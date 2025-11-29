@@ -11,10 +11,16 @@ import {
 	SelectValue,
 } from "@ui/components/select";
 import { Switch } from "@ui/components/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/tabs";
+import { useToast } from "@ui/hooks/use-toast";
+import { Loader2Icon, MailIcon, MapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
+type CreationTab = "draw" | "postal";
 import type { PricingZone, PricingZoneFormData, ZoneType } from "../types";
 import { ZONE_COLORS } from "../types";
+import { PostalCodeInput } from "./PostalCodeInput";
 import { ZoneDrawingMap } from "./ZoneDrawingMap";
 
 interface ZoneFormProps {
@@ -58,6 +64,8 @@ export function ZoneForm({
 	const effectiveRadiusKm = zone?.radiusKm ?? initialRadiusKm ?? null;
 	const effectiveGeometry = zone?.geometry ?? initialGeometry ?? null;
 
+	const { toast } = useToast();
+
 	const [formData, setFormData] = useState<PricingZoneFormData>({
 		name: zone?.name ?? "",
 		code: zone?.code ?? "",
@@ -69,10 +77,73 @@ export function ZoneForm({
 		parentZoneId: zone?.parentZoneId ?? null,
 		isActive: zone?.isActive ?? true,
 		color: zone?.color ?? ZONE_COLORS[0].value,
+		postalCodes: zone?.postalCodes ?? [],
+		creationMethod: zone?.creationMethod ?? null,
 	});
 
 	// Geometry is now managed by the map component
 	const [geometry, setGeometry] = useState<unknown>(effectiveGeometry);
+
+	// Creation method tab (only for new zones)
+	const [creationTab, setCreationTab] = useState<CreationTab>(
+		zone?.creationMethod === "POSTAL_CODE" ? "postal" : "draw"
+	);
+
+	// Postal codes state
+	const [postalCodes, setPostalCodes] = useState<string[]>(zone?.postalCodes ?? []);
+	const [isLoadingGeometry, setIsLoadingGeometry] = useState(false);
+
+	// Fetch geometry from postal codes
+	const fetchPostalCodeGeometry = useCallback(async () => {
+		if (postalCodes.length === 0) {
+			return;
+		}
+
+		setIsLoadingGeometry(true);
+		try {
+			const response = await fetch("/api/vtc/postal-codes/geometry", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					postalCodes,
+					countryCode: "FR",
+				}),
+			});
+
+			const data = await response.json();
+
+			if (data.success && data.geometry) {
+				setGeometry(data.geometry);
+				if (data.center) {
+					setFormData((prev) => ({
+						...prev,
+						centerLatitude: data.center.latitude,
+						centerLongitude: data.center.longitude,
+						zoneType: "POLYGON",
+					}));
+				}
+				toast({
+					title: t("common.success"),
+					description: t("pricing.zones.postalCodes.geometryLoaded"),
+				});
+			} else {
+				toast({
+					title: t("common.error"),
+					description: data.errors?.join(", ") || t("pricing.zones.postalCodes.geometryError"),
+					variant: "error",
+				});
+			}
+		} catch (error) {
+			console.error("Error fetching postal code geometry:", error);
+			toast({
+				title: t("common.error"),
+				description: t("pricing.zones.postalCodes.geometryError"),
+				variant: "error",
+			});
+		} finally {
+			setIsLoadingGeometry(false);
+		}
+	}, [postalCodes, t, toast]);
 
 	// Auto-generate code from name (inline in handler instead of useEffect)
 	const handleNameChange = (name: string) => {
@@ -91,9 +162,17 @@ export function ZoneForm({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
+		// For editing, preserve the creation method and include updated postal codes
+		// For new zones, use the selected tab
+		const isPostalCodeZone = isEditing 
+			? zone?.creationMethod === "POSTAL_CODE" 
+			: creationTab === "postal";
+
 		onSubmit({
 			...formData,
 			geometry,
+			postalCodes: isPostalCodeZone ? postalCodes : [],
+			creationMethod: isPostalCodeZone ? "POSTAL_CODE" : "DRAW",
 		});
 	};
 
@@ -135,57 +214,212 @@ export function ZoneForm({
 				</p>
 			</div>
 
-			{/* Zone Type */}
-			<div className="space-y-2">
-				<Label>{t("pricing.zones.form.type")}</Label>
-				<Select
-					value={formData.zoneType}
-					onValueChange={(value: ZoneType) =>
-						setFormData((prev) => ({ ...prev, zoneType: value }))
-					}
-				>
-					<SelectTrigger>
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="POLYGON">
-							{t("pricing.zones.types.POLYGON")}
-						</SelectItem>
-						<SelectItem value="RADIUS">
-							{t("pricing.zones.types.RADIUS")}
-						</SelectItem>
-						<SelectItem value="POINT">
-							{t("pricing.zones.types.POINT")}
-						</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
+			{/* Creation Method Tabs (only for new zones) */}
+			{!isEditing && (
+				<Tabs value={creationTab} onValueChange={(v) => setCreationTab(v as CreationTab)}>
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="draw" className="flex items-center gap-2">
+							<MapIcon className="h-4 w-4" />
+							{t("pricing.zones.creationMethod.draw")}
+						</TabsTrigger>
+						<TabsTrigger value="postal" className="flex items-center gap-2">
+							<MailIcon className="h-4 w-4" />
+							{t("pricing.zones.creationMethod.postalCodes")}
+						</TabsTrigger>
+					</TabsList>
 
-			{/* Zone Drawing Map */}
-			<ZoneDrawingMap
-				zoneType={formData.zoneType}
-				geometry={
-					geometry as { type: "Polygon"; coordinates: number[][][] } | null
-				}
-				centerLatitude={formData.centerLatitude ?? null}
-				centerLongitude={formData.centerLongitude ?? null}
-				radiusKm={formData.radiusKm ?? null}
-				onZoneTypeChange={(type) =>
-					setFormData((prev) => ({ ...prev, zoneType: type }))
-				}
-				onGeometryChange={(geo) => setGeometry(geo)}
-				onCenterChange={(lat, lng) =>
-					setFormData((prev) => ({
-						...prev,
-						centerLatitude: lat,
-						centerLongitude: lng,
-					}))
-				}
-				onRadiusChange={(radius) =>
-					setFormData((prev) => ({ ...prev, radiusKm: radius }))
-				}
-				googleMapsApiKey={googleMapsApiKey}
-			/>
+					<TabsContent value="draw" className="space-y-4 pt-4">
+						{/* Zone Type */}
+						<div className="space-y-2">
+							<Label>{t("pricing.zones.form.type")}</Label>
+							<Select
+								value={formData.zoneType}
+								onValueChange={(value: ZoneType) =>
+									setFormData((prev) => ({ ...prev, zoneType: value }))
+								}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="POLYGON">
+										{t("pricing.zones.types.POLYGON")}
+									</SelectItem>
+									<SelectItem value="RADIUS">
+										{t("pricing.zones.types.RADIUS")}
+									</SelectItem>
+									<SelectItem value="POINT">
+										{t("pricing.zones.types.POINT")}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Zone Drawing Map */}
+						<ZoneDrawingMap
+							zoneType={formData.zoneType}
+							geometry={
+								geometry as { type: "Polygon"; coordinates: number[][][] } | null
+							}
+							centerLatitude={formData.centerLatitude ?? null}
+							centerLongitude={formData.centerLongitude ?? null}
+							radiusKm={formData.radiusKm ?? null}
+							onZoneTypeChange={(type) =>
+								setFormData((prev) => ({ ...prev, zoneType: type }))
+							}
+							onGeometryChange={(geo) => setGeometry(geo)}
+							onCenterChange={(lat, lng) =>
+								setFormData((prev) => ({
+									...prev,
+									centerLatitude: lat,
+									centerLongitude: lng,
+								}))
+							}
+							onRadiusChange={(radius) =>
+								setFormData((prev) => ({ ...prev, radiusKm: radius }))
+							}
+							googleMapsApiKey={googleMapsApiKey}
+						/>
+					</TabsContent>
+
+					<TabsContent value="postal" className="space-y-4 pt-4">
+						{/* Postal Code Input */}
+						<PostalCodeInput
+							value={postalCodes}
+							onChange={setPostalCodes}
+							maxCodes={20}
+						/>
+
+						{/* Load Geometry Button */}
+						{postalCodes.length > 0 && (
+							<Button
+								type="button"
+								variant="outline"
+								onClick={fetchPostalCodeGeometry}
+								disabled={isLoadingGeometry}
+								className="w-full"
+							>
+								{isLoadingGeometry && (
+									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								)}
+								{t("pricing.zones.postalCodes.loadGeometry")}
+							</Button>
+						)}
+
+						{/* Preview Map (read-only) */}
+						{geometry && (
+							<div className="space-y-2">
+								<Label>{t("pricing.zones.postalCodes.preview")}</Label>
+								<ZoneDrawingMap
+									zoneType="POLYGON"
+									geometry={
+										geometry as { type: "Polygon"; coordinates: number[][][] } | null
+									}
+									centerLatitude={formData.centerLatitude ?? null}
+									centerLongitude={formData.centerLongitude ?? null}
+									radiusKm={null}
+									onZoneTypeChange={() => {}}
+									onGeometryChange={() => {}}
+									onCenterChange={() => {}}
+									onRadiusChange={() => {}}
+									googleMapsApiKey={googleMapsApiKey}
+								/>
+							</div>
+						)}
+					</TabsContent>
+				</Tabs>
+			)}
+
+			{/* For editing, show the map directly */}
+			{isEditing && (
+				<>
+					{/* Zone Type */}
+					<div className="space-y-2">
+						<Label>{t("pricing.zones.form.type")}</Label>
+						<Select
+							value={formData.zoneType}
+							onValueChange={(value: ZoneType) =>
+								setFormData((prev) => ({ ...prev, zoneType: value }))
+							}
+						>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="POLYGON">
+									{t("pricing.zones.types.POLYGON")}
+								</SelectItem>
+								<SelectItem value="RADIUS">
+									{t("pricing.zones.types.RADIUS")}
+								</SelectItem>
+								<SelectItem value="POINT">
+									{t("pricing.zones.types.POINT")}
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					{/* Zone Drawing Map */}
+					<ZoneDrawingMap
+						zoneType={formData.zoneType}
+						geometry={
+							geometry as { type: "Polygon"; coordinates: number[][][] } | null
+						}
+						centerLatitude={formData.centerLatitude ?? null}
+						centerLongitude={formData.centerLongitude ?? null}
+						radiusKm={formData.radiusKm ?? null}
+						onZoneTypeChange={(type) =>
+							setFormData((prev) => ({ ...prev, zoneType: type }))
+						}
+						onGeometryChange={(geo) => setGeometry(geo)}
+						onCenterChange={(lat, lng) =>
+							setFormData((prev) => ({
+								...prev,
+								centerLatitude: lat,
+								centerLongitude: lng,
+							}))
+						}
+						onRadiusChange={(radius) =>
+							setFormData((prev) => ({ ...prev, radiusKm: radius }))
+						}
+						googleMapsApiKey={googleMapsApiKey}
+					/>
+
+					{/* Show editable postal codes if zone was created from them */}
+					{zone?.creationMethod === "POSTAL_CODE" && (
+						<div className="space-y-4 rounded-lg border p-4">
+							<div className="flex items-center justify-between">
+								<Label className="text-base font-medium">
+									{t("pricing.zones.postalCodes.editTitle")}
+								</Label>
+							</div>
+							
+							{/* Postal Code Input for editing */}
+							<PostalCodeInput
+								value={postalCodes}
+								onChange={setPostalCodes}
+								maxCodes={20}
+							/>
+
+							{/* Reload Geometry Button */}
+							{postalCodes.length > 0 && (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={fetchPostalCodeGeometry}
+									disabled={isLoadingGeometry}
+									className="w-full"
+								>
+									{isLoadingGeometry && (
+										<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+									)}
+									{t("pricing.zones.postalCodes.reloadGeometry")}
+								</Button>
+							)}
+						</div>
+					)}
+				</>
+			)}
 
 			{/* Parent Zone */}
 			<div className="space-y-2">

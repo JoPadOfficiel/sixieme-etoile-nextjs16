@@ -112,7 +112,7 @@ development_status:
   # Epic 11 - Zone Management Refactoring & UI Improvements
   epic-11: contexted
   11-1-unified-zone-management-interactive-map: done
-  11-2-postal-code-zone-creation: drafted
+  11-2-postal-code-zone-creation: done
   11-3-zone-pricing-multipliers-integration: drafted
   11-4-merge-seasonal-multipliers-advanced-rates: drafted
   11-5-merge-optional-fees-promotions: drafted

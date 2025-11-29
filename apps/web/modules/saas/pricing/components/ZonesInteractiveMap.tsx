@@ -14,6 +14,7 @@ import { Skeleton } from "@ui/components/skeleton";
 import { MapPinIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import type { PricingZone } from "../types";
 import { type DrawingMode, ZoneMapToolbar } from "./ZoneMapToolbar";
 
@@ -74,7 +75,7 @@ export function ZonesInteractiveMap({
 	const overlaysRef = useRef<Map<string, Overlay>>(new Map());
 	const drawnShapeRef = useRef<google.maps.Polygon | google.maps.Circle | null>(null);
 
-	const [isReady, setIsReady] = useState(false);
+	const isReady = useGoogleMaps(googleMapsApiKey);
 	const [drawingMode, setDrawingMode] = useState<DrawingMode>("pan");
 	const [hasDrawnShape, setHasDrawnShape] = useState(false);
 
@@ -109,22 +110,7 @@ export function ZonesInteractiveMap({
 		[]
 	);
 
-	// Load Google Maps script
-	useEffect(() => {
-		if (!googleMapsApiKey) return;
-
-		if (window.google?.maps?.drawing) {
-			setIsReady(true);
-			return;
-		}
-
-		const script = document.createElement("script");
-		script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places,drawing`;
-		script.async = true;
-		script.defer = true;
-		script.onload = () => setIsReady(true);
-		document.head.appendChild(script);
-	}, [googleMapsApiKey]);
+	// Google Maps is loaded via useGoogleMaps hook
 
 	// Initialize map
 	useEffect(() => {
@@ -288,17 +274,24 @@ export function ZonesInteractiveMap({
 			const colors = getZoneColors(zone);
 			const isSelected = zone.id === selectedZoneId;
 
+				// Helper to validate coordinates
+			const isValidCoord = (lat: number | null, lng: number | null): boolean => {
+				return lat !== null && lng !== null && 
+					!Number.isNaN(lat) && !Number.isNaN(lng) &&
+					Number.isFinite(lat) && Number.isFinite(lng);
+			};
+
 			if (
 				zone.zoneType === "RADIUS" &&
-				zone.centerLatitude !== null &&
-				zone.centerLongitude !== null &&
-				zone.radiusKm !== null
+				isValidCoord(zone.centerLatitude, zone.centerLongitude) &&
+				zone.radiusKm !== null &&
+				!Number.isNaN(zone.radiusKm)
 			) {
 				const circle = new google.maps.Circle({
 					map,
 					center: {
-						lat: zone.centerLatitude,
-						lng: zone.centerLongitude,
+						lat: zone.centerLatitude as number,
+						lng: zone.centerLongitude as number,
 					},
 					radius: zone.radiusKm * 1000,
 					fillColor: colors.fill,
@@ -324,7 +317,12 @@ export function ZonesInteractiveMap({
 						coordinates: number[][][];
 					};
 					if (geo.type === "Polygon" && geo.coordinates?.[0]?.length) {
-						const path = geo.coordinates[0].map(
+						// Filter out invalid coordinates
+						const validCoords = geo.coordinates[0].filter(
+							([lng, lat]) => Number.isFinite(lat) && Number.isFinite(lng)
+						);
+						if (validCoords.length < 3) return; // Need at least 3 points for polygon
+						const path = validCoords.map(
 							([lng, lat]) => new google.maps.LatLng(lat, lng)
 						);
 						const polygon = new google.maps.Polygon({
@@ -351,10 +349,10 @@ export function ZonesInteractiveMap({
 				} catch {
 					// ignore invalid geometry
 				}
-			} else if (zone.centerLatitude !== null && zone.centerLongitude !== null) {
+			} else if (isValidCoord(zone.centerLatitude, zone.centerLongitude)) {
 				const position = {
-					lat: zone.centerLatitude,
-					lng: zone.centerLongitude,
+					lat: zone.centerLatitude as number,
+					lng: zone.centerLongitude as number,
 				};
 				const marker = new google.maps.Marker({
 					map,

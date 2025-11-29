@@ -1,5 +1,6 @@
 export type ZoneType = "POLYGON" | "RADIUS" | "POINT";
 export type RouteDirection = "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
+export type CreationMethod = "DRAW" | "POSTAL_CODE" | "COORDINATES";
 
 // Predefined zone colors (8 colors)
 export const ZONE_COLORS = [
@@ -33,6 +34,9 @@ export interface PricingZone {
 	} | null;
 	isActive: boolean;
 	color?: string | null;
+	// Story 11.2: Postal code zone creation
+	postalCodes?: string[];
+	creationMethod?: CreationMethod | null;
 	routesCount?: number;
 	childZonesCount?: number;
 	createdAt: string;
@@ -50,6 +54,9 @@ export interface PricingZoneFormData {
 	parentZoneId?: string | null;
 	isActive: boolean;
 	color?: string | null;
+	// Story 11.2: Postal code zone creation
+	postalCodes?: string[];
+	creationMethod?: CreationMethod | null;
 }
 
 export interface PricingZonesListResponse {

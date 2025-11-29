@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>11.2</story-id>
+    <title>Postal Code Zone Creation</title>
+    <epic>Epic 11 - Zone Management Refactoring & UI Improvements</epic>
+    <created>2025-11-29</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Actuellement, les zones de tarification ne peuvent être créées qu'en dessinant manuellement 
+      des formes (cercles, polygones) sur la carte Google Maps. Cette approche est :
+      - Chronophage pour les opérateurs qui doivent tracer précisément les contours
+      - Imprécise car les frontières dessinées ne correspondent pas aux limites administratives réelles
+      - Inadaptée pour couvrir rapidement de grandes zones composées de multiples codes postaux
+    </description>
+    <user-pain-points>
+      <pain-point>Temps excessif pour créer des zones couvrant plusieurs arrondissements/communes</pain-point>
+      <pain-point>Difficulté à tracer des frontières précises correspondant aux limites postales</pain-point>
+      <pain-point>Impossibilité de référencer les codes postaux utilisés pour une zone</pain-point>
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Permettre la création de zones géographiques par saisie de codes postaux avec 
+      génération automatique des frontières et fusion en un polygone unique.
+    </primary>
+    <secondary>
+      <objective>Stocker les codes postaux source dans les métadonnées de la zone</objective>
+      <objective>Prévisualiser les frontières sur la carte avant confirmation</objective>
+      <objective>Valider les codes postaux selon le format du pays (France par défaut)</objective>
+    </secondary>
+    <success-metrics>
+      <metric>Création d'une zone multi-codes-postaux en moins de 30 secondes</metric>
+      <metric>100% des codes postaux français valides reconnus</metric>
+      <metric>Frontières générées correspondant aux données officielles La Poste/INSEE</metric>
+    </success-metrics>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Option "Codes Postaux" dans le formulaire de création de zone</item>
+      <item>Composant multi-select pour saisir plusieurs codes postaux</item>
+      <item>Service backend de géocodage des codes postaux français</item>
+      <item>Prévisualisation des frontières sur la carte</item>
+      <item>Fusion automatique des polygones adjacents (Turf.js)</item>
+      <item>Stockage des codes postaux dans les métadonnées de la zone</item>
+      <item>Validation du format des codes postaux français (5 chiffres)</item>
+      <item>Traductions EN/FR</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Autocomplétion en temps réel des codes postaux (stretch goal)</item>
+      <item>Support des codes postaux non-français en V1</item>
+      <item>Modification des codes postaux après création de la zone</item>
+      <item>Import en masse de codes postaux depuis un fichier</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <constraint priority="high">
+        Utiliser les données ouvertes La Poste/INSEE pour les frontières des codes postaux français
+      </constraint>
+      <constraint priority="high">
+        Respecter le multi-tenancy existant (organizationId sur toutes les entités)
+      </constraint>
+      <constraint priority="medium">
+        Limiter les appels API externes - préférer le cache ou les données statiques
+      </constraint>
+      <constraint priority="medium">
+        Turf.js pour les opérations géospatiales (union de polygones)
+      </constraint>
+    </technical>
+    <business>
+      <constraint>Tous les montants en EUR uniquement</constraint>
+      <constraint>Toutes les chaînes UI via useTranslations (i18n)</constraint>
+      <constraint>Compatibilité avec le système de zones existant (PricingZone model)</constraint>
+    </business>
+    <ux>
+      <constraint>Interface cohérente avec le ZoneManagementLayout de la Story 11.1</constraint>
+      <constraint>Feedback visuel immédiat lors de la saisie des codes postaux</constraint>
+      <constraint>Gestion claire des erreurs (code invalide, non trouvé)</constraint>
+    </ux>
+  </constraints>
+
+  <risks>
+    <risk severity="high" mitigation="Utiliser données statiques GeoJSON pré-téléchargées">
+      <description>API de frontières postales indisponible ou rate-limited</description>
+      <impact>Impossibilité de créer des zones par codes postaux</impact>
+    </risk>
+    <risk severity="medium" mitigation="Afficher avertissement et permettre ajustement manuel">
+      <description>Précision des frontières insuffisante pour certains codes postaux</description>
+      <impact>Zones ne correspondant pas exactement aux attentes</impact>
+    </risk>
+    <risk severity="medium" mitigation="Limiter à 20 codes postaux par zone, traitement asynchrone">
+      <description>Performance dégradée avec de nombreux codes postaux</description>
+      <impact>UX lente lors de la fusion de multiples polygones</impact>
+    </risk>
+    <risk severity="low" mitigation="Utiliser Turf.js buffer() pour combler les micro-gaps">
+      <description>Polygones non-adjacents ne fusionnant pas correctement</description>
+      <impact>Zone finale avec des trous ou discontinuités</impact>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component path="apps/web/modules/saas/pricing/components/ZoneManagementLayout.tsx">
+        Layout deux panneaux pour la gestion des zones (Story 11.1)
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZoneForm.tsx">
+        Formulaire de création/édition de zone existant
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZoneDrawer.tsx">
+        Drawer latéral pour le formulaire de zone
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZoneDrawingMap.tsx">
+        Carte avec outils de dessin (cercle, polygone)
+      </component>
+      <component path="packages/api/src/routes/vtc/pricing-zones.ts">
+        API CRUD des zones de tarification
+      </component>
+    </existing-components>
+    <new-components>
+      <component path="apps/web/modules/saas/pricing/components/PostalCodeInput.tsx">
+        Composant multi-select pour saisie de codes postaux avec validation
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/PostalCodeZonePreview.tsx">
+        Prévisualisation des frontières des codes postaux sur la carte
+      </component>
+      <component path="packages/api/src/services/postal-code-service.ts">
+        Service de géocodage et récupération des frontières postales
+      </component>
+      <component path="packages/api/src/routes/vtc/postal-codes.ts">
+        Endpoints API pour la recherche et validation des codes postaux
+      </component>
+    </new-components>
+    <data-model-changes>
+      <change table="PricingZone">
+        Ajouter champ `postalCodes String[]` pour stocker les codes postaux source
+      </change>
+      <change table="PricingZone">
+        Ajouter champ `creationMethod String?` avec valeurs "DRAW" | "POSTAL_CODE" | "COORDINATES"
+      </change>
+    </data-model-changes>
+    <dependencies>
+      <dependency name="@turf/turf" version="^7.0.0">
+        Opérations géospatiales (union, buffer, simplify)
+      </dependency>
+      <dependency name="french-postal-codes-geojson" type="data">
+        Données GeoJSON des frontières des codes postaux français (à intégrer)
+      </dependency>
+    </dependencies>
+  </technical-context>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Option "Codes Postaux" visible dans les options de création de zone</criterion>
+    <criterion id="AC2">Input multi-select fonctionnel avec validation des codes</criterion>
+    <criterion id="AC3">Prévisualisation des frontières sur la carte</criterion>
+    <criterion id="AC4">Fusion automatique des codes postaux adjacents en un polygone</criterion>
+    <criterion id="AC5">Stockage des codes postaux dans les métadonnées de la zone</criterion>
+    <criterion id="AC6">Sélection du pays (France par défaut) avec validation du format</criterion>
+    <criterion id="AC7">Gestion des erreurs pour codes invalides</criterion>
+  </acceptance-criteria-summary>
+
+  <related-stories>
+    <story id="11.1" status="done">Unified Zone Management Interface with Interactive Map</story>
+    <story id="11.3" status="drafted">Zone Pricing Multipliers Integration</story>
+    <story id="3.1" status="done">Implement PricingZone Model & Zones Editor UI</story>
+  </related-stories>
+</story-context>

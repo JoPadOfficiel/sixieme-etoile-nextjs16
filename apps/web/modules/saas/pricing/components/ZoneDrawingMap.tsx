@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import type { ZoneType } from "../types";
 
 // GeoJSON types
@@ -61,7 +62,7 @@ export function ZoneDrawingMap({
 	>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
-	const [isReady, setIsReady] = useState(false);
+	const isReady = useGoogleMaps(googleMapsApiKey ?? null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeDrawingMode, setActiveDrawingMode] = useState<DrawingMode>(null);
 	const [hasShape, setHasShape] = useState(false);
@@ -376,22 +377,7 @@ export function ZoneDrawingMap({
 		polygonToGeoJSON,
 	]);
 
-	// Load Google Maps script
-	useEffect(() => {
-		if (!googleMapsApiKey) return;
-
-		if (window.google?.maps?.drawing) {
-			setIsReady(true);
-			return;
-		}
-
-		const script = document.createElement("script");
-		script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places,drawing`;
-		script.async = true;
-		script.defer = true;
-		script.onload = () => setIsReady(true);
-		document.head.appendChild(script);
-	}, [googleMapsApiKey]);
+	// Google Maps is loaded via useGoogleMaps hook
 
 	// Initialize once Google Maps is ready
 	useEffect(() => {

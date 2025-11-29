@@ -29,6 +29,8 @@ import { organizationMiddleware } from "../../middleware/organization";
 // Validation schemas
 const zoneTypeEnum = z.enum(["POLYGON", "RADIUS", "POINT"]);
 
+const creationMethodEnum = z.enum(["DRAW", "POSTAL_CODE", "COORDINATES"]);
+
 const createZoneSchema = z.object({
 	name: z.string().min(1).max(255),
 	code: z
@@ -44,6 +46,9 @@ const createZoneSchema = z.object({
 	parentZoneId: z.string().optional().nullable(),
 	isActive: z.boolean().default(true),
 	color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color").optional().nullable(),
+	// Story 11.2: Postal code zone creation
+	postalCodes: z.array(z.string()).optional().default([]),
+	creationMethod: creationMethodEnum.optional().nullable(),
 });
 
 const updateZoneSchema = createZoneSchema.partial();
@@ -260,6 +265,9 @@ export const pricingZonesRouter = new Hono()
 							parentZoneId: data.parentZoneId ?? undefined,
 							isActive: data.isActive,
 							color: data.color ?? undefined,
+							// Story 11.2: Postal code zone creation
+							postalCodes: data.postalCodes ?? [],
+							creationMethod: data.creationMethod ?? undefined,
 						},
 						organizationId,
 					),
@@ -363,6 +371,9 @@ export const pricingZonesRouter = new Hono()
 					}),
 					...(data.isActive !== undefined && { isActive: data.isActive }),
 					...(data.color !== undefined && { color: data.color }),
+					// Story 11.2: Update postal codes
+					...(data.postalCodes !== undefined && { postalCodes: data.postalCodes }),
+					...(data.creationMethod !== undefined && { creationMethod: data.creationMethod }),
 				},
 				include: {
 					parentZone: {

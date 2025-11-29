@@ -782,6 +782,10 @@ model PricingZone {
   // Display
   color String? // Hex color for map display (e.g., "#10b981")
 
+  // Postal code creation (Story 11.2)
+  postalCodes    String[] // Array of postal codes used to create zone
+  creationMethod String? // "DRAW" | "POSTAL_CODE" | "COORDINATES"
+
   // Metadata
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

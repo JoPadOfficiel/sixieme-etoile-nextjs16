@@ -761,7 +761,29 @@
 			"statusActive": "Active only",
 			"statusInactive": "Inactive only",
 			"noSearchResults": "No zones match your search.",
-			"confirmDelete": "Are you sure you want to delete the zone \"{name}\"?"
+			"confirmDelete": "Are you sure you want to delete the zone \"{name}\"?",
+			"creationMethod": {
+				"draw": "Draw on Map",
+				"postalCodes": "Postal Codes"
+			},
+			"postalCodes": {
+				"label": "Postal Codes",
+				"placeholder": "Enter postal code (e.g., 75001)",
+				"country": "Country",
+				"countryHelp": "Only French postal codes are supported in this version.",
+				"inputHelp": "{count}/{max} postal codes added",
+				"selected": "Selected Postal Codes",
+				"alreadyAdded": "This postal code has already been added.",
+				"maxReached": "Maximum of {max} postal codes reached.",
+				"invalidFormat": "Invalid postal code format.",
+				"loadGeometry": "Load Zone Boundaries",
+				"reloadGeometry": "Reload Zone Boundaries",
+				"geometryLoaded": "Zone boundaries loaded successfully.",
+				"geometryError": "Failed to load zone boundaries. Please check the postal codes.",
+				"preview": "Zone Preview",
+				"usedCodes": "Postal Codes Used",
+				"editTitle": "Postal Codes"
+			}
 		}
 	},
 	"routes": {

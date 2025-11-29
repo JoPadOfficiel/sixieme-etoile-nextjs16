@@ -129,13 +129,45 @@ model PricingZone {
 
 ## Definition of Done
 
-- [ ] Postal code creation option available
-- [ ] Multi-select postal code input works
-- [ ] Postal code boundaries displayed on map
-- [ ] Boundary merging implemented
-- [ ] Postal codes stored in zone metadata
-- [ ] Error handling for invalid codes
-- [ ] Translations added (EN/FR)
-- [ ] Unit tests passing
+- [x] Postal code creation option available
+- [x] Multi-select postal code input works
+- [x] Postal code boundaries displayed on map
+- [x] Boundary merging implemented
+- [x] Postal codes stored in zone metadata
+- [x] Error handling for invalid codes
+- [x] Translations added (EN/FR)
+- [x] Unit tests passing
 - [ ] E2E tests passing
 - [ ] Code reviewed and approved
+
+## Implementation Details (Added 2025-11-29)
+
+### Files Created
+
+- `packages/api/src/services/postal-code-service.ts` - Service for geocoding French postal codes and merging boundaries using Turf.js
+- `packages/api/src/routes/vtc/postal-codes.ts` - API endpoints for postal code validation and geometry fetching
+- `apps/web/modules/saas/pricing/components/PostalCodeInput.tsx` - Multi-select input component with validation
+- `packages/api/src/services/__tests__/postal-code-service.test.ts` - Unit tests for postal code service
+- `docs/sprint-artifacts/11-2-postal-code-zone-creation.context.xml` - Story context document
+
+### Files Modified
+
+- `packages/database/prisma/schema.prisma` - Added `postalCodes` (String[]) and `creationMethod` (String?) to PricingZone model
+- `packages/api/src/routes/vtc/pricing-zones.ts` - Updated create/update schemas to include postal code fields
+- `packages/api/src/routes/vtc/router.ts` - Registered postalCodesRouter
+- `packages/api/package.json` - Added @turf/turf and @types/geojson dependencies
+- `apps/web/modules/saas/pricing/types.ts` - Added CreationMethod type and updated interfaces
+- `apps/web/modules/saas/pricing/components/ZoneForm.tsx` - Added tabs for Draw/Postal Codes creation methods
+- `packages/i18n/translations/en.json` - Added English translations for postal code UI
+- `packages/i18n/translations/fr.json` - Added French translations for postal code UI
+
+### Database Migration
+
+- `20251129115001_add_postal_codes_to_pricing_zone` - Adds postalCodes and creationMethod columns
+
+### API Endpoints
+
+- `GET /api/vtc/postal-codes/validate` - Quick format validation
+- `POST /api/vtc/postal-codes/validate` - Validate multiple codes with boundary data
+- `POST /api/vtc/postal-codes/geometry` - Get merged geometry for postal codes
+- `GET /api/vtc/postal-codes/search` - Search postal codes (autocomplete)
