@@ -70,33 +70,34 @@ export function useRouteVisualization({
 	// Find selected candidate
 	const selectedCandidate = useMemo(() => {
 		if (!selectedCandidateId) return null;
-		return candidates.find((c) => c.vehicleId === selectedCandidateId) ?? null;
+		return candidates.find((c) => c.candidateId === selectedCandidateId) ?? null;
 	}, [candidates, selectedCandidateId]);
 
 	// Find hovered candidate
 	const hoveredCandidate = useMemo(() => {
 		if (!hoveredCandidateId) return null;
-		return candidates.find((c) => c.vehicleId === hoveredCandidateId) ?? null;
+		return candidates.find((c) => c.candidateId === hoveredCandidateId) ?? null;
 	}, [candidates, hoveredCandidateId]);
 
 	// Active candidate is hovered (for preview) or selected (for full display)
 	const activeCandidate = hoveredCandidate ?? selectedCandidate;
 
 	// Determine route display mode
-	const isPreview = hoveredCandidate !== null && selectedCandidate?.vehicleId !== hoveredCandidate?.vehicleId;
+	const isPreview = hoveredCandidate !== null && selectedCandidate?.candidateId !== hoveredCandidate?.candidateId;
 	const showApproach = activeCandidate !== null;
 	const showReturn = selectedCandidate !== null && !isPreview;
 
 	// Transform candidates to map-friendly format
 	const candidateBases = useMemo<CandidateBase[]>(() => {
 		return candidates.map((candidate) => ({
+			candidateId: candidate.candidateId,
 			vehicleId: candidate.vehicleId,
 			baseId: candidate.baseId,
 			baseName: candidate.baseName,
 			latitude: candidate.baseLatitude,
 			longitude: candidate.baseLongitude,
-			isSelected: candidate.vehicleId === selectedCandidateId,
-			isHovered: candidate.vehicleId === hoveredCandidateId,
+			isSelected: candidate.candidateId === selectedCandidateId,
+			isHovered: candidate.candidateId === hoveredCandidateId,
 			estimatedCost: candidate.estimatedCost.total,
 			segments: candidate.segments,
 		}));
@@ -170,7 +171,7 @@ export function isBestCandidate(
 	bestCandidate: AssignmentCandidate | null,
 ): boolean {
 	if (!bestCandidate) return false;
-	return candidate.vehicleId === bestCandidate.vehicleId;
+	return candidate.candidateId === bestCandidate.candidateId;
 }
 
 /**

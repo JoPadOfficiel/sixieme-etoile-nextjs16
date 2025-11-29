@@ -44,6 +44,8 @@ export interface CandidateSegments {
 }
 
 export interface AssignmentCandidate {
+	/** Unique candidate ID combining vehicleId and driverId */
+	candidateId: string;
 	vehicleId: string;
 	vehicleName: string;
 	vehicleCategory: {
@@ -73,6 +75,8 @@ export interface AssignmentCandidate {
  * Story 8.3: Candidate base for map visualization
  */
 export interface CandidateBase {
+	/** Unique candidate ID combining vehicleId and driverId */
+	candidateId: string;
 	vehicleId: string;
 	baseId: string;
 	baseName: string;

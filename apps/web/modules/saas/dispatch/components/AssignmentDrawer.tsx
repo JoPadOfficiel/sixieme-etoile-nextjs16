@@ -152,7 +152,7 @@ export function AssignmentDrawer({
 	// Get selected candidate
 	const selectedCandidate = useMemo(() => {
 		if (!selectedCandidateId || !candidates) return null;
-		return candidates.find((c) => c.vehicleId === selectedCandidateId) ?? null;
+		return candidates.find((c) => c.candidateId === selectedCandidateId) ?? null;
 	}, [selectedCandidateId, candidates]);
 
 	// Handle confirm assignment
@@ -192,15 +192,17 @@ export function AssignmentDrawer({
 				<SheetHeader>
 					<SheetTitle>{t("title")}</SheetTitle>
 					{missionSummary && (
-						<SheetDescription className="space-y-1">
-							<div className="flex items-center gap-1 text-sm">
-								<MapPin className="size-3.5 text-green-600" />
-								<span className="truncate">{missionSummary.pickupAddress}</span>
-								<ArrowRight className="size-3 text-muted-foreground flex-shrink-0" />
-								<MapPin className="size-3.5 text-red-600" />
-								<span className="truncate">{missionSummary.dropoffAddress}</span>
+						<SheetDescription asChild>
+							<div className="space-y-1">
+								<span className="flex items-center gap-1 text-sm">
+									<MapPin className="size-3.5 text-green-600" />
+									<span className="truncate">{missionSummary.pickupAddress}</span>
+									<ArrowRight className="size-3 text-muted-foreground flex-shrink-0" />
+									<MapPin className="size-3.5 text-red-600" />
+									<span className="truncate">{missionSummary.dropoffAddress}</span>
+								</span>
+								<span className="text-xs text-muted-foreground block">{pickupTime}</span>
 							</div>
-							<div className="text-xs text-muted-foreground">{pickupTime}</div>
 						</SheetDescription>
 					)}
 				</SheetHeader>

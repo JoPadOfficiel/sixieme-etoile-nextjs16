@@ -256,8 +256,8 @@ export function DispatchMapGoogle({
 
 		// Add candidate base markers
 		candidateBases.forEach((candidate) => {
-			const isSelected = candidate.vehicleId === selectedCandidateId;
-			const isHovered = candidate.vehicleId === hoveredCandidateId;
+			const isSelected = candidate.candidateId === selectedCandidateId;
+			const isHovered = candidate.candidateId === hoveredCandidateId;
 			
 			const color = isSelected
 				? COLORS.selectedBase
@@ -282,10 +282,10 @@ export function DispatchMapGoogle({
 			});
 
 			candidateMarker.addListener("click", () => {
-				onCandidateSelect?.(candidate.vehicleId);
+				onCandidateSelect?.(candidate.candidateId);
 			});
 			candidateMarker.addListener("mouseover", () => {
-				onCandidateHoverStart?.(candidate.vehicleId);
+				onCandidateHoverStart?.(candidate.candidateId);
 			});
 			candidateMarker.addListener("mouseout", () => {
 				onCandidateHoverEnd?.();

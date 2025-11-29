@@ -206,8 +206,8 @@ export function DispatchMap({
 							</div>
 							<div className="flex flex-wrap gap-2">
 								{candidateBases.map((candidate) => {
-									const isSelected = candidate.vehicleId === selectedCandidateId;
-									const isHovered = candidate.vehicleId === hoveredCandidateId;
+									const isSelected = candidate.candidateId === selectedCandidateId;
+									const isHovered = candidate.candidateId === hoveredCandidateId;
 									const state = isSelected
 										? "selected"
 										: isHovered
@@ -216,13 +216,13 @@ export function DispatchMap({
 
 									return (
 										<CandidateBaseMarker
-											key={candidate.vehicleId}
+											key={candidate.candidateId}
 											baseName={candidate.baseName}
 											baseDistanceKm={candidate.segments.approach.distanceKm}
 											estimatedCost={candidate.estimatedCost}
 											state={state}
-											onClick={() => onCandidateSelect?.(candidate.vehicleId)}
-											onMouseEnter={() => onCandidateHoverStart?.(candidate.vehicleId)}
+											onClick={() => onCandidateSelect?.(candidate.candidateId)}
+											onMouseEnter={() => onCandidateHoverStart?.(candidate.candidateId)}
 											onMouseLeave={() => onCandidateHoverEnd?.()}
 										/>
 									);

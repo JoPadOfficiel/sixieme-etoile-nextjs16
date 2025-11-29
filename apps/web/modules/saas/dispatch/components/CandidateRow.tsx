@@ -67,8 +67,8 @@ export function CandidateRow({
 				"hover:border-primary/50 hover:bg-accent/50",
 				isSelected && "border-primary bg-primary/5 ring-1 ring-primary/20",
 			)}
-			onClick={() => onSelect(candidate.vehicleId)}
-			onMouseEnter={() => onHoverStart?.(candidate.vehicleId)}
+			onClick={() => onSelect(candidate.candidateId)}
+			onMouseEnter={() => onHoverStart?.(candidate.candidateId)}
 			onMouseLeave={() => onHoverEnd?.()}
 			data-testid="candidate-row"
 			data-selected={isSelected}

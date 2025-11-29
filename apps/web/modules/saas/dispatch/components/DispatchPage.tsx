@@ -92,13 +92,14 @@ export function DispatchPage() {
 	const candidateBases = useMemo<CandidateBase[]>(() => {
 		if (!candidatesData?.candidates) return [];
 		return candidatesData.candidates.map((candidate) => ({
+			candidateId: candidate.candidateId,
 			vehicleId: candidate.vehicleId,
 			baseId: candidate.baseId,
 			baseName: candidate.baseName,
 			latitude: candidate.baseLatitude,
 			longitude: candidate.baseLongitude,
-			isSelected: candidate.vehicleId === selectedCandidateId,
-			isHovered: candidate.vehicleId === hoveredCandidateId,
+			isSelected: candidate.candidateId === selectedCandidateId,
+			isHovered: candidate.candidateId === hoveredCandidateId,
 			estimatedCost: candidate.estimatedCost.total,
 			segments: candidate.segments,
 		}));
@@ -108,7 +109,7 @@ export function DispatchPage() {
 	const activeCandidate = useMemo(() => {
 		const activeId = hoveredCandidateId ?? selectedCandidateId;
 		if (!activeId || !candidatesData?.candidates) return null;
-		return candidatesData.candidates.find((c) => c.vehicleId === activeId) ?? null;
+		return candidatesData.candidates.find((c) => c.candidateId === activeId) ?? null;
 	}, [candidatesData, hoveredCandidateId, selectedCandidateId]);
 
 	// Story 8.3: Determine route display mode

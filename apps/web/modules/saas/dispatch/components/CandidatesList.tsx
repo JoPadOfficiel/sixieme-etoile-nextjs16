@@ -60,9 +60,9 @@ export function CandidatesList({
 		>
 			{candidates.map((candidate) => (
 				<CandidateRow
-					key={candidate.vehicleId}
+					key={candidate.candidateId}
 					candidate={candidate}
-					isSelected={candidate.vehicleId === selectedId}
+					isSelected={candidate.candidateId === selectedId}
 					onSelect={onSelect}
 					onHoverStart={onHoverStart}
 					onHoverEnd={onHoverEnd}

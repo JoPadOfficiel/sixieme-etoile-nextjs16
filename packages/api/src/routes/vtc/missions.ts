@@ -177,32 +177,67 @@ function getComplianceStatus(tripAnalysis: unknown): MissionCompliance {
 }
 
 /**
- * Extract vehicle assignment from tripAnalysis
- * For now, returns null as assignment is not yet stored (Story 8.2)
+ * Extract vehicle assignment from quote data
+ * Story 8.2: Uses assignedVehicle/assignedDriver relations or tripAnalysis.assignment
  */
-function getAssignment(tripAnalysis: unknown): MissionAssignment | null {
-	if (!tripAnalysis || typeof tripAnalysis !== "object") {
-		return null;
+function getAssignmentFromQuote(quote: {
+	assignedVehicleId: string | null;
+	assignedDriverId: string | null;
+	assignedVehicle?: {
+		internalName: string | null;
+		registrationNumber: string;
+		operatingBase?: { name: string } | null;
+	} | null;
+	assignedDriver?: {
+		firstName: string;
+		lastName: string;
+	} | null;
+	tripAnalysis: unknown;
+}): MissionAssignment | null {
+	// First check direct assignment fields (preferred)
+	if (quote.assignedVehicleId) {
+		return {
+			vehicleId: quote.assignedVehicleId,
+			vehicleName: quote.assignedVehicle?.internalName ??
+				quote.assignedVehicle?.registrationNumber ?? null,
+			baseName: quote.assignedVehicle?.operatingBase?.name ?? null,
+			driverId: quote.assignedDriverId,
+			driverName: quote.assignedDriver
+				? `${quote.assignedDriver.firstName} ${quote.assignedDriver.lastName}`
+				: null,
+		};
 	}
 
-	const analysis = tripAnalysis as Record<string, unknown>;
-	const vehicleSelection = analysis.vehicleSelection as
-		| Record<string, unknown>
-		| undefined;
+	// Fallback: check tripAnalysis.assignment (legacy)
+	if (quote.tripAnalysis && typeof quote.tripAnalysis === "object") {
+		const analysis = quote.tripAnalysis as Record<string, unknown>;
+		const assignment = analysis.assignment as Record<string, unknown> | undefined;
 
-	if (!vehicleSelection || !vehicleSelection.selectedVehicle) {
-		return null;
+		if (assignment && assignment.vehicleId) {
+			return {
+				vehicleId: (assignment.vehicleId as string) || null,
+				vehicleName: (assignment.vehicleName as string) || null,
+				baseName: (assignment.baseName as string) || null,
+				driverId: (assignment.driverId as string) || null,
+				driverName: (assignment.driverName as string) || null,
+			};
+		}
+
+		// Also check vehicleSelection for backward compatibility
+		const vehicleSelection = analysis.vehicleSelection as Record<string, unknown> | undefined;
+		if (vehicleSelection?.selectedVehicle) {
+			const selected = vehicleSelection.selectedVehicle as Record<string, unknown>;
+			return {
+				vehicleId: (selected.vehicleId as string) || null,
+				vehicleName: (selected.vehicleName as string) || null,
+				baseName: (selected.baseName as string) || null,
+				driverId: null,
+				driverName: null,
+			};
+		}
 	}
 
-	const selected = vehicleSelection.selectedVehicle as Record<string, unknown>;
-
-	return {
-		vehicleId: (selected.vehicleId as string) || null,
-		vehicleName: (selected.vehicleName as string) || null,
-		baseName: (selected.baseName as string) || null,
-		driverId: null, // Driver assignment not yet implemented
-		driverName: null,
-	};
+	return null;
 }
 
 export const missionsRouter = new Hono()
@@ -269,6 +304,13 @@ export const missionsRouter = new Hono()
 					include: {
 						contact: true,
 						vehicleCategory: true,
+						// Story 8.2: Include assignment relations
+						assignedVehicle: {
+							include: {
+								operatingBase: true,
+							},
+						},
+						assignedDriver: true,
 					},
 				}),
 				db.quote.count({ where }),
@@ -306,7 +348,7 @@ export const missionsRouter = new Hono()
 					name: quote.vehicleCategory.name,
 					code: quote.vehicleCategory.code,
 				},
-				assignment: getAssignment(quote.tripAnalysis),
+				assignment: getAssignmentFromQuote(quote),
 				profitability: {
 					marginPercent: quote.marginPercent
 						? Number(quote.marginPercent)
@@ -351,6 +393,13 @@ export const missionsRouter = new Hono()
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					// Story 8.2: Include assignment relations
+					assignedVehicle: {
+						include: {
+							operatingBase: true,
+						},
+					},
+					assignedDriver: true,
 				},
 			});
 
@@ -401,7 +450,7 @@ export const missionsRouter = new Hono()
 				},
 				tripAnalysis: quote.tripAnalysis,
 				appliedRules: quote.appliedRules,
-				assignment: getAssignment(quote.tripAnalysis),
+				assignment: getAssignmentFromQuote(quote),
 				profitability: {
 					marginPercent: quote.marginPercent
 						? Number(quote.marginPercent)
@@ -622,23 +671,27 @@ export const missionsRouter = new Hono()
 				transformVehicleToCandidate(v),
 			);
 
-			// Filter by capacity and category
-			const capacityFiltered = filterByCapacity(
-				filterByStatus(vehicleCandidates),
-				quote.passengerCount,
-				quote.luggageCount,
-				quote.vehicleCategoryId,
-			);
+			// Filter only by status (ACTIVE) - we want to show ALL vehicles
+			// Capacity and category mismatches will be shown as warnings
+			const activeVehicles = filterByStatus(vehicleCandidates);
+			
+			// Keep track of mission requirements for compliance checks
+			const missionRequirements = {
+				passengerCount: quote.passengerCount,
+				luggageCount: quote.luggageCount ?? 0,
+				vehicleCategoryId: quote.vehicleCategoryId,
+				vehicleCategoryName: quote.vehicleCategory?.name ?? null,
+			};
 
-			// Filter by Haversine distance
+			// Filter by Haversine distance - show all vehicles within range
 			const haversineFiltered = filterByHaversineDistance(
-				capacityFiltered,
+				activeVehicles,
 				pickup,
 				DEFAULT_MAX_DISTANCE_KM,
 			);
 
-			// Get routing for top candidates (limit to 10 for performance)
-			const topCandidates = haversineFiltered.slice(0, 10);
+			// Get routing for top candidates (limit to 20 for more options)
+			const topCandidates = haversineFiltered.slice(0, 20);
 			const candidatesWithRouting = await getRoutingForCandidates(
 				topCandidates,
 				pickup,
@@ -647,7 +700,34 @@ export const missionsRouter = new Hono()
 			);
 
 			// Build response with flexibility scores
-			const candidates = candidatesWithRouting.map((candidate) => {
+			// Create one candidate entry per vehicle/driver combination
+			interface CandidateResponse {
+				candidateId: string;
+				vehicleId: string;
+				vehicleName: string;
+				vehicleCategory: { id: string; name: string; code: string };
+				baseId: string;
+				baseName: string;
+				baseDistanceKm: number;
+				baseLatitude: number;
+				baseLongitude: number;
+				driverId: string | null;
+				driverName: string | null;
+				driverLicenses: string[];
+				flexibilityScore: number;
+				scoreBreakdown: { licensesScore: number; availabilityScore: number; distanceScore: number; rseCapacityScore: number };
+				compliance: MissionCompliance;
+				estimatedCost: { approach: number; service: number; return: number; total: number };
+				routingSource: string;
+				segments: {
+					approach: { distanceKm: number; durationMinutes: number };
+					service: { distanceKm: number; durationMinutes: number };
+					return: { distanceKm: number; durationMinutes: number };
+				};
+			}
+
+			const candidates: CandidateResponse[] = [];
+			for (const candidate of candidatesWithRouting) {
 				// Find matching driver(s) for this vehicle
 				const vehicleData = vehicles.find((v) => v.id === candidate.vehicleId);
 				const requiredLicenseCode = vehicleData?.requiredLicenseCategory?.code;
@@ -662,73 +742,140 @@ export const missionsRouter = new Hono()
 					);
 				});
 
-				// Use first eligible driver for now (can be enhanced later)
-				const driver = eligibleDrivers[0];
-				const driverLicenseCount = driver?.driverLicenses.length ?? 0;
+				// If no eligible drivers, still show the vehicle without driver
+				if (eligibleDrivers.length === 0) {
+					const scoreResult = calculateFlexibilityScoreSimple({
+						licenseCount: 0,
+						availabilityHours: 8,
+						distanceKm: candidate.haversineDistanceKm,
+						remainingDrivingHours: 10,
+						remainingAmplitudeHours: 14,
+					});
 
-				// Calculate flexibility score
-				const scoreResult = calculateFlexibilityScoreSimple({
-					licenseCount: driverLicenseCount,
-					availabilityHours: 8, // Default - would come from scheduling system
-					distanceKm: candidate.haversineDistanceKm,
-					remainingDrivingHours: 10, // Default - would come from RSE counters
-					remainingAmplitudeHours: 14, // Default - would come from RSE counters
-				});
+					const compliance = determineComplianceStatus(
+						candidate, 
+						null, 
+						vehicleData,
+						missionRequirements,
+					);
 
-				// Determine compliance status
-				const compliance = determineComplianceStatus(candidate, driver);
+					candidates.push({
+						candidateId: `${candidate.vehicleId}:no-driver`,
+						vehicleId: candidate.vehicleId,
+						vehicleName: candidate.vehicleName,
+						vehicleCategory: {
+							id: vehicleData?.vehicleCategory.id ?? "",
+							name: vehicleData?.vehicleCategory.name ?? "",
+							code: vehicleData?.vehicleCategory.code ?? "",
+						},
+						baseId: candidate.baseId,
+						baseName: candidate.baseName,
+						baseDistanceKm: candidate.haversineDistanceKm,
+						baseLatitude: candidate.baseLocation.lat,
+						baseLongitude: candidate.baseLocation.lng,
+						driverId: null,
+						driverName: null,
+						driverLicenses: [],
+						flexibilityScore: scoreResult.totalScore,
+						scoreBreakdown: scoreResult.breakdown,
+						compliance,
+						estimatedCost: {
+							approach: Math.round(candidate.approachDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							service: Math.round(candidate.serviceDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							return: Math.round(candidate.returnDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							total: Math.round(candidate.internalCost * 100) / 100,
+						},
+						routingSource: candidate.routingSource,
+						segments: {
+							approach: {
+								distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+							},
+							service: {
+								distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+							},
+							return: {
+								distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+							},
+						},
+					});
+					continue;
+				}
 
-				return {
-					vehicleId: candidate.vehicleId,
-					vehicleName: candidate.vehicleName,
-					vehicleCategory: {
-						id: vehicleData?.vehicleCategory.id ?? "",
-						name: vehicleData?.vehicleCategory.name ?? "",
-						code: vehicleData?.vehicleCategory.code ?? "",
-					},
-					baseId: candidate.baseId,
-					baseName: candidate.baseName,
-					baseDistanceKm: candidate.haversineDistanceKm,
-					// Story 8.3: Add base coordinates for map visualization
-					baseLatitude: candidate.baseLocation.lat,
-					baseLongitude: candidate.baseLocation.lng,
-					driverId: driver?.id ?? null,
-					driverName: driver
-						? `${driver.firstName} ${driver.lastName}`
-						: null,
-					driverLicenses: driver?.driverLicenses.map(
-						(dl) => dl.licenseCategory.code,
-					) ?? [],
-					flexibilityScore: scoreResult.totalScore,
-					scoreBreakdown: scoreResult.breakdown,
-					compliance,
-					estimatedCost: {
-						approach: Math.round(candidate.approachDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-						service: Math.round(candidate.serviceDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-						return: Math.round(candidate.returnDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-						total: Math.round(candidate.internalCost * 100) / 100,
-					},
-					routingSource: candidate.routingSource,
-					// Story 8.3: Add segment details for route visualization
-					segments: {
-						approach: {
-							distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
-							durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+				// Create one entry per eligible driver for this vehicle
+				for (const driver of eligibleDrivers) {
+					const driverLicenseCount = driver.driverLicenses.length;
+
+					// Calculate flexibility score based on driver's licenses
+					const scoreResult = calculateFlexibilityScoreSimple({
+						licenseCount: driverLicenseCount,
+						availabilityHours: 8, // Default - would come from scheduling system
+						distanceKm: candidate.haversineDistanceKm,
+						remainingDrivingHours: 10, // Default - would come from RSE counters
+						remainingAmplitudeHours: 14, // Default - would come from RSE counters
+					});
+
+					// Determine compliance status
+					const compliance = determineComplianceStatus(
+						candidate, 
+						driver, 
+						vehicleData,
+						missionRequirements,
+					);
+
+					candidates.push({
+						candidateId: `${candidate.vehicleId}:${driver.id}`,
+						vehicleId: candidate.vehicleId,
+						vehicleName: candidate.vehicleName,
+						vehicleCategory: {
+							id: vehicleData?.vehicleCategory.id ?? "",
+							name: vehicleData?.vehicleCategory.name ?? "",
+							code: vehicleData?.vehicleCategory.code ?? "",
 						},
-						service: {
-							distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
-							durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+						baseId: candidate.baseId,
+						baseName: candidate.baseName,
+						baseDistanceKm: candidate.haversineDistanceKm,
+						// Story 8.3: Add base coordinates for map visualization
+						baseLatitude: candidate.baseLocation.lat,
+						baseLongitude: candidate.baseLocation.lng,
+						driverId: driver.id,
+						driverName: `${driver.firstName} ${driver.lastName}`,
+						driverLicenses: driver.driverLicenses.map(
+							(dl) => dl.licenseCategory.code,
+						),
+						flexibilityScore: scoreResult.totalScore,
+						scoreBreakdown: scoreResult.breakdown,
+						compliance,
+						estimatedCost: {
+							approach: Math.round(candidate.approachDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							service: Math.round(candidate.serviceDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							return: Math.round(candidate.returnDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+							total: Math.round(candidate.internalCost * 100) / 100,
 						},
-						return: {
-							distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
-							durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+						routingSource: candidate.routingSource,
+						// Story 8.3: Add segment details for route visualization
+						segments: {
+							approach: {
+								distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+							},
+							service: {
+								distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+							},
+							return: {
+								distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
+								durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+							},
 						},
-					},
-				};
-			});
+					});
+				}
+			}
 
 			// Sort by flexibility score descending
-			candidates.sort((a, b) => b.flexibilityScore - a.flexibilityScore);
+			candidates.sort((a: { flexibilityScore: number }, b: { flexibilityScore: number }) => b.flexibilityScore - a.flexibilityScore);
 
 			return c.json({
 				candidates,
@@ -891,42 +1038,101 @@ export const missionsRouter = new Hono()
 
 /**
  * Determine compliance status for a candidate
+ * Checks: driver assignment, distance, duration, RSE limits, capacity, category
  */
 function determineComplianceStatus(
 	candidate: CandidateWithRouting,
 	driver: { driverLicenses: unknown[] } | null | undefined,
+	vehicleData: {
+		passengerCapacity: number;
+		luggageCapacity: number | null;
+		vehicleCategoryId: string;
+		vehicleCategory: { id: string; name: string; code: string };
+	} | undefined,
+	missionRequirements: {
+		passengerCount: number;
+		luggageCount: number;
+		vehicleCategoryId: string;
+		vehicleCategoryName: string | null;
+	},
 ): MissionCompliance {
 	const warnings: string[] = [];
+	let hasViolation = false;
+	const violations: string[] = [];
 
 	// Check if driver has required licenses
 	if (!driver) {
-		warnings.push("No driver assigned");
+		warnings.push("Aucun chauffeur assigné");
 	}
 
-	// Check distance (warning if far)
-	if (candidate.haversineDistanceKm > 50) {
-		warnings.push(`Base is ${Math.round(candidate.haversineDistanceKm)}km away`);
+	// Check passenger capacity
+	if (vehicleData) {
+		if (vehicleData.passengerCapacity < missionRequirements.passengerCount) {
+			violations.push(
+				`Capacité insuffisante: ${vehicleData.passengerCapacity} places vs ${missionRequirements.passengerCount} passagers requis`
+			);
+			hasViolation = true;
+		}
+
+		// Check luggage capacity (only if vehicle has a defined luggage capacity)
+		// If luggageCapacity is null, we assume it's not specified (not 0)
+		if (missionRequirements.luggageCount > 0 && vehicleData.luggageCapacity !== null) {
+			if (vehicleData.luggageCapacity < missionRequirements.luggageCount) {
+				warnings.push(
+					`Capacité bagages limitée: ${vehicleData.luggageCapacity} vs ${missionRequirements.luggageCount} requis`
+				);
+			}
+		}
+
+		// Check vehicle category mismatch
+		if (vehicleData.vehicleCategoryId !== missionRequirements.vehicleCategoryId) {
+			warnings.push(
+				`Catégorie différente: ${vehicleData.vehicleCategory.name} (demandé: ${missionRequirements.vehicleCategoryName ?? "N/A"})`
+			);
+		}
+	}
+
+	// Check distance (warning if very far - 80km threshold)
+	// This is a soft warning, not a blocker
+	if (candidate.haversineDistanceKm > 80) {
+		warnings.push(`Base éloignée: ${Math.round(candidate.haversineDistanceKm)}km`);
 	}
 
 	// Check total duration (warning if long trip)
 	if (candidate.totalDurationMinutes > 480) {
 		// 8 hours
-		warnings.push("Trip duration exceeds 8 hours");
+		warnings.push("Durée du trajet > 8h");
 	}
 
-	// Heavy vehicle checks would go here (RSE compliance)
+	// Heavy vehicle checks (RSE compliance)
 	if (candidate.regulatoryCategory === "HEAVY") {
 		if (candidate.totalDurationMinutes > 600) {
 			// 10 hours
-			return {
-				status: "VIOLATION",
-				warnings: ["Heavy vehicle: exceeds 10h driving limit"],
-			};
-		}
-		if (candidate.totalDurationMinutes > 540) {
+			violations.push("Véhicule lourd: dépasse 10h de conduite (RSE)");
+			hasViolation = true;
+		} else if (candidate.totalDurationMinutes > 540) {
 			// 9 hours
-			warnings.push("Heavy vehicle: approaching 10h driving limit");
+			warnings.push("Véhicule lourd: proche de la limite 10h (RSE)");
 		}
+
+		// Check amplitude (14h max for heavy vehicles)
+		const totalAmplitudeMinutes = candidate.totalDurationMinutes + 60; // Add 1h for breaks
+		if (totalAmplitudeMinutes > 840) {
+			// 14 hours
+			violations.push("Véhicule lourd: amplitude > 14h (RSE)");
+			hasViolation = true;
+		} else if (totalAmplitudeMinutes > 780) {
+			// 13 hours
+			warnings.push("Véhicule lourd: amplitude proche de 14h (RSE)");
+		}
+	}
+
+	// Return violation status if any critical issues
+	if (hasViolation) {
+		return {
+			status: "VIOLATION",
+			warnings: [...violations, ...warnings],
+		};
 	}
 
 	if (warnings.length > 0) {
