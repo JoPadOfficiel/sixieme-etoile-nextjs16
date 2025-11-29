@@ -64,7 +64,6 @@ async function main() {
     await createContacts();
     await createPartnerContracts();
     await createIntegrationSettings();
-    await createSampleQuotes();
     await seedDocumentTypes();
     await seedFuelPriceCache();
 
@@ -130,13 +129,13 @@ async function createOrganization() {
   const org = await prisma.organization.create({
     data: {
       id: randomUUID(),
-      name: "VTC Premium Paris",
-      slug: "vtc-premium-paris",
+      name: "Sixieme Etoile VTC",
+      slug: "sixieme-etoile-vtc",
       createdAt: new Date(),
       metadata: JSON.stringify({
         siret: "12345678901234",
         vatNumber: "FR12345678901",
-        address: { street: "123 Avenue des Champs-Élysées", postalCode: "75008", city: "Paris" },
+        address: { street: "24-30 Avenue du Gué Langlois", postalCode: "77600", city: "Bussy-Saint-Martin" },
         phone: "+33 1 42 86 83 00",
       }),
     },
@@ -193,6 +192,7 @@ async function createAdminUser() {
 async function createOperatingBases() {
   console.log("\n🏢 Creating Operating Bases...");
   const bases = [
+    { name: "Base Bussy-Saint-Martin", addressLine1: "24-30 Avenue du Gué Langlois", city: "Bussy-Saint-Martin", postalCode: "77600", latitude: 48.8495, longitude: 2.6905 },
     { name: "Siège Paris 8ème", addressLine1: "123 Avenue des Champs-Élysées", city: "Paris", postalCode: "75008", latitude: 48.8698, longitude: 2.3078 },
     { name: "Base CDG Airport", addressLine1: "Zone Fret 4", city: "Roissy-en-France", postalCode: "95700", latitude: 49.0097, longitude: 2.5479 },
     { name: "Base Orly Airport", addressLine1: "Orly Sud", city: "Orly", postalCode: "94390", latitude: 48.7262, longitude: 2.3652 },
@@ -259,14 +259,18 @@ async function createVehicleCategories() {
 async function createPricingZones() {
   console.log("\n🗺️ Creating Pricing Zones...");
   const zones = [
-    { name: "Paris Centre", code: "PARIS_CENTRE", zoneType: "POLYGON" as const, centerLatitude: 48.8566, centerLongitude: 2.3522 },
+    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0 },
+    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0 },
+    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0 },
+    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0 },
+    { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0 },
+    { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0 },
+    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0 },
     { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0 },
     { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0 },
     { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0 },
     { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0 },
     { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0 },
-    { name: "Versailles", code: "VERSAILLES", zoneType: "RADIUS" as const, centerLatitude: 48.8014, centerLongitude: 2.1301, radiusKm: 3.0 },
-    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0 },
   ];
   for (const z of zones) {
     const created = await prisma.pricingZone.create({
@@ -280,16 +284,27 @@ async function createPricingZones() {
 async function createZoneRoutes() {
   console.log("\n🛣️ Creating Zone Routes...");
   const routes = [
-    { from: "CDG", to: "PARIS_CENTRE", category: "BERLINE", price: 75.0 },
-    { from: "CDG", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 95.0 },
-    { from: "CDG", to: "PARIS_CENTRE", category: "LUXE", price: 150.0 },
-    { from: "ORLY", to: "PARIS_CENTRE", category: "BERLINE", price: 55.0 },
-    { from: "ORLY", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 70.0 },
-    { from: "CDG", to: "ORLY", category: "BERLINE", price: 95.0 },
-    { from: "PARIS_CENTRE", to: "DISNEY", category: "BERLINE", price: 85.0 },
-    { from: "PARIS_CENTRE", to: "VERSAILLES", category: "BERLINE", price: 65.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 85.0 },
-    { from: "LBG", to: "PARIS_CENTRE", category: "LUXE", price: 120.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "BERLINE", price: 105.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 135.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "LUXE", price: 190.0 },
+    { from: "PARIS_PREMIUM", to: "PETITE_COURONNE", category: "BERLINE", price: 65.0 },
+    { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "BERLINE", price: 95.0 },
+    { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "VAN_PREMIUM", price: 130.0 },
+    { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "BERLINE", price: 115.0 },
+    { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "VAN_PREMIUM", price: 160.0 },
+    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "BERLINE", price: 80.0 },
+    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "BERLINE", price: 70.0 },
+    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "CDG", to: "PARIS_PREMIUM", category: "BERLINE", price: 80.0 },
+    { from: "CDG", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 105.0 },
+    { from: "CDG", to: "PARIS_PREMIUM", category: "LUXE", price: 155.0 },
+    { from: "ORLY", to: "PARIS_PREMIUM", category: "BERLINE", price: 60.0 },
+    { from: "ORLY", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 80.0 },
+    { from: "CDG", to: "ORLY", category: "BERLINE", price: 105.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 90.0 },
+    { from: "LBG", to: "PARIS_PREMIUM", category: "LUXE", price: 130.0 },
+    { from: "DISNEY", to: "PARIS_PREMIUM", category: "BERLINE", price: 95.0 },
   ];
   for (const r of routes) {
     await prisma.zoneRoute.create({
@@ -358,7 +373,7 @@ async function createPricingSettings() {
       fuelPricePerLiter: 1.80,
       tollCostPerKm: 0.12,
       wearCostPerKm: 0.08,
-      driverHourlyCost: 22.0,
+      driverHourlyCost: 30.0,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -435,14 +450,14 @@ async function createPromotions() {
 async function createDrivers() {
   console.log("\n👨‍✈️ Creating Drivers...");
   const drivers = [
-    { firstName: "Jean-Pierre", lastName: "Martin", email: "jp.martin@vtc.fr", phone: "+33 6 12 34 56 78", employmentStatus: "EMPLOYEE" as const, hourlyCost: 22.0, licenses: ["B"] },
-    { firstName: "Sophie", lastName: "Dubois", email: "s.dubois@vtc.fr", phone: "+33 6 23 45 67 89", employmentStatus: "EMPLOYEE" as const, hourlyCost: 22.0, licenses: ["B"] },
-    { firstName: "Mohammed", lastName: "Benali", email: "m.benali@vtc.fr", phone: "+33 6 34 56 78 90", employmentStatus: "EMPLOYEE" as const, hourlyCost: 24.0, licenses: ["B", "D1"] },
-    { firstName: "Pierre", lastName: "Lefebvre", email: "p.lefebvre@vtc.fr", phone: "+33 6 45 67 89 01", employmentStatus: "EMPLOYEE" as const, hourlyCost: 26.0, licenses: ["B", "D1", "D"] },
-    { firstName: "Marie", lastName: "Laurent", email: "m.laurent@vtc.fr", phone: "+33 6 56 78 90 12", employmentStatus: "CONTRACTOR" as const, hourlyCost: 28.0, licenses: ["B"] },
-    { firstName: "Thomas", lastName: "Bernard", email: "t.bernard@vtc.fr", phone: "+33 6 67 89 01 23", employmentStatus: "CONTRACTOR" as const, hourlyCost: 30.0, licenses: ["B", "D1"] },
-    { firstName: "Fatima", lastName: "El Amrani", email: "f.elamrani@vtc.fr", phone: "+33 6 78 90 12 34", employmentStatus: "FREELANCE" as const, hourlyCost: 32.0, licenses: ["B", "D"] },
-    { firstName: "Nicolas", lastName: "Petit", email: "n.petit@vtc.fr", phone: "+33 6 89 01 23 45", employmentStatus: "EMPLOYEE" as const, hourlyCost: 22.0, licenses: ["B"] },
+    { firstName: "Jean-Pierre", lastName: "Martin", email: "jp.martin@vtc.fr", phone: "+33 6 12 34 56 78", employmentStatus: "EMPLOYEE" as const, hourlyCost: 28.0, licenses: ["B"] },
+    { firstName: "Sophie", lastName: "Dubois", email: "s.dubois@vtc.fr", phone: "+33 6 23 45 67 89", employmentStatus: "EMPLOYEE" as const, hourlyCost: 28.0, licenses: ["B"] },
+    { firstName: "Mohammed", lastName: "Benali", email: "m.benali@vtc.fr", phone: "+33 6 34 56 78 90", employmentStatus: "EMPLOYEE" as const, hourlyCost: 31.0, licenses: ["B", "D1"] },
+    { firstName: "Pierre", lastName: "Lefebvre", email: "p.lefebvre@vtc.fr", phone: "+33 6 45 67 89 01", employmentStatus: "EMPLOYEE" as const, hourlyCost: 34.0, licenses: ["B", "D1", "D"] },
+    { firstName: "Marie", lastName: "Laurent", email: "m.laurent@vtc.fr", phone: "+33 6 56 78 90 12", employmentStatus: "CONTRACTOR" as const, hourlyCost: 32.0, licenses: ["B"] },
+    { firstName: "Thomas", lastName: "Bernard", email: "t.bernard@vtc.fr", phone: "+33 6 67 89 01 23", employmentStatus: "CONTRACTOR" as const, hourlyCost: 33.0, licenses: ["B", "D1"] },
+    { firstName: "Fatima", lastName: "El Amrani", email: "f.elamrani@vtc.fr", phone: "+33 6 78 90 12 34", employmentStatus: "FREELANCE" as const, hourlyCost: 36.0, licenses: ["B", "D"] },
+    { firstName: "Nicolas", lastName: "Petit", email: "n.petit@vtc.fr", phone: "+33 6 89 01 23 45", employmentStatus: "EMPLOYEE" as const, hourlyCost: 29.0, licenses: ["B"] },
   ];
   for (const d of drivers) {
     const { licenses, ...data } = d;
@@ -471,16 +486,16 @@ async function createDrivers() {
 async function createVehicles() {
   console.log("\n🚙 Creating Vehicles...");
   const vehicles = [
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "MN-012-OP", internalName: "Mercedes V-Class #1", passengerCapacity: 7, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "MN-012-OP", internalName: "Mercedes V-Class #1", passengerCapacity: 7, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class #2", passengerCapacity: 7, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "CD-234-EF", internalName: "Mercedes Sprinter 16pl", passengerCapacity: 16, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "CD-234-EF", internalName: "Mercedes Sprinter 16pl", passengerCapacity: 16, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
     { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "OP-123-QR", internalName: "Audi A6 (maintenance)", passengerCapacity: 4, consumptionLPer100Km: 6.0, costPerKm: 0.40, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "MAINTENANCE" as const },
   ];
   for (const v of vehicles) {
@@ -550,235 +565,6 @@ async function createIntegrationSettings() {
   console.log("   ✅ Integration settings created");
 }
 
-async function createSampleQuotes() {
-  console.log("\n📝 Creating Sample Quotes...");
-  
-  // Story 10.1: Paris area coordinates for realistic test data
-  const PARIS_LOCATIONS = {
-    cdgAirport: { lat: 49.0097, lng: 2.5479 },
-    orlyAirport: { lat: 48.7262, lng: 2.3652 },
-    tourEiffel: { lat: 48.8584, lng: 2.2945 },
-    gareDeLyon: { lat: 48.8443, lng: 2.3739 },
-    versailles: { lat: 48.8049, lng: 2.1204 },
-    ritzVendome: { lat: 48.8683, lng: 2.3285 },
-    fourSeasons: { lat: 48.8693, lng: 2.3008 },
-    operaGarnier: { lat: 48.8720, lng: 2.3316 },
-    champsElysees: { lat: 48.8698, lng: 2.3075 },
-    giverny: { lat: 49.0758, lng: 1.5339 },
-    arcDeTriomphe: { lat: 48.8738, lng: 2.2950 },
-    sacreCoeur: { lat: 48.8867, lng: 2.3431 },
-    notreDame: { lat: 48.8530, lng: 2.3499 },
-    louvre: { lat: 48.8606, lng: 2.3376 },
-    laDefense: { lat: 48.8918, lng: 2.2362 },
-  };
-
-  // Generate future dates (relative to now)
-  const now = new Date();
-  const futureDate = (daysFromNow: number, hour: number) => {
-    const date = new Date(now);
-    date.setDate(date.getDate() + daysFromNow);
-    date.setHours(hour, 0, 0, 0);
-    return date;
-  };
-
-  const quotes = [
-    {
-      contactId: CONTACT_IDS["Marie Dupont"],
-      status: "DRAFT" as const,
-      pricingMode: "DYNAMIC" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(3, 10),
-      pickupAddress: "Aéroport CDG Terminal 2E, Roissy-en-France",
-      pickupLatitude: PARIS_LOCATIONS.cdgAirport.lat,
-      pickupLongitude: PARIS_LOCATIONS.cdgAirport.lng,
-      dropoffAddress: "Tour Eiffel, Champ de Mars, Paris",
-      dropoffLatitude: PARIS_LOCATIONS.tourEiffel.lat,
-      dropoffLongitude: PARIS_LOCATIONS.tourEiffel.lng,
-      passengerCount: 2,
-      luggageCount: 3,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"],
-      suggestedPrice: 95.0,
-      finalPrice: 100.0,
-      internalCost: 65.0,
-      marginPercent: 35.0,
-    },
-    {
-      contactId: CONTACT_IDS["Jean Martin"],
-      status: "SENT" as const,
-      pricingMode: "FIXED_GRID" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(5, 14),
-      pickupAddress: "Gare de Lyon, Place Louis-Armand, Paris",
-      pickupLatitude: PARIS_LOCATIONS.gareDeLyon.lat,
-      pickupLongitude: PARIS_LOCATIONS.gareDeLyon.lng,
-      dropoffAddress: "Château de Versailles, Place d'Armes, Versailles",
-      dropoffLatitude: PARIS_LOCATIONS.versailles.lat,
-      dropoffLongitude: PARIS_LOCATIONS.versailles.lng,
-      passengerCount: 4,
-      luggageCount: 2,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"],
-      suggestedPrice: 85.0,
-      finalPrice: 90.0,
-      internalCost: 58.0,
-      marginPercent: 35.6,
-    },
-    {
-      contactId: CONTACT_IDS["Hôtel Ritz Paris"],
-      status: "ACCEPTED" as const,
-      pricingMode: "FIXED_GRID" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(2, 9),
-      pickupAddress: "Hôtel Ritz Paris, 15 Place Vendôme, Paris",
-      pickupLatitude: PARIS_LOCATIONS.ritzVendome.lat,
-      pickupLongitude: PARIS_LOCATIONS.ritzVendome.lng,
-      dropoffAddress: "Aéroport CDG Terminal 2F, Roissy-en-France",
-      dropoffLatitude: PARIS_LOCATIONS.cdgAirport.lat,
-      dropoffLongitude: PARIS_LOCATIONS.cdgAirport.lng,
-      passengerCount: 2,
-      luggageCount: 4,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"],
-      suggestedPrice: 150.0,
-      finalPrice: 150.0,
-      internalCost: 95.0,
-      marginPercent: 36.67,
-    },
-    {
-      contactId: CONTACT_IDS["Four Seasons George V"],
-      status: "ACCEPTED" as const,
-      pricingMode: "DYNAMIC" as const,
-      tripType: "EXCURSION" as const,
-      pickupAt: futureDate(7, 8),
-      pickupAddress: "Four Seasons Hotel George V, 31 Avenue George V, Paris",
-      pickupLatitude: PARIS_LOCATIONS.fourSeasons.lat,
-      pickupLongitude: PARIS_LOCATIONS.fourSeasons.lng,
-      dropoffAddress: "Fondation Claude Monet, 84 Rue Claude Monet, Giverny",
-      dropoffLatitude: PARIS_LOCATIONS.giverny.lat,
-      dropoffLongitude: PARIS_LOCATIONS.giverny.lng,
-      passengerCount: 4,
-      luggageCount: 0,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"],
-      suggestedPrice: 480.0,
-      finalPrice: 500.0,
-      internalCost: 320.0,
-      marginPercent: 36.0,
-    },
-    {
-      contactId: CONTACT_IDS["Sophie Bernard"],
-      status: "REJECTED" as const,
-      pricingMode: "DYNAMIC" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(1, 18),
-      pickupAddress: "Opéra Garnier, Place de l'Opéra, Paris",
-      pickupLatitude: PARIS_LOCATIONS.operaGarnier.lat,
-      pickupLongitude: PARIS_LOCATIONS.operaGarnier.lng,
-      dropoffAddress: "Aéroport Paris-Orly, Terminal 4",
-      dropoffLatitude: PARIS_LOCATIONS.orlyAirport.lat,
-      dropoffLongitude: PARIS_LOCATIONS.orlyAirport.lng,
-      passengerCount: 1,
-      luggageCount: 1,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"],
-      suggestedPrice: 65.0,
-      finalPrice: 65.0,
-      internalCost: 48.0,
-      marginPercent: 26.15,
-    },
-    {
-      contactId: CONTACT_IDS["Paris Luxury Travel"],
-      status: "ACCEPTED" as const,
-      pricingMode: "FIXED_GRID" as const,
-      tripType: "DISPO" as const,
-      pickupAt: futureDate(4, 10),
-      pickupAddress: "Arc de Triomphe, Place Charles de Gaulle, Paris",
-      pickupLatitude: PARIS_LOCATIONS.arcDeTriomphe.lat,
-      pickupLongitude: PARIS_LOCATIONS.arcDeTriomphe.lng,
-      dropoffAddress: "Mise à disposition 8h - Paris et environs",
-      dropoffLatitude: PARIS_LOCATIONS.champsElysees.lat,
-      dropoffLongitude: PARIS_LOCATIONS.champsElysees.lng,
-      passengerCount: 6,
-      luggageCount: 0,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"],
-      suggestedPrice: 520.0,
-      finalPrice: 520.0,
-      internalCost: 380.0,
-      marginPercent: 26.92,
-    },
-    // Additional ACCEPTED quotes for dispatch testing
-    {
-      contactId: CONTACT_IDS["Hôtel Ritz Paris"],
-      status: "ACCEPTED" as const,
-      pricingMode: "FIXED_GRID" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(1, 7),
-      pickupAddress: "Aéroport CDG Terminal 1, Roissy-en-France",
-      pickupLatitude: PARIS_LOCATIONS.cdgAirport.lat,
-      pickupLongitude: PARIS_LOCATIONS.cdgAirport.lng,
-      dropoffAddress: "Hôtel Ritz Paris, 15 Place Vendôme, Paris",
-      dropoffLatitude: PARIS_LOCATIONS.ritzVendome.lat,
-      dropoffLongitude: PARIS_LOCATIONS.ritzVendome.lng,
-      passengerCount: 2,
-      luggageCount: 3,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"],
-      suggestedPrice: 145.0,
-      finalPrice: 145.0,
-      internalCost: 90.0,
-      marginPercent: 37.93,
-    },
-    {
-      contactId: CONTACT_IDS["Four Seasons George V"],
-      status: "ACCEPTED" as const,
-      pricingMode: "DYNAMIC" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(1, 15),
-      pickupAddress: "Four Seasons Hotel George V, 31 Avenue George V, Paris",
-      pickupLatitude: PARIS_LOCATIONS.fourSeasons.lat,
-      pickupLongitude: PARIS_LOCATIONS.fourSeasons.lng,
-      dropoffAddress: "La Défense, Grande Arche, Puteaux",
-      dropoffLatitude: PARIS_LOCATIONS.laDefense.lat,
-      dropoffLongitude: PARIS_LOCATIONS.laDefense.lng,
-      passengerCount: 3,
-      luggageCount: 1,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"],
-      suggestedPrice: 75.0,
-      finalPrice: 80.0,
-      internalCost: 52.0,
-      marginPercent: 35.0,
-    },
-    {
-      contactId: CONTACT_IDS["Jean Martin"],
-      status: "ACCEPTED" as const,
-      pricingMode: "DYNAMIC" as const,
-      tripType: "TRANSFER" as const,
-      pickupAt: futureDate(2, 11),
-      pickupAddress: "Musée du Louvre, Rue de Rivoli, Paris",
-      pickupLatitude: PARIS_LOCATIONS.louvre.lat,
-      pickupLongitude: PARIS_LOCATIONS.louvre.lng,
-      dropoffAddress: "Basilique du Sacré-Cœur, 35 Rue du Chevalier de la Barre, Paris",
-      dropoffLatitude: PARIS_LOCATIONS.sacreCoeur.lat,
-      dropoffLongitude: PARIS_LOCATIONS.sacreCoeur.lng,
-      passengerCount: 2,
-      luggageCount: 0,
-      vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"],
-      suggestedPrice: 35.0,
-      finalPrice: 40.0,
-      internalCost: 25.0,
-      marginPercent: 37.5,
-    },
-  ];
-
-  for (const q of quotes) {
-    await prisma.quote.create({
-      data: {
-        id: randomUUID(),
-        organizationId: ORGANIZATION_ID,
-        ...q,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-  }
-  console.log(`   ✅ ${quotes.length} quotes with coordinates`);
-}
-
 async function seedDocumentTypes() {
   console.log("\n📄 Seeding Document Types...");
   const types = [
@@ -814,14 +600,14 @@ function printSummary() {
   console.log("\n🎯 Summary:");
   console.log(`   📧 Email: ${ADMIN_EMAIL}`);
   console.log(`   🔑 Password: ${ADMIN_PASSWORD}`);
-  console.log(`   🏢 Organization: VTC Premium Paris (${ORGANIZATION_ID})`);
+  console.log(`   🏢 Organization: Ajours VTC (${ORGANIZATION_ID})`);
   console.log(`   👤 Admin User: ${ADMIN_USER_ID}`);
   console.log("\n📊 Data Created:");
-  console.log(`   • 4 Operating Bases (Paris, CDG, Orly, La Défense)`);
+  console.log(`   • 5 Operating Bases (Bussy-Saint-Martin HQ, Paris, CDG, Orly, La Défense)`);
   console.log(`   • 3 License Categories (B, D1, D) with RSE rules`);
   console.log(`   • 5 Vehicle Categories (Berline, Van, Minibus, Autocar, Luxe)`);
-  console.log(`   • 8 Pricing Zones (Paris, airports, suburbs)`);
-  console.log(`   • 10 Zone Routes with fixed pricing`);
+  console.log(`   • 12 Pricing Zones (multi-rayon Paris + hubs)`);
+  console.log(`   • 20 Zone Routes with fixed pricing`);
   console.log(`   • 4 Excursion Packages`);
   console.log(`   • 4 Dispo Packages`);
   console.log(`   • 4 Advanced Rates (night, weekend, distance, holidays)`);
@@ -832,7 +618,7 @@ function printSummary() {
   console.log(`   • 11 Vehicles (various categories)`);
   console.log(`   • 8 Contacts (individuals, businesses, agencies)`);
   console.log(`   • 4 Partner Contracts`);
-  console.log(`   • 6 Sample Quotes`);
+  console.log(`   • No default quotes or invoices seeded`);
   console.log(`   • API keys configured (Google Maps, CollectAPI)`);
 }
 
