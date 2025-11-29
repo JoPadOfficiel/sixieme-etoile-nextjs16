@@ -11,7 +11,6 @@ import {
 	MapPinIcon,
 	PentagonIcon,
 	SearchIcon,
-	SquareIcon,
 	Trash2Icon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -37,7 +36,7 @@ interface ZoneDrawingMapProps {
 	googleMapsApiKey?: string | null;
 }
 
-type DrawingMode = "polygon" | "circle" | "rectangle" | null;
+type DrawingMode = "polygon" | "circle" | null;
 
 export function ZoneDrawingMap({
 	zoneType,
@@ -58,14 +57,11 @@ export function ZoneDrawingMap({
 		null,
 	);
 	const currentShapeRef = useRef<
-		google.maps.Polygon | google.maps.Circle | google.maps.Rectangle | null
+		google.maps.Polygon | google.maps.Circle | null
 	>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
-	const [isLoading, setIsLoading] = useState(!!googleMapsApiKey);
-	const [error, setError] = useState<string | null>(
-		!googleMapsApiKey ? "noApiKey" : null,
-	);
+	const [isReady, setIsReady] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeDrawingMode, setActiveDrawingMode] = useState<DrawingMode>(null);
 	const [hasShape, setHasShape] = useState(false);
@@ -98,33 +94,6 @@ export function ZoneDrawingMap({
 		[],
 	);
 
-	// Convert rectangle to GeoJSON polygon
-	const rectangleToGeoJSON = useCallback(
-		(rectangle: google.maps.Rectangle): GeoJSONPolygon => {
-			const bounds = rectangle.getBounds();
-			if (!bounds) {
-				return { type: "Polygon", coordinates: [[]] };
-			}
-
-			const ne = bounds.getNorthEast();
-			const sw = bounds.getSouthWest();
-
-			return {
-				type: "Polygon",
-				coordinates: [
-					[
-						[sw.lng(), sw.lat()],
-						[ne.lng(), sw.lat()],
-						[ne.lng(), ne.lat()],
-						[sw.lng(), ne.lat()],
-						[sw.lng(), sw.lat()],
-					],
-				],
-			};
-		},
-		[],
-	);
-
 	// Clear current shape
 	const clearCurrentShape = useCallback(() => {
 		if (currentShapeRef.current) {
@@ -145,16 +114,12 @@ export function ZoneDrawingMap({
 			let googleMode: google.maps.drawing.OverlayType | null = null;
 
 			switch (mode) {
-				case "polygon":
-					googleMode = google.maps.drawing.OverlayType.POLYGON;
-					onZoneTypeChange("POLYGON");
-					break;
 				case "circle":
 					googleMode = google.maps.drawing.OverlayType.CIRCLE;
 					onZoneTypeChange("RADIUS");
 					break;
-				case "rectangle":
-					googleMode = google.maps.drawing.OverlayType.RECTANGLE;
+				case "polygon":
+					googleMode = google.maps.drawing.OverlayType.POLYGON;
 					onZoneTypeChange("POLYGON");
 					break;
 				default:
@@ -169,8 +134,8 @@ export function ZoneDrawingMap({
 	// Handle shape completion
 	const handleShapeComplete = useCallback(
 		(
-			shape: google.maps.Polygon | google.maps.Circle | google.maps.Rectangle,
-			type: "polygon" | "circle" | "rectangle",
+			shape: google.maps.Polygon | google.maps.Circle,
+			type: "polygon" | "circle",
 		) => {
 			// Clear previous shape
 			clearCurrentShape();
@@ -233,27 +198,6 @@ export function ZoneDrawingMap({
 				google.maps.event.addListener(path, "remove_at", () => {
 					onGeometryChange(polygonToGeoJSON(polygon));
 				});
-			} else if (type === "rectangle") {
-				const rectangle = shape as google.maps.Rectangle;
-				const geoJSON = rectangleToGeoJSON(rectangle);
-				onGeometryChange(geoJSON);
-
-				// Calculate center
-				const bounds = rectangle.getBounds();
-				if (bounds) {
-					const center = bounds.getCenter();
-					onCenterChange(center.lat(), center.lng());
-				}
-
-				// Listen for edits
-				rectangle.addListener("bounds_changed", () => {
-					onGeometryChange(rectangleToGeoJSON(rectangle));
-					const newBounds = rectangle.getBounds();
-					if (newBounds) {
-						const newCenter = newBounds.getCenter();
-						onCenterChange(newCenter.lat(), newCenter.lng());
-					}
-				});
 			}
 		},
 		[
@@ -262,13 +206,14 @@ export function ZoneDrawingMap({
 			onRadiusChange,
 			onGeometryChange,
 			polygonToGeoJSON,
-			rectangleToGeoJSON,
 		],
 	);
 
 	// Initialize map
 	const initializeMap = useCallback(() => {
-		if (!mapRef.current || !window.google) return;
+		if (mapInstanceRef.current || !mapRef.current || !window.google) {
+			return;
+		}
 
 		const map = new google.maps.Map(mapRef.current, {
 			center: { lat: defaultLat, lng: defaultLng },
@@ -302,15 +247,6 @@ export function ZoneDrawingMap({
 				editable: true,
 				draggable: true,
 			},
-			rectangleOptions: {
-				fillColor: "#f59e0b",
-				fillOpacity: 0.3,
-				strokeColor: "#f59e0b",
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-			},
 		});
 
 		drawingManager.setMap(map);
@@ -333,13 +269,6 @@ export function ZoneDrawingMap({
 			},
 		);
 
-		google.maps.event.addListener(
-			drawingManager,
-			"rectanglecomplete",
-			(rectangle: google.maps.Rectangle) => {
-				handleShapeComplete(rectangle, "rectangle");
-			},
-		);
 
 		// Initialize Places Autocomplete
 		if (searchInputRef.current) {
@@ -432,7 +361,6 @@ export function ZoneDrawingMap({
 			});
 		}
 
-		setIsLoading(false);
 	}, [
 		defaultLat,
 		defaultLng,
@@ -448,14 +376,12 @@ export function ZoneDrawingMap({
 		polygonToGeoJSON,
 	]);
 
-	// Load Google Maps script with drawing library
+	// Load Google Maps script
 	useEffect(() => {
-		if (!googleMapsApiKey) {
-			return;
-		}
+		if (!googleMapsApiKey) return;
 
 		if (window.google?.maps?.drawing) {
-			initializeMap();
+			setIsReady(true);
 			return;
 		}
 
@@ -463,22 +389,20 @@ export function ZoneDrawingMap({
 		script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places,drawing`;
 		script.async = true;
 		script.defer = true;
-
-		script.onload = () => {
-			initializeMap();
-		};
-
-		script.onerror = () => {
-			setError("loadError");
-			setIsLoading(false);
-		};
-
+		script.onload = () => setIsReady(true);
 		document.head.appendChild(script);
+	}, [googleMapsApiKey]);
+
+	// Initialize once Google Maps is ready
+	useEffect(() => {
+		if (!isReady || !googleMapsApiKey) return;
+
+		initializeMap();
 
 		return () => {
 			clearCurrentShape();
 		};
-	}, [googleMapsApiKey, initializeMap, clearCurrentShape]);
+	}, [isReady, googleMapsApiKey, initializeMap, clearCurrentShape]);
 
 	const handleSearch = () => {
 		if (!searchQuery.trim() || !mapInstanceRef.current) return;
@@ -500,12 +424,12 @@ export function ZoneDrawingMap({
 		onRadiusChange(0);
 	};
 
-	if (error) {
+	if (!googleMapsApiKey) {
 		return (
 			<div className="rounded-lg border border-dashed p-8 text-center">
 				<MapPinIcon className="mx-auto h-12 w-12 text-muted-foreground" />
 				<p className="mt-2 text-muted-foreground text-sm">
-					{t(`pricing.zones.map.${error}`)}
+					{t("pricing.zones.map.noApiKey")}
 				</p>
 				<p className="mt-1 text-muted-foreground text-xs">
 					{t("pricing.zones.map.configureInSettings")}
@@ -534,60 +458,45 @@ export function ZoneDrawingMap({
 				</Button>
 			</div>
 
-			{/* Drawing tools */}
-			<div className="flex items-center gap-2">
-				<Label className="font-medium text-sm">
-					{t("pricing.zones.map.drawingTools")}:
-				</Label>
-				<div className="flex gap-1">
+			{/* Compact Drawing tools - Circle first, then Polygon */}
+			<div className="flex items-center gap-1">
+				<Button
+					type="button"
+					variant={activeDrawingMode === "circle" ? "default" : "outline"}
+					size="icon"
+					className="h-8 w-8"
+					onClick={() => setDrawingMode("circle")}
+					title={t("pricing.zones.map.drawCircle")}
+				>
+					<CircleIcon className="h-4 w-4" />
+				</Button>
+				<Button
+					type="button"
+					variant={activeDrawingMode === "polygon" ? "default" : "outline"}
+					size="icon"
+					className="h-8 w-8"
+					onClick={() => setDrawingMode("polygon")}
+					title={t("pricing.zones.map.drawPolygon")}
+				>
+					<PentagonIcon className="h-4 w-4" />
+				</Button>
+				{hasShape && (
 					<Button
 						type="button"
-						variant={activeDrawingMode === "polygon" ? "default" : "outline"}
-						size="sm"
-						onClick={() => setDrawingMode("polygon")}
-						title={t("pricing.zones.map.drawPolygon")}
+						variant="outline"
+						size="icon"
+						className="h-8 w-8 text-destructive hover:text-destructive"
+						onClick={handleClearZone}
+						title={t("pricing.zones.map.clear")}
 					>
-						<PentagonIcon className="mr-1 h-4 w-4" />
-						{t("pricing.zones.map.polygon")}
+						<Trash2Icon className="h-4 w-4" />
 					</Button>
-					<Button
-						type="button"
-						variant={activeDrawingMode === "circle" ? "default" : "outline"}
-						size="sm"
-						onClick={() => setDrawingMode("circle")}
-						title={t("pricing.zones.map.drawCircle")}
-					>
-						<CircleIcon className="mr-1 h-4 w-4" />
-						{t("pricing.zones.map.circle")}
-					</Button>
-					<Button
-						type="button"
-						variant={activeDrawingMode === "rectangle" ? "default" : "outline"}
-						size="sm"
-						onClick={() => setDrawingMode("rectangle")}
-						title={t("pricing.zones.map.drawRectangle")}
-					>
-						<SquareIcon className="mr-1 h-4 w-4" />
-						{t("pricing.zones.map.rectangle")}
-					</Button>
-					{hasShape && (
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={handleClearZone}
-							className="text-destructive hover:text-destructive"
-						>
-							<Trash2Icon className="mr-1 h-4 w-4" />
-							{t("pricing.zones.map.clear")}
-						</Button>
-					)}
-				</div>
+				)}
 			</div>
 
 			{/* Map container */}
-			<div className="relative h-[400px] w-full overflow-hidden rounded-lg border">
-				{isLoading && (
+			<div className="relative h-[250px] w-full overflow-hidden rounded-lg border">
+				{!isReady && (
 					<div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/50">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
 					</div>
@@ -631,9 +540,6 @@ export function ZoneDrawingMap({
 				)}
 			</div>
 
-			<p className="text-muted-foreground text-xs">
-				{t("pricing.zones.map.drawingInstructions")}
-			</p>
 		</div>
 	);
 }

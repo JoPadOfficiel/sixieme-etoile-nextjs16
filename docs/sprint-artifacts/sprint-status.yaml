@@ -109,3 +109,12 @@ development_status:
   9-8-basic-profitability-yield-reporting: done
   epic-10: contexted
   10-1-fix-google-maps-integration-quotes-dispatch: done
+  # Epic 11 - Zone Management Refactoring & UI Improvements
+  epic-11: contexted
+  11-1-unified-zone-management-interactive-map: done
+  11-2-postal-code-zone-creation: drafted
+  11-3-zone-pricing-multipliers-integration: drafted
+  11-4-merge-seasonal-multipliers-advanced-rates: drafted
+  11-5-merge-optional-fees-promotions: drafted
+  11-6-collapsible-main-sidebar: drafted
+  11-7-remove-deprecated-advanced-rate-types: drafted

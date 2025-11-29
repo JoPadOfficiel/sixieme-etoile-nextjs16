@@ -126,7 +126,7 @@ export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstN
 
 export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licenseCategoryId','licenseNumber','validFrom','validTo','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -746,6 +746,7 @@ export const PricingZoneSchema = z.object({
   centerLongitude: z.instanceof(Prisma.Decimal, { message: "Field 'centerLongitude' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   radiusKm: z.instanceof(Prisma.Decimal, { message: "Field 'radiusKm' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   parentZoneId: z.string().nullable(),
+  color: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

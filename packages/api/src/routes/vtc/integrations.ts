@@ -75,12 +75,11 @@ export const integrationsRouter = new Hono()
   .basePath("/settings/integrations")
   // Apply organization middleware to all routes
   .use("*", organizationMiddleware)
-  // Apply admin role check to all routes
-  .use("*", requireAdminRole)
 
   // Get integration settings (masked)
   .get(
     "/",
+    requireAdminRole,
     describeRoute({
       summary: "Get integration settings",
       description:
@@ -109,6 +108,7 @@ export const integrationsRouter = new Hono()
   // Update integration settings
   .put(
     "/",
+    requireAdminRole,
     validator("json", updateIntegrationSettingsSchema),
     describeRoute({
       summary: "Update integration settings",

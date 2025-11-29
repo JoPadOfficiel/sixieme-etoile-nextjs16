@@ -43,6 +43,7 @@ const createZoneSchema = z.object({
 	radiusKm: z.coerce.number().positive().optional().nullable(),
 	parentZoneId: z.string().optional().nullable(),
 	isActive: z.boolean().default(true),
+	color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color").optional().nullable(),
 });
 
 const updateZoneSchema = createZoneSchema.partial();
@@ -258,6 +259,7 @@ export const pricingZonesRouter = new Hono()
 							radiusKm: data.radiusKm ?? undefined,
 							parentZoneId: data.parentZoneId ?? undefined,
 							isActive: data.isActive,
+							color: data.color ?? undefined,
 						},
 						organizationId,
 					),
@@ -354,8 +356,13 @@ export const pricingZonesRouter = new Hono()
 					...(data.centerLatitude !== undefined && { centerLatitude: data.centerLatitude }),
 					...(data.centerLongitude !== undefined && { centerLongitude: data.centerLongitude }),
 					...(data.radiusKm !== undefined && { radiusKm: data.radiusKm }),
-					...(data.parentZoneId !== undefined && { parentZoneId: data.parentZoneId }),
+					...(data.parentZoneId !== undefined && {
+						parentZone: data.parentZoneId
+							? { connect: { id: data.parentZoneId } }
+							: { disconnect: true },
+					}),
 					...(data.isActive !== undefined && { isActive: data.isActive }),
+					...(data.color !== undefined && { color: data.color }),
 				},
 				include: {
 					parentZone: {

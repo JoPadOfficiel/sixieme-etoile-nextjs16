@@ -259,18 +259,18 @@ async function createVehicleCategories() {
 async function createPricingZones() {
   console.log("\n🗺️ Creating Pricing Zones...");
   const zones = [
-    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0 },
-    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0 },
-    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0 },
-    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0 },
-    { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0 },
-    { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0 },
-    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0 },
-    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0 },
-    { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0 },
-    { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0 },
-    { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0 },
-    { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0 },
+    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0, color: "#10b981" },
+    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0, color: "#3b82f6" },
+    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0, color: "#8b5cf6" },
+    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0, color: "#f59e0b" },
+    { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0, color: "#f43f5e" },
+    { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0, color: "#06b6d4" },
+    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0, color: "#f97316" },
+    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0, color: "#6366f1" },
+    { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0, color: "#14b8a6" },
+    { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0, color: "#ef4444" },
+    { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0, color: "#a855f7" },
+    { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0, color: "#0ea5e9" },
   ];
   for (const z of zones) {
     const created = await prisma.pricingZone.create({

@@ -718,6 +718,9 @@
 				"noParent": "No parent zone",
 				"isActive": "Active",
 				"isActiveHelp": "Inactive zones are not used in pricing calculations.",
+				"color": "Zone Color",
+				"colorHelp": "Choose a color to identify this zone on the map.",
+				"customColor": "Custom color",
 				"create": "Create Zone",
 				"update": "Update Zone",
 				"dragMarker": "Drag to adjust position"
@@ -738,8 +741,27 @@
 				"drawRectangle": "Draw a rectangular zone",
 				"clear": "Clear",
 				"vertices": "Vertices",
-				"drawingInstructions": "Select a drawing tool and click on the map to draw your zone. You can edit the shape by dragging its vertices or edges."
-			}
+				"drawingInstructions": "Select a drawing tool and click on the map to draw your zone. You can edit the shape by dragging its vertices or edges.",
+				"panTool": "Pan",
+				"panToolTip": "Pan and navigate the map",
+				"circleTool": "Circle",
+				"circleToolTip": "Draw a circular zone",
+				"polygonTool": "Polygon",
+				"polygonToolTip": "Draw a polygon zone",
+				"clearTool": "Clear",
+				"clearToolTip": "Clear the drawn shape"
+			},
+			"active": "Active",
+			"inactive": "Inactive",
+			"routes": "routes",
+			"subzones": "subzones",
+			"zoneCount": "{count} zones",
+			"filterByStatus": "Filter by status",
+			"statusAll": "All zones",
+			"statusActive": "Active only",
+			"statusInactive": "Inactive only",
+			"noSearchResults": "No zones match your search.",
+			"confirmDelete": "Are you sure you want to delete the zone \"{name}\"?"
 		}
 	},
 	"routes": {

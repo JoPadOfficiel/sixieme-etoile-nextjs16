@@ -779,6 +779,9 @@ model PricingZone {
   parentZone   PricingZone?  @relation("ZoneHierarchy", fields: [parentZoneId], references: [id])
   childZones   PricingZone[] @relation("ZoneHierarchy")
 
+  // Display
+  color String? // Hex color for map display (e.g., "#10b981")
+
   // Metadata
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

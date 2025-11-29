@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="11-1-unified-zone-management-interactive-map" v="1.0">
+  <metadata>
+    <epicId>11</epicId>
+    <storyId>11.1</storyId>
+    <title>Unified Zone Management Interface with Interactive Map</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-29T10:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/11-1-unified-zone-management-interactive-map.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>operator</asA>
+    <iWant>a unified zone management interface with an interactive map showing all zones</iWant>
+    <soThat>I can visualize, select, and configure all pricing zones from a single intuitive screen</soThat>
+    <tasks>
+      <task id="1">Refactor zones page layout - Create two-panel layout</task>
+      <task id="2">Enhance ZonesOverviewMap component - Add drawing tools toolbar</task>
+      <task id="3">Implement zone selection from map</task>
+      <task id="4">Add zone status filtering in sidebar</task>
+      <task id="5">Implement zone quick-edit panel</task>
+      <task id="6">Add zone creation from map drawing</task>
+      <task id="7">Improve map toolbar UX</task>
+      <task id="8">Add zone color coding</task>
+      <task id="9">Implement zoom-to-zone</task>
+      <task id="10">Add translations (EN/FR)</task>
+      <task id="11">Write Vitest unit tests</task>
+      <task id="12">Write Playwright E2E tests</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" title="Two-Panel Layout">
+      Given I navigate to Settings → Pricing → Zones
+      When the page loads
+      Then I see a two-panel layout:
+        - Left panel (300-350px): Zone list with search, filters, and "Add Zone" button
+        - Right panel (remaining width): Full-height interactive map showing all zones
+    </criterion>
+    <criterion id="AC2" title="All Zones Visible on Map">
+      Given the zones page is loaded
+      When I view the map
+      Then all active zones are displayed with their shapes (circles, polygons)
+      And zones are color-coded by type or status
+      And the map auto-fits to show all zones
+    </criterion>
+    <criterion id="AC3" title="Zone Selection from Map">
+      Given zones are displayed on the map
+      When I click on a zone shape
+      Then the zone is highlighted
+      And the zone is selected in the left sidebar list
+      And zone details appear in an expandable panel
+    </criterion>
+    <criterion id="AC4" title="Drawing Tools Toolbar">
+      Given the map is displayed
+      When I look at the map controls
+      Then I see a toolbar with Hand/Pan, Circle, and Polygon tools
+      And the toolbar is positioned near the map type selector
+    </criterion>
+    <criterion id="AC5" title="Zone Creation from Drawing">
+      Given I select the polygon or circle drawing tool
+      When I draw a shape on the map
+      Then the zone creation form opens
+      And the geometry is pre-filled from my drawing
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>VTC ERP PRD</title>
+        <section>Appendix A – Zoning Engine</section>
+        <snippet>Zones are defined as polygons or radius circles. Each zone has a code, name, and optional parent zone for hierarchy.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>8.12 Settings – Zones &amp; Routes Configuration</section>
+        <snippet>Map editor for drawing polygons and circles. Table for routes. Zone list with status chips.</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <artifact>
+        <path>apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/zones/page.tsx</path>
+        <kind>page</kind>
+        <symbol>ZonesPage</symbol>
+        <reason>Current zones page to be refactored</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/components/ZonesOverviewMap.tsx</path>
+        <kind>component</kind>
+        <symbol>ZonesOverviewMap</symbol>
+        <lines>1-260</lines>
+        <reason>Existing map component showing all zones - needs enhancement for drawing tools</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/components/ZoneDrawingMap.tsx</path>
+        <kind>component</kind>
+        <symbol>ZoneDrawingMap</symbol>
+        <lines>1-640</lines>
+        <reason>Existing drawing map component with polygon/circle/rectangle tools</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/components/ZonesTable.tsx</path>
+        <kind>component</kind>
+        <symbol>ZonesTable</symbol>
+        <reason>Current table component to be converted to sidebar list</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/components/ZoneDrawer.tsx</path>
+        <kind>component</kind>
+        <symbol>ZoneDrawer</symbol>
+        <reason>Zone edit drawer component</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/components/ZoneForm.tsx</path>
+        <kind>component</kind>
+        <symbol>ZoneForm</symbol>
+        <reason>Zone form component</reason>
+      </artifact>
+      <artifact>
+        <path>apps/web/modules/saas/pricing/types.ts</path>
+        <kind>types</kind>
+        <symbol>PricingZone, ZoneType, PricingZoneFormData</symbol>
+        <reason>Type definitions for zones</reason>
+      </artifact>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@types/google.maps</package>
+        <usage>Google Maps type definitions</usage>
+      </node>
+      <node>
+        <package>@ui/components</package>
+        <usage>shadcn/ui components: Sheet, ScrollArea, Card, Button</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Maintain existing zone CRUD API endpoints</constraint>
+    <constraint type="pattern">Use Google Maps Drawing Library for shape creation</constraint>
+    <constraint type="tenancy">All zones scoped by organizationId</constraint>
+    <constraint type="i18n">All user-facing strings via useTranslations hook</constraint>
+    <constraint type="responsive">Two-panel at 1024px+, stacked below</constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests with React Testing Library.
+      Use Playwright MCP for E2E browser automation.
+    </standards>
+    <ideas>
+      <idea acId="AC1">Test two-panel layout renders correctly</idea>
+      <idea acId="AC2">Test all zones appear on map</idea>
+      <idea acId="AC3">Test zone selection from map click</idea>
+      <idea acId="AC4">Test drawing tools toolbar visibility</idea>
+      <idea acId="AC5">Test zone creation flow from drawing</idea>
+    </ideas>
+  </tests>
+</story-context>

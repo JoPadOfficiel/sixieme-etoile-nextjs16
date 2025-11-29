@@ -13,14 +13,14 @@ export function AppWrapper({ children }: PropsWithChildren) {
 		>
 			<NavBar />
 			<div
-				className={cn(" px-0 ", [
+				className={cn("overflow-x-hidden px-0", [
 					config.ui.saas.useSidebarLayout
 						? "min-h-[calc(100vh-1rem)] md:ml-[280px]"
 						: "",
 				])}
 			>
 				<main
-					className={cn("container max-w-6xl py-6", [
+					className={cn("max-w-full overflow-x-auto px-4 py-6 lg:px-6", [
 						config.ui.saas.useSidebarLayout ? "" : "",
 					])}
 				>

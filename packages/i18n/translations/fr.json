@@ -718,6 +718,9 @@
 				"noParent": "Pas de zone parente",
 				"isActive": "Active",
 				"isActiveHelp": "Les zones inactives ne sont pas utilisées dans les calculs de tarification.",
+				"color": "Couleur de la zone",
+				"colorHelp": "Choisissez une couleur pour identifier cette zone sur la carte.",
+				"customColor": "Couleur personnalisée",
 				"create": "Créer la Zone",
 				"update": "Mettre à jour la Zone",
 				"dragMarker": "Glissez pour ajuster la position"
@@ -738,8 +741,27 @@
 				"drawRectangle": "Dessiner une zone rectangulaire",
 				"clear": "Effacer",
 				"vertices": "Sommets",
-				"drawingInstructions": "Sélectionnez un outil de dessin et cliquez sur la carte pour dessiner votre zone. Vous pouvez modifier la forme en faisant glisser ses sommets ou ses bords."
-			}
+				"drawingInstructions": "Sélectionnez un outil de dessin et cliquez sur la carte pour dessiner votre zone. Vous pouvez modifier la forme en faisant glisser ses sommets ou ses bords.",
+				"panTool": "Déplacer",
+				"panToolTip": "Déplacer et naviguer sur la carte",
+				"circleTool": "Cercle",
+				"circleToolTip": "Dessiner une zone circulaire",
+				"polygonTool": "Polygone",
+				"polygonToolTip": "Dessiner une zone polygonale",
+				"clearTool": "Effacer",
+				"clearToolTip": "Effacer la forme dessinée"
+			},
+			"active": "Active",
+			"inactive": "Inactive",
+			"routes": "routes",
+			"subzones": "sous-zones",
+			"zoneCount": "{count} zones",
+			"filterByStatus": "Filtrer par statut",
+			"statusAll": "Toutes les zones",
+			"statusActive": "Actives uniquement",
+			"statusInactive": "Inactives uniquement",
+			"noSearchResults": "Aucune zone ne correspond à votre recherche.",
+			"confirmDelete": "Êtes-vous sûr de vouloir supprimer la zone « {name} » ?"
 		}
 	},
 	"routes": {

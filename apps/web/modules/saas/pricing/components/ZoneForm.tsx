@@ -14,6 +14,7 @@ import { Switch } from "@ui/components/switch";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PricingZone, PricingZoneFormData, ZoneType } from "../types";
+import { ZONE_COLORS } from "../types";
 import { ZoneDrawingMap } from "./ZoneDrawingMap";
 
 interface ZoneFormProps {
@@ -67,6 +68,7 @@ export function ZoneForm({
 		geometry: effectiveGeometry,
 		parentZoneId: zone?.parentZoneId ?? null,
 		isActive: zone?.isActive ?? true,
+		color: zone?.color ?? ZONE_COLORS[0].value,
 	});
 
 	// Geometry is now managed by the map component
@@ -211,6 +213,57 @@ export function ZoneForm({
 						))}
 					</SelectContent>
 				</Select>
+			</div>
+
+			{/* Zone Color */}
+			<div className="space-y-2">
+				<Label>{t("pricing.zones.form.color")}</Label>
+				<div className="flex flex-wrap items-center gap-2">
+					{ZONE_COLORS.map((color) => (
+						<button
+							key={color.value}
+							type="button"
+							className={`h-8 w-8 rounded-full border-2 transition-all hover:scale-110 ${
+								formData.color === color.value
+									? "border-foreground ring-2 ring-offset-2"
+									: "border-transparent"
+							}`}
+							style={{ backgroundColor: color.value }}
+							onClick={() =>
+								setFormData((prev) => ({ ...prev, color: color.value }))
+							}
+							title={color.label}
+						/>
+					))}
+					{/* Custom color picker */}
+					<div className="relative">
+						<input
+							type="color"
+							value={formData.color || "#10b981"}
+							onChange={(e) =>
+								setFormData((prev) => ({ ...prev, color: e.target.value }))
+							}
+							className="absolute inset-0 h-8 w-8 cursor-pointer opacity-0"
+							title={t("pricing.zones.form.customColor")}
+						/>
+						<div
+							className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all hover:scale-110 ${
+								!ZONE_COLORS.some((c) => c.value === formData.color)
+									? "border-foreground ring-2 ring-offset-2"
+									: "border-muted-foreground/50"
+							}`}
+							style={{
+								background: !ZONE_COLORS.some((c) => c.value === formData.color)
+									? formData.color || "#10b981"
+									: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
+							}}
+						>
+							{ZONE_COLORS.some((c) => c.value === formData.color) && (
+								<span className="text-white text-xs font-bold drop-shadow">+</span>
+							)}
+						</div>
+					</div>
+				</div>
 			</div>
 
 			{/* Active Status */}

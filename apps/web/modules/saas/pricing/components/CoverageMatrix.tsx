@@ -252,7 +252,7 @@ export function CoverageMatrix({ data, isLoading, onCellClick }: CoverageMatrixP
 				</div>
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
-				<div className="min-w-max">
+				<div className="w-full">
 					{/* Header row */}
 					<div
 						className="grid gap-px bg-border"

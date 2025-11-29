@@ -1,6 +1,20 @@
 export type ZoneType = "POLYGON" | "RADIUS" | "POINT";
 export type RouteDirection = "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
 
+// Predefined zone colors (8 colors)
+export const ZONE_COLORS = [
+	{ name: "emerald", value: "#10b981", label: "Emerald" },
+	{ name: "blue", value: "#3b82f6", label: "Blue" },
+	{ name: "violet", value: "#8b5cf6", label: "Violet" },
+	{ name: "amber", value: "#f59e0b", label: "Amber" },
+	{ name: "rose", value: "#f43f5e", label: "Rose" },
+	{ name: "cyan", value: "#06b6d4", label: "Cyan" },
+	{ name: "orange", value: "#f97316", label: "Orange" },
+	{ name: "indigo", value: "#6366f1", label: "Indigo" },
+] as const;
+
+export type ZoneColor = (typeof ZONE_COLORS)[number]["value"];
+
 export interface PricingZone {
 	id: string;
 	organizationId: string;
@@ -18,6 +32,7 @@ export interface PricingZone {
 		code: string;
 	} | null;
 	isActive: boolean;
+	color?: string | null;
 	routesCount?: number;
 	childZonesCount?: number;
 	createdAt: string;
@@ -34,6 +49,7 @@ export interface PricingZoneFormData {
 	radiusKm?: number | null;
 	parentZoneId?: string | null;
 	isActive: boolean;
+	color?: string | null;
 }
 
 export interface PricingZonesListResponse {
