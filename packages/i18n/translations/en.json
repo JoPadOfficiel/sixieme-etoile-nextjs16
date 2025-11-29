@@ -723,7 +723,11 @@
 				"customColor": "Custom color",
 				"create": "Create Zone",
 				"update": "Update Zone",
-				"dragMarker": "Drag to adjust position"
+				"dragMarker": "Drag to adjust position",
+				"priceMultiplier": "Price Multiplier",
+				"priceMultiplierHelp": "Adjust the base price for trips in this zone. 1.0 = no adjustment, 1.5 = 50% increase, 0.8 = 20% discount.",
+				"multiplierDescription": "Multiplier Description",
+				"multiplierDescriptionPlaceholder": "e.g., Premium zone surcharge"
 			},
 			"map": {
 				"noApiKey": "Google Maps API key not configured.",

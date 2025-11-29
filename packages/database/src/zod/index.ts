@@ -126,7 +126,7 @@ export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstN
 
 export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licenseCategoryId','licenseNumber','validFrom','validTo','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -749,6 +749,8 @@ export const PricingZoneSchema = z.object({
   color: z.string().nullable(),
   postalCodes: z.string().array(),
   creationMethod: z.string().nullable(),
+  priceMultiplier: z.instanceof(Prisma.Decimal, { message: "Field 'priceMultiplier' must be a Decimal. Location: ['Models', 'PricingZone']"}),
+  multiplierDescription: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

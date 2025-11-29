@@ -369,6 +369,33 @@ export interface MultiplierEvaluationResult {
 }
 
 // ============================================================================
+// Story 11.3: Zone Pricing Multiplier Types
+// ============================================================================
+
+/**
+ * Applied zone multiplier rule for transparency
+ */
+export interface AppliedZoneMultiplierRule extends AppliedRule {
+	type: "ZONE_MULTIPLIER";
+	zoneId: string;
+	zoneName: string;
+	zoneCode: string;
+	multiplier: number;
+	source: "pickup" | "dropoff";
+	priceBefore: number;
+	priceAfter: number;
+}
+
+/**
+ * Result of zone multiplier application
+ */
+export interface ZoneMultiplierResult {
+	adjustedPrice: number;
+	appliedMultiplier: number;
+	appliedRule: AppliedZoneMultiplierRule | null;
+}
+
+// ============================================================================
 // Cost Breakdown Types (Story 4.2)
 // ============================================================================
 
@@ -1434,6 +1461,63 @@ export function applyAllMultipliers(
 }
 
 // ============================================================================
+// Story 11.3: Zone Pricing Multiplier Functions
+// ============================================================================
+
+/**
+ * Apply zone pricing multiplier based on pickup and dropoff zones
+ * Uses the highest multiplier between pickup and dropoff zone (Math.max)
+ * 
+ * @param basePrice - The base price before zone multiplier
+ * @param pickupZone - The pickup zone data (may include priceMultiplier)
+ * @param dropoffZone - The dropoff zone data (may include priceMultiplier)
+ * @returns Zone multiplier result with adjusted price and applied rule
+ */
+export function applyZoneMultiplier(
+	basePrice: number,
+	pickupZone: ZoneData | null,
+	dropoffZone: ZoneData | null,
+): ZoneMultiplierResult {
+	const pickupMultiplier = pickupZone?.priceMultiplier ?? 1.0;
+	const dropoffMultiplier = dropoffZone?.priceMultiplier ?? 1.0;
+	
+	// Use the highest multiplier
+	const effectiveMultiplier = Math.max(pickupMultiplier, dropoffMultiplier);
+	
+	// If multiplier is 1.0 (default), no adjustment needed
+	if (effectiveMultiplier === 1.0) {
+		return {
+			adjustedPrice: basePrice,
+			appliedMultiplier: 1.0,
+			appliedRule: null,
+		};
+	}
+	
+	// Determine which zone provided the multiplier
+	const isPickupHigher = pickupMultiplier >= dropoffMultiplier;
+	const sourceZone = isPickupHigher ? pickupZone : dropoffZone;
+	const source: "pickup" | "dropoff" = isPickupHigher ? "pickup" : "dropoff";
+	
+	const adjustedPrice = Math.round(basePrice * effectiveMultiplier * 100) / 100;
+	
+	return {
+		adjustedPrice,
+		appliedMultiplier: effectiveMultiplier,
+		appliedRule: sourceZone ? {
+			type: "ZONE_MULTIPLIER",
+			description: `Zone multiplier applied: ${sourceZone.name} (${effectiveMultiplier}×)`,
+			zoneId: sourceZone.id,
+			zoneName: sourceZone.name,
+			zoneCode: sourceZone.code,
+			multiplier: effectiveMultiplier,
+			source,
+			priceBefore: basePrice,
+			priceAfter: adjustedPrice,
+		} : null,
+	};
+}
+
+// ============================================================================
 // Grid Matching Functions
 // ============================================================================
 
@@ -1896,6 +1980,10 @@ export function calculatePrice(
 			},
 			advancedRates,
 			seasonalMultipliers,
+			null, // shadowInput
+			// Story 11.3: Pass zones for zone pricing multiplier
+			pickupZone,
+			dropoffZone,
 		);
 	}
 
@@ -1926,6 +2014,10 @@ export function calculatePrice(
 			},
 			advancedRates,
 			seasonalMultipliers,
+			null, // shadowInput
+			// Story 11.3: No zones for NO_CONTRACT case
+			null,
+			null,
 		);
 	}
 
@@ -2126,13 +2218,18 @@ export function calculatePrice(
 		},
 		advancedRates,
 		seasonalMultipliers,
+		null, // shadowInput
+		// Story 11.3: Pass zones for zone pricing multiplier
+		pickupZone,
+		dropoffZone,
 	);
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3)
  * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
+ * Story 11.3: Now applies zone pricing multipliers
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -2148,6 +2245,9 @@ function buildDynamicResult(
 	seasonalMultipliers: SeasonalMultiplierData[] = [],
 	// Story 4.6: Shadow calculation input (from vehicle selection)
 	shadowInput: ShadowCalculationInput | null = null,
+	// Story 11.3: Zone data for zone pricing multipliers
+	pickupZone: ZoneData | null = null,
+	dropoffZone: ZoneData | null = null,
 ): PricingResult {
 	// Calculate with full details
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
@@ -2167,6 +2267,13 @@ function buildDynamicResult(
 		},
 		usingDefaultSettings,
 	});
+
+	// Story 11.3: Apply zone pricing multiplier FIRST (before other multipliers)
+	const zoneMultiplierResult = applyZoneMultiplier(price, pickupZone, dropoffZone);
+	if (zoneMultiplierResult.appliedRule) {
+		price = zoneMultiplierResult.adjustedPrice;
+		appliedRules.push(zoneMultiplierResult.appliedRule);
+	}
 
 	// Story 4.3: Apply multipliers if context is provided
 	if (multiplierContext && (advancedRates.length > 0 || seasonalMultipliers.length > 0)) {

@@ -37,6 +37,9 @@ export interface PricingZone {
 	// Story 11.2: Postal code zone creation
 	postalCodes?: string[];
 	creationMethod?: CreationMethod | null;
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier?: number;
+	multiplierDescription?: string | null;
 	routesCount?: number;
 	childZonesCount?: number;
 	createdAt: string;
@@ -57,6 +60,9 @@ export interface PricingZoneFormData {
 	// Story 11.2: Postal code zone creation
 	postalCodes?: string[];
 	creationMethod?: CreationMethod | null;
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier?: number;
+	multiplierDescription?: string | null;
 }
 
 export interface PricingZonesListResponse {

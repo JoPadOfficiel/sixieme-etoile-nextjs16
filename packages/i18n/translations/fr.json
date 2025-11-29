@@ -723,7 +723,11 @@
 				"customColor": "Couleur personnalisée",
 				"create": "Créer la Zone",
 				"update": "Mettre à jour la Zone",
-				"dragMarker": "Glissez pour ajuster la position"
+				"dragMarker": "Glissez pour ajuster la position",
+				"priceMultiplier": "Multiplicateur de Prix",
+				"priceMultiplierHelp": "Ajustez le prix de base pour les trajets dans cette zone. 1.0 = pas d'ajustement, 1.5 = augmentation de 50%, 0.8 = réduction de 20%.",
+				"multiplierDescription": "Description du Multiplicateur",
+				"multiplierDescriptionPlaceholder": "ex: Supplément zone premium"
 			},
 			"map": {
 				"noApiKey": "Clé API Google Maps non configurée.",

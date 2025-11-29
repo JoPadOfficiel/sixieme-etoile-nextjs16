@@ -786,6 +786,10 @@ model PricingZone {
   postalCodes    String[] // Array of postal codes used to create zone
   creationMethod String? // "DRAW" | "POSTAL_CODE" | "COORDINATES"
 
+  // Zone pricing multiplier (Story 11.3)
+  priceMultiplier       Decimal @default(1.0) @db.Decimal(4, 2) // 0.50 to 3.00
+  multiplierDescription String? // Optional description for the multiplier
+
   // Metadata
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

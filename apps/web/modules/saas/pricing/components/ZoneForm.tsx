@@ -79,6 +79,9 @@ export function ZoneForm({
 		color: zone?.color ?? ZONE_COLORS[0].value,
 		postalCodes: zone?.postalCodes ?? [],
 		creationMethod: zone?.creationMethod ?? null,
+		// Story 11.3: Zone pricing multiplier
+		priceMultiplier: zone?.priceMultiplier ?? 1.0,
+		multiplierDescription: zone?.multiplierDescription ?? null,
 	});
 
 	// Geometry is now managed by the map component
@@ -497,6 +500,74 @@ export function ZoneForm({
 							)}
 						</div>
 					</div>
+				</div>
+			</div>
+
+			{/* Story 11.3: Zone Pricing Multiplier */}
+			<div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+				<div className="space-y-2">
+					<Label htmlFor="priceMultiplier" className="text-base font-medium">
+						{t("pricing.zones.form.priceMultiplier")}
+					</Label>
+					<p className="text-muted-foreground text-sm">
+						{t("pricing.zones.form.priceMultiplierHelp")}
+					</p>
+					<div className="flex items-center gap-4">
+						<Input
+							id="priceMultiplier"
+							type="number"
+							min={0.5}
+							max={3.0}
+							step={0.1}
+							value={formData.priceMultiplier ?? 1.0}
+							onChange={(e) => {
+								const value = parseFloat(e.target.value);
+								if (!Number.isNaN(value) && value >= 0.5 && value <= 3.0) {
+									setFormData((prev) => ({ ...prev, priceMultiplier: value }));
+								}
+							}}
+							className="w-24"
+						/>
+						<span className="text-lg font-semibold text-muted-foreground">×</span>
+						<div className="flex-1">
+							<input
+								type="range"
+								min={0.5}
+								max={3.0}
+								step={0.1}
+								value={formData.priceMultiplier ?? 1.0}
+								onChange={(e) => {
+									const value = parseFloat(e.target.value);
+									setFormData((prev) => ({ ...prev, priceMultiplier: value }));
+								}}
+								className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+							/>
+							<div className="flex justify-between text-xs text-muted-foreground mt-1">
+								<span>0.5×</span>
+								<span>1.0×</span>
+								<span>1.5×</span>
+								<span>2.0×</span>
+								<span>2.5×</span>
+								<span>3.0×</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="multiplierDescription">
+						{t("pricing.zones.form.multiplierDescription")}
+					</Label>
+					<Input
+						id="multiplierDescription"
+						value={formData.multiplierDescription ?? ""}
+						onChange={(e) =>
+							setFormData((prev) => ({
+								...prev,
+								multiplierDescription: e.target.value || null,
+							}))
+						}
+						placeholder={t("pricing.zones.form.multiplierDescriptionPlaceholder")}
+					/>
 				</div>
 			</div>
 

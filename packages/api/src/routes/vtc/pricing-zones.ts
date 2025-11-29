@@ -18,6 +18,8 @@ const transformZone = (zone: any) => ({
 	centerLatitude: decimalToNumber(zone.centerLatitude),
 	centerLongitude: decimalToNumber(zone.centerLongitude),
 	radiusKm: decimalToNumber(zone.radiusKm),
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier: decimalToNumber(zone.priceMultiplier) ?? 1.0,
 });
 import {
 	withTenantCreate,
@@ -49,9 +51,33 @@ const createZoneSchema = z.object({
 	// Story 11.2: Postal code zone creation
 	postalCodes: z.array(z.string()).optional().default([]),
 	creationMethod: creationMethodEnum.optional().nullable(),
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier: z.coerce.number().min(0.5).max(3.0).optional().default(1.0),
+	multiplierDescription: z.string().max(500).optional().nullable(),
 });
 
-const updateZoneSchema = createZoneSchema.partial();
+const updateZoneSchema = z.object({
+	name: z.string().min(1).max(255).optional(),
+	code: z
+		.string()
+		.min(1)
+		.max(50)
+		.regex(/^[A-Z0-9_]+$/, "Code must be uppercase alphanumeric with underscores")
+		.optional(),
+	zoneType: zoneTypeEnum.optional(),
+	geometry: z.any().optional().nullable(),
+	centerLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+	centerLongitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+	radiusKm: z.coerce.number().positive().optional().nullable(),
+	parentZoneId: z.string().optional().nullable(),
+	isActive: z.boolean().optional(),
+	color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color").optional().nullable(),
+	postalCodes: z.array(z.string()).optional(),
+	creationMethod: creationMethodEnum.optional().nullable(),
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier: z.coerce.number().min(0.5).max(3.0).optional(),
+	multiplierDescription: z.string().max(500).optional().nullable(),
+});
 
 const listZonesSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
@@ -268,6 +294,9 @@ export const pricingZonesRouter = new Hono()
 							// Story 11.2: Postal code zone creation
 							postalCodes: data.postalCodes ?? [],
 							creationMethod: data.creationMethod ?? undefined,
+							// Story 11.3: Zone pricing multiplier
+							priceMultiplier: data.priceMultiplier ?? 1.0,
+							multiplierDescription: data.multiplierDescription ?? undefined,
 						},
 						organizationId,
 					),
@@ -374,6 +403,9 @@ export const pricingZonesRouter = new Hono()
 					// Story 11.2: Update postal codes
 					...(data.postalCodes !== undefined && { postalCodes: data.postalCodes }),
 					...(data.creationMethod !== undefined && { creationMethod: data.creationMethod }),
+					// Story 11.3: Update zone pricing multiplier
+					...(data.priceMultiplier !== undefined && { priceMultiplier: data.priceMultiplier }),
+					...(data.multiplierDescription !== undefined && { multiplierDescription: data.multiplierDescription }),
 				},
 				include: {
 					parentZone: {

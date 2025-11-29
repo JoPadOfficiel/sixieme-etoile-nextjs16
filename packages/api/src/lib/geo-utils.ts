@@ -116,6 +116,8 @@ export interface ZoneData {
 	centerLongitude: number | null;
 	radiusKm: number | null;
 	isActive: boolean;
+	// Story 11.3: Zone pricing multiplier
+	priceMultiplier?: number;
 }
 
 /**

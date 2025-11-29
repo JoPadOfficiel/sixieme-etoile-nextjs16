@@ -276,6 +276,8 @@ async function loadZones(organizationId: string): Promise<ZoneData[]> {
 		centerLongitude: zone.centerLongitude ? Number(zone.centerLongitude) : null,
 		radiusKm: zone.radiusKm ? Number(zone.radiusKm) : null,
 		isActive: zone.isActive,
+		// Story 11.3: Zone pricing multiplier
+		priceMultiplier: zone.priceMultiplier ? Number(zone.priceMultiplier) : 1.0,
 	}));
 }
 

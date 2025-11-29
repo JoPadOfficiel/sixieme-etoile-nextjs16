@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>11.3</story-id>
+    <title>Zone Pricing Multipliers Integration</title>
+    <epic>Epic 11 - Zone Management Refactoring & UI Improvements</epic>
+    <created>2025-11-29</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Actuellement, les multiplicateurs de prix par zone sont configurés séparément dans la page 
+      "Advanced Rate Modifiers" sous le type "ZONE_SCENARIO". Cette approche pose plusieurs problèmes :
+      
+      1. **Séparation confuse** : Le multiplicateur de zone est déconnecté de la définition de la zone
+      2. **Navigation complexe** : L'utilisateur doit aller dans Settings → Pricing → Advanced Rates 
+         pour configurer le multiplicateur d'une zone qu'il vient de créer
+      3. **Manque de visibilité** : La relation entre une zone et son multiplicateur n'est pas 
+         immédiatement visible dans l'interface de gestion des zones
+      4. **Duplication conceptuelle** : ZONE_SCENARIO dans AdvancedRate et LONG_DISTANCE font 
+         des choses similaires mais de manière différente
+    </description>
+    <user-pain-points>
+      <pain-point>Impossible de voir le multiplicateur d'une zone directement dans la liste des zones</pain-point>
+      <pain-point>Configuration du multiplicateur nécessite de naviguer vers une autre page</pain-point>
+      <pain-point>Pas de visualisation du multiplicateur sur la carte des zones</pain-point>
+      <pain-point>Confusion entre ZONE_SCENARIO (Advanced Rates) et le concept de zone pricing</pain-point>
+    </user-pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Intégrer le multiplicateur de prix directement dans le modèle PricingZone et l'interface 
+      de gestion des zones, permettant de configurer et visualiser le multiplicateur au même 
+      endroit que la définition géographique de la zone.
+    </primary>
+    <secondary>
+      <objective>Supprimer la dépendance aux AdvancedRate de type ZONE_SCENARIO pour le pricing de zone</objective>
+      <objective>Afficher le multiplicateur sur la carte et dans la liste des zones</objective>
+      <objective>Permettre l'édition rapide du multiplicateur depuis la liste des zones</objective>
+      <objective>Modifier le pricing engine pour utiliser zone.priceMultiplier au lieu de ZONE_SCENARIO</objective>
+      <objective>Migrer les données existantes ZONE_SCENARIO vers les multiplicateurs de zone</objective>
+    </secondary>
+    <success-metrics>
+      <metric>Configuration du multiplicateur de zone en moins de 5 secondes (inline edit)</metric>
+      <metric>Multiplicateur visible directement sur la carte pour les zones non-standard (≠ 1.0x)</metric>
+      <metric>Pricing engine applique correctement le multiplicateur de zone le plus élevé (pickup ou dropoff)</metric>
+      <metric>Migration réussie de 100% des ZONE_SCENARIO existants vers les zones correspondantes</metric>
+    </success-metrics>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Ajout du champ `priceMultiplier` au modèle PricingZone (Decimal, default 1.0)</item>
+      <item>Ajout du champ `multiplierDescription` optionnel pour documenter le multiplicateur</item>
+      <item>Input multiplicateur dans le formulaire ZoneForm (slider ou input numérique)</item>
+      <item>Affichage du multiplicateur dans ZoneSidebarList avec édition inline</item>
+      <item>Affichage du multiplicateur comme label sur les zones de la carte (ex: "1.5x")</item>
+      <item>Modification du pricing engine pour utiliser zone.priceMultiplier</item>
+      <item>Script de migration des ZONE_SCENARIO vers priceMultiplier</item>
+      <item>Validation du multiplicateur (plage 0.5 à 3.0)</item>
+      <item>Traductions EN/FR pour les nouveaux éléments UI</item>
+      <item>Tests unitaires et E2E</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Multiplicateurs basés sur le temps (utiliser Seasonal Multipliers)</item>
+      <item>Multiplicateurs par catégorie de véhicule spécifiques à une zone</item>
+      <item>Règles de combinaison complexes de multiplicateurs</item>
+      <item>Suppression complète du type ZONE_SCENARIO (sera fait dans Story 11.7)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <constraint priority="critical">
+        Le multiplicateur de zone doit être appliqué APRÈS le calcul du prix de base dans le pricing engine
+      </constraint>
+      <constraint priority="critical">
+        Utiliser le multiplicateur le plus élevé entre pickup et dropoff zone (Math.max)
+      </constraint>
+      <constraint priority="high">
+        Respecter le multi-tenancy existant (organizationId sur toutes les entités)
+      </constraint>
+      <constraint priority="high">
+        Le champ priceMultiplier doit être Decimal(4,2) pour supporter 0.50 à 3.00
+      </constraint>
+      <constraint priority="medium">
+        La migration doit être réversible (ne pas supprimer les ZONE_SCENARIO, les marquer inactifs)
+      </constraint>
+      <constraint priority="medium">
+        Le multiplicateur doit être enregistré dans tripAnalysis pour la transparence
+      </constraint>
+    </technical>
+    <business>
+      <constraint>Tous les montants en EUR uniquement</constraint>
+      <constraint>Toutes les chaînes UI via useTranslations (i18n)</constraint>
+      <constraint>Le multiplicateur par défaut est 1.0 (aucun ajustement)</constraint>
+      <constraint>Plage de multiplicateur : 0.5x (réduction 50%) à 3.0x (majoration 200%)</constraint>
+    </business>
+    <ux>
+      <constraint>Interface cohérente avec le ZoneManagementLayout de la Story 11.1</constraint>
+      <constraint>Le multiplicateur doit être visible sans cliquer sur la zone (dans la liste)</constraint>
+      <constraint>Les zones avec multiplicateur ≠ 1.0 doivent être visuellement distinctes sur la carte</constraint>
+      <constraint>Édition inline du multiplicateur dans la sidebar (quick edit)</constraint>
+    </ux>
+  </constraints>
+
+  <risks>
+    <risk severity="high" mitigation="Migration en transaction avec rollback, tests exhaustifs avant déploiement">
+      <description>Migration des ZONE_SCENARIO échoue ou corrompt les données</description>
+      <impact>Pricing incorrect pour les zones existantes</impact>
+    </risk>
+    <risk severity="medium" mitigation="Tests de régression sur le pricing engine avec scénarios réels">
+      <description>Pricing engine n'applique pas correctement le nouveau multiplicateur</description>
+      <impact>Prix calculés incorrects pour les quotes</impact>
+    </risk>
+    <risk severity="medium" mitigation="Validation côté serveur + côté client, messages d'erreur clairs">
+      <description>Utilisateur entre un multiplicateur hors plage (< 0.5 ou > 3.0)</description>
+      <impact>Pricing aberrant ou erreurs de calcul</impact>
+    </risk>
+    <risk severity="low" mitigation="Utiliser des labels avec fond semi-transparent, position intelligente">
+      <description>Labels de multiplicateur sur la carte se chevauchent ou sont illisibles</description>
+      <impact>UX dégradée sur la carte des zones</impact>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-components>
+      <component path="packages/database/prisma/schema.prisma">
+        Modèle PricingZone existant - ajouter priceMultiplier et multiplierDescription
+      </component>
+      <component path="packages/api/src/services/pricing-engine.ts">
+        Pricing engine - modifier evaluateAdvancedRates pour utiliser zone.priceMultiplier
+        Fonctions clés: evaluateAdvancedRate(), applyAdvancedRateAdjustment(), calculatePrice()
+      </component>
+      <component path="packages/api/src/routes/vtc/pricing-zones.ts">
+        API CRUD des zones - ajouter priceMultiplier dans les schémas create/update
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZoneForm.tsx">
+        Formulaire de zone - ajouter input multiplicateur
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZoneSidebarList.tsx">
+        Liste des zones - afficher et permettre édition inline du multiplicateur
+      </component>
+      <component path="apps/web/modules/saas/pricing/components/ZonesInteractiveMap.tsx">
+        Carte interactive - afficher labels de multiplicateur sur les zones
+      </component>
+      <component path="apps/web/modules/saas/pricing/types.ts">
+        Types TypeScript - ajouter priceMultiplier à PricingZone et PricingZoneFormData
+      </component>
+      <component path="packages/api/src/routes/vtc/advanced-rates.ts">
+        API Advanced Rates - référence pour comprendre ZONE_SCENARIO actuel
+      </component>
+    </existing-components>
+    <new-components>
+      <component path="apps/web/modules/saas/pricing/components/MultiplierInput.tsx">
+        Composant réutilisable pour saisie de multiplicateur (slider + input numérique)
+      </component>
+      <component path="packages/database/prisma/migrations/YYYYMMDD_add_price_multiplier_to_zone">
+        Migration Prisma pour ajouter priceMultiplier et multiplierDescription
+      </component>
+      <component path="packages/api/src/scripts/migrate-zone-scenario-to-multipliers.ts">
+        Script de migration des ZONE_SCENARIO vers zone.priceMultiplier
+      </component>
+    </new-components>
+    <data-model-changes>
+      <change table="PricingZone">
+        Ajouter champ `priceMultiplier Decimal @default(1.0) @db.Decimal(4, 2)`
+      </change>
+      <change table="PricingZone">
+        Ajouter champ `multiplierDescription String?` pour documentation optionnelle
+      </change>
+    </data-model-changes>
+    <pricing-engine-changes>
+      <change function="calculatePrice">
+        Après le calcul du prix de base (grid ou dynamic), appliquer le multiplicateur de zone
+        en utilisant Math.max(pickupZone.priceMultiplier, dropoffZone.priceMultiplier)
+      </change>
+      <change function="buildDynamicResult">
+        Ajouter l'application du multiplicateur de zone avant les advanced rates
+      </change>
+      <change function="tripAnalysis">
+        Enregistrer le multiplicateur appliqué et la zone source dans tripAnalysis
+      </change>
+    </pricing-engine-changes>
+    <api-changes>
+      <endpoint method="POST" path="/api/vtc/pricing/zones">
+        Ajouter priceMultiplier (optional, default 1.0) et multiplierDescription dans le body
+      </endpoint>
+      <endpoint method="PATCH" path="/api/vtc/pricing/zones/:id">
+        Permettre la mise à jour de priceMultiplier et multiplierDescription
+      </endpoint>
+      <endpoint method="GET" path="/api/vtc/pricing/zones">
+        Retourner priceMultiplier dans la réponse
+      </endpoint>
+    </api-changes>
+  </technical-context>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Champ "Price Multiplier" visible lors de la visualisation/édition d'une zone, valeur par défaut 1.0</criterion>
+    <criterion id="AC2">Multiplicateur configurable entre 0.5x et 3.0x, sauvegardé avec la zone</criterion>
+    <criterion id="AC3">Multiplicateur affiché sur la carte pour les zones avec valeur ≠ 1.0 (ex: "1.5x")</criterion>
+    <criterion id="AC4">Multiplicateur visible et éditable inline dans la liste des zones (sidebar)</criterion>
+    <criterion id="AC5">Pricing engine applique le multiplicateur de zone (max pickup/dropoff) et l'enregistre dans tripAnalysis</criterion>
+    <criterion id="AC6">Migration des ZONE_SCENARIO existants vers les multiplicateurs de zone correspondants</criterion>
+    <criterion id="AC7">Héritage de multiplicateur : zone enfant prioritaire sur zone parent (ou combinaison configurable)</criterion>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <unit-tests>
+      <test>Validation du multiplicateur (0.5 ≤ x ≤ 3.0)</test>
+      <test>Calcul du multiplicateur effectif (max pickup/dropoff)</test>
+      <test>Application du multiplicateur dans le pricing engine</test>
+      <test>Migration des ZONE_SCENARIO vers priceMultiplier</test>
+    </unit-tests>
+    <api-tests>
+      <test>CURL: Créer une zone avec priceMultiplier</test>
+      <test>CURL: Mettre à jour le priceMultiplier d'une zone</test>
+      <test>CURL: Calculer un prix avec zone ayant multiplicateur</test>
+      <test>CURL: Vérifier tripAnalysis contient le multiplicateur appliqué</test>
+    </api-tests>
+    <e2e-tests>
+      <test>Playwright: Créer une zone avec multiplicateur via le formulaire</test>
+      <test>Playwright: Éditer le multiplicateur inline dans la sidebar</test>
+      <test>Playwright: Vérifier l'affichage du multiplicateur sur la carte</test>
+      <test>Playwright: Vérifier le calcul de prix avec zone multiplicateur</test>
+    </e2e-tests>
+    <db-verification>
+      <test>Vérifier que priceMultiplier est correctement stocké en base</test>
+      <test>Vérifier la migration des ZONE_SCENARIO</test>
+    </db-verification>
+  </test-strategy>
+
+  <related-stories>
+    <story id="11.1" status="done">Unified Zone Management Interface with Interactive Map</story>
+    <story id="11.2" status="done">Postal Code Zone Creation</story>
+    <story id="11.4" status="drafted">Merge Seasonal Multipliers into Advanced Rates</story>
+    <story id="11.7" status="drafted">Remove Deprecated Advanced Rate Types (ZONE_SCENARIO, LONG_DISTANCE)</story>
+    <story id="4.3" status="done">Apply Multipliers and Target Margins</story>
+    <story id="9.2" status="done">Settings → Pricing – Advanced Rate Modifiers</story>
+  </related-stories>
+
+  <authentication-context>
+    <cookie name="better-auth.session_token">4kiiJBWd89j5yB13JTHoqIYYJD6wPxHb.WYnF7EOfoIiV%2FBWHBKzP3DUi4RbjCbAWnq1RlzfX5CQ%3D</cookie>
+    <organization-id>sixieme-etoile-vtc</organization-id>
+    <user-email>admin@vtc.com</user-email>
+    <user-role>admin</user-role>
+  </authentication-context>
+</story-context>

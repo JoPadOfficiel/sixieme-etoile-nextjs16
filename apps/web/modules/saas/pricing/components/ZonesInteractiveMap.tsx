@@ -34,9 +34,9 @@ interface ZonesInteractiveMapProps {
 }
 
 type Overlay =
-	| { type: "circle"; ref: google.maps.Circle; zone: PricingZone }
-	| { type: "polygon"; ref: google.maps.Polygon; zone: PricingZone }
-	| { type: "marker"; ref: google.maps.Marker; zone: PricingZone };
+	| { type: "circle"; ref: google.maps.Circle; zone: PricingZone; label?: google.maps.Marker }
+	| { type: "polygon"; ref: google.maps.Polygon; zone: PricingZone; label?: google.maps.Marker }
+	| { type: "marker"; ref: google.maps.Marker; zone: PricingZone; label?: google.maps.Marker };
 
 // Default zone colors by type (fallback if zone has no color)
 const DEFAULT_ZONE_COLORS = {
@@ -52,6 +52,36 @@ function getZoneColors(zone: PricingZone): { fill: string; stroke: string } {
 		return { fill: zone.color, stroke: zone.color };
 	}
 	return DEFAULT_ZONE_COLORS[zone.zoneType] || DEFAULT_ZONE_COLORS.POINT;
+}
+
+// Story 11.3: Create a label marker for zones with non-default multiplier
+function createMultiplierLabel(
+	map: google.maps.Map,
+	position: google.maps.LatLng | google.maps.LatLngLiteral,
+	multiplier: number,
+	zoneName: string
+): google.maps.Marker | undefined {
+	// Only show label for non-default multipliers
+	if (multiplier === 1.0) return undefined;
+
+	return new google.maps.Marker({
+		map,
+		position,
+		icon: {
+			path: google.maps.SymbolPath.CIRCLE,
+			scale: 0, // Hide the default marker icon
+		},
+		label: {
+			text: `${multiplier.toFixed(1)}×`,
+			color: multiplier > 1.0 ? "#dc2626" : "#16a34a", // red for increase, green for decrease
+			fontSize: "12px",
+			fontWeight: "bold",
+			className: "zone-multiplier-label",
+		},
+		title: `${zoneName}: ${multiplier.toFixed(1)}× multiplier`,
+		clickable: false,
+		zIndex: 1000,
+	});
 }
 
 // GeoJSON types
@@ -255,6 +285,10 @@ export function ZonesInteractiveMap({
 	const clearOverlays = useCallback(() => {
 		overlaysRef.current.forEach((overlay) => {
 			overlay.ref.setMap(null);
+			// Story 11.3: Also clear multiplier labels
+			if (overlay.label) {
+				overlay.label.setMap(null);
+			}
 		});
 		overlaysRef.current.clear();
 	}, []);
@@ -309,7 +343,15 @@ export function ZonesInteractiveMap({
 				const circleBounds = circle.getBounds();
 				if (circleBounds) bounds.union(circleBounds);
 
-				overlaysRef.current.set(zone.id, { type: "circle", ref: circle, zone });
+				// Story 11.3: Add multiplier label for zones with non-default multiplier
+				const label = createMultiplierLabel(
+					map,
+					{ lat: zone.centerLatitude as number, lng: zone.centerLongitude as number },
+					zone.priceMultiplier ?? 1.0,
+					zone.name
+				);
+
+				overlaysRef.current.set(zone.id, { type: "circle", ref: circle, zone, label });
 			} else if (zone.zoneType === "POLYGON" && zone.geometry) {
 				try {
 					const geo = zone.geometry as {
@@ -344,7 +386,16 @@ export function ZonesInteractiveMap({
 						path.forEach((p) => polyBounds.extend(p));
 						bounds.union(polyBounds);
 
-						overlaysRef.current.set(zone.id, { type: "polygon", ref: polygon, zone });
+						// Story 11.3: Add multiplier label at polygon center
+						const center = polyBounds.getCenter();
+						const label = createMultiplierLabel(
+							map,
+							center,
+							zone.priceMultiplier ?? 1.0,
+							zone.name
+						);
+
+						overlaysRef.current.set(zone.id, { type: "polygon", ref: polygon, zone, label });
 					}
 				} catch {
 					// ignore invalid geometry

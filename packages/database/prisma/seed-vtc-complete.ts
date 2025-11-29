@@ -258,19 +258,44 @@ async function createVehicleCategories() {
 
 async function createPricingZones() {
   console.log("\n🗺️ Creating Pricing Zones...");
+  // Zone pricing multiplier logic (Story 11.3):
+  // IMPORTANT: Multipliers must have only ONE decimal place (0.8, 0.9, 1.0, 1.1, 1.2, 1.3, etc.)
+  // 
+  // Business logic:
+  // - Bussy-Saint-Martin (garage): 0.8× - no deadhead cost
+  // - Near garage zones: 0.9× - minimal deadhead
+  // - Paris centre: 0.9× - competitive pricing, high demand
+  // - Intermediate zones: 1.0× - standard pricing
+  // - Airports: 1.1-1.2× - premium transfers
+  // - Far zones: 1.2-1.3× - long approach/return trips
+  // 
+  // The pricing engine uses Math.max(pickup, dropoff) multiplier
+  // This ensures profitability on trips involving expensive zones
   const zones = [
-    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0, color: "#10b981" },
-    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0, color: "#3b82f6" },
-    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0, color: "#8b5cf6" },
-    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0, color: "#f59e0b" },
-    { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0, color: "#f43f5e" },
-    { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0, color: "#06b6d4" },
-    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0, color: "#f97316" },
-    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0, color: "#6366f1" },
-    { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0, color: "#14b8a6" },
-    { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0, color: "#ef4444" },
-    { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0, color: "#a855f7" },
-    { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0, color: "#0ea5e9" },
+    // === GARAGE PROXIMITY ZONE (Lowest multiplier - no deadhead) ===
+    { name: "Bussy-Saint-Martin", code: "BUSSY_ST_MARTIN", zoneType: "RADIUS" as const, centerLatitude: 48.8495, centerLongitude: 2.6905, radiusKm: 8.0, color: "#22c55e", priceMultiplier: 0.8, multiplierDescription: "Zone garage principal - tarif avantageux (pas de trajet à vide)" },
+    
+    // === NEAR GARAGE ZONES (0.9× - minimal deadhead) ===
+    { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0, color: "#06b6d4", priceMultiplier: 0.9, multiplierDescription: "Marne-la-Vallée - proche garage, tarif avantageux" },
+    { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0, color: "#0ea5e9", priceMultiplier: 0.9, multiplierDescription: "Disneyland - proche garage, forte demande touristique" },
+    { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0, color: "#f43f5e", priceMultiplier: 0.9, multiplierDescription: "Est urbain - proche du garage, tarif modéré" },
+    
+    // === PARIS ZONES (0.9× - competitive pricing, high demand) ===
+    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0, color: "#10b981", priceMultiplier: 0.9, multiplierDescription: "Zone centrale Paris - tarif compétitif haute demande" },
+    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0, color: "#3b82f6", priceMultiplier: 0.9, multiplierDescription: "Paris intra-muros - tarif compétitif" },
+    
+    // === INTERMEDIATE ZONES (1.0× - standard pricing) ===
+    { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0, color: "#a855f7", priceMultiplier: 1.0, multiplierDescription: "La Défense - zone affaires, tarif standard" },
+    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0, color: "#8b5cf6", priceMultiplier: 1.1, multiplierDescription: "Petite couronne - majoration distance modérée" },
+    
+    // === AIRPORT ZONES (1.1-1.2× - premium transfers) ===
+    { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0, color: "#14b8a6", priceMultiplier: 1.1, multiplierDescription: "Aéroport Orly - transferts aéroport" },
+    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0, color: "#6366f1", priceMultiplier: 1.2, multiplierDescription: "Aéroport CDG - transferts premium longue distance" },
+    { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0, color: "#ef4444", priceMultiplier: 1.2, multiplierDescription: "Le Bourget - aviation d'affaires premium" },
+    
+    // === FAR ZONES (1.2-1.3× - long approach/return) ===
+    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0, color: "#f97316", priceMultiplier: 1.2, multiplierDescription: "Brie-sur-Orge - zone sud éloignée" },
+    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0, color: "#f59e0b", priceMultiplier: 1.3, multiplierDescription: "Grande couronne - majoration trajets longs" },
   ];
   for (const z of zones) {
     const created = await prisma.pricingZone.create({
@@ -284,27 +309,57 @@ async function createPricingZones() {
 async function createZoneRoutes() {
   console.log("\n🛣️ Creating Zone Routes...");
   const routes = [
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "BERLINE", price: 105.0 },
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 135.0 },
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "LUXE", price: 190.0 },
+    // === BUSSY-SAINT-MARTIN (Garage) Routes - Advantageous pricing ===
+    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "BERLINE", price: 85.0 },
+    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "LUXE", price: 160.0 },
+    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "BERLINE", price: 75.0 },
+    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "BERLINE", price: 90.0 },
+    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "VAN_PREMIUM", price: 115.0 },
+    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "BERLINE", price: 45.0 },
+    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "VAN_PREMIUM", price: 60.0 },
+    
+    // === MARNE-LA-VALLÉE Routes (Near garage - competitive) ===
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "BERLINE", price: 95.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 125.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "LUXE", price: 175.0 },
+    { from: "MARNE_LA_VALLEE", to: "CDG", category: "BERLINE", price: 70.0 },
+    { from: "MARNE_LA_VALLEE", to: "CDG", category: "VAN_PREMIUM", price: 90.0 },
+    
+    // === PARIS Routes ===
     { from: "PARIS_PREMIUM", to: "PETITE_COURONNE", category: "BERLINE", price: 65.0 },
     { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "BERLINE", price: 95.0 },
     { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "VAN_PREMIUM", price: 130.0 },
     { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "BERLINE", price: 115.0 },
     { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "VAN_PREMIUM", price: 160.0 },
-    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "BERLINE", price: 80.0 },
-    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "VAN_PREMIUM", price: 110.0 },
-    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "BERLINE", price: 70.0 },
-    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "BERLINE", price: 75.0 },
+    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "VAN_PREMIUM", price: 100.0 },
+    
+    // === EST URBAIN Routes (Near garage) ===
+    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "BERLINE", price: 55.0 },
+    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "EST_URBAIN", to: "BUSSY_ST_MARTIN", category: "BERLINE", price: 45.0 },
+    { from: "EST_URBAIN", to: "BUSSY_ST_MARTIN", category: "VAN_PREMIUM", price: 60.0 },
+    
+    // === AIRPORT Routes ===
     { from: "CDG", to: "PARIS_PREMIUM", category: "BERLINE", price: 80.0 },
     { from: "CDG", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 105.0 },
     { from: "CDG", to: "PARIS_PREMIUM", category: "LUXE", price: 155.0 },
     { from: "ORLY", to: "PARIS_PREMIUM", category: "BERLINE", price: 60.0 },
     { from: "ORLY", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 80.0 },
     { from: "CDG", to: "ORLY", category: "BERLINE", price: 105.0 },
+    { from: "CDG", to: "ORLY", category: "VAN_PREMIUM", price: 135.0 },
     { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 90.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 115.0 },
     { from: "LBG", to: "PARIS_PREMIUM", category: "LUXE", price: 130.0 },
-    { from: "DISNEY", to: "PARIS_PREMIUM", category: "BERLINE", price: 95.0 },
+    { from: "LBG", to: "PARIS_PREMIUM", category: "BERLINE", price: 85.0 },
+    
+    // === DISNEY Routes ===
+    { from: "DISNEY", to: "PARIS_PREMIUM", category: "BERLINE", price: 90.0 },
+    { from: "DISNEY", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 120.0 },
+    { from: "DISNEY", to: "CDG", category: "BERLINE", price: 65.0 },
+    { from: "DISNEY", to: "CDG", category: "VAN_PREMIUM", price: 85.0 },
   ];
   for (const r of routes) {
     await prisma.zoneRoute.create({

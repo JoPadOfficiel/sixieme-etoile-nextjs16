@@ -227,6 +227,12 @@ export function ZoneSidebarList({
 								</div>
 								{/* Zone stats */}
 								<div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+									{/* Story 11.3: Display price multiplier */}
+									{zone.priceMultiplier !== undefined && zone.priceMultiplier !== 1.0 && (
+										<span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 font-medium">
+											{zone.priceMultiplier.toFixed(1)}×
+										</span>
+									)}
 									{zone.routesCount !== undefined && zone.routesCount > 0 && (
 										<span>
 											{zone.routesCount} {t("pricing.zones.routes")}
