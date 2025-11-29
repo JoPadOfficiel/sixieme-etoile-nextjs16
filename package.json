@@ -2,13 +2,14 @@
 	"name": "supastarter-nextjs",
 	"private": true,
 	"scripts": {
-		"build": "dotenv -c -- turbo build",
-		"dev": "dotenv -c -- turbo dev --concurrency 15",
-		"lint": "biome lint .",
-		"clean": "turbo clean",
-		"format": "biome format . --write",
-		"e2e": "pnpm --filter web e2e"
-	},
+    "dev": "dotenv -c -- turbo dev --concurrency 15",
+    "build": "dotenv -c -- turbo build",
+    "lint": "biome lint .",
+    "clean": "turbo clean",
+    "format": "biome format . --write",
+    "e2e": "pnpm --filter web e2e",
+    "seed:vtc": "pnpm --filter @repo/database db:seed:vtc"
+  },
 	"engines": {
 		"node": ">=20"
 	},

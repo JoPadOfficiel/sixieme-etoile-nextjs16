@@ -117,7 +117,7 @@ async function cleanExistingData() {
     await prisma.session.deleteMany({});
     await prisma.account.deleteMany({});
     await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
-    await prisma.organization.deleteMany({ where: { slug: "vtc-premium-paris" } });
+    await prisma.organization.deleteMany({ where: { slug: { in: ["vtc-premium-paris", "sixieme-etoile-vtc"] } } });
     console.log("   ✅ Cleaned");
   } catch (error) {
     console.log("   ⚠️ Error cleaning:", error);
@@ -486,17 +486,39 @@ async function createDrivers() {
 async function createVehicles() {
   console.log("\n🚙 Creating Vehicles...");
   const vehicles = [
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "MN-012-OP", internalName: "Mercedes V-Class #1", passengerCapacity: 7, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class #2", passengerCapacity: 7, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "CD-234-EF", internalName: "Mercedes Sprinter 16pl", passengerCapacity: 16, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "OP-123-QR", internalName: "Audi A6 (maintenance)", passengerCapacity: 4, consumptionLPer100Km: 6.0, costPerKm: 0.40, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "MAINTENANCE" as const },
+    // ========== FLOTTE SIXIÈME ÉTOILE - Base Bussy-Saint-Martin (5 véhicules réels) ==========
+    // Mercedes Vito 8 places - FS-843-TR (PTAC ~3.2t, permis B car ≤9 places et ≤3.5t)
+    // Coffre Vito 8pl: ~600L = environ 4-5 grosses valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "FS-843-TR", internalName: "Mercedes Vito 8pl", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    // Sprinter 17 places - GS-218-DL (PTAC ~5t, ≤17 places, permis D1)
+    // Soute Sprinter 17pl: ~800L = environ 10-12 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GS-218-DL", internalName: "Mercedes Sprinter 17pl", passengerCapacity: 17, luggageCapacity: 12, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
+    // Sprinter 20 places - GQ-430-XV (PTAC ~5.5t, >17 places = permis D obligatoire)
+    // Soute Sprinter 20pl: ~900L = environ 12-15 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GQ-430-XV", internalName: "Mercedes Sprinter 20pl", passengerCapacity: 20, luggageCapacity: 15, consumptionLPer100Km: 13.0, costPerKm: 0.90, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    // Sprinter VIP KAKO 7 places (PTAC ~5.5t = véhicule lourd, permis D obligatoire malgré 7 places)
+    // Soute VIP avec coffre approfondi: ~700L = environ 8-10 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KAKO-VIP", internalName: "Sprinter VIP KAKO 7pl", passengerCapacity: 7, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.95, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    // Iveco 30 places - HB-106-LG (PTAC ~7t, permis D)
+    // Grande soute Iveco: ~2000L = environ 25-30 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "HB-106-LG", internalName: "Iveco 30pl", passengerCapacity: 30, luggageCapacity: 28, consumptionLPer100Km: 18.0, costPerKm: 1.20, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+
+    // ========== VÉHICULES SUPPLÉMENTAIRES - Bases autour de Paris ==========
+    // Berlines légères (permis B, PTAC <3.5t) - Coffre ~500L = 3 grosses valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    // Vans légers (permis B, ≤9 places, PTAC <3.5t) - V-Class coffre ~600L = 5-6 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class 7pl", passengerCapacity: 7, luggageCapacity: 6, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "TU-678-VW", internalName: "Mercedes Vito 8pl #2", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    // Véhicules Luxe berlines (permis B) - Coffre ~400L = 2 grosses valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
+    // Minibus supplémentaires (permis D1, ≤17 places) - Soute ~700L = 10 valises
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
+    // Autocars grande capacité (permis D) - Grandes soutes ~4000-5000L
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, luggageCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "MN-234-OP", internalName: "Setra 60pl", passengerCapacity: 60, luggageCapacity: 60, consumptionLPer100Km: 28.0, costPerKm: 1.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
   ];
   for (const v of vehicles) {
     const created = await prisma.vehicle.create({
@@ -600,14 +622,14 @@ function printSummary() {
   console.log("\n🎯 Summary:");
   console.log(`   📧 Email: ${ADMIN_EMAIL}`);
   console.log(`   🔑 Password: ${ADMIN_PASSWORD}`);
-  console.log(`   🏢 Organization: Ajours VTC (${ORGANIZATION_ID})`);
+  console.log(`   🏢 Organization: Sixième Étoile VTC (${ORGANIZATION_ID})`);
   console.log(`   👤 Admin User: ${ADMIN_USER_ID}`);
   console.log("\n📊 Data Created:");
   console.log(`   • 5 Operating Bases (Bussy-Saint-Martin HQ, Paris, CDG, Orly, La Défense)`);
   console.log(`   • 3 License Categories (B, D1, D) with RSE rules`);
   console.log(`   • 5 Vehicle Categories (Berline, Van, Minibus, Autocar, Luxe)`);
   console.log(`   • 12 Pricing Zones (multi-rayon Paris + hubs)`);
-  console.log(`   • 20 Zone Routes with fixed pricing`);
+  console.log(`   • 21 Zone Routes with fixed pricing`);
   console.log(`   • 4 Excursion Packages`);
   console.log(`   • 4 Dispo Packages`);
   console.log(`   • 4 Advanced Rates (night, weekend, distance, holidays)`);
@@ -615,7 +637,7 @@ function printSummary() {
   console.log(`   • 6 Optional Fees`);
   console.log(`   • 4 Promotions`);
   console.log(`   • 8 Drivers with multi-license support`);
-  console.log(`   • 11 Vehicles (various categories)`);
+  console.log(`   • 15 Vehicles (5 Sixième Étoile + 10 supplémentaires)`);
   console.log(`   • 8 Contacts (individuals, businesses, agencies)`);
   console.log(`   • 4 Partner Contracts`);
   console.log(`   • No default quotes or invoices seeded`);
