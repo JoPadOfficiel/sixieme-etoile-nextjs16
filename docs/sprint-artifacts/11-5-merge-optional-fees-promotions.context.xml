@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>11-5</story-id>
+    <story-name>Merge Optional Fees & Promotions Pages</story-name>
+    <epic>Epic 11 - Zone Management Refactoring & UI Improvements</epic>
+    <created>2025-11-30</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Currently, quote extras are split across two separate pages:
+      - Optional Fees (/settings/pricing/optional-fees) - Add-on charges (baby seat, waiting time, etc.)
+      - Promotions (/settings/pricing/promotions) - Promo codes and discounts
+      
+      These are related concepts (both affect the final quote price) and should be managed together.
+      Following the pattern established in Story 11.4 (merge Seasonal Multipliers + Advanced Rates),
+      we need to consolidate these into a single "Extras & Promotions" page.
+    </description>
+    <business-impact>
+      - Reduces navigation complexity for operators
+      - Provides unified view of all quote add-ons and discounts
+      - Consistent UX with the adjustments page (Story 11.4)
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Create unified ExtrasPromotionsPage at /settings/pricing/extras</objective>
+    <objective id="2">Implement tabbed interface with "Optional Fees" and "Promotions" tabs</objective>
+    <objective id="3">Create unified summary cards showing combined stats</objective>
+    <objective id="4">Migrate existing components to new page structure</objective>
+    <objective id="5">Add redirects from old URLs to new page with appropriate tab</objective>
+    <objective id="6">Update navigation to show single "Extras & Promotions" menu item</objective>
+    <objective id="7">Remove deprecated page files after migration</objective>
+    <objective id="8">Update translations for new unified page</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>New unified page at /settings/pricing/extras</item>
+      <item>Tabbed interface (Optional Fees / Promotions)</item>
+      <item>Unified summary cards</item>
+      <item>URL redirects for backward compatibility</item>
+      <item>Navigation updates</item>
+      <item>Translation updates (en.json, fr.json)</item>
+      <item>Removal of old page files</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Creating new fee or promotion types</item>
+      <item>Combining fees and promotions into a single list</item>
+      <item>Auto-apply rules configuration</item>
+      <item>Changes to API endpoints (reuse existing)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">Reuse existing components (OptionalFeeList, PromotionList, etc.)</constraint>
+    <constraint type="technical">Follow pattern from Story 11.4 adjustments page</constraint>
+    <constraint type="ux">Preserve all existing CRUD functionality</constraint>
+    <constraint type="data">No database schema changes required</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Bookmarked URLs may break temporarily</description>
+      <mitigation>Implement permanent redirects (HTTP 308)</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-files>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/optional-fees/page.tsx">
+        Current Optional Fees page - to be converted to redirect
+      </file>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/promotions/page.tsx">
+        Current Promotions page - to be converted to redirect
+      </file>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/adjustments/page.tsx">
+        Reference implementation for tabbed pricing settings page (Story 11.4)
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/components/index.ts">
+        Component exports for Optional Fees and Promotions
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/hooks/index.ts">
+        Hook exports for Optional Fees and Promotions
+      </file>
+    </existing-files>
+    
+    <reusable-components>
+      <component name="OptionalFeeList">List component for optional fees</component>
+      <component name="OptionalFeeFormDialog">Create/Edit dialog for fees</component>
+      <component name="OptionalFeeSummaryCards">Summary cards for fees stats</component>
+      <component name="PromotionList">List component for promotions</component>
+      <component name="PromotionFormDialog">Create/Edit dialog for promotions</component>
+      <component name="PromotionSummaryCards">Summary cards for promotion stats</component>
+    </reusable-components>
+
+    <reusable-hooks>
+      <hook name="useOptionalFees">Fetch optional fees list</hook>
+      <hook name="useOptionalFeeStats">Fetch optional fees statistics</hook>
+      <hook name="useCreateOptionalFee">Create optional fee mutation</hook>
+      <hook name="useUpdateOptionalFee">Update optional fee mutation</hook>
+      <hook name="useDeleteOptionalFee">Delete optional fee mutation</hook>
+      <hook name="usePromotions">Fetch promotions list</hook>
+      <hook name="usePromotionStats">Fetch promotion statistics</hook>
+      <hook name="useCreatePromotion">Create promotion mutation</hook>
+      <hook name="useUpdatePromotion">Update promotion mutation</hook>
+      <hook name="useDeletePromotion">Delete promotion mutation</hook>
+    </reusable-hooks>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" name="Single Page Access">
+      Given I navigate to Settings → Pricing
+      When I look for extras and promotions
+      Then I see a single "Extras & Promotions" menu item
+      And clicking it takes me to the merged page
+    </criterion>
+    <criterion id="AC2" name="Tabbed Interface">
+      Given I am on the Extras & Promotions page
+      When I view the page
+      Then I see tabs: "Optional Fees" and "Promotions"
+    </criterion>
+    <criterion id="AC3" name="Unified Summary Cards">
+      Given the Extras & Promotions page
+      When I view the summary section
+      Then I see cards showing: Active Optional Fees count, Active Promotions count, Total Promo Uses
+    </criterion>
+    <criterion id="AC4" name="Optional Fees Tab Content">
+      Given I am on the "Optional Fees" tab
+      When I view the content
+      Then I see the existing Optional Fees functionality (list, add/edit/delete)
+    </criterion>
+    <criterion id="AC5" name="Promotions Tab Content">
+      Given I am on the "Promotions" tab
+      When I view the content
+      Then I see the existing Promotions functionality (list, add/edit/delete)
+    </criterion>
+    <criterion id="AC6" name="URL Redirects">
+      Given I navigate to /settings/pricing/optional-fees
+      Then I am redirected to /settings/pricing/extras?tab=fees
+      Given I navigate to /settings/pricing/promotions
+      Then I am redirected to /settings/pricing/extras?tab=promotions
+    </criterion>
+    <criterion id="AC7" name="Data Integrity">
+      Given existing optional fees and promotions
+      When the pages are merged
+      Then all existing data is preserved and accessible
+      And CRUD operations work as before
+    </criterion>
+  </acceptance-criteria>
+
+  <implementation-notes>
+    <note>Follow the exact pattern from adjustments/page.tsx for consistency</note>
+    <note>Use URL query parameter ?tab=fees or ?tab=promotions for tab state</note>
+    <note>Reuse all existing components without modification</note>
+    <note>Add translations under settings.pricing.extras namespace</note>
+  </implementation-notes>
+</story-context>

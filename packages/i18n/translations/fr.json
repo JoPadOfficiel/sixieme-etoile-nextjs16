@@ -1231,8 +1231,7 @@
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
 					"adjustments": "Ajustements de Prix",
-					"optionalFees": "Frais optionnels",
-					"promotions": "Promotions"
+					"extras": "Extras & Promotions"
 				},
 				"fleet": {
 					"title": "Flotte",
@@ -1337,6 +1336,24 @@
 					"nightRatesDesc": "Tarification hors heures",
 					"weekendRates": "Tarifs Week-end",
 					"weekendRatesDesc": "Tarification week-end"
+				}
+			},
+			"extras": {
+				"title": "Extras & Promotions",
+				"description": "Gérez les frais optionnels et les remises promotionnelles pour les devis",
+				"tabs": {
+					"fees": "Frais Optionnels",
+					"promotions": "Promotions"
+				},
+				"stats": {
+					"totalActive": "Total Actifs",
+					"totalActiveDesc": "Tous les extras actifs",
+					"activeFees": "Frais Actifs",
+					"activeFeesDesc": "Frais optionnels",
+					"activePromos": "Promos Actives",
+					"activePromosDesc": "Codes promotionnels",
+					"promoUses": "Utilisations",
+					"promoUsesDesc": "Total des utilisations"
 				}
 			},
 			"advancedRates": {

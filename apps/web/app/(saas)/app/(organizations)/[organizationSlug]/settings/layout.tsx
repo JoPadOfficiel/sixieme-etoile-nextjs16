@@ -6,7 +6,6 @@ import { PageHeader } from "@saas/shared/components/PageHeader";
 import { SidebarContentLayout } from "@saas/shared/components/SidebarContentLayout";
 import {
 	CarIcon,
-	ReceiptIcon,
 	CreditCardIcon,
 	DollarSignIcon,
 	GiftIcon,
@@ -97,13 +96,8 @@ export default async function SettingsLayout({
 							icon: <SlidersHorizontalIcon className="size-4 opacity-50" />,
 						},
 						{
-							title: t("settings.menu.organization.pricing.optionalFees"),
-							href: `${organizationSettingsBasePath}/pricing/optional-fees`,
-							icon: <ReceiptIcon className="size-4 opacity-50" />,
-						},
-						{
-							title: t("settings.menu.organization.pricing.promotions"),
-							href: `${organizationSettingsBasePath}/pricing/promotions`,
+							title: t("settings.menu.organization.pricing.extras"),
+							href: `${organizationSettingsBasePath}/pricing/extras`,
 							icon: <GiftIcon className="size-4 opacity-50" />,
 						},
 					],

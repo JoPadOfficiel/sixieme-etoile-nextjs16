@@ -1231,8 +1231,7 @@
 					"excursions": "Excursions",
 					"dispos": "Disposals",
 					"adjustments": "Pricing Adjustments",
-					"optionalFees": "Optional Fees",
-					"promotions": "Promotions"
+					"extras": "Extras & Promotions"
 				},
 				"fleet": {
 					"title": "Fleet",
@@ -1337,6 +1336,24 @@
 					"nightRatesDesc": "After-hours pricing",
 					"weekendRates": "Weekend Rates",
 					"weekendRatesDesc": "Weekend pricing"
+				}
+			},
+			"extras": {
+				"title": "Extras & Promotions",
+				"description": "Manage optional fees and promotional discounts for quotes",
+				"tabs": {
+					"fees": "Optional Fees",
+					"promotions": "Promotions"
+				},
+				"stats": {
+					"totalActive": "Total Active",
+					"totalActiveDesc": "All active extras",
+					"activeFees": "Active Fees",
+					"activeFeesDesc": "Optional fee items",
+					"activePromos": "Active Promos",
+					"activePromosDesc": "Promotional codes",
+					"promoUses": "Promo Uses",
+					"promoUsesDesc": "Total redemptions"
 				}
 			},
 			"advancedRates": {
