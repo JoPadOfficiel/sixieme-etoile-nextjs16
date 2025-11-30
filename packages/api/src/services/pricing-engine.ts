@@ -1236,20 +1236,16 @@ export function isWeekend(pickupAt: Date, daysOfWeek: string | null): boolean {
 }
 
 /**
- * Check if distance qualifies for LONG_DISTANCE rate
+ * @deprecated LONG_DISTANCE rate type removed in Story 11.4
+ * Distance-based pricing is now handled by zone multipliers (Story 11.3)
+ * This function is kept for backward compatibility but always returns false
  */
 export function isLongDistance(
-	distanceKm: number,
-	minDistanceKm: number | null,
-	maxDistanceKm: number | null,
+	_distanceKm: number,
+	_minDistanceKm: number | null,
+	_maxDistanceKm: number | null,
 ): boolean {
-	if (minDistanceKm !== null && distanceKm < minDistanceKm) {
-		return false;
-	}
-	if (maxDistanceKm !== null && distanceKm > maxDistanceKm) {
-		return false;
-	}
-	return minDistanceKm !== null; // Only applies if minDistanceKm is set
+	return false;
 }
 
 /**

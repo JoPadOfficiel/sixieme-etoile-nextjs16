@@ -216,8 +216,45 @@ curl -X POST http://localhost:3000/api/vtc/pricing/calculate \
 - [x] Seasonal tab functional with existing features
 - [x] Time-Based tab functional with NIGHT/WEEKEND only
 - [x] Old URLs redirect to new page
-- [x] Old page files removed
+- [x] Old page files converted to redirects
 - [x] Navigation updated
 - [x] Translations updated
 - [x] E2E tests passing
 - [x] Code reviewed and approved
+
+## Implementation Notes (2025-11-30)
+
+### Files Modified
+
+1. **`packages/database/prisma/seed-vtc-complete.ts`**
+
+   - Removed `LONG_DISTANCE` and `HOLIDAY` rate types from seed data
+   - Updated summary log to reflect 2 rates instead of 4
+
+2. **`packages/api/src/services/pricing-engine.ts`**
+
+   - Deprecated `isLongDistance()` function (returns false, kept for backward compatibility)
+   - Comments already updated in previous work
+
+3. **`packages/database/prisma/schema.prisma`**
+   - Updated comments to mark legacy fields (`minDistanceKm`, `maxDistanceKm`, `zoneId`)
+   - Clarified that only NIGHT and WEEKEND types are supported
+
+### Tests Executed
+
+1. **MCP Postgres Verification**
+
+   - Confirmed only 2 advanced rates in DB: NIGHT (25%) and WEEKEND (15%)
+   - Confirmed 4 seasonal multipliers active
+
+2. **Curl API Tests**
+
+   - `GET /api/vtc/pricing/advanced-rates` → Returns only NIGHT/WEEKEND
+   - `GET /api/vtc/pricing/advanced-rates/stats` → `{"night":1,"weekend":1,"totalActive":2}`
+   - `POST /api/vtc/pricing/calculate` → NIGHT rate correctly applied at 23:00
+
+3. **Playwright UI Tests**
+   - Unified page at `/settings/pricing/adjustments` displays correctly
+   - Tabs "Seasonal" and "Time-Based" work as expected
+   - Redirect from `/advanced-rates` → `/adjustments?tab=time-based` ✓
+   - Redirect from `/seasonal-multipliers` → `/adjustments?tab=seasonal` ✓

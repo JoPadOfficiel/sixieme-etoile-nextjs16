@@ -963,18 +963,17 @@ model AdvancedRate {
   // Application scope
   appliesTo AdvancedRateAppliesTo
 
-  // Time conditions (for NIGHT, WEEKEND, HOLIDAY)
+  // Time conditions (for NIGHT, WEEKEND)
   startTime  String? // HH:MM format
   endTime    String? // HH:MM format
-  daysOfWeek String? // e.g. "1,2,3,4,5" for weekdays
+  daysOfWeek String? // e.g. "0,6" for weekend
 
-  // Distance conditions (for LONG_DISTANCE)
-  minDistanceKm Decimal? @db.Decimal(8, 2)
-  maxDistanceKm Decimal? @db.Decimal(8, 2)
-
-  // Zone conditions (for ZONE_SCENARIO)
-  zoneId String?
-  zone   PricingZone? @relation(fields: [zoneId], references: [id])
+  // Legacy fields (kept for backward compatibility, no longer used)
+  // Story 11.4: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed
+  minDistanceKm Decimal?     @db.Decimal(8, 2)
+  maxDistanceKm Decimal?     @db.Decimal(8, 2)
+  zoneId        String?
+  zone          PricingZone? @relation(fields: [zoneId], references: [id])
 
   // Adjustment
   adjustmentType AdjustmentType

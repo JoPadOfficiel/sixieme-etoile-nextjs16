@@ -438,11 +438,11 @@ async function createPricingSettings() {
 
 async function createAdvancedRates() {
   console.log("\n📈 Creating Advanced Rates...");
+  // Story 11.4: Only NIGHT and WEEKEND types are supported
+  // LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed - zone-based pricing handled by PricingZone.priceMultiplier
   const rates = [
     { name: "Majoration Nuit", appliesTo: "NIGHT" as const, startTime: "22:00", endTime: "06:00", adjustmentType: "PERCENTAGE" as const, value: 25.0, priority: 10 },
     { name: "Majoration Week-end", appliesTo: "WEEKEND" as const, daysOfWeek: "0,6", adjustmentType: "PERCENTAGE" as const, value: 15.0, priority: 5 },
-    { name: "Réduction Longue Distance", appliesTo: "LONG_DISTANCE" as const, minDistanceKm: 100.0, adjustmentType: "PERCENTAGE" as const, value: -10.0, priority: 3 },
-    { name: "Majoration Jours Fériés", appliesTo: "HOLIDAY" as const, adjustmentType: "PERCENTAGE" as const, value: 50.0, priority: 15 },
   ];
   for (const r of rates) {
     await prisma.advancedRate.create({
@@ -687,7 +687,7 @@ function printSummary() {
   console.log(`   • 21 Zone Routes with fixed pricing`);
   console.log(`   • 4 Excursion Packages`);
   console.log(`   • 4 Dispo Packages`);
-  console.log(`   • 4 Advanced Rates (night, weekend, distance, holidays)`);
+  console.log(`   • 2 Advanced Rates (night, weekend)`);
   console.log(`   • 4 Seasonal Multipliers`);
   console.log(`   • 6 Optional Fees`);
   console.log(`   • 4 Promotions`);

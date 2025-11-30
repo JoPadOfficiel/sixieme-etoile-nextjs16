@@ -113,8 +113,8 @@ development_status:
   epic-11: contexted
   11-1-unified-zone-management-interactive-map: done
   11-2-postal-code-zone-creation: done
-  11-3-zone-pricing-multipliers-integration: drafted
-  11-4-merge-seasonal-multipliers-advanced-rates: drafted
+  11-3-zone-pricing-multipliers-integration: done
+  11-4-merge-seasonal-multipliers-advanced-rates: done
   11-5-merge-optional-fees-promotions: drafted
   11-6-collapsible-main-sidebar: drafted
   11-7-remove-deprecated-advanced-rate-types: drafted
