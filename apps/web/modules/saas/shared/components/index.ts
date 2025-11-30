@@ -9,10 +9,13 @@
 // Layout components
 export { AppWrapper } from "./AppWrapper";
 export { AuthWrapper } from "./AuthWrapper";
+export { ContentHeader } from "./ContentHeader";
+export type { BreadcrumbItem } from "./ContentHeader";
 export { Footer } from "./Footer";
 export { NavBar } from "./NavBar";
 export { PageHeader } from "./PageHeader";
 export { SidebarContentLayout } from "./SidebarContentLayout";
+export { SidebarToggleButton } from "./SidebarToggleButton";
 
 // UI components
 export { AddressAutocomplete } from "./AddressAutocomplete";

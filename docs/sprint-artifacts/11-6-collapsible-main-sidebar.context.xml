@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>11-6</story-id>
+    <story-title>Collapsible Main Sidebar</story-title>
+    <epic>Epic 11 - Zone Management Refactoring & UI Improvements</epic>
+    <created>2025-11-30</created>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      La sidebar principale (NavBar.tsx) est fixée à 280px et ne peut pas être réduite.
+      Cela consomme un espace d'écran significatif lors du travail avec :
+      - Les cartes de gestion de zones
+      - Les écrans de dispatch
+      - Les grands tableaux de données
+      
+      Les opérateurs ont besoin d'un bouton pour réduire la sidebar en mode icônes seuls,
+      et la ré-agrandir quand nécessaire.
+    </description>
+    <business-impact>
+      - Productivité réduite sur les écrans nécessitant beaucoup d'espace
+      - UX non optimale pour les tâches visuelles (cartes, tableaux)
+      - Pas de personnalisation de l'interface utilisateur
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Ajouter un bouton toggle pour réduire/agrandir la sidebar</objective>
+    <objective id="2">Implémenter une vue icônes seuls (48-64px) avec tooltips</objective>
+    <objective id="3">Persister l'état dans localStorage</objective>
+    <objective id="4">Ajouter un raccourci clavier (Cmd+B / Ctrl+B)</objective>
+    <objective id="5">Adapter le logo et le sélecteur d'organisation en mode réduit</objective>
+    <objective id="6">Assurer une transition fluide (200-300ms)</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Context React pour l'état de la sidebar (SidebarContext)</item>
+      <item>Composant SidebarToggleButton</item>
+      <item>Modification de NavBar.tsx pour supporter le mode réduit</item>
+      <item>Modification de AppWrapper.tsx pour ajuster le contenu</item>
+      <item>Tooltips sur les icônes en mode réduit</item>
+      <item>Raccourci clavier global</item>
+      <item>Persistance localStorage</item>
+      <item>Animations CSS fluides</item>
+      <item>Traductions pour les tooltips</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Layouts de sidebar multiples</item>
+      <item>Configuration position sidebar (gauche/droite)</item>
+      <item>Thèmes ou personnalisation de la sidebar</item>
+      <item>Changement du comportement mobile (drawer existant)</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <current-architecture>
+      <file path="apps/web/modules/saas/shared/components/NavBar.tsx">
+        <description>Composant principal de navigation sidebar</description>
+        <key-points>
+          - Largeur fixe 280px via classes Tailwind
+          - Utilise config.ui.saas.useSidebarLayout pour activer le mode sidebar
+          - Contient Logo, OrganizationSelect, menu items, UserMenu
+          - Menu items avec icônes et labels
+          - Responsive: mode horizontal sur mobile, sidebar sur desktop
+        </key-points>
+      </file>
+      <file path="apps/web/modules/saas/shared/components/AppWrapper.tsx">
+        <description>Wrapper principal de l'application</description>
+        <key-points>
+          - Contient NavBar + zone de contenu principal
+          - margin-left: 280px pour le contenu quand sidebar active
+          - Classes: md:ml-[280px]
+        </key-points>
+      </file>
+      <file path="config/index.ts">
+        <description>Configuration globale</description>
+        <key-points>
+          - config.ui.saas.useSidebarLayout = true
+          - Contrôle l'activation du mode sidebar
+        </key-points>
+      </file>
+      <file path="apps/web/modules/ui/components/tooltip.tsx">
+        <description>Composant Tooltip existant (Radix UI)</description>
+        <key-points>
+          - TooltipProvider, Tooltip, TooltipTrigger, TooltipContent
+          - Prêt à l'emploi pour les tooltips des icônes
+        </key-points>
+      </file>
+    </current-architecture>
+
+    <dependencies>
+      <dependency>@radix-ui/react-tooltip (déjà installé)</dependency>
+      <dependency>lucide-react (icônes, déjà utilisé)</dependency>
+      <dependency>next-intl (traductions, déjà utilisé)</dependency>
+      <dependency>tailwindcss (styling, déjà utilisé)</dependency>
+    </dependencies>
+
+    <new-files>
+      <file path="apps/web/modules/saas/shared/contexts/SidebarContext.tsx">
+        Context React pour gérer l'état collapsed/expanded
+      </file>
+      <file path="apps/web/modules/saas/shared/hooks/useSidebar.ts">
+        Hook personnalisé pour accéder au context
+      </file>
+      <file path="apps/web/modules/saas/shared/components/SidebarToggleButton.tsx">
+        Bouton toggle avec icône chevron
+      </file>
+    </new-files>
+
+    <files-to-modify>
+      <file path="apps/web/modules/saas/shared/components/NavBar.tsx">
+        - Intégrer SidebarToggleButton
+        - Adapter largeur selon isCollapsed (280px vs 64px)
+        - Masquer labels en mode collapsed
+        - Ajouter tooltips sur les icônes
+        - Adapter Logo (version compacte)
+        - Adapter OrganizationSelect (avatar seul)
+      </file>
+      <file path="apps/web/modules/saas/shared/components/AppWrapper.tsx">
+        - Wrapper avec SidebarProvider
+        - Ajuster margin-left dynamiquement (280px vs 64px)
+      </file>
+      <file path="apps/web/modules/saas/shared/components/index.ts">
+        - Exporter les nouveaux composants
+      </file>
+    </files-to-modify>
+  </technical-context>
+
+  <constraints>
+    <constraint type="ux">
+      Transition fluide 200-300ms sans saut de layout
+    </constraint>
+    <constraint type="responsive">
+      Comportement mobile inchangé (drawer existant)
+    </constraint>
+    <constraint type="accessibility">
+      Tooltips accessibles, raccourci clavier documenté
+    </constraint>
+    <constraint type="persistence">
+      État sauvegardé dans localStorage, restauré au chargement
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk level="low">
+      <description>Conflit avec le cookie sidebar:state existant</description>
+      <mitigation>Utiliser une clé localStorage distincte: "sidebar-collapsed"</mitigation>
+    </risk>
+    <risk level="low">
+      <description>Flash de contenu au chargement (FOUC)</description>
+      <mitigation>Initialiser l'état côté client avec useEffect, ou utiliser CSS pour masquer pendant l'hydratation</mitigation>
+    </risk>
+    <risk level="medium">
+      <description>OrganizationSelect complexe à adapter</description>
+      <mitigation>Afficher uniquement l'avatar/initiale en mode collapsed, dropdown complet au clic</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria-summary>
+    <ac id="AC1">Toggle button visible dans la sidebar</ac>
+    <ac id="AC2">Collapse: 280px → 64px avec icônes seuls</ac>
+    <ac id="AC3">Expand: 64px → 280px avec icônes et labels</ac>
+    <ac id="AC4">Tooltips sur les icônes en mode collapsed</ac>
+    <ac id="AC5">État persisté dans localStorage</ac>
+    <ac id="AC6">Zone de contenu s'ajuste automatiquement</ac>
+    <ac id="AC7">Raccourci clavier Cmd+B / Ctrl+B</ac>
+    <ac id="AC8">Comportement mobile inchangé</ac>
+    <ac id="AC9">Logo adapté en mode collapsed</ac>
+    <ac id="AC10">Sélecteur d'organisation adapté en mode collapsed</ac>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <unit-tests>
+      - SidebarContext: toggle, collapse, expand functions
+      - useSidebar hook: retourne les bonnes valeurs
+      - localStorage persistence
+    </unit-tests>
+    <e2e-tests>
+      - Clic sur toggle button → sidebar collapse
+      - Clic sur toggle button → sidebar expand
+      - Hover sur icône → tooltip visible
+      - Raccourci clavier → toggle
+      - Refresh page → état restauré
+      - Navigation → état maintenu
+    </e2e-tests>
+    <visual-tests>
+      - Transition fluide sans saut
+      - Logo compact visible
+      - Org selector avatar visible
+      - Content area s'ajuste
+    </visual-tests>
+  </test-strategy>
+</story-context>

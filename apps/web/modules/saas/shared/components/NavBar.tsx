@@ -2,8 +2,18 @@
 import { config } from "@repo/config";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import {
+	SIDEBAR_WIDTH_COLLAPSED,
+	SIDEBAR_WIDTH_EXPANDED,
+	useSidebar,
+} from "@saas/shared/contexts/SidebarContext";
 import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
 import {
 	BarChart3Icon,
@@ -25,12 +35,14 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OrganzationSelect } from "../../organizations/components/OrganizationSelect";
+import { OrganizationLogo } from "../../organizations/components/OrganizationLogo";
 
 export function NavBar() {
 	const t = useTranslations();
 	const pathname = usePathname();
 	const { user } = useSession();
 	const { activeOrganization } = useActiveOrganization();
+	const { isCollapsed } = useSidebar();
 
 	const { useSidebarLayout } = config.ui.saas;
 
@@ -134,17 +146,28 @@ export function NavBar() {
 			: []),
 	];
 
+	const sidebarWidth = isCollapsed
+		? SIDEBAR_WIDTH_COLLAPSED
+		: SIDEBAR_WIDTH_EXPANDED;
+
 	return (
 		<nav
-			className={cn("w-full border-b", {
-				"w-full md:fixed md:top-0 md:left-0 md:h-full md:w-[280px] md:border-r md:border-b-0":
-					useSidebarLayout,
-			})}
+			className={cn(
+				"w-full border-b transition-all duration-200 ease-in-out bg-background",
+				{
+					"w-full md:fixed md:top-0 md:left-0 md:z-30 md:h-full md:border-r md:border-b-0":
+						useSidebarLayout,
+				}
+			)}
+			style={{
+				width: useSidebarLayout ? `${sidebarWidth}px` : undefined,
+			}}
 		>
 			<div
 				className={cn("container max-w-6xl py-4", {
-					"container max-w-6xl py-4 md:flex md:h-full md:flex-col md:px-6 md:pt-6 md:pb-0":
+					"container max-w-6xl py-4 md:flex md:h-full md:flex-col md:px-4 md:pt-4 md:pb-0":
 						useSidebarLayout,
+					"md:px-2": useSidebarLayout && isCollapsed,
 				})}
 			>
 				<div className="flex flex-wrap items-center justify-between gap-4">
@@ -152,10 +175,20 @@ export function NavBar() {
 						className={cn("flex items-center gap-4 md:gap-2", {
 							"md:flex md:w-full md:flex-col md:items-stretch md:align-stretch":
 								useSidebarLayout,
+							"md:items-center": useSidebarLayout && isCollapsed,
 						})}
 					>
+						{/* Logo - compact version when collapsed */}
 						<Link href="/app" className="block">
-							<Logo />
+							{useSidebarLayout && isCollapsed ? (
+								<Logo className="hidden md:block" withLabel={false} />
+							) : (
+								<Logo />
+							)}
+							{/* Show full logo on mobile even when collapsed */}
+							{useSidebarLayout && isCollapsed && (
+								<Logo className="md:hidden" />
+							)}
 						</Link>
 
 						{config.organizations.enable &&
@@ -169,11 +202,45 @@ export function NavBar() {
 										<ChevronRightIcon className="size-4" />
 									</span>
 
-									<OrganzationSelect
-										className={cn({
-											"md:-mx-2 md:mt-2": useSidebarLayout,
-										})}
-									/>
+									{/* Organization selector - avatar only when collapsed */}
+									{useSidebarLayout && isCollapsed ? (
+										<div className="hidden md:block md:mt-2">
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<button
+														type="button"
+														className="flex items-center justify-center rounded-md p-1 hover:bg-accent"
+													>
+														{activeOrganization ? (
+															<OrganizationLogo
+																name={activeOrganization.name}
+																logoUrl={activeOrganization.logo}
+																className="size-8"
+															/>
+														) : (
+															<div className="size-8 rounded-md bg-primary/20 flex items-center justify-center text-xs font-medium">
+																{user?.name?.charAt(0) || "?"}
+															</div>
+														)}
+													</button>
+												</TooltipTrigger>
+												<TooltipContent side="right">
+													{activeOrganization?.name ||
+														t("organizations.organizationSelect.personalAccount")}
+												</TooltipContent>
+											</Tooltip>
+										</div>
+									) : (
+										<OrganzationSelect
+											className={cn({
+												"md:-mx-2 md:mt-2": useSidebarLayout,
+											})}
+										/>
+									)}
+									{/* Show full selector on mobile even when collapsed */}
+									{useSidebarLayout && isCollapsed && (
+										<OrganzationSelect className="md:hidden" />
+									)}
 								</>
 							)}
 					</div>
@@ -193,43 +260,85 @@ export function NavBar() {
 						{
 							"md:mx-0 md:my-4 md:flex md:flex-col md:items-stretch md:gap-1 md:px-0":
 								useSidebarLayout,
+							"md:items-center": useSidebarLayout && isCollapsed,
 						},
 					)}
 				>
-					{menuItems.map((menuItem) => (
-						<li key={menuItem.href}>
+					{menuItems.map((menuItem) => {
+						const menuLink = (
 							<Link
 								href={menuItem.href}
 								className={cn(
-									"flex items-center gap-2 whitespace-nowrap border-b-2 px-1 pb-3",
+									"flex items-center gap-2 whitespace-nowrap border-b-2 px-1 pb-3 transition-all duration-200",
 									[
 										menuItem.isActive
 											? "border-primary font-bold"
 											: "border-transparent",
 									],
 									{
-										"md:-mx-6 md:border-b-0 md:border-l-2 md:px-6 md:py-2":
-											useSidebarLayout,
+										"md:-mx-4 md:border-b-0 md:border-l-2 md:px-4 md:py-2":
+											useSidebarLayout && !isCollapsed,
+										"md:border-b-0 md:border-l-0 md:px-0 md:py-2 md:justify-center":
+											useSidebarLayout && isCollapsed,
 									},
 								)}
 							>
 								<menuItem.icon
-									className={`size-4 shrink-0 ${
-										menuItem.isActive ? "text-primary" : "opacity-50"
-									}`}
+									className={cn("size-4 shrink-0", {
+										"text-primary": menuItem.isActive,
+										"opacity-50": !menuItem.isActive,
+										"size-5": useSidebarLayout && isCollapsed,
+									})}
 								/>
-								<span>{menuItem.label}</span>
+								<span
+									className={cn({
+										"md:hidden": useSidebarLayout && isCollapsed,
+									})}
+								>
+									{menuItem.label}
+								</span>
 							</Link>
-						</li>
-					))}
+						);
+
+						return (
+							<li key={menuItem.href}>
+								{useSidebarLayout && isCollapsed ? (
+									<Tooltip>
+										<TooltipTrigger asChild className="hidden md:flex">
+											{menuLink}
+										</TooltipTrigger>
+										<TooltipContent side="right" sideOffset={8}>
+											{menuItem.label}
+										</TooltipContent>
+										{/* Show full menu on mobile */}
+										<div className="md:hidden">{menuLink}</div>
+									</Tooltip>
+								) : (
+									menuLink
+								)}
+							</li>
+						);
+					})}
 				</ul>
 
+				{/* Footer with user menu */}
 				<div
-					className={cn("-mx-4 md:-mx-6 mt-auto mb-0 hidden p-4 md:p-4", {
-						"md:block": useSidebarLayout,
-					})}
+					className={cn(
+						"-mx-4 mt-auto mb-0 hidden p-4",
+						{
+							"md:block": useSidebarLayout,
+							"md:px-2": useSidebarLayout && isCollapsed,
+						}
+					)}
 				>
-					<UserMenu showUserName />
+					{/* User menu */}
+					{isCollapsed ? (
+						<div className="flex justify-center">
+							<UserMenu showUserName={false} />
+						</div>
+					) : (
+						<UserMenu showUserName />
+					)}
 				</div>
 			</div>
 		</nav>

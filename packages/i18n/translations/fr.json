@@ -3024,5 +3024,12 @@
 			"title": "Aucune donnée disponible",
 			"description": "Aucun devis ne correspond à vos filtres"
 		}
+	},
+	"sidebar": {
+		"collapse": "Réduire la barre latérale",
+		"expand": "Agrandir la barre latérale"
+	},
+	"breadcrumb": {
+		"home": "Accueil"
 	}
 }

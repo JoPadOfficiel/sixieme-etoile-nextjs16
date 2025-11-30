@@ -3024,5 +3024,12 @@
 			"title": "No data available",
 			"description": "There are no quotes matching your filters"
 		}
+	},
+	"sidebar": {
+		"collapse": "Collapse sidebar",
+		"expand": "Expand sidebar"
+	},
+	"breadcrumb": {
+		"home": "Home"
 	}
 }

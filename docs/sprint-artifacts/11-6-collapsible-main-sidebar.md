@@ -195,14 +195,48 @@ useEffect(() => {
 
 ## Definition of Done
 
-- [ ] Toggle button visible in sidebar
-- [ ] Collapse/expand animation works smoothly
-- [ ] Icon-only view with tooltips
-- [ ] State persisted to localStorage
-- [ ] Content area adjusts correctly
-- [ ] Keyboard shortcut works
-- [ ] Mobile behavior unchanged
-- [ ] Logo and org selector adapt to collapsed state
-- [ ] Translations added
-- [ ] E2E tests passing
+- [x] Toggle button visible in sidebar
+- [x] Collapse/expand animation works smoothly
+- [x] Icon-only view with tooltips
+- [x] State persisted to localStorage
+- [x] Content area adjusts correctly
+- [x] Keyboard shortcut works
+- [x] Mobile behavior unchanged
+- [x] Logo and org selector adapt to collapsed state
+- [x] Translations added
+- [x] E2E tests passing
 - [ ] Code reviewed and approved
+
+## Implementation Summary
+
+### Files Created
+
+- `apps/web/modules/saas/shared/contexts/SidebarContext.tsx` - React context with `useSyncExternalStore` for state management and localStorage persistence
+- `apps/web/modules/saas/shared/components/SidebarToggleButton.tsx` - Toggle button component with tooltip
+
+### Files Modified
+
+- `apps/web/modules/saas/shared/components/NavBar.tsx` - Added collapsed state support, tooltips on menu items, compact logo, organization avatar
+- `apps/web/modules/saas/shared/components/AppWrapper.tsx` - Added SidebarProvider and TooltipProvider wrappers, dynamic margin-left
+- `packages/i18n/translations/en.json` - Added sidebar.collapse and sidebar.expand translations
+- `packages/i18n/translations/fr.json` - Added French translations
+
+### Technical Details
+
+- **State Management**: Uses `useSyncExternalStore` for proper React 18 external store synchronization
+- **Persistence**: localStorage key `sidebar-collapsed`
+- **Keyboard Shortcut**: Cmd+B (Mac) / Ctrl+B (Windows)
+- **Sidebar Widths**: Expanded = 280px, Collapsed = 64px
+- **Animation**: CSS transition 200ms ease-in-out
+- **Tooltips**: Radix UI Tooltip on menu items when collapsed
+
+### Tests Performed (Playwright MCP)
+
+1. ✅ Toggle button click collapses sidebar
+2. ✅ Toggle button click expands sidebar
+3. ✅ Keyboard shortcut (Cmd+B) toggles sidebar
+4. ✅ State persists after page refresh
+5. ✅ Tooltips appear on hover in collapsed state
+6. ✅ Organization selector shows avatar only when collapsed
+7. ✅ Logo shows compact version when collapsed
+8. ✅ Content area adjusts dynamically
