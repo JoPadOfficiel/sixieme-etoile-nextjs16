@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type {
+	PartnerContact,
 	PricingZone,
 	RouteDirection,
 	VehicleCategory,
@@ -52,6 +53,10 @@ interface RoutesTableProps {
 	onVehicleCategoryIdChange: (categoryId: string) => void;
 	statusFilter: string;
 	onStatusFilterChange: (status: string) => void;
+	// Story 13.2: Partner filter
+	partnerId?: string;
+	onPartnerIdChange?: (partnerId: string) => void;
+	partners?: PartnerContact[];
 	// Pagination
 	page: number;
 	totalPages: number;
@@ -87,6 +92,9 @@ export function RoutesTable({
 	onVehicleCategoryIdChange,
 	statusFilter,
 	onStatusFilterChange,
+	partnerId = "all",
+	onPartnerIdChange,
+	partners = [],
 	page,
 	totalPages,
 	total,
@@ -94,11 +102,15 @@ export function RoutesTable({
 }: RoutesTableProps) {
 	const t = useTranslations();
 
-	// Sort zones and categories for filters
+	// Sort zones, categories, and partners for filters
 	const sortedZones = [...zones].sort((a, b) => a.name.localeCompare(b.name));
 	const sortedCategories = [...vehicleCategories].sort((a, b) =>
 		a.name.localeCompare(b.name),
 	);
+	const sortedPartners = [...partners].sort((a, b) =>
+		a.displayName.localeCompare(b.displayName),
+	);
+	const hasPartnerFilter = partnerId !== "all";
 
 	const formatPrice = (price: number) => {
 		return new Intl.NumberFormat("fr-FR", {
@@ -196,6 +208,23 @@ export function RoutesTable({
 						</SelectItem>
 					</SelectContent>
 				</Select>
+
+				{/* Story 13.2: Partner Filter */}
+				{onPartnerIdChange && sortedPartners.length > 0 && (
+					<Select value={partnerId} onValueChange={onPartnerIdChange}>
+						<SelectTrigger className="w-[200px]">
+							<SelectValue placeholder={t("routes.filters.partner")} />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">{t("routes.filters.allPartners")}</SelectItem>
+							{sortedPartners.map((partner) => (
+								<SelectItem key={partner.id} value={partner.id}>
+									{partner.displayName}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				)}
 			</div>
 
 			{/* Table */}
@@ -210,6 +239,12 @@ export function RoutesTable({
 							<TableHead className="text-right">
 								{t("routes.table.fixedPrice")}
 							</TableHead>
+							{/* Story 13.2: Show override price column when partner filter is active */}
+							{hasPartnerFilter && (
+								<TableHead className="text-right">
+									{t("routes.table.overridePrice")}
+								</TableHead>
+							)}
 							<TableHead>{t("routes.table.status")}</TableHead>
 							<TableHead className="w-[100px]">
 								{t("routes.table.actions")}
@@ -219,14 +254,14 @@ export function RoutesTable({
 					<TableBody>
 						{isLoading ? (
 							<TableRow>
-								<TableCell colSpan={7} className="h-24 text-center">
+								<TableCell colSpan={hasPartnerFilter ? 8 : 7} className="h-24 text-center">
 									<Loader2Icon className="mx-auto size-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
 						) : routes.length === 0 ? (
 							<TableRow>
 								<TableCell
-									colSpan={7}
+									colSpan={hasPartnerFilter ? 8 : 7}
 									className="h-24 text-center text-muted-foreground"
 								>
 									{t("routes.noRoutes")}
@@ -271,6 +306,23 @@ export function RoutesTable({
 									<TableCell className="text-right font-medium">
 										{formatPrice(route.fixedPrice)}
 									</TableCell>
+									{/* Story 13.2: Show override price when partner filter is active */}
+									{hasPartnerFilter && (
+										<TableCell className="text-right">
+											{route.hasOverride && route.overridePrice != null ? (
+												<div className="flex items-center justify-end gap-2">
+													<span className="font-medium text-primary">
+														{formatPrice(route.overridePrice as number)}
+													</span>
+													<Badge variant="secondary" className="text-xs">
+														{t("routes.table.negotiated")}
+													</Badge>
+												</div>
+											) : (
+												<span className="text-muted-foreground">—</span>
+											)}
+										</TableCell>
+									)}
 									<TableCell>
 										<Badge variant={route.isActive ? "default" : "secondary"}>
 											{route.isActive

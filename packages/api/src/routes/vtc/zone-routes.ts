@@ -75,6 +75,8 @@ const listRoutesSchema = z.object({
 	direction: routeDirectionEnum.optional(),
 	isActive: z.enum(["true", "false"]).optional(),
 	search: z.string().optional(),
+	// Story 13.2: Partner filter to show override prices
+	partnerId: z.string().optional(),
 });
 
 export const zoneRoutesRouter = new Hono()
@@ -103,6 +105,7 @@ export const zoneRoutesRouter = new Hono()
 				direction,
 				isActive,
 				search,
+				partnerId,
 			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
@@ -150,6 +153,16 @@ export const zoneRoutesRouter = new Hono()
 				organizationId,
 			);
 
+			// Story 13.2: If partnerId is provided, get the partner's contract ID
+			let partnerContractId: string | null = null;
+			if (partnerId) {
+				const partnerContract = await db.partnerContract.findFirst({
+					where: withTenantFilter({ contactId: partnerId }, organizationId),
+					select: { id: true },
+				});
+				partnerContractId = partnerContract?.id ?? null;
+			}
+
 			const [routes, total] = await Promise.all([
 				db.zoneRoute.findMany({
 					where,
@@ -190,18 +203,50 @@ export const zoneRoutesRouter = new Hono()
 								defaultRatePerHour: true,
 							},
 						},
+						// Story 13.2: Include partner contract override prices when partnerId is provided
+						...(partnerContractId && {
+							partnerContractZoneRoutes: {
+								where: { partnerContractId },
+								select: {
+									id: true,
+									overridePrice: true,
+								},
+							},
+						}),
 					},
 				}),
 				db.zoneRoute.count({ where }),
 			]);
 
+			// Story 13.2: Transform routes to include override price info
+			const transformedRoutes = routes.map((route) => {
+				const transformed = transformRoute(route);
+				
+				// If we have partner contract data, extract the override price
+				if (partnerContractId && 'partnerContractZoneRoutes' in route) {
+					const contractRoute = (route as { partnerContractZoneRoutes?: { overridePrice: unknown }[] }).partnerContractZoneRoutes?.[0];
+					return {
+						...transformed,
+						overridePrice: contractRoute ? decimalToNumber(contractRoute.overridePrice) : null,
+						hasOverride: contractRoute?.overridePrice !== null && contractRoute?.overridePrice !== undefined,
+					};
+				}
+				
+				return {
+					...transformed,
+					overridePrice: null,
+					hasOverride: false,
+				};
+			});
+
 			return c.json({
-				data: routes.map(transformRoute),
+				data: transformedRoutes,
 				meta: {
 					page,
 					limit,
 					total,
 					totalPages: Math.ceil(total / limit),
+					partnerId: partnerId ?? null,
 				},
 			});
 		},

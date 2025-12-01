@@ -114,6 +114,9 @@ export interface ZoneRoute {
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
+	// Story 13.2: Partner-specific override price (when partnerId filter is used)
+	overridePrice?: number | null;
+	hasOverride?: boolean;
 }
 
 export interface ZoneRouteFormData {
@@ -132,7 +135,16 @@ export interface ZoneRoutesListResponse {
 		limit: number;
 		total: number;
 		totalPages: number;
+		// Story 13.2: Partner filter info
+		partnerId?: string | null;
 	};
+}
+
+// Story 13.2: Partner contact for filter dropdown
+export interface PartnerContact {
+	id: string;
+	displayName: string;
+	companyName?: string | null;
 }
 
 // Excursion Package types

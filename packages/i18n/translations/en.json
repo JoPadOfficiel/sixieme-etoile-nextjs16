@@ -855,17 +855,21 @@
 			"vehicleCategory": "Vehicle Category",
 			"direction": "Direction",
 			"fixedPrice": "Fixed Price",
+			"overridePrice": "Negotiated Price",
 			"status": "Status",
-			"actions": "Actions"
+			"actions": "Actions",
+			"negotiated": "Negotiated"
 		},
 		"filters": {
 			"fromZone": "From Zone",
 			"toZone": "To Zone",
 			"vehicleCategory": "Vehicle Category",
 			"status": "Status",
+			"partner": "Partner",
 			"allZones": "All zones",
 			"allCategories": "All categories",
 			"allStatus": "All status",
+			"allPartners": "All partners",
 			"active": "Active",
 			"inactive": "Inactive"
 		},
