@@ -128,7 +128,11 @@ export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licen
 
 export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','isActive','createdAt','updatedAt']);
 
-export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
+export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
+
+export const ZoneRouteOriginZoneScalarFieldEnumSchema = z.enum(['id','zoneRouteId','zoneId','pricingZoneId']);
+
+export const ZoneRouteDestinationZoneScalarFieldEnumSchema = z.enum(['id','zoneRouteId','zoneId','pricingZoneId']);
 
 export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','originZoneId','destinationZoneId','vehicleCategoryId','includedDurationHours','includedDistanceKm','price','isActive','createdAt','updatedAt']);
 
@@ -247,6 +251,10 @@ export type InvoiceLineTypeType = `${z.infer<typeof InvoiceLineTypeSchema>}`
 export const PaymentTermsSchema = z.enum(['IMMEDIATE','DAYS_15','DAYS_30','DAYS_45','DAYS_60']);
 
 export type PaymentTermsType = `${z.infer<typeof PaymentTermsSchema>}`
+
+export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
+
+export type OriginDestinationTypeType = `${z.infer<typeof OriginDestinationTypeSchema>}`
 
 /////////////////////////////////////////
 // MODELS
@@ -770,13 +778,24 @@ export type PricingZone = z.infer<typeof PricingZoneSchema>
 
 /**
  * ZoneRoute - Method 1 zone-to-zone fixed pricing for transfers
+ * Extended in Story 14.2 to support multi-zone and address-based origins/destinations
  */
 export const ZoneRouteSchema = z.object({
+  originType: OriginDestinationTypeSchema,
+  destinationType: OriginDestinationTypeSchema,
   direction: RouteDirectionSchema,
   id: z.string().cuid(),
   organizationId: z.string(),
-  fromZoneId: z.string(),
-  toZoneId: z.string(),
+  originPlaceId: z.string().nullable(),
+  originAddress: z.string().nullable(),
+  originLat: z.number().nullable(),
+  originLng: z.number().nullable(),
+  destPlaceId: z.string().nullable(),
+  destAddress: z.string().nullable(),
+  destLat: z.number().nullable(),
+  destLng: z.number().nullable(),
+  fromZoneId: z.string().nullable(),
+  toZoneId: z.string().nullable(),
   vehicleCategoryId: z.string(),
   fixedPrice: z.instanceof(Prisma.Decimal, { message: "Field 'fixedPrice' must be a Decimal. Location: ['Models', 'ZoneRoute']"}),
   isActive: z.boolean(),
@@ -785,6 +804,38 @@ export const ZoneRouteSchema = z.object({
 })
 
 export type ZoneRoute = z.infer<typeof ZoneRouteSchema>
+
+/////////////////////////////////////////
+// ZONE ROUTE ORIGIN ZONE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Junction table for multi-zone origins (Story 14.2)
+ */
+export const ZoneRouteOriginZoneSchema = z.object({
+  id: z.string().cuid(),
+  zoneRouteId: z.string(),
+  zoneId: z.string(),
+  pricingZoneId: z.string().nullable(),
+})
+
+export type ZoneRouteOriginZone = z.infer<typeof ZoneRouteOriginZoneSchema>
+
+/////////////////////////////////////////
+// ZONE ROUTE DESTINATION ZONE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Junction table for multi-zone destinations (Story 14.2)
+ */
+export const ZoneRouteDestinationZoneSchema = z.object({
+  id: z.string().cuid(),
+  zoneRouteId: z.string(),
+  zoneId: z.string(),
+  pricingZoneId: z.string().nullable(),
+})
+
+export type ZoneRouteDestinationZone = z.infer<typeof ZoneRouteDestinationZoneSchema>
 
 /////////////////////////////////////////
 // EXCURSION PACKAGE SCHEMA

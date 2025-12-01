@@ -807,31 +807,61 @@ model PricingZone {
   updatedAt DateTime @updatedAt
 
   // Relations
-  fromRoutes            ZoneRoute[]           @relation("FromZone")
-  toRoutes              ZoneRoute[]           @relation("ToZone")
-  excursionOrigins      ExcursionPackage[]    @relation("ExcursionOrigin")
-  excursionDestinations ExcursionPackage[]    @relation("ExcursionDestination")
-  advancedRates         AdvancedRate[]
-  emptyLegFrom          EmptyLegOpportunity[] @relation("EmptyLegFrom")
-  emptyLegTo            EmptyLegOpportunity[] @relation("EmptyLegTo")
-  subcontractorZones    SubcontractorZone[]
+  fromRoutes                ZoneRoute[]                @relation("FromZone")
+  toRoutes                  ZoneRoute[]                @relation("ToZone")
+  // Story 14.2: Multi-zone route relations
+  originZoneRoutes          ZoneRouteOriginZone[]      @relation("OriginZones")
+  destinationZoneRoutes     ZoneRouteDestinationZone[] @relation("DestinationZones")
+  excursionOrigins          ExcursionPackage[]         @relation("ExcursionOrigin")
+  excursionDestinations     ExcursionPackage[]         @relation("ExcursionDestination")
+  advancedRates             AdvancedRate[]
+  emptyLegFrom              EmptyLegOpportunity[]      @relation("EmptyLegFrom")
+  emptyLegTo                EmptyLegOpportunity[]      @relation("EmptyLegTo")
+  subcontractorZones        SubcontractorZone[]
+  zoneRouteOriginZones      ZoneRouteOriginZone[]
+  zoneRouteDestinationZones ZoneRouteDestinationZone[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
   @@map("pricing_zone")
 }
 
+/// Origin/Destination type for flexible route configuration (Story 14.2)
+enum OriginDestinationType {
+  ZONES // Multiple zones can be selected
+  ADDRESS // Specific address via Google Places
+}
+
 /// ZoneRoute - Method 1 zone-to-zone fixed pricing for transfers
+/// Extended in Story 14.2 to support multi-zone and address-based origins/destinations
 model ZoneRoute {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  // Route definition
-  fromZoneId        String
-  fromZone          PricingZone     @relation("FromZone", fields: [fromZoneId], references: [id])
-  toZoneId          String
-  toZone            PricingZone     @relation("ToZone", fields: [toZoneId], references: [id])
+  // Origin configuration (Story 14.2)
+  originType    OriginDestinationType @default(ZONES)
+  originZones   ZoneRouteOriginZone[]
+  originPlaceId String? // Google Place ID for ADDRESS type
+  originAddress String? // Human-readable address
+  originLat     Float?
+  originLng     Float?
+
+  // Destination configuration (Story 14.2)
+  destinationType  OriginDestinationType      @default(ZONES)
+  destinationZones ZoneRouteDestinationZone[]
+  destPlaceId      String? // Google Place ID for ADDRESS type
+  destAddress      String? // Human-readable address
+  destLat          Float?
+  destLng          Float?
+
+  // Legacy fields (kept for backward compatibility)
+  fromZoneId String?
+  fromZone   PricingZone? @relation("FromZone", fields: [fromZoneId], references: [id])
+  toZoneId   String?
+  toZone     PricingZone? @relation("ToZone", fields: [toZoneId], references: [id])
+
+  // Vehicle category
   vehicleCategoryId String
   vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
 
@@ -848,7 +878,41 @@ model ZoneRoute {
   @@index([organizationId])
   @@index([fromZoneId, toZoneId])
   @@index([vehicleCategoryId])
+  @@index([originType])
+  @@index([destinationType])
   @@map("zone_route")
+}
+
+/// Junction table for multi-zone origins (Story 14.2)
+model ZoneRouteOriginZone {
+  id            String       @id @default(cuid())
+  zoneRouteId   String
+  zoneRoute     ZoneRoute    @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+  zoneId        String
+  zone          PricingZone  @relation("OriginZones", fields: [zoneId], references: [id])
+  pricingZone   PricingZone? @relation(fields: [pricingZoneId], references: [id])
+  pricingZoneId String?
+
+  @@unique([zoneRouteId, zoneId])
+  @@index([zoneRouteId])
+  @@index([zoneId])
+  @@map("zone_route_origin_zone")
+}
+
+/// Junction table for multi-zone destinations (Story 14.2)
+model ZoneRouteDestinationZone {
+  id            String       @id @default(cuid())
+  zoneRouteId   String
+  zoneRoute     ZoneRoute    @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+  zoneId        String
+  zone          PricingZone  @relation("DestinationZones", fields: [zoneId], references: [id])
+  pricingZone   PricingZone? @relation(fields: [pricingZoneId], references: [id])
+  pricingZoneId String?
+
+  @@unique([zoneRouteId, zoneId])
+  @@index([zoneRouteId])
+  @@index([zoneId])
+  @@map("zone_route_destination_zone")
 }
 
 /// ExcursionPackage - Forfaits for excursions (Normandy, Loire Valley, etc.)

@@ -17,27 +17,33 @@ const decimalToNumber = (value: unknown): number | null => {
 	return Number(value);
 };
 
+// Transform zone to convert Decimals to numbers
+// biome-ignore lint/suspicious/noExplicitAny: Prisma returns dynamic types
+const transformZone = (zone: any) => ({
+	...zone,
+	centerLatitude: decimalToNumber(zone.centerLatitude),
+	centerLongitude: decimalToNumber(zone.centerLongitude),
+	radiusKm: decimalToNumber(zone.radiusKm),
+	priceMultiplier: decimalToNumber(zone.priceMultiplier),
+});
+
 // Transform route to convert Decimals to numbers
 // biome-ignore lint/suspicious/noExplicitAny: Prisma returns dynamic types
 const transformRoute = (route: any) => ({
 	...route,
 	fixedPrice: decimalToNumber(route.fixedPrice),
-	fromZone: route.fromZone
-		? {
-				...route.fromZone,
-				centerLatitude: decimalToNumber(route.fromZone.centerLatitude),
-				centerLongitude: decimalToNumber(route.fromZone.centerLongitude),
-				radiusKm: decimalToNumber(route.fromZone.radiusKm),
-			}
-		: null,
-	toZone: route.toZone
-		? {
-				...route.toZone,
-				centerLatitude: decimalToNumber(route.toZone.centerLatitude),
-				centerLongitude: decimalToNumber(route.toZone.centerLongitude),
-				radiusKm: decimalToNumber(route.toZone.radiusKm),
-			}
-		: null,
+	// Legacy fields (backward compatibility)
+	fromZone: route.fromZone ? transformZone(route.fromZone) : null,
+	toZone: route.toZone ? transformZone(route.toZone) : null,
+	// Story 14.2: New multi-zone relations
+	originZones: route.originZones?.map((oz: { zone: unknown }) => ({
+		...oz,
+		zone: oz.zone ? transformZone(oz.zone) : null,
+	})) ?? [],
+	destinationZones: route.destinationZones?.map((dz: { zone: unknown }) => ({
+		...dz,
+		zone: dz.zone ? transformZone(dz.zone) : null,
+	})) ?? [],
 	vehicleCategory: route.vehicleCategory
 		? {
 				...route.vehicleCategory,
@@ -170,6 +176,7 @@ export const zoneRoutesRouter = new Hono()
 					take: limit,
 					orderBy: [{ fromZone: { name: "asc" } }, { toZone: { name: "asc" } }],
 					include: {
+						// Legacy zone relations (backward compatibility)
 						fromZone: {
 							select: {
 								id: true,
@@ -179,6 +186,7 @@ export const zoneRoutesRouter = new Hono()
 								centerLatitude: true,
 								centerLongitude: true,
 								radiusKm: true,
+								priceMultiplier: true,
 							},
 						},
 						toZone: {
@@ -190,6 +198,40 @@ export const zoneRoutesRouter = new Hono()
 								centerLatitude: true,
 								centerLongitude: true,
 								radiusKm: true,
+								priceMultiplier: true,
+							},
+						},
+						// Story 14.2: New multi-zone relations
+						originZones: {
+							include: {
+								zone: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										zoneType: true,
+										centerLatitude: true,
+										centerLongitude: true,
+										radiusKm: true,
+										priceMultiplier: true,
+									},
+								},
+							},
+						},
+						destinationZones: {
+							include: {
+								zone: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										zoneType: true,
+										centerLatitude: true,
+										centerLongitude: true,
+										radiusKm: true,
+										priceMultiplier: true,
+									},
+								},
 							},
 						},
 						vehicleCategory: {
@@ -267,6 +309,7 @@ export const zoneRoutesRouter = new Hono()
 			const route = await db.zoneRoute.findFirst({
 				where: withTenantFilter({ id }, organizationId),
 				include: {
+					// Legacy zone relations
 					fromZone: {
 						select: {
 							id: true,
@@ -276,6 +319,7 @@ export const zoneRoutesRouter = new Hono()
 							centerLatitude: true,
 							centerLongitude: true,
 							radiusKm: true,
+							priceMultiplier: true,
 						},
 					},
 					toZone: {
@@ -287,6 +331,40 @@ export const zoneRoutesRouter = new Hono()
 							centerLatitude: true,
 							centerLongitude: true,
 							radiusKm: true,
+							priceMultiplier: true,
+						},
+					},
+					// Story 14.2: New multi-zone relations
+					originZones: {
+						include: {
+							zone: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+									zoneType: true,
+									centerLatitude: true,
+									centerLongitude: true,
+									radiusKm: true,
+									priceMultiplier: true,
+								},
+							},
+						},
+					},
+					destinationZones: {
+						include: {
+							zone: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+									zoneType: true,
+									centerLatitude: true,
+									centerLongitude: true,
+									radiusKm: true,
+									priceMultiplier: true,
+								},
+							},
 						},
 					},
 					vehicleCategory: {
