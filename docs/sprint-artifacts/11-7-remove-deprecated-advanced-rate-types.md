@@ -6,7 +6,7 @@
 **I want** deprecated advanced rate types removed from the system  
 **So that** the pricing configuration is cleaner and less confusing
 
-## Status: IN PROGRESS
+## Status: done
 
 **Sprint:** 11 - Zone Management Refactoring & UI Improvements  
 **Priority:** Medium  
@@ -191,14 +191,14 @@ enum AdvancedRateAppliesTo {
 
 ## Definition of Done
 
-- [ ] Deprecated types removed from enum
-- [ ] UI updated to show only NIGHT/WEEKEND
-- [ ] API rejects deprecated types
-- [ ] Migration script created and tested
-- [ ] Existing data migrated or archived
-- [ ] Pricing engine updated
-- [ ] Summary cards updated
-- [ ] Translations cleaned up
-- [ ] Documentation updated
-- [ ] Tests passing
-- [ ] Code reviewed and approved
+- [x] Deprecated types removed from enum
+- [x] UI updated to show only NIGHT/WEEKEND
+- [x] API rejects deprecated types
+- [x] Migration script created and tested
+- [x] Existing data migrated or archived
+- [x] Pricing engine updated
+- [x] Summary cards updated
+- [x] Translations cleaned up
+- [x] Documentation updated
+- [x] Tests passing
+- [x] Code reviewed and approved
