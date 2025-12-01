@@ -4,13 +4,13 @@ import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import {
 	DropdownMenu,
-	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@ui/components/dropdown-menu";
 import { Input } from "@ui/components/input";
 import { cn } from "@ui/lib";
-import { ChevronsUpDown, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PricingZone } from "../types";
@@ -116,8 +116,11 @@ export function MultiZoneSelect({
 						</div>
 					</div>
 					
-					{/* Zone list */}
-					<div className="max-h-60 overflow-y-auto">
+					{/* Zone list with scroll */}
+					<div 
+						className="max-h-60 overflow-y-auto overscroll-contain p-1"
+						onWheel={(e) => e.stopPropagation()}
+					>
 						{filteredZones.length === 0 ? (
 							<p className="text-sm text-muted-foreground text-center py-4">
 								{t("routes.form.noZonesFound")}
@@ -126,18 +129,30 @@ export function MultiZoneSelect({
 							filteredZones.map((zone) => {
 								const isSelected = selectedIds.includes(zone.id);
 								return (
-									<DropdownMenuCheckboxItem
+									<DropdownMenuItem
 										key={zone.id}
-										checked={isSelected}
-										onCheckedChange={(checked) => handleSelect(zone.id, checked)}
-										onSelect={(e) => e.preventDefault()}
-										className="cursor-pointer"
+										onSelect={(e) => {
+											e.preventDefault();
+											handleSelect(zone.id, !isSelected);
+										}}
+										className="cursor-pointer flex items-center gap-3 py-2"
 									>
+										{/* Circle checkbox */}
+										<div
+											className={cn(
+												"h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+												isSelected
+													? "border-primary bg-primary"
+													: "border-muted-foreground/50",
+											)}
+										>
+											{isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+										</div>
 										<span className="flex-1">{zone.name}</span>
-										<span className="text-muted-foreground text-xs ml-2">
+										<span className="text-muted-foreground text-xs">
 											({zone.code})
 										</span>
-									</DropdownMenuCheckboxItem>
+									</DropdownMenuItem>
 								);
 							})
 						)}
