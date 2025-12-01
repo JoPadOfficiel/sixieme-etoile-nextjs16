@@ -182,6 +182,7 @@
 	},
 	"common": {
 		"optional": "Optionnel",
+		"remove": "Supprimer",
 		"map": {
 			"noApiKey": "Clé API Google Maps non configurée",
 			"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations",

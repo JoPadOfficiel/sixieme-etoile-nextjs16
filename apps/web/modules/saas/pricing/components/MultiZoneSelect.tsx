@@ -2,7 +2,6 @@
 
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
-import { Checkbox } from "@ui/components/checkbox";
 import { Input } from "@ui/components/input";
 import {
 	Popover,
@@ -75,7 +74,7 @@ export function MultiZoneSelect({
 
 	return (
 		<div className="space-y-2">
-			<Popover open={open} onOpenChange={setOpen}>
+			<Popover open={open} onOpenChange={setOpen} modal={false}>
 				<PopoverTrigger asChild>
 					<Button
 						variant="outline"
@@ -95,7 +94,12 @@ export function MultiZoneSelect({
 						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+				<PopoverContent 
+					className="w-[var(--radix-popover-trigger-width)] p-0" 
+					align="start"
+					sideOffset={4}
+					onOpenAutoFocus={(e) => e.preventDefault()}
+				>
 					{/* Search input */}
 					<div className="p-2 border-b">
 						<div className="relative">
@@ -110,7 +114,7 @@ export function MultiZoneSelect({
 					</div>
 					
 					{/* Zone list */}
-					<div className="max-h-60 overflow-auto p-1">
+					<div className="max-h-60 overflow-y-auto p-1">
 						{filteredZones.length === 0 ? (
 							<p className="text-sm text-muted-foreground text-center py-4">
 								{t("routes.form.noZonesFound")}
@@ -119,29 +123,40 @@ export function MultiZoneSelect({
 							filteredZones.map((zone) => {
 								const isSelected = selectedIds.includes(zone.id);
 								return (
-									<button
+									<div
 										key={zone.id}
-										type="button"
+										role="option"
+										aria-selected={isSelected}
+										tabIndex={0}
 										onClick={() => handleSelect(zone.id)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												handleSelect(zone.id);
+											}
+										}}
 										className={cn(
-											"w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-sm",
+											"w-full flex items-center gap-2 px-2 py-2 rounded-sm text-sm cursor-pointer",
 											"hover:bg-accent hover:text-accent-foreground",
 											"focus:bg-accent focus:text-accent-foreground focus:outline-none",
 											isSelected && "bg-accent/50",
 										)}
 									>
-										<Checkbox
-											checked={isSelected}
-											className="pointer-events-none"
-										/>
+										<div
+											className={cn(
+												"h-4 w-4 rounded-sm border flex items-center justify-center",
+												isSelected
+													? "bg-primary border-primary text-primary-foreground"
+													: "border-input",
+											)}
+										>
+											{isSelected && <Check className="h-3 w-3" />}
+										</div>
 										<span className="flex-1 text-left">{zone.name}</span>
 										<span className="text-muted-foreground text-xs">
 											({zone.code})
 										</span>
-										{isSelected && (
-											<Check className="h-4 w-4 text-primary" />
-										)}
-									</button>
+									</div>
 								);
 							})
 						)}

@@ -182,6 +182,7 @@
 	},
 	"common": {
 		"optional": "Optional",
+		"remove": "Remove",
 		"map": {
 			"noApiKey": "Google Maps API key not configured",
 			"configureInSettings": "Configure it in Organization Settings > Integrations",
