@@ -124,3 +124,7 @@ development_status:
   12-1-partner-specific-pricing-schema: done
   12-2-pricing-engine-override-support: done
   12-3-partner-contract-override-ui: done
+  # Epic 13 - Pricing UI Improvements & Partner Filtering
+  epic-13: contexted
+  13-1-fix-pricing-ui-translations: drafted
+  13-2-pricing-pages-partner-filter: drafted

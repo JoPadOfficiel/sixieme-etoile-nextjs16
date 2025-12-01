@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0">
+  <metadata>
+    <epic_id>13</epic_id>
+    <story_id>1</story_id>
+    <story_key>13-1-fix-pricing-ui-translations</story_key>
+    <story_title>Fix Pricing UI Translations - Consistent i18n</story_title>
+    <status>drafted</status>
+    <generated>2025-12-01T12:45:00+01:00</generated>
+  </metadata>
+
+  <user_story>
+    <as_a>User</as_a>
+    <i_want>all pricing UI labels to be displayed in my selected language (EN or FR) consistently</i_want>
+    <so_that>I have a coherent user experience without mixed language labels</so_that>
+  </user_story>
+
+  <problem_statement>
+    <description>
+      The Partner Contract UI and Price Override components display mixed French/English labels.
+      Labels like "Trajet", "Catégorie", "Prix catalogue", "Prix négocié", "Négocié", "Catalogue"
+      are hardcoded in French instead of using the i18n translation system.
+      This creates an inconsistent UX for English-speaking users.
+    </description>
+    <impact>
+      - Poor UX for non-French users
+      - Inconsistent interface language
+      - Breaks i18n best practices
+    </impact>
+  </problem_statement>
+
+  <objectives>
+    <objective id="O1">Replace all hardcoded French labels with translation keys</objective>
+    <objective id="O2">Add missing translation keys to en.json and fr.json</objective>
+    <objective id="O3">Ensure all pricing-related components use useTranslations()</objective>
+  </objectives>
+
+  <scope>
+    <in_scope>
+      - PriceOverrideTable.tsx - Table headers and labels
+      - PriceOverrideCell.tsx - Status badges and tooltips
+      - PartnerContractForm.tsx - Section titles
+      - Translation files: en.json, fr.json
+    </in_scope>
+    <out_of_scope>
+      - Route architecture refactoring (separate story)
+      - Partner filtering (separate story)
+    </out_of_scope>
+  </scope>
+
+  <acceptance_criteria>
+    <criterion id="AC1">All table headers in PriceOverrideTable use t() with translation keys</criterion>
+    <criterion id="AC2">All badges ("Négocié", "Catalogue") use t() with translation keys</criterion>
+    <criterion id="AC3">All tooltips and button labels use t() with translation keys</criterion>
+    <criterion id="AC4">en.json contains all new translation keys with English values</criterion>
+    <criterion id="AC5">fr.json contains all new translation keys with French values</criterion>
+    <criterion id="AC6">No hardcoded French or English strings remain in pricing components</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="User Experience Principles" />
+      <doc path="packages/i18n/translations/en.json" title="English Translations" />
+      <doc path="packages/i18n/translations/fr.json" title="French Translations" />
+    </docs>
+    <code>
+      <file path="apps/web/modules/saas/contacts/components/PriceOverrideTable.tsx" kind="component" reason="Contains hardcoded French labels for table headers" />
+      <file path="apps/web/modules/saas/contacts/components/PriceOverrideCell.tsx" kind="component" reason="Contains hardcoded French labels for badges" />
+      <file path="apps/web/modules/saas/contacts/components/PartnerContractForm.tsx" kind="component" reason="Main form using price override components" />
+    </code>
+  </artifacts>
+
+  <constraints>
+    <constraint>Must use existing i18n pattern with useTranslations() hook</constraint>
+    <constraint>Must maintain backward compatibility with existing translations</constraint>
+    <constraint>Must follow existing translation key naming convention (contacts.contract.*)</constraint>
+  </constraints>
+
+  <tests>
+    <standards>Use Playwright MCP to verify UI displays correct language based on locale</standards>
+    <ideas>
+      <idea ac="AC1,AC2,AC3">Navigate to partner contract, verify all labels match locale</idea>
+      <idea ac="AC4,AC5">Check translation files contain all required keys</idea>
+      <idea ac="AC6">Grep search for hardcoded strings in components</idea>
+    </ideas>
+  </tests>
+</story-context>

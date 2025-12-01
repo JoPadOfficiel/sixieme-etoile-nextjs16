@@ -11,6 +11,7 @@ import {
 import { Badge } from "@ui/components/badge";
 import { cn } from "@ui/lib";
 import { ChevronDownIcon, ChevronRightIcon, RouteIcon, MapIcon, ClockIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { PriceOverrideCell } from "./PriceOverrideCell";
 import type { ZoneRouteAssignment, PackageAssignment } from "../types";
@@ -30,8 +31,10 @@ interface PackagesTableProps {
 
 /**
  * Story 12.3: Collapsible table for zone routes with override prices
+ * Story 13.1: i18n translations
  */
 export function ZoneRoutesTable({ routes, onPriceChange, disabled = false }: ZoneRoutesTableProps) {
+  const t = useTranslations("contacts.contract");
   const [isOpen, setIsOpen] = useState(true);
   
   const overrideCount = routes.filter(r => r.overridePrice !== null).length;
@@ -40,7 +43,7 @@ export function ZoneRoutesTable({ routes, onPriceChange, disabled = false }: Zon
     return (
       <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
         <RouteIcon className="mx-auto h-8 w-8 mb-2 opacity-50" />
-        <p>Aucune route assignée</p>
+        <p>{t("priceOverride.noRoutes")}</p>
       </div>
     );
   }
@@ -59,13 +62,13 @@ export function ZoneRoutesTable({ routes, onPriceChange, disabled = false }: Zon
             <ChevronRightIcon className="h-4 w-4" />
           )}
           <RouteIcon className="h-4 w-4 text-primary" />
-          <span className="font-medium">Routes de zone</span>
+          <span className="font-medium">{t("zoneRoutes")}</span>
           <Badge variant="secondary" className="ml-2">
             {routes.length}
           </Badge>
           {overrideCount > 0 && (
             <Badge variant="default" className="ml-1">
-              {overrideCount} négocié{overrideCount > 1 ? "s" : ""}
+              {t("priceOverride.countNegotiated", { count: overrideCount })}
             </Badge>
           )}
         </div>
@@ -80,10 +83,10 @@ export function ZoneRoutesTable({ routes, onPriceChange, disabled = false }: Zon
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[35%]">Trajet</TableHead>
-                <TableHead className="w-[20%]">Catégorie</TableHead>
-                <TableHead className="w-[15%] text-right">Prix catalogue</TableHead>
-                <TableHead className="w-[30%]">Prix négocié</TableHead>
+                <TableHead className="w-[35%]">{t("priceOverride.route")}</TableHead>
+                <TableHead className="w-[20%]">{t("priceOverride.category")}</TableHead>
+                <TableHead className="w-[15%] text-right">{t("priceOverride.catalogPrice")}</TableHead>
+                <TableHead className="w-[30%]">{t("priceOverride.negotiatedPrice")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -118,19 +121,22 @@ export function ZoneRoutesTable({ routes, onPriceChange, disabled = false }: Zon
 
 /**
  * Story 12.3: Collapsible table for excursion/dispo packages with override prices
+ * Story 13.1: i18n translations
  */
 export function PackagesTable({ packages, onPriceChange, type, disabled = false }: PackagesTableProps) {
+  const t = useTranslations("contacts.contract");
   const [isOpen, setIsOpen] = useState(true);
   
   const overrideCount = packages.filter(p => p.overridePrice !== null).length;
   const Icon = type === "excursion" ? MapIcon : ClockIcon;
-  const title = type === "excursion" ? "Forfaits excursion" : "Forfaits mise à disposition";
+  const title = type === "excursion" ? t("excursionPackages") : t("dispoPackages");
+  const emptyMessage = type === "excursion" ? t("priceOverride.noExcursions") : t("priceOverride.noDispos");
 
   if (packages.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
         <Icon className="mx-auto h-8 w-8 mb-2 opacity-50" />
-        <p>Aucun forfait {type === "excursion" ? "excursion" : "dispo"} assigné</p>
+        <p>{emptyMessage}</p>
       </div>
     );
   }
@@ -155,7 +161,7 @@ export function PackagesTable({ packages, onPriceChange, type, disabled = false 
           </Badge>
           {overrideCount > 0 && (
             <Badge variant="default" className="ml-1">
-              {overrideCount} négocié{overrideCount > 1 ? "s" : ""}
+              {t("priceOverride.countNegotiated", { count: overrideCount })}
             </Badge>
           )}
         </div>
@@ -170,9 +176,9 @@ export function PackagesTable({ packages, onPriceChange, type, disabled = false 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[45%]">Nom</TableHead>
-                <TableHead className="w-[20%] text-right">Prix catalogue</TableHead>
-                <TableHead className="w-[35%]">Prix négocié</TableHead>
+                <TableHead className="w-[45%]">{t("priceOverride.name")}</TableHead>
+                <TableHead className="w-[20%] text-right">{t("priceOverride.catalogPrice")}</TableHead>
+                <TableHead className="w-[35%]">{t("priceOverride.negotiatedPrice")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

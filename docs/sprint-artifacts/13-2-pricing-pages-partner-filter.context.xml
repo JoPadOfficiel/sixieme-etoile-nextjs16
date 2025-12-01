@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0">
+  <metadata>
+    <epic_id>13</epic_id>
+    <story_id>2</story_id>
+    <story_key>13-2-pricing-pages-partner-filter</story_key>
+    <story_title>Add Partner Filter to Pricing Pages</story_title>
+    <status>drafted</status>
+    <generated>2025-12-01T12:45:00+01:00</generated>
+  </metadata>
+
+  <user_story>
+    <as_a>Commercial Manager</as_a>
+    <i_want>to filter pricing pages (routes, excursions, dispos) by partner/agency</i_want>
+    <so_that>I can see all negotiated prices for a specific partner at once</so_that>
+  </user_story>
+
+  <problem_statement>
+    <description>
+      Currently, the pricing configuration pages (/settings/pricing/routes, /excursions, /dispos)
+      show all routes/packages without any partner filtering capability.
+      
+      Users cannot:
+      - See which routes are assigned to a specific partner
+      - View all override prices for a partner in one place
+      - Quickly audit a partner's complete pricing configuration
+      
+      This makes it difficult to manage partner-specific pricing efficiently.
+    </description>
+    <impact>
+      - Time-consuming to audit partner pricing
+      - Risk of missing or incorrect override prices
+      - Poor UX for commercial managers
+    </impact>
+  </problem_statement>
+
+  <objectives>
+    <objective id="O1">Add partner filter dropdown to /settings/pricing/routes page</objective>
+    <objective id="O2">Add partner filter dropdown to /settings/pricing/excursions page</objective>
+    <objective id="O3">Add partner filter dropdown to /settings/pricing/dispos page</objective>
+    <objective id="O4">Display override prices when a partner is selected</objective>
+    <objective id="O5">Show visual indicator for routes with negotiated prices</objective>
+  </objectives>
+
+  <scope>
+    <in_scope>
+      - Partner filter dropdown on pricing pages
+      - API endpoints to fetch routes/packages with partner override prices
+      - Visual indicators for negotiated vs catalog prices
+      - Filter state management
+    </in_scope>
+    <out_of_scope>
+      - Route architecture refactoring (separate story 13-3)
+      - Bulk editing of override prices
+      - Export functionality
+    </out_of_scope>
+  </scope>
+
+  <acceptance_criteria>
+    <criterion id="AC1">Routes page has a "Partner" filter dropdown showing all partner contacts</criterion>
+    <criterion id="AC2">When a partner is selected, routes show their override price (if any) alongside catalog price</criterion>
+    <criterion id="AC3">Routes with negotiated prices display a "Negotiated" badge</criterion>
+    <criterion id="AC4">Excursions page has the same partner filter functionality</criterion>
+    <criterion id="AC5">Dispos page has the same partner filter functionality</criterion>
+    <criterion id="AC6">Clearing the partner filter shows all routes with catalog prices only</criterion>
+    <criterion id="AC7">API returns partner-specific override prices when partnerId query param is provided</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" title="PRD" section="CRM & Partner Contracts" />
+      <doc path="docs/sprint-artifacts/12-3-partner-contract-override-ui.md" title="Story 12.3" section="Implementation" />
+    </docs>
+    <code>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/routes/page.tsx" kind="page" reason="Main routes pricing page to add filter" />
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/excursions/page.tsx" kind="page" reason="Excursions pricing page to add filter" />
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/pricing/dispos/page.tsx" kind="page" reason="Dispos pricing page to add filter" />
+      <file path="packages/api/src/routes/vtc/pricing/routes.ts" kind="api" reason="API to extend with partner filter" />
+      <file path="packages/api/src/routes/vtc/partner-contracts.ts" kind="api" reason="Reference for partner contract data structure" />
+    </code>
+  </artifacts>
+
+  <constraints>
+    <constraint>Must use existing partner contract data structure from Story 12.1</constraint>
+    <constraint>Must maintain backward compatibility with existing API</constraint>
+    <constraint>Must follow existing filter pattern from routes page (zones, categories)</constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+      - Curl API tests for partner filter query param
+      - Playwright MCP for UI filter interaction
+      - Database verification for override prices
+    </standards>
+    <ideas>
+      <idea ac="AC1">Navigate to routes page, verify partner dropdown exists</idea>
+      <idea ac="AC2,AC3">Select partner, verify override prices and badges display</idea>
+      <idea ac="AC6">Clear filter, verify catalog prices only</idea>
+      <idea ac="AC7">Curl GET /api/vtc/pricing/routes?partnerId=xxx</idea>
+    </ideas>
+  </tests>
+</story-context>

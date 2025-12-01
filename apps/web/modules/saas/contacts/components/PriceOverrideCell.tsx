@@ -4,6 +4,7 @@ import { Input } from "@ui/components/input";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import { CheckIcon, XIcon, PencilIcon, RotateCcwIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@ui/lib";
 
@@ -30,6 +31,7 @@ export function PriceOverrideCell({
   currency = "€",
   disabled = false,
 }: PriceOverrideCellProps) {
+  const t = useTranslations("contacts.contract.priceOverride");
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +72,11 @@ export function PriceOverrideCell({
     
     // Validation
     if (isNaN(numValue)) {
-      setError("Valeur invalide");
+      setError(t("invalidValue"));
       return;
     }
     if (numValue <= 0) {
-      setError("Le prix doit être positif");
+      setError(t("priceMustBePositive"));
       return;
     }
 
@@ -161,7 +163,7 @@ export function PriceOverrideCell({
             {overridePrice.toFixed(2)} {currency}
           </span>
           <Badge variant="secondary" className="text-xs">
-            Négocié
+            {t("negotiated")}
           </Badge>
           {!disabled && (
             <>
@@ -171,7 +173,7 @@ export function PriceOverrideCell({
                 size="icon"
                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handleStartEdit}
-                title="Modifier"
+                title={t("edit")}
               >
                 <PencilIcon className="h-3 w-3" />
               </Button>
@@ -181,7 +183,7 @@ export function PriceOverrideCell({
                 size="icon"
                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handleReset}
-                title="Réinitialiser au prix catalogue"
+                title={t("resetToCatalog")}
               >
                 <RotateCcwIcon className="h-3 w-3" />
               </Button>
@@ -194,7 +196,7 @@ export function PriceOverrideCell({
             {catalogPrice.toFixed(2)} {currency}
           </span>
           <Badge variant="outline" className="text-xs">
-            Catalogue
+            {t("catalog")}
           </Badge>
           {!disabled && (
             <Button
@@ -203,7 +205,7 @@ export function PriceOverrideCell({
               size="icon"
               className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={handleStartEdit}
-              title="Définir un prix négocié"
+              title={t("setNegotiated")}
             >
               <PencilIcon className="h-3 w-3" />
             </Button>
