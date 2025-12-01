@@ -1654,23 +1654,44 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 
 ---
 
-#### Story 14.4 – Interactive Map for Address Selection
+#### Story 14.4 – Interactive Map for Zone Selection
 
-**Status:** Pending
+**Status:** In Progress
 
 **As a** pricing administrator,  
-**I want** to select addresses visually on a map,  
-**So that** I can easily identify and configure location-based pricing.
+**I want** to select zones visually on an interactive map,  
+**So that** I can easily identify and configure route pricing without memorizing zone names.
 
 **Related FRs:** FR8 (Geographic zones).
 
 **Acceptance Criteria:**
 
-**Given** I am configuring an address-based route,  
-**When** I click on the map,  
-**Then** I can place a marker and the address is auto-filled.
+**AC1 - Visual Zone Selection:**  
+**Given** I am configuring a route origin or destination,  
+**When** I click on "Select zones on map" button,  
+**Then** a map dialog opens showing all existing zones with their boundaries.
 
-**Prerequisites:** Story 14.3.
+**AC2 - Multi-Zone Selection:**  
+**Given** the zone map dialog is open,  
+**When** I click on zone polygons/areas on the map,  
+**Then** I can select/deselect multiple zones visually (toggle selection).
+
+**AC3 - Zone Highlighting:**  
+**Given** zones are displayed on the map,  
+**When** I hover over a zone,  
+**Then** the zone name is displayed and the zone is highlighted.
+
+**AC4 - Selection Confirmation:**  
+**Given** I have selected one or more zones on the map,  
+**When** I click "Confirm",  
+**Then** the selected zones are applied to the origin/destination field.
+
+**AC5 - Quick Zone Creation (Optional):**  
+**Given** I need a specific zone that doesn't exist,  
+**When** I click "Create zone" in the map dialog,  
+**Then** I can draw a new zone polygon and save it directly.
+
+**Prerequisites:** Story 14.3, Story 11.1 (Zone management with interactive map).
 
 ---
 

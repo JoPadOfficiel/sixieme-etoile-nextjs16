@@ -25,6 +25,7 @@ import type {
 } from "../types";
 import { AddressAutocomplete } from "../../shared/components/AddressAutocomplete";
 import { MultiZoneSelect } from "./MultiZoneSelect";
+import { useGoogleMapsApiKey } from "../../shared/hooks/useGoogleMapsApiKey";
 
 // Helper to get initial form data from excursion
 const getInitialFormData = (
@@ -88,6 +89,7 @@ export function ExcursionForm({
 	vehicleCategories,
 }: ExcursionFormProps) {
 	const t = useTranslations();
+	const { data: googleMapsApiKey } = useGoogleMapsApiKey();
 
 	const [formData, setFormData] = useState<ExcursionPackageFormData>(() =>
 		getInitialFormData(excursion),
@@ -206,6 +208,7 @@ export function ExcursionForm({
 							}))
 						}
 						placeholder={t("routes.form.selectOriginZones")}
+						googleMapsApiKey={googleMapsApiKey}
 					/>
 				) : (
 					<AddressAutocomplete
@@ -256,6 +259,7 @@ export function ExcursionForm({
 							}))
 						}
 						placeholder={t("routes.form.selectDestinationZones")}
+						googleMapsApiKey={googleMapsApiKey}
 					/>
 				) : (
 					<AddressAutocomplete

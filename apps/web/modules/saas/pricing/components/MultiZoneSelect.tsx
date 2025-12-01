@@ -10,10 +10,11 @@ import {
 } from "@ui/components/dropdown-menu";
 import { Input } from "@ui/components/input";
 import { cn } from "@ui/lib";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, MapIcon, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PricingZone } from "../types";
+import { ZoneMapPickerDialog } from "./ZoneMapPickerDialog";
 
 interface MultiZoneSelectProps {
 	zones: PricingZone[];
@@ -23,6 +24,10 @@ interface MultiZoneSelectProps {
 	error?: string;
 	disabled?: boolean;
 	testId?: string;
+	/** Google Maps API key for map picker */
+	googleMapsApiKey?: string | null;
+	/** Show map picker button (default: true) */
+	showMapPicker?: boolean;
 }
 
 /**
@@ -42,10 +47,13 @@ export function MultiZoneSelect({
 	error,
 	disabled = false,
 	testId = "multi-zone-select",
+	googleMapsApiKey,
+	showMapPicker = true,
 }: MultiZoneSelectProps) {
 	const t = useTranslations();
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const [mapDialogOpen, setMapDialogOpen] = useState(false);
 
 	// Filter active zones and sort by name
 	const activeZones = zones
@@ -76,26 +84,27 @@ export function MultiZoneSelect({
 
 	return (
 		<div className="space-y-2">
-			<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="outline"
-						role="combobox"
-						aria-expanded={open}
-						disabled={disabled}
-						className={cn(
-							"w-full justify-between font-normal",
-							error && "border-destructive",
-							selectedIds.length === 0 && "text-muted-foreground",
-						)}
-						data-testid={testId}
-					>
-						{selectedIds.length > 0
-							? t("routes.form.zonesSelected", { count: selectedIds.length })
-							: placeholder || t("routes.form.selectZones")}
-						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-					</Button>
-				</DropdownMenuTrigger>
+			<div className="flex gap-2">
+				<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="outline"
+							role="combobox"
+							aria-expanded={open}
+							disabled={disabled}
+							className={cn(
+								"flex-1 justify-between font-normal",
+								error && "border-destructive",
+								selectedIds.length === 0 && "text-muted-foreground",
+							)}
+							data-testid={testId}
+						>
+							{selectedIds.length > 0
+								? t("routes.form.zonesSelected", { count: selectedIds.length })
+								: placeholder || t("routes.form.selectZones")}
+							<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+						</Button>
+					</DropdownMenuTrigger>
 				<DropdownMenuContent 
 					className="w-[var(--radix-dropdown-menu-trigger-width)] p-0" 
 					align="start"
@@ -158,7 +167,32 @@ export function MultiZoneSelect({
 						)}
 					</div>
 				</DropdownMenuContent>
-			</DropdownMenu>
+				</DropdownMenu>
+
+				{/* Map picker button */}
+				{showMapPicker && googleMapsApiKey && (
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						onClick={() => setMapDialogOpen(true)}
+						disabled={disabled}
+						title={t("pricing.zones.map.selectOnMap")}
+					>
+						<MapIcon className="h-4 w-4" />
+					</Button>
+				)}
+			</div>
+
+			{/* Zone map picker dialog */}
+			<ZoneMapPickerDialog
+				open={mapDialogOpen}
+				onOpenChange={setMapDialogOpen}
+				zones={zones}
+				selectedIds={selectedIds}
+				onConfirm={onChange}
+				googleMapsApiKey={googleMapsApiKey ?? null}
+			/>
 
 			{/* Selected zones as badges */}
 			{selectedZones.length > 0 && (

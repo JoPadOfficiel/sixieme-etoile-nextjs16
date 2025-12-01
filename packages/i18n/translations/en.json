@@ -763,7 +763,13 @@
 				"polygonTool": "Polygon",
 				"polygonToolTip": "Draw a polygon zone",
 				"clearTool": "Clear",
-				"clearToolTip": "Clear the drawn shape"
+				"clearToolTip": "Clear the drawn shape",
+				"selectZones": "Select Zones on Map",
+				"clickToSelect": "Click on zones to select or deselect them",
+				"selectedZones": "Selected zones",
+				"noZonesSelected": "No zones selected",
+				"confirmSelection": "Confirm Selection",
+				"selectOnMap": "Select on map"
 			},
 			"active": "Active",
 			"inactive": "Inactive",

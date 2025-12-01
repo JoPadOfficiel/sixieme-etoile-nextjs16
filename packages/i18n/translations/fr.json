@@ -763,7 +763,13 @@
 				"polygonTool": "Polygone",
 				"polygonToolTip": "Dessiner une zone polygonale",
 				"clearTool": "Effacer",
-				"clearToolTip": "Effacer la forme dessinée"
+				"clearToolTip": "Effacer la forme dessinée",
+				"selectZones": "Sélectionner les zones sur la carte",
+				"clickToSelect": "Cliquez sur les zones pour les sélectionner ou désélectionner",
+				"selectedZones": "Zones sélectionnées",
+				"noZonesSelected": "Aucune zone sélectionnée",
+				"confirmSelection": "Confirmer la sélection",
+				"selectOnMap": "Sélectionner sur la carte"
 			},
 			"active": "Active",
 			"inactive": "Inactive",
