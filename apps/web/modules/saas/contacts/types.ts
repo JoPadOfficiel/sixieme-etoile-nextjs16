@@ -92,20 +92,44 @@ export interface ContactsResponse {
  */
 export type PaymentTerms = "IMMEDIATE" | "DAYS_15" | "DAYS_30" | "DAYS_45" | "DAYS_60";
 
+// Story 12.3: Zone route with catalog and override prices
 export interface ZoneRouteAssignment {
   id: string;
   fromZone: { id: string; name: string; code: string };
   toZone: { id: string; name: string; code: string };
   vehicleCategory: { id: string; name: string; code: string };
-  fixedPrice: string;
+  fixedPrice: string; // Legacy field
+  catalogPrice: number;
+  overridePrice: number | null;
+  effectivePrice: number;
 }
 
+// Story 12.3: Package with catalog and override prices
 export interface PackageAssignment {
   id: string;
   name: string;
   description: string | null;
-  price?: string;
-  basePrice?: string;
+  price?: string; // Legacy for excursion
+  basePrice?: string; // Legacy for dispo
+  catalogPrice: number;
+  overridePrice: number | null;
+  effectivePrice: number;
+}
+
+// Story 12.3: Assignment with override price for form submission
+export interface ZoneRouteOverride {
+  zoneRouteId: string;
+  overridePrice: number | null;
+}
+
+export interface ExcursionOverride {
+  excursionPackageId: string;
+  overridePrice: number | null;
+}
+
+export interface DispoOverride {
+  dispoPackageId: string;
+  overridePrice: number | null;
 }
 
 export interface PartnerContract {
@@ -132,9 +156,14 @@ export interface PartnerContractFormData {
   paymentTerms: PaymentTerms;
   commissionPercent: number;
   notes?: string | null;
+  // Legacy: simple ID arrays (backward compatible)
   zoneRouteIds: string[];
   excursionPackageIds: string[];
   dispoPackageIds: string[];
+  // Story 12.3: New format with override prices
+  zoneRouteAssignments?: ZoneRouteOverride[];
+  excursionAssignments?: ExcursionOverride[];
+  dispoAssignments?: DispoOverride[];
 }
 
 /**

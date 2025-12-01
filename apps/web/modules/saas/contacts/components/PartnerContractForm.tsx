@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { useToast } from "@ui/hooks/use-toast";
 import type { PartnerContract, PartnerContractFormData, PaymentTerms } from "../types";
+import { ZoneRoutesTable, PackagesTable } from "./PriceOverrideTable";
 
 interface PartnerContractFormProps {
   contactId: string;
@@ -40,6 +41,10 @@ const DEFAULT_FORM_DATA: PartnerContractFormData = {
   zoneRouteIds: [],
   excursionPackageIds: [],
   dispoPackageIds: [],
+  // Story 12.3: Override price assignments
+  zoneRouteAssignments: [],
+  excursionAssignments: [],
+  dispoAssignments: [],
 };
 
 function contractToFormData(contract: PartnerContract | null): PartnerContractFormData {
@@ -52,6 +57,19 @@ function contractToFormData(contract: PartnerContract | null): PartnerContractFo
     zoneRouteIds: contract.zoneRoutes.map((r) => r.id),
     excursionPackageIds: contract.excursionPackages.map((p) => p.id),
     dispoPackageIds: contract.dispoPackages.map((p) => p.id),
+    // Story 12.3: Include override prices
+    zoneRouteAssignments: contract.zoneRoutes.map((r) => ({
+      zoneRouteId: r.id,
+      overridePrice: r.overridePrice,
+    })),
+    excursionAssignments: contract.excursionPackages.map((p) => ({
+      excursionPackageId: p.id,
+      overridePrice: p.overridePrice,
+    })),
+    dispoAssignments: contract.dispoPackages.map((p) => ({
+      dispoPackageId: p.id,
+      overridePrice: p.overridePrice,
+    })),
   };
 }
 
@@ -108,6 +126,70 @@ export function PartnerContractForm({ contactId, isPartner }: PartnerContractFor
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     saveMutation.mutate(formData);
+  };
+
+  // Story 12.3: Handle zone route price change
+  const handleZoneRoutePriceChange = (routeId: string, newPrice: number | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      zoneRouteAssignments: prev.zoneRouteAssignments?.map((a) =>
+        a.zoneRouteId === routeId ? { ...a, overridePrice: newPrice } : a
+      ) ?? [],
+    }));
+  };
+
+  // Story 12.3: Handle excursion price change
+  const handleExcursionPriceChange = (packageId: string, newPrice: number | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      excursionAssignments: prev.excursionAssignments?.map((a) =>
+        a.excursionPackageId === packageId ? { ...a, overridePrice: newPrice } : a
+      ) ?? [],
+    }));
+  };
+
+  // Story 12.3: Handle dispo price change
+  const handleDispoPriceChange = (packageId: string, newPrice: number | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      dispoAssignments: prev.dispoAssignments?.map((a) =>
+        a.dispoPackageId === packageId ? { ...a, overridePrice: newPrice } : a
+      ) ?? [],
+    }));
+  };
+
+  // Story 12.3: Merge contract data with form overrides for display
+  const getRoutesWithOverrides = () => {
+    if (!contractResponse?.data) return [];
+    return contractResponse.data.zoneRoutes.map((route) => {
+      const override = formData.zoneRouteAssignments?.find((a) => a.zoneRouteId === route.id);
+      return {
+        ...route,
+        overridePrice: override?.overridePrice ?? route.overridePrice,
+      };
+    });
+  };
+
+  const getExcursionsWithOverrides = () => {
+    if (!contractResponse?.data) return [];
+    return contractResponse.data.excursionPackages.map((pkg) => {
+      const override = formData.excursionAssignments?.find((a) => a.excursionPackageId === pkg.id);
+      return {
+        ...pkg,
+        overridePrice: override?.overridePrice ?? pkg.overridePrice,
+      };
+    });
+  };
+
+  const getDisposWithOverrides = () => {
+    if (!contractResponse?.data) return [];
+    return contractResponse.data.dispoPackages.map((pkg) => {
+      const override = formData.dispoAssignments?.find((a) => a.dispoPackageId === pkg.id);
+      return {
+        ...pkg,
+        overridePrice: override?.overridePrice ?? pkg.overridePrice,
+      };
+    });
   };
 
   if (!isPartner) {
@@ -198,18 +280,39 @@ export function PartnerContractForm({ contactId, isPartner }: PartnerContractFor
           />
         </div>
 
-        {/* Grid Assignments Info */}
-        <div className="rounded-lg bg-muted/50 p-4">
-          <p className="text-sm text-muted-foreground">
-            {t("contacts.contract.gridAssignmentsInfo")}
-          </p>
-          {contractResponse?.data && (
-            <div className="mt-2 space-y-1 text-sm">
-              <p>• {t("contacts.contract.zoneRoutes")}: {contractResponse.data.zoneRoutes.length}</p>
-              <p>• {t("contacts.contract.excursionPackages")}: {contractResponse.data.excursionPackages.length}</p>
-              <p>• {t("contacts.contract.dispoPackages")}: {contractResponse.data.dispoPackages.length}</p>
-            </div>
-          )}
+        {/* Story 12.3: Grid Assignments with Override Prices */}
+        <div className="space-y-4 pt-4 border-t">
+          <div>
+            <h4 className="text-sm font-medium mb-2">
+              {t("contacts.contract.gridAssignmentsTitle", { defaultValue: "Grilles tarifaires assignées" })}
+            </h4>
+            <p className="text-xs text-muted-foreground mb-4">
+              {t("contacts.contract.gridAssignmentsHelp", { defaultValue: "Cliquez sur un prix pour définir un tarif négocié spécifique à ce partenaire." })}
+            </p>
+          </div>
+
+          {/* Zone Routes */}
+          <ZoneRoutesTable
+            routes={getRoutesWithOverrides()}
+            onPriceChange={handleZoneRoutePriceChange}
+            disabled={saveMutation.isPending}
+          />
+
+          {/* Excursion Packages */}
+          <PackagesTable
+            packages={getExcursionsWithOverrides()}
+            onPriceChange={handleExcursionPriceChange}
+            type="excursion"
+            disabled={saveMutation.isPending}
+          />
+
+          {/* Dispo Packages */}
+          <PackagesTable
+            packages={getDisposWithOverrides()}
+            onPriceChange={handleDispoPriceChange}
+            type="dispo"
+            disabled={saveMutation.isPending}
+          />
         </div>
 
         {/* Submit Button */}

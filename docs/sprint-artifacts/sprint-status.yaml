@@ -122,4 +122,5 @@ development_status:
   # Epic 12 - Partner-Specific Pricing & Contract Enhancements
   epic-12: contexted
   12-1-partner-specific-pricing-schema: done
-  12-2-pricing-engine-override-support: in-progress
+  12-2-pricing-engine-override-support: done
+  12-3-partner-contract-override-ui: in-progress

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-key>12-3-partner-contract-override-ui</story-key>
+    <epic>12 - Partner-Specific Pricing & Contract Enhancements</epic>
+    <created>2025-12-01T11:51:00+01:00</created>
+    <author>Bob (Scrum Master)</author>
+    <status>draft</status>
+    <depends-on>12-1-partner-specific-pricing-schema, 12-2-pricing-engine-override-support</depends-on>
+  </metadata>
+
+  <problem>
+    <title>Absence d'Interface pour Configurer les Prix Négociés</title>
+    <description>
+      Les Stories 12.1 et 12.2 ont ajouté le support technique pour les prix négociés :
+      - 12.1 : Champ overridePrice dans le schéma Prisma et l'API
+      - 12.2 : Le pricing engine utilise overridePrice quand disponible
+      
+      Cependant, il n'existe aucune interface utilisateur permettant aux opérateurs
+      de visualiser et modifier ces prix négociés. Actuellement, la seule façon de
+      définir un overridePrice est via des appels API directs ou en base de données.
+      
+      L'interface actuelle de gestion des contrats partenaires affiche les routes,
+      excursions et dispos assignées, mais ne montre pas les prix et ne permet pas
+      de les modifier.
+    </description>
+    <business-impact>
+      - Les opérateurs ne peuvent pas utiliser la fonctionnalité de prix négociés
+      - La valeur ajoutée des Stories 12.1 et 12.2 n'est pas accessible
+      - Risque d'erreurs si les prix sont modifiés directement en base
+      - Perte de temps pour les opérateurs qui doivent contacter le support
+    </business-impact>
+  </problem>
+
+  <objectives>
+    <objective id="OBJ-1" priority="critical">
+      <title>Affichage des Prix dans le Contrat Partenaire</title>
+      <description>
+        Dans la page de détail d'un contrat partenaire, afficher pour chaque
+        route/excursion/dispo assignée :
+        - Le prix catalogue (fixedPrice/price/basePrice)
+        - Le prix négocié actuel (overridePrice) ou "Prix catalogue" si null
+        - Un indicateur visuel si un prix négocié est défini
+      </description>
+      <success-criteria>
+        - Les prix catalogue sont affichés pour chaque élément assigné
+        - Les prix négociés sont affichés distinctement
+        - Un badge ou icône indique si un override est actif
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-2" priority="critical">
+      <title>Édition des Prix Négociés</title>
+      <description>
+        Permettre à l'utilisateur de modifier le prix négocié pour chaque
+        route/excursion/dispo assignée, avec :
+        - Un champ de saisie numérique pour le nouveau prix
+        - Un bouton pour réinitialiser au prix catalogue (null)
+        - Validation du format (nombre positif)
+      </description>
+      <success-criteria>
+        - L'utilisateur peut saisir un nouveau prix négocié
+        - L'utilisateur peut réinitialiser au prix catalogue
+        - Les erreurs de validation sont affichées clairement
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-3" priority="high">
+      <title>Sauvegarde via API</title>
+      <description>
+        Les modifications de prix négociés doivent être sauvegardées via l'API
+        PUT /api/vtc/partner-contracts/:id existante.
+      </description>
+      <success-criteria>
+        - Les modifications sont envoyées à l'API
+        - Un feedback visuel confirme la sauvegarde
+        - Les erreurs API sont gérées et affichées
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-4" priority="medium">
+      <title>UX Cohérente</title>
+      <description>
+        L'interface doit être cohérente avec le design system existant
+        et offrir une bonne expérience utilisateur.
+      </description>
+      <success-criteria>
+        - Utilisation des composants shadcn/ui existants
+        - Design responsive (desktop et tablette)
+        - Feedback visuel lors des actions (loading, success, error)
+      </success-criteria>
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Affichage des prix catalogue et négociés dans le détail du contrat</item>
+      <item>Formulaire d'édition des prix négociés (inline ou modal)</item>
+      <item>Appel API PUT pour sauvegarder les modifications</item>
+      <item>Validation côté client des prix</item>
+      <item>Feedback visuel (loading, success, error)</item>
+      <item>Tests Playwright pour l'UI</item>
+      <item>Tests Curl pour l'API</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modification du schéma Prisma (fait en 12.1)</item>
+      <item>Modification du pricing engine (fait en 12.2)</item>
+      <item>Création de nouveaux endpoints API</item>
+      <item>Historique des modifications de prix</item>
+      <item>Import/export en masse des prix</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint id="C-1" type="technical">
+      <title>API Existante</title>
+      <description>
+        Utiliser l'API PUT /api/vtc/partner-contracts/:id existante.
+        Ne pas créer de nouveaux endpoints.
+      </description>
+    </constraint>
+    
+    <constraint id="C-2" type="design">
+      <title>Design System</title>
+      <description>
+        Utiliser les composants shadcn/ui existants (Input, Button, Badge, Table).
+        Respecter la charte graphique Tailwind du projet.
+      </description>
+    </constraint>
+    
+    <constraint id="C-3" type="ux">
+      <title>Édition Intuitive</title>
+      <description>
+        L'édition des prix doit être simple et intuitive.
+        Éviter les modales complexes si possible (édition inline préférée).
+      </description>
+    </constraint>
+    
+    <constraint id="C-4" type="business">
+      <title>Multi-tenancy</title>
+      <description>
+        Respecter l'isolation par organisation.
+        L'utilisateur ne peut modifier que les contrats de son organisation.
+      </description>
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk id="R-1" severity="medium" probability="low">
+      <title>Erreur de Saisie de Prix</title>
+      <description>
+        L'utilisateur pourrait saisir un prix incorrect (trop bas, trop haut).
+      </description>
+      <mitigation>
+        - Afficher le prix catalogue comme référence
+        - Demander confirmation si le prix est très différent du catalogue
+        - Permettre de réinitialiser facilement au prix catalogue
+      </mitigation>
+    </risk>
+    
+    <risk id="R-2" severity="low" probability="medium">
+      <title>Conflit d'Édition</title>
+      <description>
+        Deux utilisateurs pourraient modifier le même contrat simultanément.
+      </description>
+      <mitigation>
+        - Utiliser optimistic locking (updatedAt)
+        - Afficher un message si le contrat a été modifié entre-temps
+      </mitigation>
+    </risk>
+    
+    <risk id="R-3" severity="medium" probability="low">
+      <title>Performance avec Beaucoup de Routes</title>
+      <description>
+        Un contrat avec de nombreuses routes pourrait ralentir l'interface.
+      </description>
+      <mitigation>
+        - Pagination ou virtualisation si nécessaire
+        - Lazy loading des sections
+      </mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/partners/contracts/page.tsx">
+        Page de liste des contrats partenaires.
+        Point d'entrée pour accéder au détail d'un contrat.
+      </file>
+      <file path="apps/web/app/(saas)/app/(organizations)/[organizationSlug]/settings/partners/contracts/[contractId]/page.tsx">
+        Page de détail d'un contrat partenaire (si elle existe).
+        C'est ici que l'UI de prix négociés doit être ajoutée.
+      </file>
+      <file path="packages/api/src/routes/vtc/partner-contracts.ts">
+        API CRUD pour les contrats partenaires.
+        GET /:id retourne les assignments avec overridePrice.
+        PUT /:id accepte les overridePrice dans les assignments.
+      </file>
+    </existing-code>
+    
+    <ui-components>
+      <component name="Table" source="shadcn/ui">
+        Pour afficher la liste des routes/excursions/dispos avec leurs prix.
+      </component>
+      <component name="Input" source="shadcn/ui">
+        Pour la saisie des prix négociés.
+      </component>
+      <component name="Button" source="shadcn/ui">
+        Pour les actions (sauvegarder, réinitialiser).
+      </component>
+      <component name="Badge" source="shadcn/ui">
+        Pour indiquer visuellement si un override est actif.
+      </component>
+      <component name="Tabs" source="shadcn/ui">
+        Pour séparer Routes / Excursions / Dispos.
+      </component>
+    </ui-components>
+    
+    <data-flow>
+      <![CDATA[
+      1. Page de détail charge le contrat via GET /api/vtc/partner-contracts/:id
+      2. Les assignments (zoneRoutes, excursionPackages, dispoPackages) sont affichés
+      3. Chaque assignment montre catalogPrice et overridePrice
+      4. L'utilisateur modifie un overridePrice
+      5. Au clic sur "Sauvegarder", PUT /api/vtc/partner-contracts/:id est appelé
+      6. L'API met à jour les overridePrice dans les tables de jonction
+      7. La page affiche un message de succès
+      ]]>
+    </data-flow>
+  </technical-context>
+
+  <validation>
+    <checklist>
+      <item status="done">Problème clairement défini</item>
+      <item status="done">Objectifs SMART</item>
+      <item status="done">Périmètre délimité</item>
+      <item status="done">Contraintes identifiées</item>
+      <item status="done">Risques évalués avec mitigations</item>
+      <item status="done">Contexte technique documenté</item>
+    </checklist>
+  </validation>
+</story-context>
