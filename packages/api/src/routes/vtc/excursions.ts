@@ -17,6 +17,16 @@ const decimalToNumber = (value: unknown): number | null => {
 	return Number(value);
 };
 
+// Helper to transform zone
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const transformZone = (zone: any) => ({
+	...zone,
+	centerLatitude: decimalToNumber(zone.centerLatitude),
+	centerLongitude: decimalToNumber(zone.centerLongitude),
+	radiusKm: decimalToNumber(zone.radiusKm),
+	priceMultiplier: decimalToNumber(zone.priceMultiplier),
+});
+
 // Transform excursion to convert Decimals to numbers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transformExcursion = (excursion: any) => ({
@@ -24,26 +34,18 @@ const transformExcursion = (excursion: any) => ({
 	includedDurationHours: decimalToNumber(excursion.includedDurationHours),
 	includedDistanceKm: decimalToNumber(excursion.includedDistanceKm),
 	price: decimalToNumber(excursion.price),
-	originZone: excursion.originZone
-		? {
-				...excursion.originZone,
-				centerLatitude: decimalToNumber(excursion.originZone.centerLatitude),
-				centerLongitude: decimalToNumber(excursion.originZone.centerLongitude),
-				radiusKm: decimalToNumber(excursion.originZone.radiusKm),
-			}
-		: null,
-	destinationZone: excursion.destinationZone
-		? {
-				...excursion.destinationZone,
-				centerLatitude: decimalToNumber(
-					excursion.destinationZone.centerLatitude,
-				),
-				centerLongitude: decimalToNumber(
-					excursion.destinationZone.centerLongitude,
-				),
-				radiusKm: decimalToNumber(excursion.destinationZone.radiusKm),
-			}
-		: null,
+	// Legacy zone relations (backward compatibility)
+	originZone: excursion.originZone ? transformZone(excursion.originZone) : null,
+	destinationZone: excursion.destinationZone ? transformZone(excursion.destinationZone) : null,
+	// Story 14.3: New multi-zone relations
+	originZones: excursion.originZones?.map((oz: { zone: unknown }) => ({
+		...oz,
+		zone: oz.zone ? transformZone(oz.zone) : null,
+	})) ?? [],
+	destinationZones: excursion.destinationZones?.map((dz: { zone: unknown }) => ({
+		...dz,
+		zone: dz.zone ? transformZone(dz.zone) : null,
+	})) ?? [],
 	vehicleCategory: excursion.vehicleCategory
 		? {
 				...excursion.vehicleCategory,
@@ -61,11 +63,30 @@ const transformExcursion = (excursion: any) => ({
 });
 
 // Validation schemas
+const originDestinationTypeEnum = z.enum(["ZONES", "ADDRESS"]);
+
+// Story 14.3: Extended schema for flexible excursions
 const createExcursionSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	description: z.string().optional().nullable(),
+	// Origin configuration
+	originType: originDestinationTypeEnum.default("ZONES"),
+	originZoneIds: z.array(z.string()).optional(),
+	originPlaceId: z.string().optional(),
+	originAddress: z.string().optional(),
+	originLat: z.coerce.number().optional(),
+	originLng: z.coerce.number().optional(),
+	// Destination configuration
+	destinationType: originDestinationTypeEnum.default("ZONES"),
+	destinationZoneIds: z.array(z.string()).optional(),
+	destPlaceId: z.string().optional(),
+	destAddress: z.string().optional(),
+	destLat: z.coerce.number().optional(),
+	destLng: z.coerce.number().optional(),
+	// Legacy fields (backward compatibility)
 	originZoneId: z.string().optional().nullable(),
 	destinationZoneId: z.string().optional().nullable(),
+	// Common fields
 	vehicleCategoryId: z.string().min(1, "Vehicle category is required"),
 	includedDurationHours: z.coerce
 		.number()
@@ -197,23 +218,33 @@ export const excursionsRouter = new Hono()
 		},
 	)
 
-	// Create excursion
+	// Create excursion - Story 14.3: Extended for flexible excursions
 	.post(
 		"/",
 		validator("json", createExcursionSchema),
 		describeRoute({
 			summary: "Create excursion package",
-			description: "Create a new excursion package",
+			description: "Create a new excursion package with multi-zone or address support",
 			tags: ["VTC - Excursions"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
+			// Determine origin zone ID (from new format or legacy)
+			const originZoneId = data.originType === "ZONES"
+				? (data.originZoneIds?.[0] || data.originZoneId || null)
+				: null;
+
+			// Determine destination zone ID (from new format or legacy)
+			const destinationZoneId = data.destinationType === "ZONES"
+				? (data.destinationZoneIds?.[0] || data.destinationZoneId || null)
+				: null;
+
 			// Validate originZone if provided
-			if (data.originZoneId) {
+			if (originZoneId) {
 				const originZone = await db.pricingZone.findFirst({
-					where: withTenantFilter({ id: data.originZoneId }, organizationId),
+					where: withTenantFilter({ id: originZoneId }, organizationId),
 				});
 				if (!originZone) {
 					throw new HTTPException(400, {
@@ -224,10 +255,10 @@ export const excursionsRouter = new Hono()
 			}
 
 			// Validate destinationZone if provided
-			if (data.destinationZoneId) {
+			if (destinationZoneId) {
 				const destinationZone = await db.pricingZone.findFirst({
 					where: withTenantFilter(
-						{ id: data.destinationZoneId },
+						{ id: destinationZoneId },
 						organizationId,
 					),
 				});
@@ -255,8 +286,8 @@ export const excursionsRouter = new Hono()
 					{
 						name: data.name,
 						description: data.description,
-						originZoneId: data.originZoneId || null,
-						destinationZoneId: data.destinationZoneId || null,
+						originZoneId,
+						destinationZoneId,
 						vehicleCategoryId: data.vehicleCategoryId,
 						includedDurationHours: data.includedDurationHours,
 						includedDistanceKm: data.includedDistanceKm,

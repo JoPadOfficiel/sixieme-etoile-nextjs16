@@ -204,12 +204,27 @@ export interface PartnerContact {
 	companyName?: string | null;
 }
 
-// Excursion Package types
+// Excursion Package types - Extended in Story 14.3 for multi-zone and address support
 export interface ExcursionPackage {
 	id: string;
 	organizationId: string;
 	name: string;
 	description: string | null;
+	// Story 14.3: Origin configuration
+	originType: OriginDestinationType;
+	originZones: ZoneRouteZone[];
+	originPlaceId: string | null;
+	originAddress: string | null;
+	originLat: number | null;
+	originLng: number | null;
+	// Story 14.3: Destination configuration
+	destinationType: OriginDestinationType;
+	destinationZones: ZoneRouteZone[];
+	destPlaceId: string | null;
+	destAddress: string | null;
+	destLat: number | null;
+	destLng: number | null;
+	// Legacy zone relations (backward compatibility)
 	originZone: {
 		id: string;
 		name: string;
@@ -240,8 +255,24 @@ export interface ExcursionPackage {
 export interface ExcursionPackageFormData {
 	name: string;
 	description?: string | null;
+	// Story 14.3: Origin configuration
+	originType: OriginDestinationType;
+	originZoneIds: string[];
+	originPlaceId?: string;
+	originAddress?: string;
+	originLat?: number | null;
+	originLng?: number | null;
+	// Story 14.3: Destination configuration
+	destinationType: OriginDestinationType;
+	destinationZoneIds: string[];
+	destPlaceId?: string;
+	destAddress?: string;
+	destLat?: number | null;
+	destLng?: number | null;
+	// Legacy fields (backward compatibility)
 	originZoneId?: string | null;
 	destinationZoneId?: string | null;
+	// Common fields
 	vehicleCategoryId: string;
 	includedDurationHours: number;
 	includedDistanceKm: number;

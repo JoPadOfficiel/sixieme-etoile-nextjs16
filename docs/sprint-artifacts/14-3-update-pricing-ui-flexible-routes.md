@@ -1,6 +1,6 @@
 # Story 14.3: Update Pricing UI for Flexible Routes
 
-**Status:** drafted  
+**Status:** in-progress  
 **Epic:** 14 - Flexible Route Pricing System  
 **Priority:** High  
 **Estimate:** 8 SP  
