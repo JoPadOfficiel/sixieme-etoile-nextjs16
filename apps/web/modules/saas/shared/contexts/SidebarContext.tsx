@@ -5,6 +5,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useState,
 	useSyncExternalStore,
 	type ReactNode,
 } from "react";
@@ -12,6 +13,7 @@ import {
 const SIDEBAR_STORAGE_KEY = "sidebar-collapsed";
 const SIDEBAR_WIDTH_EXPANDED = 280;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
+const MOBILE_BREAKPOINT = 768;
 
 export interface SidebarContextType {
 	isCollapsed: boolean;
@@ -19,6 +21,12 @@ export interface SidebarContextType {
 	collapseSidebar: () => void;
 	expandSidebar: () => void;
 	sidebarWidth: number;
+	// Mobile-specific
+	isMobile: boolean;
+	isMobileMenuOpen: boolean;
+	openMobileMenu: () => void;
+	closeMobileMenu: () => void;
+	toggleMobileMenu: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
@@ -72,22 +80,64 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 		sidebarStore.getServerSnapshot
 	);
 
+	// Mobile state
+	const [isMobile, setIsMobile] = useState(false);
+	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+	// Detect mobile on mount and resize
+	useEffect(() => {
+		const checkMobile = () => {
+			const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+			setIsMobile(mobile);
+			// Close mobile menu when switching to desktop
+			if (!mobile && isMobileMenuOpen) {
+				setIsMobileMenuOpen(false);
+			}
+		};
+
+		// Initial check
+		checkMobile();
+
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, [isMobileMenuOpen]);
+
 	// Keyboard shortcut handler (Cmd+B / Ctrl+B)
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key === "b") {
 				e.preventDefault();
-				sidebarStore.toggle();
+				if (isMobile) {
+					setIsMobileMenuOpen((prev) => !prev);
+				} else {
+					sidebarStore.toggle();
+				}
 			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, []);
+	}, [isMobile]);
+
+	// Prevent body scroll when mobile menu is open
+	useEffect(() => {
+		if (isMobileMenuOpen) {
+			document.body.style.overflow = "hidden";
+		} else {
+			document.body.style.overflow = "";
+		}
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [isMobileMenuOpen]);
 
 	const toggleSidebar = useCallback(() => {
-		sidebarStore.toggle();
-	}, []);
+		if (isMobile) {
+			setIsMobileMenuOpen((prev) => !prev);
+		} else {
+			sidebarStore.toggle();
+		}
+	}, [isMobile]);
 
 	const collapseSidebar = useCallback(() => {
 		sidebarStore.setCollapsed(true);
@@ -95,6 +145,18 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
 	const expandSidebar = useCallback(() => {
 		sidebarStore.setCollapsed(false);
+	}, []);
+
+	const openMobileMenu = useCallback(() => {
+		setIsMobileMenuOpen(true);
+	}, []);
+
+	const closeMobileMenu = useCallback(() => {
+		setIsMobileMenuOpen(false);
+	}, []);
+
+	const toggleMobileMenu = useCallback(() => {
+		setIsMobileMenuOpen((prev) => !prev);
 	}, []);
 
 	const sidebarWidth = isCollapsed
@@ -109,6 +171,11 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 				collapseSidebar,
 				expandSidebar,
 				sidebarWidth,
+				isMobile,
+				isMobileMenuOpen,
+				openMobileMenu,
+				closeMobileMenu,
+				toggleMobileMenu,
 			}}
 		>
 			{children}
@@ -124,4 +191,4 @@ export function useSidebar(): SidebarContextType {
 	return context;
 }
 
-export { SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED };
+export { SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED, MOBILE_BREAKPOINT };

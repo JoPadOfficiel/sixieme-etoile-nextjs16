@@ -68,7 +68,7 @@ export function SettingsMenu({
 						</h2>
 					</div>
 
-					<ul className="mt-2 flex list-none flex-row gap-6 lg:mt-4 lg:flex-col lg:gap-2">
+					<ul className="mt-2 flex list-none flex-col gap-2 lg:mt-4">
 						{section.items.map((item, k) => {
 							const itemKey = `${i}-${k}`;
 							const hasSubItems = item.subItems && item.subItems.length > 0;

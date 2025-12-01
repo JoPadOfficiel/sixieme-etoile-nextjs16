@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-key>11-8-full-responsive-design-mobile-sidebar</story-key>
+    <epic>Epic 11 - Zone Management Refactoring & UI Improvements</epic>
+    <created>2025-12-01</created>
+    <author>BMAD Orchestrator</author>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      L'application VTC ERP n'est pas responsive sur les petits écrans (mobile/tablette).
+      La sidebar reste en mode horizontal avec scroll au lieu de se transformer en menu hamburger.
+      Le contenu principal est décalé par marginLeft même sur mobile, rendant l'interface inutilisable.
+    </summary>
+    <symptoms>
+      <symptom>La sidebar s'affiche horizontalement sur mobile au lieu de verticalement</symptom>
+      <symptom>Le menu de navigation utilise un scroll horizontal au lieu d'un menu hamburger</symptom>
+      <symptom>Le contenu principal est décalé par marginLeft même sur mobile</symptom>
+      <symptom>Aucune gestion des breakpoints pour la navigation mobile</symptom>
+      <symptom>Les éléments de l'interface débordent de l'écran sur petit écran</symptom>
+    </symptoms>
+    <impact>
+      <business>Les opérateurs ne peuvent pas utiliser l'application en déplacement</business>
+      <ux>Interface inutilisable sur mobile et tablette</ux>
+      <technical>Violation des principes de responsive design</technical>
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Rendre l'application entièrement responsive pour tous types d'écrans (desktop, tablette, mobile)
+    </primary>
+    <secondary>
+      <objective>Implémenter un menu hamburger pour la navigation mobile</objective>
+      <objective>Supprimer le marginLeft sur mobile pour le contenu principal</objective>
+      <objective>Adapter la sidebar pour qu'elle soit collapsible/overlay sur mobile</objective>
+      <objective>Assurer que tous les composants s'adaptent aux différentes tailles d'écran</objective>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>NavBar.tsx - Transformation en menu hamburger sur mobile</item>
+      <item>AppWrapper.tsx - Suppression du marginLeft sur mobile</item>
+      <item>SidebarContext.tsx - Ajout de la gestion mobile (isMobile, isOpen)</item>
+      <item>ContentHeader.tsx - Adaptation pour mobile</item>
+      <item>Création d'un MobileMenuButton et MobileOverlay</item>
+      <item>Tests Playwright pour valider le responsive</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Refonte complète du design system</item>
+      <item>Nouvelles fonctionnalités métier</item>
+      <item>Modifications des pages de contenu (quotes, invoices, etc.)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <constraint>Utiliser TailwindCSS pour les breakpoints (sm, md, lg)</constraint>
+      <constraint>Maintenir la compatibilité avec le SidebarProvider existant</constraint>
+      <constraint>Préserver le comportement desktop actuel (sidebar collapsible)</constraint>
+      <constraint>Utiliser les composants UI existants (shadcn/ui)</constraint>
+    </technical>
+    <design>
+      <constraint>Menu hamburger standard (3 lignes horizontales)</constraint>
+      <constraint>Overlay sombre quand le menu mobile est ouvert</constraint>
+      <constraint>Animation fluide pour l'ouverture/fermeture</constraint>
+      <constraint>Bouton de fermeture visible dans le menu mobile</constraint>
+    </design>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Régression sur le comportement desktop</description>
+      <mitigation>Tests Playwright sur desktop et mobile</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance des animations sur mobile</description>
+      <mitigation>Utiliser transform/opacity pour les animations GPU-accelerated</mitigation>
+    </risk>
+  </risks>
+
+  <existing-code-analysis>
+    <file path="apps/web/modules/saas/shared/components/NavBar.tsx">
+      <purpose>Navigation principale avec sidebar</purpose>
+      <issues>
+        <issue>Utilise md:fixed pour la sidebar mais pas de gestion mobile</issue>
+        <issue>Le menu horizontal avec scroll n'est pas adapté au mobile</issue>
+        <issue>Pas de bouton hamburger pour mobile</issue>
+      </issues>
+    </file>
+    <file path="apps/web/modules/saas/shared/components/AppWrapper.tsx">
+      <purpose>Wrapper principal avec marginLeft pour la sidebar</purpose>
+      <issues>
+        <issue>marginLeft appliqué même sur mobile via style inline</issue>
+        <issue>Pas de breakpoint pour désactiver le marginLeft sur mobile</issue>
+      </issues>
+    </file>
+    <file path="apps/web/modules/saas/shared/contexts/SidebarContext.tsx">
+      <purpose>Gestion de l'état collapsed/expanded de la sidebar</purpose>
+      <issues>
+        <issue>Pas de distinction entre mobile et desktop</issue>
+        <issue>Pas de gestion de l'overlay mobile</issue>
+      </issues>
+    </file>
+    <file path="apps/web/modules/saas/shared/components/ContentHeader.tsx">
+      <purpose>Header avec breadcrumb et toggle sidebar</purpose>
+      <issues>
+        <issue>Le toggle sidebar est visible sur mobile mais ne fonctionne pas correctement</issue>
+      </issues>
+    </file>
+  </existing-code-analysis>
+
+  <technical-approach>
+    <strategy>
+      Modifier le SidebarContext pour détecter le mode mobile et gérer l'état ouvert/fermé
+      du menu mobile séparément de l'état collapsed desktop.
+    </strategy>
+    <steps>
+      <step order="1">
+        Ajouter la détection mobile dans SidebarContext (useMediaQuery ou window.innerWidth)
+      </step>
+      <step order="2">
+        Créer un composant MobileMenuButton (hamburger icon)
+      </step>
+      <step order="3">
+        Modifier NavBar pour afficher le menu hamburger sur mobile et overlay
+      </step>
+      <step order="4">
+        Modifier AppWrapper pour ne pas appliquer marginLeft sur mobile
+      </step>
+      <step order="5">
+        Ajouter les animations de transition pour le menu mobile
+      </step>
+      <step order="6">
+        Tester avec Playwright sur différentes tailles d'écran
+      </step>
+    </steps>
+    <breakpoints>
+      <breakpoint name="mobile" max="767px">Menu hamburger, sidebar overlay</breakpoint>
+      <breakpoint name="tablet" min="768px" max="1023px">Sidebar collapsible</breakpoint>
+      <breakpoint name="desktop" min="1024px">Sidebar expanded par défaut</breakpoint>
+    </breakpoints>
+  </technical-approach>
+
+  <acceptance-criteria-preview>
+    <criterion id="AC1">Sur mobile (&lt;768px), un bouton hamburger est visible dans le header</criterion>
+    <criterion id="AC2">Cliquer sur le hamburger ouvre un menu overlay avec la navigation</criterion>
+    <criterion id="AC3">Le contenu principal occupe 100% de la largeur sur mobile</criterion>
+    <criterion id="AC4">Sur desktop, le comportement actuel est préservé (sidebar collapsible)</criterion>
+    <criterion id="AC5">L'overlay se ferme en cliquant à l'extérieur ou sur le bouton X</criterion>
+    <criterion id="AC6">Les animations sont fluides (transition 200-300ms)</criterion>
+  </acceptance-criteria-preview>
+
+  <related-requirements>
+    <fr ref="FR42">Quote builder UI structured layout</fr>
+    <fr ref="FR43">Trip visualization</fr>
+    <fr ref="FR46">Blocking alerts and guidance</fr>
+  </related-requirements>
+</story-context>
