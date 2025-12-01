@@ -1,6 +1,6 @@
 # Story 14.6: Assign Rate Grids to Partners from Pricing UI
 
-**Status:** in-progress  
+**Status:** done  
 **Epic:** Epic 14 - Flexible Route Pricing System  
 **Created:** 2025-12-01  
 **Branch:** `feature/14-6-assign-rate-grids-from-pricing-ui`
