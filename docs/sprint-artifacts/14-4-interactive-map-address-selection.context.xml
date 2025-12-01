@@ -1,0 +1,171 @@
+<story-context id="14-4-interactive-map-address-selection" v="1.0">
+  <metadata>
+    <epicId>14</epicId>
+    <storyId>14.4</storyId>
+    <title>Interactive Map for Address Selection</title>
+    <status>pending</status>
+    <generatedAt>2025-12-01</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/14-4-interactive-map-address-selection.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>pricing administrator</asA>
+    <iWant>to select addresses visually on a map</iWant>
+    <soThat>I can easily identify and configure location-based pricing without typing addresses manually</soThat>
+    <tasks>
+      <task id="1">Create AddressMapPicker component with Google Maps integration</task>
+      <task id="2">Implement reverse geocoding to convert coordinates to address</task>
+      <task id="3">Add map toggle button to AddressAutocomplete component</task>
+      <task id="4">Create dialog/modal to display the map picker</task>
+      <task id="5">Sync selected location with AddressAutocomplete value</task>
+      <task id="6">Add FR/EN translations for new UI elements</task>
+      <task id="7">Ensure z-index compatibility with Sheet/Dialog components</task>
+    </tasks>
+  </story>
+
+  <problem>
+    <statement>
+      L'interface actuelle de sélection d'adresse (AddressAutocomplete) ne propose que la saisie textuelle 
+      avec autocomplétion Google Places. Pour certains cas d'usage (hôtels partenaires, lieux stratégiques, 
+      points d'intérêt), les administrateurs préfèrent pointer directement sur une carte plutôt que de 
+      chercher l'adresse exacte.
+    </statement>
+    <currentLimitations>
+      <limitation>Pas de visualisation géographique lors de la sélection</limitation>
+      <limitation>Difficile de sélectionner un point précis sans connaître l'adresse exacte</limitation>
+      <limitation>Pas de contexte visuel des zones existantes</limitation>
+    </currentLimitations>
+  </problem>
+
+  <objectives>
+    <objective id="1">Permettre la sélection d'une adresse par clic sur une carte Google Maps</objective>
+    <objective id="2">Convertir automatiquement les coordonnées en adresse lisible (reverse geocoding)</objective>
+    <objective id="3">Intégrer la carte dans le workflow existant de AddressAutocomplete</objective>
+    <objective id="4">Afficher un marqueur sur la carte pour visualiser la sélection</objective>
+    <objective id="5">Permettre la modification de la sélection avant validation</objective>
+  </objectives>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>I am configuring an address-based route origin or destination</given>
+      <when>I click on the "Select on map" button next to the address field</when>
+      <then>A dialog opens with a Google Maps centered on Paris region</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>The map dialog is open</given>
+      <when>I click on any location on the map</when>
+      <then>A marker is placed at that location and the address is displayed</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>I have selected a location on the map</given>
+      <when>I click "Confirm" button</when>
+      <then>The dialog closes and the address field is populated with the selected address, latitude and longitude</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>I have selected a location on the map</given>
+      <when>I click on a different location</when>
+      <then>The marker moves to the new location and the address updates</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>The map dialog is open</given>
+      <when>I click "Cancel" or close the dialog</when>
+      <then>No changes are made to the address field</then>
+    </criterion>
+    <criterion id="AC6">
+      <given>The address field already has a value with coordinates</given>
+      <when>I open the map dialog</when>
+      <then>The map is centered on the existing location with a marker</then>
+    </criterion>
+    <criterion id="AC7">
+      <given>I click on a location where reverse geocoding fails</given>
+      <when>The API returns an error</when>
+      <then>A user-friendly error message is displayed and the coordinates are still usable</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/epics.md#story-14.4" relevance="high">Story definition</doc>
+      <doc path="docs/bmad/ux-design-specification.md" relevance="medium">Map integration patterns</doc>
+      <doc path="docs/sprint-artifacts/14-3-update-pricing-ui-flexible-routes.md" relevance="prerequisite">Previous story with AddressAutocomplete</doc>
+    </docs>
+    <code>
+      <file path="apps/web/modules/saas/shared/components/AddressAutocomplete.tsx" action="modify">Add map picker button</file>
+      <file path="apps/web/modules/saas/shared/components/AddressMapPicker.tsx" action="create">New map picker component</file>
+      <file path="apps/web/modules/saas/shared/components/GoogleMap.tsx" action="reference">Reuse existing map component</file>
+      <file path="apps/web/modules/saas/shared/providers/GoogleMapsProvider.tsx" action="reference">Google Maps loading</file>
+      <file path="packages/i18n/translations/fr.json" action="modify">Add French translations</file>
+      <file path="packages/i18n/translations/en.json" action="modify">Add English translations</file>
+    </code>
+    <dependencies>
+      <dependency name="Google Maps JavaScript API" purpose="Map display and interaction">Already configured</dependency>
+      <dependency name="Google Geocoding API" purpose="Reverse geocoding">Included in Maps API</dependency>
+      <dependency name="NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" type="env" purpose="API authentication">Required</dependency>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="ux">Map dialog must work inside Sheet/Dialog components (z-index management)</constraint>
+    <constraint type="api-quota">Minimize reverse geocoding calls with debouncing</constraint>
+    <constraint type="performance">Map should load quickly without blocking the form</constraint>
+    <constraint type="i18n">All new UI elements must have FR and EN translations</constraint>
+    <constraint type="accessibility">Map picker should be keyboard accessible where possible</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface type="component">
+      <component name="AddressMapPicker">
+        <props>
+          initialPosition?: { lat: number; lng: number } | null
+          onSelect: (result: AddressResult) => void
+          onCancel: () => void
+        </props>
+        <description>
+          Modal/Dialog component that displays a Google Map.
+          User can click to select a location.
+          Performs reverse geocoding to get address.
+          Returns AddressResult on confirmation.
+        </description>
+      </component>
+    </interface>
+    <interface type="api">
+      <endpoint name="Google Geocoding API">
+        <method>GET</method>
+        <url>https://maps.googleapis.com/maps/api/geocode/json</url>
+        <params>
+          latlng: "48.8566,2.3522"
+          key: GOOGLE_MAPS_API_KEY
+          language: "fr"
+        </params>
+        <response>
+          {
+            "results": [{
+              "formatted_address": "Place de la Concorde, 75008 Paris, France",
+              "geometry": { "location": { "lat": 48.8656, "lng": 2.3212 } }
+            }],
+            "status": "OK"
+          }
+        </response>
+      </endpoint>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>Playwright for E2E UI tests</standard>
+      <standard>All AC must have at least one test</standard>
+    </standards>
+    <locations>
+      <location>apps/web/modules/saas/shared/components/__tests__/</location>
+    </locations>
+    <ideas>
+      <test id="TC1">Open map picker from address field - Playwright</test>
+      <test id="TC2">Click on map places marker and shows address - Playwright</test>
+      <test id="TC3">Confirm selection populates address field - Playwright</test>
+      <test id="TC4">Cancel closes dialog without changes - Playwright</test>
+      <test id="TC5">Existing address centers map on location - Playwright</test>
+      <test id="TC6">Multiple clicks update marker position - Playwright</test>
+    </ideas>
+  </tests>
+</story-context>

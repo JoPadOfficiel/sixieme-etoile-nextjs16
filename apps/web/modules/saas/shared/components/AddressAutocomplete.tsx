@@ -1,12 +1,14 @@
 "use client";
 
+import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import { Label } from "@ui/components/label";
-import { MapPinIcon, Loader2Icon } from "lucide-react";
+import { MapPinIcon, Loader2Icon, MapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { cn } from "@ui/lib";
 import { useGoogleMaps } from "../providers/GoogleMapsProvider";
+import { AddressMapPickerDialog } from "./AddressMapPickerDialog";
 
 export interface AddressResult {
   address: string;
@@ -31,6 +33,10 @@ interface AddressAutocompleteProps {
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Current coordinates for map picker (optional) */
+  coordinates?: { lat: number; lng: number } | null;
+  /** Show map picker button (default: true) */
+  showMapPicker?: boolean;
 }
 
 /**
@@ -55,6 +61,8 @@ export function AddressAutocomplete({
   required = false,
   disabled = false,
   className,
+  coordinates,
+  showMapPicker = true,
 }: AddressAutocompleteProps) {
   const t = useTranslations();
   const { isLoaded: isGoogleLoaded } = useGoogleMaps();
@@ -62,6 +70,7 @@ export function AddressAutocomplete({
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -277,30 +286,61 @@ export function AddressAutocomplete({
     }, 150);
   };
 
+  // Handle map picker selection
+  const handleMapSelect = useCallback((result: AddressResult) => {
+    setInputValue(result.address);
+    onChange(result);
+    setMapDialogOpen(false);
+  }, [onChange]);
+
   return (
     <div className={cn("space-y-2 relative", className)}>
       <Label htmlFor={id}>
         {label}
         {required && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <div className="relative">
-        <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          id={id}
-          value={inputValue}
-          onChange={handleInputChange}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="pl-9 pr-9"
-          autoComplete="off"
-        />
-        {isLoading && (
-          <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+      <div className="relative flex gap-2">
+        <div className="relative flex-1">
+          <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            id={id}
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            disabled={disabled}
+            className="pl-9 pr-9"
+            autoComplete="off"
+          />
+          {isLoading && (
+            <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+          )}
+        </div>
+        
+        {/* Map picker button */}
+        {showMapPicker && isGoogleLoaded && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setMapDialogOpen(true)}
+            disabled={disabled}
+            title={t("common.map.selectOnMap")}
+          >
+            <MapIcon className="h-4 w-4" />
+          </Button>
         )}
       </div>
+
+      {/* Map picker dialog */}
+      <AddressMapPickerDialog
+        open={mapDialogOpen}
+        onOpenChange={setMapDialogOpen}
+        initialPosition={coordinates}
+        onConfirm={handleMapSelect}
+      />
 
       {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (

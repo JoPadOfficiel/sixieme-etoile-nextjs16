@@ -186,7 +186,16 @@
 		"map": {
 			"noApiKey": "Clé API Google Maps non configurée",
 			"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations",
-			"loadError": "Échec du chargement de Google Maps"
+			"loadError": "Échec du chargement de Google Maps",
+			"selectLocation": "Sélectionner un lieu sur la carte",
+			"clickToSelect": "Cliquez sur la carte pour sélectionner un lieu",
+			"selectedAddress": "Adresse sélectionnée",
+			"noLocationSelected": "Aucun lieu sélectionné",
+			"loadingAddress": "Chargement de l'adresse...",
+			"noAddressFound": "Aucune adresse trouvée pour ce lieu",
+			"geocodingError": "Erreur lors de la récupération de l'adresse",
+			"confirmSelection": "Confirmer la sélection",
+			"selectOnMap": "Sélectionner sur la carte"
 		},
 		"confirmation": {
 			"cancel": "Annuler",

@@ -186,7 +186,16 @@
 		"map": {
 			"noApiKey": "Google Maps API key not configured",
 			"configureInSettings": "Configure it in Organization Settings > Integrations",
-			"loadError": "Failed to load Google Maps"
+			"loadError": "Failed to load Google Maps",
+			"selectLocation": "Select Location on Map",
+			"clickToSelect": "Click on the map to select a location",
+			"selectedAddress": "Selected address",
+			"noLocationSelected": "No location selected",
+			"loadingAddress": "Loading address...",
+			"noAddressFound": "No address found for this location",
+			"geocodingError": "Error retrieving address",
+			"confirmSelection": "Confirm Selection",
+			"selectOnMap": "Select on map"
 		},
 		"confirmation": {
 			"cancel": "Cancel",
