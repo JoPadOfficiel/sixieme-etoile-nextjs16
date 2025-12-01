@@ -284,10 +284,10 @@ export function PartnerContractForm({ contactId, isPartner }: PartnerContractFor
         <div className="space-y-4 pt-4 border-t">
           <div>
             <h4 className="text-sm font-medium mb-2">
-              {t("contacts.contract.gridAssignmentsTitle", { defaultValue: "Grilles tarifaires assignées" })}
+              {t("contacts.contract.gridAssignmentsTitle")}
             </h4>
             <p className="text-xs text-muted-foreground mb-4">
-              {t("contacts.contract.gridAssignmentsHelp", { defaultValue: "Cliquez sur un prix pour définir un tarif négocié spécifique à ce partenaire." })}
+              {t("contacts.contract.gridAssignmentsHelp")}
             </p>
           </div>
 

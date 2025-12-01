@@ -1814,6 +1814,8 @@
 			"notes": "Notes du contrat",
 			"notesPlaceholder": "Notes supplémentaires sur l'accord commercial",
 			"gridAssignmentsInfo": "Les affectations de grilles (routes de zone, excursions, dispos) peuvent être configurées dans la section Tarification.",
+			"gridAssignmentsTitle": "Grilles tarifaires assignées",
+			"gridAssignmentsHelp": "Cliquez sur un prix pour définir un tarif négocié spécifique à ce partenaire.",
 			"zoneRoutes": "Routes de zone",
 			"excursionPackages": "Forfaits excursion",
 			"dispoPackages": "Forfaits mise à disposition",

@@ -1814,6 +1814,8 @@
 			"notes": "Contract Notes",
 			"notesPlaceholder": "Additional notes about the commercial agreement",
 			"gridAssignmentsInfo": "Grid assignments (zone routes, excursions, dispos) can be configured in the Pricing section.",
+			"gridAssignmentsTitle": "Assigned Rate Grids",
+			"gridAssignmentsHelp": "Click on a price to set a negotiated rate specific to this partner.",
 			"zoneRoutes": "Zone Routes",
 			"excursionPackages": "Excursion Packages",
 			"dispoPackages": "Dispo Packages",
