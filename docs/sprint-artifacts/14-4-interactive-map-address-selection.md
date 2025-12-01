@@ -1,6 +1,6 @@
 # Story 14.4: Interactive Map for Zone Selection
 
-**Status:** in-progress  
+**Status:** done  
 **Epic:** 14 - Flexible Route Pricing System  
 **Priority:** Medium  
 **Estimate:** 8 SP  
@@ -246,15 +246,15 @@ test("pre-selected zones are highlighted on map", async ({ page }) => {
 
 ## Definition of Done
 
-- [ ] `ZoneMapPickerDialog` component created
-- [ ] `MultiZoneSelect` updated with map button
-- [ ] Zone polygons displayed on map with click selection
-- [ ] Hover tooltip showing zone name/code
-- [ ] Pre-selected zones highlighted
-- [ ] Translations added (FR/EN)
-- [ ] AC1-AC7 validated
-- [ ] Works inside Sheet/Dialog (z-index)
-- [ ] Code committed with descriptive message
+- [x] `ZoneMapPickerDialog` component created
+- [x] `MultiZoneSelect` updated with map button
+- [x] Zone polygons displayed on map with click selection
+- [x] Hover tooltip showing zone name/code
+- [x] Pre-selected zones highlighted
+- [x] Translations added (FR/EN)
+- [x] AC1-AC7 validated
+- [x] Works inside Sheet/Dialog (z-index)
+- [x] Code committed with descriptive message
 
 ---
 
