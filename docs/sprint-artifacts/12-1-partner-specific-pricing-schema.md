@@ -2,7 +2,7 @@
 
 **Epic:** 12 - Partner-Specific Pricing & Contract Enhancements  
 **Story ID:** 12-1  
-**Status:** in-progress  
+**Status:** done  
 **Priority:** Critical  
 **Estimated Effort:** 3 points  
 **Context:** [12-1-partner-specific-pricing-schema.context.xml](./12-1-partner-specific-pricing-schema.context.xml)
@@ -209,13 +209,13 @@ SELECT COUNT(*) FROM partner_contract_zone_route WHERE "overridePrice" IS NULL;
 
 ## Definition of Done
 
-- [ ] Schema changes applied via Prisma migration
-- [ ] All existing data preserved (overridePrice = null)
-- [ ] API returns both catalog and override prices
-- [ ] Unit tests pass (Vitest)
-- [ ] API tests pass (Curl)
-- [ ] Database verification confirms schema changes (MCP postgres)
-- [ ] Code reviewed and merged
+- [x] Schema changes applied via Prisma migration
+- [x] All existing data preserved (overridePrice = null)
+- [x] API returns both catalog and override prices
+- [x] Unit tests pass (Vitest)
+- [x] API tests pass (Curl)
+- [x] Database verification confirms schema changes (MCP postgres)
+- [x] Code reviewed and merged
 
 ---
 

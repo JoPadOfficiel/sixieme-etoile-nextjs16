@@ -2,7 +2,7 @@
 
 **Epic:** 12 - Partner-Specific Pricing & Contract Enhancements  
 **Story ID:** 12-3  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Estimated Effort:** 5 points  
 **Context:** [12-3-partner-contract-override-ui.context.xml](./12-3-partner-contract-override-ui.context.xml)  
@@ -246,16 +246,16 @@ WHERE pczr."partnerContractId" = '{contractId}';
 
 ## Definition of Done
 
-- [ ] Types updated with catalogPrice, overridePrice, effectivePrice
-- [ ] Price tables displayed for routes, excursions, dispos
-- [ ] Inline editing of override prices works
-- [ ] Reset to catalog price works
-- [ ] Save mutation sends new format with assignments
-- [ ] Success/error toasts displayed
-- [ ] Playwright tests pass
-- [ ] API tests (curl) confirm correct data
-- [ ] DB verification confirms overridePrice saved
-- [ ] Code reviewed and merged
+- [x] Types updated with catalogPrice, overridePrice, effectivePrice
+- [x] Price tables displayed for routes, excursions, dispos
+- [x] Inline editing of override prices works
+- [x] Reset to catalog price works
+- [x] Save mutation sends new format with assignments
+- [x] Success/error toasts displayed
+- [x] Playwright tests pass
+- [x] API tests (curl) confirm correct data
+- [x] DB verification confirms overridePrice saved
+- [x] Code reviewed and merged
 
 ---
 

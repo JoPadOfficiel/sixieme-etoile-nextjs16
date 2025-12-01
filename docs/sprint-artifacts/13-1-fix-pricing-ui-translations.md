@@ -1,7 +1,7 @@
 # Story 13.1: Fix Pricing UI Translations - Consistent i18n
 
 **Epic:** 13 - Pricing UI Improvements & Partner Filtering  
-**Status:** drafted  
+**Status:** done  
 **Priority:** High  
 **Estimate:** 2 SP
 
@@ -80,63 +80,63 @@ All labels should use `t()` function with proper translation keys, displaying in
 
 ### Task 1: Audit Current Hardcoded Strings
 
-- [ ] Search PriceOverrideTable.tsx for hardcoded strings
-- [ ] Search PriceOverrideCell.tsx for hardcoded strings
-- [ ] Document all strings that need translation keys
+- [x] Search PriceOverrideTable.tsx for hardcoded strings
+- [x] Search PriceOverrideCell.tsx for hardcoded strings
+- [x] Document all strings that need translation keys
 
 ### Task 2: Add Translation Keys to en.json
 
-- [ ] Add `contacts.contract.priceOverride.route` = "Route"
-- [ ] Add `contacts.contract.priceOverride.category` = "Category"
-- [ ] Add `contacts.contract.priceOverride.catalogPrice` = "Catalog Price"
-- [ ] Add `contacts.contract.priceOverride.negotiatedPrice` = "Negotiated Price"
-- [ ] Add `contacts.contract.priceOverride.negotiated` = "Negotiated"
-- [ ] Add `contacts.contract.priceOverride.catalog` = "Catalog"
-- [ ] Add `contacts.contract.priceOverride.edit` = "Edit"
-- [ ] Add `contacts.contract.priceOverride.resetToCatalog` = "Reset to catalog price"
-- [ ] Add `contacts.contract.priceOverride.setNegotiated` = "Set negotiated price"
-- [ ] Add `contacts.contract.priceOverride.noRoutes` = "No zone routes assigned"
-- [ ] Add `contacts.contract.priceOverride.noExcursions` = "No excursion packages assigned"
-- [ ] Add `contacts.contract.priceOverride.noDispos` = "No dispo packages assigned"
-- [ ] Add `contacts.contract.priceOverride.countNegotiated` = "{count} negotiated"
+- [x] Add `contacts.contract.priceOverride.route` = "Route"
+- [x] Add `contacts.contract.priceOverride.category` = "Category"
+- [x] Add `contacts.contract.priceOverride.catalogPrice` = "Catalog Price"
+- [x] Add `contacts.contract.priceOverride.negotiatedPrice` = "Negotiated Price"
+- [x] Add `contacts.contract.priceOverride.negotiated` = "Negotiated"
+- [x] Add `contacts.contract.priceOverride.catalog` = "Catalog"
+- [x] Add `contacts.contract.priceOverride.edit` = "Edit"
+- [x] Add `contacts.contract.priceOverride.resetToCatalog` = "Reset to catalog price"
+- [x] Add `contacts.contract.priceOverride.setNegotiated` = "Set negotiated price"
+- [x] Add `contacts.contract.priceOverride.noRoutes` = "No zone routes assigned"
+- [x] Add `contacts.contract.priceOverride.noExcursions` = "No excursion packages assigned"
+- [x] Add `contacts.contract.priceOverride.noDispos` = "No dispo packages assigned"
+- [x] Add `contacts.contract.priceOverride.countNegotiated` = "{count} negotiated"
 
 ### Task 3: Add Translation Keys to fr.json
 
-- [ ] Add `contacts.contract.priceOverride.route` = "Trajet"
-- [ ] Add `contacts.contract.priceOverride.category` = "Catégorie"
-- [ ] Add `contacts.contract.priceOverride.catalogPrice` = "Prix catalogue"
-- [ ] Add `contacts.contract.priceOverride.negotiatedPrice` = "Prix négocié"
-- [ ] Add `contacts.contract.priceOverride.negotiated` = "Négocié"
-- [ ] Add `contacts.contract.priceOverride.catalog` = "Catalogue"
-- [ ] Add `contacts.contract.priceOverride.edit` = "Modifier"
-- [ ] Add `contacts.contract.priceOverride.resetToCatalog` = "Réinitialiser au prix catalogue"
-- [ ] Add `contacts.contract.priceOverride.setNegotiated` = "Définir un prix négocié"
-- [ ] Add `contacts.contract.priceOverride.noRoutes` = "Aucune route de zone assignée"
-- [ ] Add `contacts.contract.priceOverride.noExcursions` = "Aucun forfait excursion assigné"
-- [ ] Add `contacts.contract.priceOverride.noDispos` = "Aucun forfait dispo assigné"
-- [ ] Add `contacts.contract.priceOverride.countNegotiated` = "{count} négocié"
+- [x] Add `contacts.contract.priceOverride.route` = "Trajet"
+- [x] Add `contacts.contract.priceOverride.category` = "Catégorie"
+- [x] Add `contacts.contract.priceOverride.catalogPrice` = "Prix catalogue"
+- [x] Add `contacts.contract.priceOverride.negotiatedPrice` = "Prix négocié"
+- [x] Add `contacts.contract.priceOverride.negotiated` = "Négocié"
+- [x] Add `contacts.contract.priceOverride.catalog` = "Catalogue"
+- [x] Add `contacts.contract.priceOverride.edit` = "Modifier"
+- [x] Add `contacts.contract.priceOverride.resetToCatalog` = "Réinitialiser au prix catalogue"
+- [x] Add `contacts.contract.priceOverride.setNegotiated` = "Définir un prix négocié"
+- [x] Add `contacts.contract.priceOverride.noRoutes` = "Aucune route de zone assignée"
+- [x] Add `contacts.contract.priceOverride.noExcursions` = "Aucun forfait excursion assigné"
+- [x] Add `contacts.contract.priceOverride.noDispos` = "Aucun forfait dispo assigné"
+- [x] Add `contacts.contract.priceOverride.countNegotiated` = "{count} négocié"
 
 ### Task 4: Update PriceOverrideTable.tsx
 
-- [ ] Import useTranslations hook
-- [ ] Replace all hardcoded strings with t() calls
-- [ ] Update table headers
-- [ ] Update empty state messages
-- [ ] Update section titles
+- [x] Import useTranslations hook
+- [x] Replace all hardcoded strings with t() calls
+- [x] Update table headers
+- [x] Update empty state messages
+- [x] Update section titles
 
 ### Task 5: Update PriceOverrideCell.tsx
 
-- [ ] Import useTranslations hook
-- [ ] Replace badge text with t() calls
-- [ ] Replace tooltip text with t() calls
-- [ ] Replace button aria-labels with t() calls
+- [x] Import useTranslations hook
+- [x] Replace badge text with t() calls
+- [x] Replace tooltip text with t() calls
+- [x] Replace button aria-labels with t() calls
 
 ### Task 6: Verify and Test
 
-- [ ] Run grep to confirm no hardcoded strings remain
-- [ ] Test in English locale
-- [ ] Test in French locale
-- [ ] Verify no console warnings
+- [x] Run grep to confirm no hardcoded strings remain
+- [x] Test in English locale
+- [x] Test in French locale
+- [x] Verify no console warnings
 
 ---
 
@@ -174,13 +174,13 @@ All labels should use `t()` function with proper translation keys, displaying in
 
 ## Definition of Done
 
-- [ ] All hardcoded strings replaced with t() calls
-- [ ] Translation keys added to en.json
-- [ ] Translation keys added to fr.json
-- [ ] No console warnings for missing translations
-- [ ] Playwright tests pass
-- [ ] Code review approved
-- [ ] Merged to main
+- [x] All hardcoded strings replaced with t() calls
+- [x] Translation keys added to en.json
+- [x] Translation keys added to fr.json
+- [x] No console warnings for missing translations
+- [x] Playwright tests pass
+- [x] Code review approved
+- [x] Merged to main
 
 ---
 

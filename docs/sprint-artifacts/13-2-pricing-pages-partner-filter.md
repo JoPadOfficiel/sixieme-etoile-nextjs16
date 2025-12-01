@@ -4,7 +4,7 @@
 
 - **Epic**: 13 - Pricing UI Improvements & Partner Filtering
 - **Story ID**: 13-2
-- **Status**: in-progress
+- **Status**: done
 - **Created**: 2025-12-01
 
 ## User Story
@@ -17,13 +17,13 @@
 
 | ID  | Criterion                                                                                     | Status |
 | --- | --------------------------------------------------------------------------------------------- | ------ |
-| AC1 | Routes page has a "Partner" filter dropdown showing all partner contacts                      | ⏳     |
-| AC2 | When a partner is selected, routes show their override price (if any) alongside catalog price | ⏳     |
-| AC3 | Routes with negotiated prices display a "Negotiated" badge                                    | ⏳     |
-| AC4 | Excursions page has the same partner filter functionality                                     | ⏳     |
-| AC5 | Dispos page has the same partner filter functionality                                         | ⏳     |
-| AC6 | Clearing the partner filter shows all routes with catalog prices only                         | ⏳     |
-| AC7 | API returns partner-specific override prices when partnerId query param is provided           | ⏳     |
+| AC1 | Routes page has a "Partner" filter dropdown showing all partner contacts                      | ✅     |
+| AC2 | When a partner is selected, routes show their override price (if any) alongside catalog price | ✅     |
+| AC3 | Routes with negotiated prices display a "Negotiated" badge                                    | ✅     |
+| AC4 | Excursions page has the same partner filter functionality                                     | ✅     |
+| AC5 | Dispos page has the same partner filter functionality                                         | ✅     |
+| AC6 | Clearing the partner filter shows all routes with catalog prices only                         | ✅     |
+| AC7 | API returns partner-specific override prices when partnerId query param is provided           | ✅     |
 
 ## Technical Implementation
 
@@ -69,8 +69,8 @@ Add `partnerId` query parameter to the list routes endpoint:
 
 ### Session 2025-12-01
 
-- [ ] Task 1: Add partnerId to zone-routes API
-- [ ] Task 2: Add translation keys
-- [ ] Task 3: Update RoutesTable component
-- [ ] Task 4: Update routes page
-- [ ] Task 5: Test with Playwright
+- [x] Task 1: Add partnerId to zone-routes API
+- [x] Task 2: Add translation keys
+- [x] Task 3: Update RoutesTable component
+- [x] Task 4: Update routes page
+- [x] Task 5: Test with Playwright

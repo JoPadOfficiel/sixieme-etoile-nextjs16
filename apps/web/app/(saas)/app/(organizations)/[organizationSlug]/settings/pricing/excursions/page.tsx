@@ -113,7 +113,7 @@ export default function SettingsPricingExcursionsPage() {
 
 	const fetchVehicleCategories = useCallback(async () => {
 		try {
-			const response = await fetch("/api/vtc/vehicles/categories?limit=100");
+			const response = await fetch("/api/vtc/vehicle-categories?limit=100");
 			if (!response.ok) {
 				setVehicleCategories([]);
 				return;

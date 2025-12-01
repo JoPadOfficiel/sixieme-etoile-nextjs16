@@ -2,7 +2,7 @@
 
 **Epic:** 12 - Partner-Specific Pricing & Contract Enhancements  
 **Story ID:** 12-2  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** Critical  
 **Estimated Effort:** 3 points  
 **Context:** [12-2-pricing-engine-override-support.context.xml](./12-2-pricing-engine-override-support.context.xml)  
@@ -225,14 +225,14 @@ WHERE pczr."partnerContractId" = '{contractId}';
 
 ## Definition of Done
 
-- [ ] matchZoneRouteWithDetails uses overridePrice when available
-- [ ] matchExcursionPackage uses overridePrice when available
-- [ ] matchDispoPackage uses overridePrice when available
-- [ ] appliedRules includes "PARTNER_OVERRIDE_PRICE" or "CATALOG_PRICE"
-- [ ] Existing tests still pass (backward compatibility)
-- [ ] New tests for override scenarios pass
-- [ ] API tests confirm correct pricing
-- [ ] Code reviewed and merged
+- [x] matchZoneRouteWithDetails uses overridePrice when available
+- [x] matchExcursionPackage uses overridePrice when available
+- [x] matchDispoPackage uses overridePrice when available
+- [x] appliedRules includes "PARTNER_OVERRIDE_PRICE" or "CATALOG_PRICE"
+- [x] Existing tests still pass (backward compatibility)
+- [x] New tests for override scenarios pass
+- [x] API tests confirm correct pricing
+- [x] Code reviewed and merged
 
 ---
 
