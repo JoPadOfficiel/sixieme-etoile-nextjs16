@@ -2,14 +2,15 @@
 
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
-import { Input } from "@ui/components/input";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@ui/components/popover";
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+} from "@ui/components/dropdown-menu";
+import { Input } from "@ui/components/input";
 import { cn } from "@ui/lib";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { ChevronsUpDown, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PricingZone } from "../types";
@@ -29,6 +30,7 @@ interface MultiZoneSelectProps {
  * 
  * A multi-select dropdown for selecting multiple pricing zones.
  * Displays selected zones as removable badges.
+ * Uses DropdownMenu for better compatibility with Sheet/Dialog components.
  * 
  * Story 14.3: Created for flexible route pricing
  */
@@ -60,11 +62,11 @@ export function MultiZoneSelect({
 	// Get selected zones for badges
 	const selectedZones = zones.filter((z) => selectedIds.includes(z.id));
 
-	const handleSelect = (zoneId: string) => {
-		if (selectedIds.includes(zoneId)) {
-			onChange(selectedIds.filter((id) => id !== zoneId));
-		} else {
+	const handleSelect = (zoneId: string, checked: boolean) => {
+		if (checked) {
 			onChange([...selectedIds, zoneId]);
+		} else {
+			onChange(selectedIds.filter((id) => id !== zoneId));
 		}
 	};
 
@@ -74,8 +76,8 @@ export function MultiZoneSelect({
 
 	return (
 		<div className="space-y-2">
-			<Popover open={open} onOpenChange={setOpen} modal={false}>
-				<PopoverTrigger asChild>
+			<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+				<DropdownMenuTrigger asChild>
 					<Button
 						variant="outline"
 						role="combobox"
@@ -93,12 +95,11 @@ export function MultiZoneSelect({
 							: placeholder || t("routes.form.selectZones")}
 						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 					</Button>
-				</PopoverTrigger>
-				<PopoverContent 
-					className="w-[var(--radix-popover-trigger-width)] p-0" 
+				</DropdownMenuTrigger>
+				<DropdownMenuContent 
+					className="w-[var(--radix-dropdown-menu-trigger-width)] p-0" 
 					align="start"
 					sideOffset={4}
-					onOpenAutoFocus={(e) => e.preventDefault()}
 				>
 					{/* Search input */}
 					<div className="p-2 border-b">
@@ -109,12 +110,14 @@ export function MultiZoneSelect({
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 								className="pl-8 h-8"
+								onClick={(e) => e.stopPropagation()}
+								onKeyDown={(e) => e.stopPropagation()}
 							/>
 						</div>
 					</div>
 					
 					{/* Zone list */}
-					<div className="max-h-60 overflow-y-auto p-1">
+					<div className="max-h-60 overflow-y-auto">
 						{filteredZones.length === 0 ? (
 							<p className="text-sm text-muted-foreground text-center py-4">
 								{t("routes.form.noZonesFound")}
@@ -123,46 +126,24 @@ export function MultiZoneSelect({
 							filteredZones.map((zone) => {
 								const isSelected = selectedIds.includes(zone.id);
 								return (
-									<div
+									<DropdownMenuCheckboxItem
 										key={zone.id}
-										role="option"
-										aria-selected={isSelected}
-										tabIndex={0}
-										onClick={() => handleSelect(zone.id)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") {
-												e.preventDefault();
-												handleSelect(zone.id);
-											}
-										}}
-										className={cn(
-											"w-full flex items-center gap-2 px-2 py-2 rounded-sm text-sm cursor-pointer",
-											"hover:bg-accent hover:text-accent-foreground",
-											"focus:bg-accent focus:text-accent-foreground focus:outline-none",
-											isSelected && "bg-accent/50",
-										)}
+										checked={isSelected}
+										onCheckedChange={(checked) => handleSelect(zone.id, checked)}
+										onSelect={(e) => e.preventDefault()}
+										className="cursor-pointer"
 									>
-										<div
-											className={cn(
-												"h-4 w-4 rounded-sm border flex items-center justify-center",
-												isSelected
-													? "bg-primary border-primary text-primary-foreground"
-													: "border-input",
-											)}
-										>
-											{isSelected && <Check className="h-3 w-3" />}
-										</div>
-										<span className="flex-1 text-left">{zone.name}</span>
-										<span className="text-muted-foreground text-xs">
+										<span className="flex-1">{zone.name}</span>
+										<span className="text-muted-foreground text-xs ml-2">
 											({zone.code})
 										</span>
-									</div>
+									</DropdownMenuCheckboxItem>
 								);
 							})
 						)}
 					</div>
-				</PopoverContent>
-			</Popover>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
 			{/* Selected zones as badges */}
 			{selectedZones.length > 0 && (
