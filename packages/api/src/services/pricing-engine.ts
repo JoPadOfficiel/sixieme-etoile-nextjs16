@@ -256,6 +256,8 @@ export interface ZoneRouteAssignment {
 		fromZone: { id: string; name: string; code: string };
 		toZone: { id: string; name: string; code: string };
 	};
+	// Story 12.2: Partner-specific price override (null = use catalog price)
+	overridePrice?: number | null;
 }
 
 export interface ExcursionPackageAssignment {
@@ -270,6 +272,8 @@ export interface ExcursionPackageAssignment {
 		originZone?: { id: string; name: string; code: string } | null;
 		destinationZone?: { id: string; name: string; code: string } | null;
 	};
+	// Story 12.2: Partner-specific price override (null = use catalog price)
+	overridePrice?: number | null;
 }
 
 export interface DispoPackageAssignment {
@@ -280,6 +284,8 @@ export interface DispoPackageAssignment {
 		basePrice: number;
 		isActive: boolean;
 	};
+	// Story 12.2: Partner-specific price override (null = use catalog price)
+	overridePrice?: number | null;
 }
 
 export interface OrganizationPricingSettings {
@@ -1506,15 +1512,48 @@ export function applyZoneMultiplier(
 // ============================================================================
 
 /**
+ * Story 12.2: Matched route with effective price information
+ */
+export interface MatchedRouteWithPrice {
+	route: ZoneRouteAssignment["zoneRoute"];
+	catalogPrice: number;
+	overridePrice: number | null;
+	effectivePrice: number;
+	isOverride: boolean;
+}
+
+/**
  * Match result with search details
  */
 export interface MatchZoneRouteResult {
-	matchedRoute: ZoneRouteAssignment["zoneRoute"] | null;
+	matchedRoute: MatchedRouteWithPrice | null;
 	routesChecked: RouteCheckResult[];
 }
 
 /**
+ * Story 12.2: Helper to build matched route with effective price
+ */
+function buildMatchedRouteWithPrice(
+	assignment: ZoneRouteAssignment,
+): MatchedRouteWithPrice {
+	const route = assignment.zoneRoute;
+	const catalogPrice = Number(route.fixedPrice);
+	const overridePrice = assignment.overridePrice != null ? Number(assignment.overridePrice) : null;
+	const isOverride = overridePrice !== null && overridePrice > 0;
+	const effectivePrice = isOverride ? overridePrice : catalogPrice;
+
+	return {
+		route,
+		catalogPrice,
+		overridePrice,
+		effectivePrice,
+		isOverride,
+	};
+}
+
+/**
  * Match a zone route for a transfer with detailed search results
+ * Story 12.2: Now returns effective price considering overridePrice
  */
 export function matchZoneRouteWithDetails(
 	fromZone: ZoneData | null,
@@ -1577,7 +1616,8 @@ export function matchZoneRouteWithDetails(
 
 		if (route.direction === "BIDIRECTIONAL") {
 			if (matchesForward || matchesReverse) {
-				return { matchedRoute: route, routesChecked };
+				// Story 12.2: Return with effective price
+				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			routesChecked.push({
 				routeId: route.id,
@@ -1589,7 +1629,8 @@ export function matchZoneRouteWithDetails(
 			});
 		} else if (route.direction === "A_TO_B") {
 			if (matchesForward) {
-				return { matchedRoute: route, routesChecked };
+				// Story 12.2: Return with effective price
+				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			if (matchesReverse) {
 				// Zones match but wrong direction
@@ -1613,7 +1654,8 @@ export function matchZoneRouteWithDetails(
 			}
 		} else if (route.direction === "B_TO_A") {
 			if (matchesReverse) {
-				return { matchedRoute: route, routesChecked };
+				// Story 12.2: Return with effective price
+				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			if (matchesForward) {
 				// Zones match but wrong direction
@@ -1643,6 +1685,7 @@ export function matchZoneRouteWithDetails(
 
 /**
  * Match a zone route for a transfer (backward compatible)
+ * Story 12.2: Now returns route only (without price info) for backward compatibility
  */
 export function matchZoneRoute(
 	fromZone: ZoneData | null,
@@ -1650,19 +1693,53 @@ export function matchZoneRoute(
 	vehicleCategoryId: string,
 	contractRoutes: ZoneRouteAssignment[],
 ): ZoneRouteAssignment["zoneRoute"] | null {
-	return matchZoneRouteWithDetails(fromZone, toZone, vehicleCategoryId, contractRoutes).matchedRoute;
+	const result = matchZoneRouteWithDetails(fromZone, toZone, vehicleCategoryId, contractRoutes);
+	return result.matchedRoute?.route ?? null;
+}
+
+/**
+ * Story 12.2: Matched excursion with effective price information
+ */
+export interface MatchedExcursionWithPrice {
+	excursion: ExcursionPackageAssignment["excursionPackage"];
+	catalogPrice: number;
+	overridePrice: number | null;
+	effectivePrice: number;
+	isOverride: boolean;
 }
 
 /**
  * Match result with search details for excursions
  */
 export interface MatchExcursionResult {
-	matchedExcursion: ExcursionPackageAssignment["excursionPackage"] | null;
+	matchedExcursion: MatchedExcursionWithPrice | null;
 	excursionsChecked: ExcursionCheckResult[];
 }
 
 /**
+ * Story 12.2: Helper to build matched excursion with effective price
+ */
+function buildMatchedExcursionWithPrice(
+	assignment: ExcursionPackageAssignment,
+): MatchedExcursionWithPrice {
+	const excursion = assignment.excursionPackage;
+	const catalogPrice = Number(excursion.price);
+	const overridePrice = assignment.overridePrice != null ? Number(assignment.overridePrice) : null;
+	const isOverride = overridePrice !== null && overridePrice > 0;
+	const effectivePrice = isOverride ? overridePrice : catalogPrice;
+
+	return {
+		excursion,
+		catalogPrice,
+		overridePrice,
+		effectivePrice,
+		isOverride,
+	};
+}
+
+/**
  * Match an excursion package with detailed search results
+ * Story 12.2: Now returns effective price considering overridePrice
  */
 export function matchExcursionPackageWithDetails(
 	originZone: ZoneData | null,
@@ -1731,8 +1808,8 @@ export function matchExcursionPackageWithDetails(
 			}
 		}
 
-		// If we get here, it's a match
-		return { matchedExcursion: excursion, excursionsChecked };
+		// If we get here, it's a match - Story 12.2: Return with effective price
+		return { matchedExcursion: buildMatchedExcursionWithPrice(assignment), excursionsChecked };
 	}
 
 	return { matchedExcursion: null, excursionsChecked };
@@ -1740,6 +1817,7 @@ export function matchExcursionPackageWithDetails(
 
 /**
  * Match an excursion package (backward compatible)
+ * Story 12.2: Now returns excursion only (without price info) for backward compatibility
  */
 export function matchExcursionPackage(
 	originZone: ZoneData | null,
@@ -1747,19 +1825,53 @@ export function matchExcursionPackage(
 	vehicleCategoryId: string,
 	contractExcursions: ExcursionPackageAssignment[],
 ): ExcursionPackageAssignment["excursionPackage"] | null {
-	return matchExcursionPackageWithDetails(originZone, destinationZone, vehicleCategoryId, contractExcursions).matchedExcursion;
+	const result = matchExcursionPackageWithDetails(originZone, destinationZone, vehicleCategoryId, contractExcursions);
+	return result.matchedExcursion?.excursion ?? null;
+}
+
+/**
+ * Story 12.2: Matched dispo with effective price information
+ */
+export interface MatchedDispoWithPrice {
+	dispo: DispoPackageAssignment["dispoPackage"];
+	catalogPrice: number;
+	overridePrice: number | null;
+	effectivePrice: number;
+	isOverride: boolean;
 }
 
 /**
  * Match result with search details for dispos
  */
 export interface MatchDispoResult {
-	matchedDispo: DispoPackageAssignment["dispoPackage"] | null;
+	matchedDispo: MatchedDispoWithPrice | null;
 	disposChecked: DispoCheckResult[];
 }
 
 /**
+ * Story 12.2: Helper to build matched dispo with effective price
+ */
+function buildMatchedDispoWithPrice(
+	assignment: DispoPackageAssignment,
+): MatchedDispoWithPrice {
+	const dispo = assignment.dispoPackage;
+	const catalogPrice = Number(dispo.basePrice);
+	const overridePrice = assignment.overridePrice != null ? Number(assignment.overridePrice) : null;
+	const isOverride = overridePrice !== null && overridePrice > 0;
+	const effectivePrice = isOverride ? overridePrice : catalogPrice;
+
+	return {
+		dispo,
+		catalogPrice,
+		overridePrice,
+		effectivePrice,
+		isOverride,
+	};
+}
+
+/**
  * Match a dispo package with detailed search results
+ * Story 12.2: Now returns effective price considering overridePrice
  */
 export function matchDispoPackageWithDetails(
 	vehicleCategoryId: string,
@@ -1792,8 +1904,8 @@ export function matchDispoPackageWithDetails(
 			continue;
 		}
 
-		// Match found
-		return { matchedDispo: dispo, disposChecked };
+		// Match found - Story 12.2: Return with effective price
+		return { matchedDispo: buildMatchedDispoWithPrice(assignment), disposChecked };
 	}
 
 	return { matchedDispo: null, disposChecked };
@@ -1801,12 +1913,14 @@ export function matchDispoPackageWithDetails(
 
 /**
  * Match a dispo package (backward compatible)
+ * Story 12.2: Now returns dispo only (without price info) for backward compatibility
  */
 export function matchDispoPackage(
 	vehicleCategoryId: string,
 	contractDispos: DispoPackageAssignment[],
 ): DispoPackageAssignment["dispoPackage"] | null {
-	return matchDispoPackageWithDetails(vehicleCategoryId, contractDispos).matchedDispo;
+	const result = matchDispoPackageWithDetails(vehicleCategoryId, contractDispos);
+	return result.matchedDispo?.dispo ?? null;
 }
 
 // ============================================================================
@@ -2040,16 +2154,32 @@ export function calculatePrice(
 		routesChecked = routeResult.routesChecked;
 
 		if (routeResult.matchedRoute) {
-			const matchedRoute = routeResult.matchedRoute;
-			const price = Number(matchedRoute.fixedPrice);
+			const matchedRouteWithPrice = routeResult.matchedRoute;
+			const route = matchedRouteWithPrice.route;
+			// Story 12.2: Use effective price (override if set, otherwise catalog)
+			const price = matchedRouteWithPrice.effectivePrice;
 
-			appliedRules.push({
-				type: "PARTNER_GRID_MATCH",
-				description: "Partner contract grid price applied (Engagement Rule)",
-				gridType: "ZoneRoute",
-				gridId: matchedRoute.id,
-				originalPrice: price,
-			});
+			// Story 12.2: Add appropriate rule based on price source
+			if (matchedRouteWithPrice.isOverride) {
+				appliedRules.push({
+					type: "PARTNER_OVERRIDE_PRICE",
+					description: "Partner-specific negotiated price applied (Engagement Rule)",
+					gridType: "ZoneRoute",
+					gridId: route.id,
+					catalogPrice: matchedRouteWithPrice.catalogPrice,
+					overridePrice: matchedRouteWithPrice.overridePrice,
+					effectivePrice: price,
+				});
+			} else {
+				appliedRules.push({
+					type: "CATALOG_PRICE",
+					description: "Catalog grid price applied (Engagement Rule)",
+					gridType: "ZoneRoute",
+					gridId: route.id,
+					catalogPrice: matchedRouteWithPrice.catalogPrice,
+					effectivePrice: price,
+				});
+			}
 
 			return buildGridResult(
 				price,
@@ -2058,10 +2188,10 @@ export function calculatePrice(
 				pricingSettings,
 				{
 					type: "ZoneRoute",
-					id: matchedRoute.id,
-					name: `${matchedRoute.fromZone.name} → ${matchedRoute.toZone.name}`,
-					fromZone: matchedRoute.fromZone.name,
-					toZone: matchedRoute.toZone.name,
+					id: route.id,
+					name: `${route.fromZone.name} → ${route.toZone.name}`,
+					fromZone: route.fromZone.name,
+					toZone: route.toZone.name,
 				},
 				appliedRules,
 			);
@@ -2079,16 +2209,32 @@ export function calculatePrice(
 		excursionsChecked = excursionResult.excursionsChecked;
 
 		if (excursionResult.matchedExcursion) {
-			const matchedExcursion = excursionResult.matchedExcursion;
-			const price = Number(matchedExcursion.price);
+			const matchedExcursionWithPrice = excursionResult.matchedExcursion;
+			const excursion = matchedExcursionWithPrice.excursion;
+			// Story 12.2: Use effective price (override if set, otherwise catalog)
+			const price = matchedExcursionWithPrice.effectivePrice;
 
-			appliedRules.push({
-				type: "PARTNER_GRID_MATCH",
-				description: "Partner contract excursion package applied (Engagement Rule)",
-				gridType: "ExcursionPackage",
-				gridId: matchedExcursion.id,
-				originalPrice: price,
-			});
+			// Story 12.2: Add appropriate rule based on price source
+			if (matchedExcursionWithPrice.isOverride) {
+				appliedRules.push({
+					type: "PARTNER_OVERRIDE_PRICE",
+					description: "Partner-specific negotiated price applied (Engagement Rule)",
+					gridType: "ExcursionPackage",
+					gridId: excursion.id,
+					catalogPrice: matchedExcursionWithPrice.catalogPrice,
+					overridePrice: matchedExcursionWithPrice.overridePrice,
+					effectivePrice: price,
+				});
+			} else {
+				appliedRules.push({
+					type: "CATALOG_PRICE",
+					description: "Catalog excursion price applied (Engagement Rule)",
+					gridType: "ExcursionPackage",
+					gridId: excursion.id,
+					catalogPrice: matchedExcursionWithPrice.catalogPrice,
+					effectivePrice: price,
+				});
+			}
 
 			return buildGridResult(
 				price,
@@ -2097,10 +2243,10 @@ export function calculatePrice(
 				pricingSettings,
 				{
 					type: "ExcursionPackage",
-					id: matchedExcursion.id,
-					name: matchedExcursion.name,
-					fromZone: matchedExcursion.originZone?.name,
-					toZone: matchedExcursion.destinationZone?.name,
+					id: excursion.id,
+					name: excursion.name,
+					fromZone: excursion.originZone?.name,
+					toZone: excursion.destinationZone?.name,
 				},
 				appliedRules,
 			);
@@ -2116,16 +2262,32 @@ export function calculatePrice(
 		disposChecked = dispoResult.disposChecked;
 
 		if (dispoResult.matchedDispo) {
-			const matchedDispo = dispoResult.matchedDispo;
-			const price = Number(matchedDispo.basePrice);
+			const matchedDispoWithPrice = dispoResult.matchedDispo;
+			const dispo = matchedDispoWithPrice.dispo;
+			// Story 12.2: Use effective price (override if set, otherwise catalog)
+			const price = matchedDispoWithPrice.effectivePrice;
 
-			appliedRules.push({
-				type: "PARTNER_GRID_MATCH",
-				description: "Partner contract dispo package applied (Engagement Rule)",
-				gridType: "DispoPackage",
-				gridId: matchedDispo.id,
-				originalPrice: price,
-			});
+			// Story 12.2: Add appropriate rule based on price source
+			if (matchedDispoWithPrice.isOverride) {
+				appliedRules.push({
+					type: "PARTNER_OVERRIDE_PRICE",
+					description: "Partner-specific negotiated price applied (Engagement Rule)",
+					gridType: "DispoPackage",
+					gridId: dispo.id,
+					catalogPrice: matchedDispoWithPrice.catalogPrice,
+					overridePrice: matchedDispoWithPrice.overridePrice,
+					effectivePrice: price,
+				});
+			} else {
+				appliedRules.push({
+					type: "CATALOG_PRICE",
+					description: "Catalog dispo price applied (Engagement Rule)",
+					gridType: "DispoPackage",
+					gridId: dispo.id,
+					catalogPrice: matchedDispoWithPrice.catalogPrice,
+					effectivePrice: price,
+				});
+			}
 
 			return buildGridResult(
 				price,
@@ -2134,8 +2296,8 @@ export function calculatePrice(
 				pricingSettings,
 				{
 					type: "DispoPackage",
-					id: matchedDispo.id,
-					name: matchedDispo.name,
+					id: dispo.id,
+					name: dispo.name,
 				},
 				appliedRules,
 			);

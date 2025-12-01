@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-key>12-2-pricing-engine-override-support</story-key>
+    <epic>12 - Partner-Specific Pricing & Contract Enhancements</epic>
+    <created>2025-12-01T11:26:00+01:00</created>
+    <author>Bob (Scrum Master)</author>
+    <status>draft</status>
+    <depends-on>12-1-partner-specific-pricing-schema</depends-on>
+  </metadata>
+
+  <problem>
+    <title>Le Pricing Engine Ignore les Prix Négociés</title>
+    <description>
+      Suite à la Story 12.1, les tables de jonction ont maintenant un champ overridePrice.
+      Cependant, le pricing engine (pricing-engine.ts) utilise toujours directement 
+      le fixedPrice de ZoneRoute, le price de ExcursionPackage, et le basePrice de DispoPackage.
+      
+      Les fonctions concernées :
+      - matchZoneRouteWithDetails() - retourne route.fixedPrice
+      - matchExcursionPackage() - retourne package.price
+      - matchDispoPackage() - retourne package.basePrice
+      
+      Ces fonctions ne consultent pas l'overridePrice du contrat partenaire.
+    </description>
+    <business-impact>
+      - Les prix négociés ne sont pas appliqués aux devis
+      - Les partenaires sont facturés au prix catalogue au lieu du prix négocié
+      - La fonctionnalité de la Story 12.1 est inutile sans cette correction
+    </business-impact>
+  </problem>
+
+  <objectives>
+    <objective id="OBJ-1" priority="critical">
+      <title>Résolution de Prix avec Override</title>
+      <description>
+        Modifier les fonctions de matching pour retourner le prix effectif :
+        1. overridePrice si défini dans le contrat partenaire
+        2. fixedPrice/price/basePrice sinon (fallback)
+      </description>
+      <success-criteria>
+        - matchZoneRouteWithDetails retourne effectivePrice
+        - matchExcursionPackage retourne effectivePrice
+        - matchDispoPackage retourne effectivePrice
+        - Tests unitaires couvrant les deux cas
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-2" priority="high">
+      <title>Transparence dans appliedRules</title>
+      <description>
+        Ajouter une règle dans appliedRules pour indiquer si un prix négocié a été appliqué.
+      </description>
+      <success-criteria>
+        - appliedRules contient "PARTNER_OVERRIDE_PRICE" quand overridePrice est utilisé
+        - appliedRules contient "CATALOG_PRICE" quand fixedPrice est utilisé
+        - Le prix effectif est visible dans la réponse
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-3" priority="high">
+      <title>Engagement Rule Préservée</title>
+      <description>
+        La règle d'engagement (FR11) doit continuer à s'appliquer avec le prix négocié.
+        Le prix négocié ou catalogue est appliqué même si le trajet est non-rentable.
+      </description>
+      <success-criteria>
+        - Le prix négocié est appliqué sans vérification de rentabilité
+        - La shadow calculation utilise le prix effectif
+        - L'indicateur de rentabilité est calculé correctement
+      </success-criteria>
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification de matchZoneRouteWithDetails()</item>
+      <item>Modification de matchExcursionPackage()</item>
+      <item>Modification de matchDispoPackage()</item>
+      <item>Mise à jour des interfaces TypeScript</item>
+      <item>Ajout de règles dans appliedRules</item>
+      <item>Tests unitaires (Vitest)</item>
+      <item>Tests API (Curl)</item>
+      <item>Vérification DB (MCP postgres)</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>UI de configuration (Story 12.3)</item>
+      <item>Modification du schéma Prisma (fait en 12.1)</item>
+      <item>Modification de l'API partner-contracts (fait en 12.1)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint id="C-1" type="technical">
+      <title>Rétrocompatibilité</title>
+      <description>
+        Les contrats sans overridePrice (null) doivent continuer à utiliser le prix catalogue.
+        Aucune régression sur les calculs existants.
+      </description>
+    </constraint>
+    
+    <constraint id="C-2" type="performance">
+      <title>Performance</title>
+      <description>
+        Le pricing engine ne doit pas être ralenti. L'overridePrice est déjà chargé 
+        avec le contrat partenaire, donc pas de requête supplémentaire.
+      </description>
+    </constraint>
+    
+    <constraint id="C-3" type="business">
+      <title>Engagement Rule (FR11)</title>
+      <description>
+        Le prix négocié est appliqué même si le trajet est non-rentable.
+        La shadow calculation doit utiliser le prix effectif pour calculer la rentabilité.
+      </description>
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk id="R-1" severity="high" probability="medium">
+      <title>Régression des Calculs de Prix</title>
+      <description>
+        La modification du pricing engine pourrait casser des calculs existants.
+      </description>
+      <mitigation>
+        - Tests unitaires exhaustifs avant/après
+        - Tests de non-régression sur les scénarios existants
+        - Vérification que les tests existants passent toujours
+      </mitigation>
+    </risk>
+    
+    <risk id="R-2" severity="medium" probability="low">
+      <title>Incohérence des Données</title>
+      <description>
+        Si overridePrice est défini mais le contrat partenaire n'est pas chargé correctement.
+      </description>
+      <mitigation>
+        - Vérifier que le contrat est chargé avec les assignments
+        - Fallback au prix catalogue si données manquantes
+        - Logging des cas de fallback
+      </mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Fonctions à modifier :
+        - matchZoneRouteWithDetails() ligne ~240
+        - Interfaces ZoneRouteAssignment, ExcursionPackageAssignment, DispoPackageAssignment
+        - calculatePrice() qui utilise ces fonctions
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        Endpoint de calcul de prix qui charge le contrat partenaire
+        et appelle le pricing engine
+      </file>
+      <file path="packages/api/src/services/__tests__/pricing-engine.test.ts">
+        Tests existants pour le pricing engine
+        À étendre avec les cas de prix négociés
+      </file>
+    </existing-code>
+    
+    <data-flow>
+      <![CDATA[
+      1. pricing-calculate.ts charge le contrat partenaire avec ses assignments
+      2. Chaque assignment contient maintenant overridePrice (peut être null)
+      3. pricing-engine.ts reçoit ces données via PartnerContractData
+      4. matchZoneRouteWithDetails() doit utiliser overridePrice si disponible
+      5. Le prix effectif est retourné et utilisé pour le devis
+      ]]>
+    </data-flow>
+  </technical-context>
+
+  <validation>
+    <checklist>
+      <item status="done">Problème clairement défini</item>
+      <item status="done">Objectifs SMART</item>
+      <item status="done">Périmètre délimité</item>
+      <item status="done">Contraintes identifiées</item>
+      <item status="done">Risques évalués avec mitigations</item>
+      <item status="done">Contexte technique documenté</item>
+    </checklist>
+  </validation>
+</story-context>
