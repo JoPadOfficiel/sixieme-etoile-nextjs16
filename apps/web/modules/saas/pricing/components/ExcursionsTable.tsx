@@ -26,6 +26,7 @@ import {
 	RulerIcon,
 	SearchIcon,
 	Trash2Icon,
+	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ExcursionPackage, PricingZone, VehicleCategory } from "../types";
@@ -37,13 +38,13 @@ interface ExcursionsTableProps {
 	isLoading?: boolean;
 	onEdit: (excursion: ExcursionPackage) => void;
 	onDelete: (excursion: ExcursionPackage) => void;
+	// Story 14.6: Partner assignment
+	onAssignPartners?: (excursion: ExcursionPackage) => void;
 	// Filters
 	search: string;
 	onSearchChange: (search: string) => void;
-	originZoneId: string;
-	onOriginZoneIdChange: (zoneId: string) => void;
-	destinationZoneId: string;
-	onDestinationZoneIdChange: (zoneId: string) => void;
+	zoneId: string;
+	onZoneIdChange: (zoneId: string) => void;
 	vehicleCategoryId: string;
 	onVehicleCategoryIdChange: (categoryId: string) => void;
 	statusFilter: string;
@@ -62,12 +63,11 @@ export function ExcursionsTable({
 	isLoading = false,
 	onEdit,
 	onDelete,
+	onAssignPartners,
 	search,
 	onSearchChange,
-	originZoneId,
-	onOriginZoneIdChange,
-	destinationZoneId,
-	onDestinationZoneIdChange,
+	zoneId,
+	onZoneIdChange,
 	vehicleCategoryId,
 	onVehicleCategoryIdChange,
 	statusFilter,
@@ -118,32 +118,10 @@ export function ExcursionsTable({
 					/>
 				</div>
 
-				{/* Origin Zone Filter */}
-				<Select value={originZoneId} onValueChange={onOriginZoneIdChange}>
+				{/* Zone Filter */}
+				<Select value={zoneId} onValueChange={onZoneIdChange}>
 					<SelectTrigger className="w-[180px]">
-						<SelectValue placeholder={t("excursions.filters.originZone")} />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">
-							{t("excursions.filters.allZones")}
-						</SelectItem>
-						{sortedZones.map((zone) => (
-							<SelectItem key={zone.id} value={zone.id}>
-								{zone.name}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-
-				{/* Destination Zone Filter */}
-				<Select
-					value={destinationZoneId}
-					onValueChange={onDestinationZoneIdChange}
-				>
-					<SelectTrigger className="w-[180px]">
-						<SelectValue
-							placeholder={t("excursions.filters.destinationZone")}
-						/>
+						<SelectValue placeholder={t("excursions.filters.zone")} />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="all">
@@ -305,6 +283,16 @@ export function ExcursionsTable({
 									</TableCell>
 									<TableCell>
 										<div className="flex items-center gap-1">
+											{onAssignPartners && (
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => onAssignPartners(excursion)}
+													title={t("routes.partnerAssignment.assignButton")}
+												>
+													<UsersIcon className="size-4" />
+												</Button>
+											)}
 											<Button
 												variant="ghost"
 												size="icon"

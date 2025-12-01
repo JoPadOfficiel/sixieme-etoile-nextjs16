@@ -110,14 +110,27 @@ export function PriceOverrideCell({
             min="0"
             value={inputValue}
             onChange={(e) => {
-              setInputValue(e.target.value);
+              const newValue = e.target.value;
+              setInputValue(newValue);
               setError(null);
+              // Immediately update parent with new value on each change
+              if (newValue.trim() === "") {
+                onSave(null);
+              } else {
+                const numValue = parseFloat(newValue);
+                if (!isNaN(numValue) && numValue > 0) {
+                  onSave(numValue);
+                }
+              }
             }}
             onKeyDown={handleKeyDown}
             onBlur={() => {
-              // Small delay to allow button clicks
+              // Small delay to allow button clicks, then close edit mode
               setTimeout(() => {
-                if (isEditing) handleCancel();
+                if (isEditing) {
+                  setIsEditing(false);
+                  setError(null);
+                }
               }, 150);
             }}
             className={cn(

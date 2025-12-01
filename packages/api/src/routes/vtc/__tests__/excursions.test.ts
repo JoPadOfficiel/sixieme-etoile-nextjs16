@@ -112,37 +112,22 @@ describe("Excursions API", () => {
 			expect(json.meta.total).toBe(1);
 		});
 
-		it("should filter excursions by originZoneId", async () => {
+		it("should filter excursions by zoneId (matches origin OR destination)", async () => {
 			vi.mocked(db.excursionPackage.findMany).mockResolvedValue([]);
 			vi.mocked(db.excursionPackage.count).mockResolvedValue(0);
 
 			await client.pricing.excursions.$get({
-				query: { originZoneId: "zone-origin-id" },
+				query: { zoneId: "zone-id" },
 			});
 
 			expect(db.excursionPackage.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: expect.objectContaining({
 						organizationId: "test-org-id",
-						originZoneId: "zone-origin-id",
-					}),
-				}),
-			);
-		});
-
-		it("should filter excursions by destinationZoneId", async () => {
-			vi.mocked(db.excursionPackage.findMany).mockResolvedValue([]);
-			vi.mocked(db.excursionPackage.count).mockResolvedValue(0);
-
-			await client.pricing.excursions.$get({
-				query: { destinationZoneId: "zone-dest-id" },
-			});
-
-			expect(db.excursionPackage.findMany).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: expect.objectContaining({
-						organizationId: "test-org-id",
-						destinationZoneId: "zone-dest-id",
+						OR: [
+							{ originZoneId: "zone-id" },
+							{ destinationZoneId: "zone-id" },
+						],
 					}),
 				}),
 			);

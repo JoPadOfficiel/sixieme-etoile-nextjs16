@@ -15,7 +15,7 @@ import { apiClient } from "@shared/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SaveIcon, BuildingIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useMemo } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@ui/hooks/use-toast";
 import type { PartnerContract, PartnerContractFormData, PaymentTerms } from "../types";
 import { ZoneRoutesTable, PackagesTable } from "./PriceOverrideTable";
@@ -94,13 +94,20 @@ export function PartnerContractForm({ contactId, isPartner }: PartnerContractFor
     enabled: isPartner,
   });
 
-  // Derive initial form data from contract response
-  const initialFormData = useMemo(
-    () => contractToFormData(contractResponse?.data ?? null),
-    [contractResponse?.data]
-  );
+  // Track if we've initialized from server data
+  const lastContractDataRef = useRef<PartnerContract | null | undefined>(undefined);
+  
+  // Use initialFormData directly but track changes
+  const [formData, setFormData] = useState<PartnerContractFormData>(DEFAULT_FORM_DATA);
 
-  const [formData, setFormData] = useState<PartnerContractFormData>(initialFormData);
+  // Sync form data when contract data is loaded/updated - using ref to avoid lint warning
+  if (contractResponse?.data !== lastContractDataRef.current) {
+    lastContractDataRef.current = contractResponse?.data;
+    if (contractResponse?.data) {
+      // This is safe because we're checking for actual data change
+      setFormData(contractToFormData(contractResponse.data));
+    }
+  }
 
   // Save mutation
   const saveMutation = useMutation({

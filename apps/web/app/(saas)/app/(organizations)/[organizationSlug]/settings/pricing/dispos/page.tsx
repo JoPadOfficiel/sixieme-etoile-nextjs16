@@ -15,7 +15,7 @@ import { useToast } from "@ui/hooks/use-toast";
 import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { DispoDrawer, DisposTable } from "@saas/pricing/components";
+import { DispoDrawer, DisposTable, PartnerAssignmentDialog } from "@saas/pricing/components";
 import type {
 	DispoPackage,
 	DispoPackageFormData,
@@ -47,6 +47,10 @@ export default function SettingsPricingDisposPage() {
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [dispoToDelete, setDispoToDelete] = useState<DispoPackage | null>(null);
+
+	// Story 14.6: Partner assignment dialog
+	const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
+	const [dispoForPartners, setDispoForPartners] = useState<DispoPackage | null>(null);
 
 	const fetchDispos = useCallback(async () => {
 		setIsLoading(true);
@@ -202,6 +206,12 @@ export default function SettingsPricingDisposPage() {
 		setDrawerOpen(true);
 	};
 
+	// Story 14.6: Partner assignment handler
+	const handleAssignPartners = (dispo: DispoPackage) => {
+		setDispoForPartners(dispo);
+		setPartnerDialogOpen(true);
+	};
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
@@ -218,6 +228,7 @@ export default function SettingsPricingDisposPage() {
 				isLoading={isLoading}
 				onEdit={handleEdit}
 				onDelete={handleDeleteClick}
+				onAssignPartners={handleAssignPartners}
 				search={search}
 				onSearchChange={setSearch}
 				vehicleCategoryId={vehicleCategoryId}
@@ -262,6 +273,21 @@ export default function SettingsPricingDisposPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Story 14.6: Partner Assignment Dialog */}
+			{dispoForPartners && (
+				<PartnerAssignmentDialog
+					open={partnerDialogOpen}
+					onOpenChange={setPartnerDialogOpen}
+					itemId={dispoForPartners.id}
+					itemType="dispo"
+					catalogPrice={dispoForPartners.basePrice}
+					itemLabel={dispoForPartners.name}
+					onSuccess={() => {
+						fetchDispos();
+					}}
+				/>
+			)}
 		</div>
 	);
 }

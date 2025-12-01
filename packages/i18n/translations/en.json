@@ -877,8 +877,7 @@
 			"negotiated": "Negotiated"
 		},
 		"filters": {
-			"fromZone": "From Zone",
-			"toZone": "To Zone",
+			"zone": "Zone",
 			"vehicleCategory": "Vehicle Category",
 			"status": "Status",
 			"partner": "Partner",
@@ -976,13 +975,14 @@
 			"confirm": "Delete"
 		},
 		"filters": {
-			"originZone": "Origin Zone",
-			"destinationZone": "Destination Zone",
+			"zone": "Zone",
 			"vehicleCategory": "Vehicle Category",
 			"status": "Status",
+			"partner": "Partner",
 			"allZones": "All Zones",
 			"allCategories": "All Categories",
 			"allStatus": "All Status",
+			"allPartners": "All Partners",
 			"active": "Active",
 			"inactive": "Inactive"
 		},
@@ -1055,8 +1055,10 @@
 		"filters": {
 			"vehicleCategory": "Vehicle Category",
 			"status": "Status",
+			"partner": "Partner",
 			"allCategories": "All Categories",
 			"allStatus": "All Status",
+			"allPartners": "All Partners",
 			"active": "Active",
 			"inactive": "Inactive"
 		},

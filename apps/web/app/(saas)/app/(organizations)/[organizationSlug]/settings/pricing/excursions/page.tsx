@@ -15,7 +15,7 @@ import { useToast } from "@ui/hooks/use-toast";
 import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { ExcursionDrawer, ExcursionsTable } from "@saas/pricing/components";
+import { ExcursionDrawer, ExcursionsTable, PartnerAssignmentDialog } from "@saas/pricing/components";
 import type {
 	ExcursionPackage,
 	ExcursionPackageFormData,
@@ -41,8 +41,7 @@ export default function SettingsPricingExcursionsPage() {
 	const [total, setTotal] = useState(0);
 
 	const [search, setSearch] = useState("");
-	const [originZoneId, setOriginZoneId] = useState("all");
-	const [destinationZoneId, setDestinationZoneId] = useState("all");
+	const [zoneId, setZoneId] = useState("all");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 
@@ -54,6 +53,10 @@ export default function SettingsPricingExcursionsPage() {
 	const [excursionToDelete, setExcursionToDelete] =
 		useState<ExcursionPackage | null>(null);
 
+	// Story 14.6: Partner assignment dialog
+	const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
+	const [excursionForPartners, setExcursionForPartners] = useState<ExcursionPackage | null>(null);
+
 	const fetchExcursions = useCallback(async () => {
 		setIsLoading(true);
 		try {
@@ -63,9 +66,7 @@ export default function SettingsPricingExcursionsPage() {
 			});
 
 			if (search) params.set("search", search);
-			if (originZoneId !== "all") params.set("originZoneId", originZoneId);
-			if (destinationZoneId !== "all")
-				params.set("destinationZoneId", destinationZoneId);
+			if (zoneId !== "all") params.set("zoneId", zoneId);
 			if (vehicleCategoryId !== "all")
 				params.set("vehicleCategoryId", vehicleCategoryId);
 			if (statusFilter !== "all") {
@@ -92,8 +93,7 @@ export default function SettingsPricingExcursionsPage() {
 	}, [
 		page,
 		search,
-		originZoneId,
-		destinationZoneId,
+		zoneId,
 		vehicleCategoryId,
 		statusFilter,
 		toast,
@@ -136,13 +136,7 @@ export default function SettingsPricingExcursionsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [
-		search,
-		originZoneId,
-		destinationZoneId,
-		vehicleCategoryId,
-		statusFilter,
-	]);
+	}, [search, zoneId, vehicleCategoryId, statusFilter]);
 
 	const handleSubmit = async (data: ExcursionPackageFormData) => {
 		setIsSubmitting(true);
@@ -238,6 +232,12 @@ export default function SettingsPricingExcursionsPage() {
 		setDrawerOpen(true);
 	};
 
+	// Story 14.6: Partner assignment handler
+	const handleAssignPartners = (excursion: ExcursionPackage) => {
+		setExcursionForPartners(excursion);
+		setPartnerDialogOpen(true);
+	};
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
@@ -255,12 +255,11 @@ export default function SettingsPricingExcursionsPage() {
 				isLoading={isLoading}
 				onEdit={handleEdit}
 				onDelete={handleDeleteClick}
+				onAssignPartners={handleAssignPartners}
 				search={search}
 				onSearchChange={setSearch}
-				originZoneId={originZoneId}
-				onOriginZoneIdChange={setOriginZoneId}
-				destinationZoneId={destinationZoneId}
-				onDestinationZoneIdChange={setDestinationZoneId}
+				zoneId={zoneId}
+				onZoneIdChange={setZoneId}
 				vehicleCategoryId={vehicleCategoryId}
 				onVehicleCategoryIdChange={setVehicleCategoryId}
 				statusFilter={statusFilter}
@@ -304,6 +303,21 @@ export default function SettingsPricingExcursionsPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Story 14.6: Partner Assignment Dialog */}
+			{excursionForPartners && (
+				<PartnerAssignmentDialog
+					open={partnerDialogOpen}
+					onOpenChange={setPartnerDialogOpen}
+					itemId={excursionForPartners.id}
+					itemType="excursion"
+					catalogPrice={excursionForPartners.price}
+					itemLabel={excursionForPartners.name}
+					onSuccess={() => {
+						fetchExcursions();
+					}}
+				/>
+			)}
 		</div>
 	);
 }

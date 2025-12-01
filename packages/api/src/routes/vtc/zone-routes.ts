@@ -115,8 +115,8 @@ const updateRouteSchema = routeBaseSchema.partial();
 const listRoutesSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().positive().max(100).default(20),
-	fromZoneId: z.string().optional(),
-	toZoneId: z.string().optional(),
+	// Single zone filter (matches fromZone OR toZone)
+	zoneId: z.string().optional(),
 	vehicleCategoryId: z.string().optional(),
 	direction: routeDirectionEnum.optional(),
 	isActive: z.enum(["true", "false"]).optional(),
@@ -145,8 +145,7 @@ export const zoneRoutesRouter = new Hono()
 			const {
 				page,
 				limit,
-				fromZoneId,
-				toZoneId,
+				zoneId,
 				vehicleCategoryId,
 				direction,
 				isActive,
@@ -157,16 +156,21 @@ export const zoneRoutesRouter = new Hono()
 			const skip = (page - 1) * limit;
 
 			// Build where clause with tenant filter
+			// zoneId filters on both fromZoneId OR toZoneId
 			const where = withTenantFilter(
 				{
-					...(fromZoneId && { fromZoneId }),
-					...(toZoneId && { toZoneId }),
+					...(zoneId && !search && {
+						OR: [
+							{ fromZoneId: zoneId },
+							{ toZoneId: zoneId },
+						],
+					}),
 					...(vehicleCategoryId && { vehicleCategoryId }),
 					...(direction && { direction }),
 					...(isActive !== undefined && {
 						isActive: isActive === "true",
 					}),
-					...(search && {
+					...(!zoneId && search && {
 						OR: [
 							{
 								fromZone: {
@@ -192,6 +196,26 @@ export const zoneRoutesRouter = new Hono()
 								vehicleCategory: {
 									name: { contains: search, mode: "insensitive" as const },
 								},
+							},
+						],
+					}),
+					// When both zoneId and search are present, combine them with AND
+					...(zoneId && search && {
+						AND: [
+							{
+								OR: [
+									{ fromZoneId: zoneId },
+									{ toZoneId: zoneId },
+								],
+							},
+							{
+								OR: [
+									{ fromZone: { name: { contains: search, mode: "insensitive" as const } } },
+									{ fromZone: { code: { contains: search, mode: "insensitive" as const } } },
+									{ toZone: { name: { contains: search, mode: "insensitive" as const } } },
+									{ toZone: { code: { contains: search, mode: "insensitive" as const } } },
+									{ vehicleCategory: { name: { contains: search, mode: "insensitive" as const } } },
+								],
 							},
 						],
 					}),

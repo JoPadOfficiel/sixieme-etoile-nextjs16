@@ -103,8 +103,8 @@ const updateExcursionSchema = createExcursionSchema.partial();
 const listExcursionsSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().positive().max(100).default(20),
-	originZoneId: z.string().optional(),
-	destinationZoneId: z.string().optional(),
+	// Single zone filter (matches origin OR destination)
+	zoneId: z.string().optional(),
 	vehicleCategoryId: z.string().optional(),
 	isActive: z.enum(["true", "false"]).optional(),
 	search: z.string().optional(),
@@ -130,8 +130,7 @@ export const excursionsRouter = new Hono()
 			const {
 				page,
 				limit,
-				originZoneId,
-				destinationZoneId,
+				zoneId,
 				vehicleCategoryId,
 				isActive,
 				search,
@@ -140,19 +139,34 @@ export const excursionsRouter = new Hono()
 			const skip = (page - 1) * limit;
 
 			// Build where clause with tenant filter
+			// zoneId filters on both originZoneId OR destinationZoneId
 			const where = withTenantFilter(
 				{
-					...(originZoneId && { originZoneId }),
-					...(destinationZoneId && { destinationZoneId }),
+					...(zoneId && {
+						OR: [
+							{ originZoneId: zoneId },
+							{ destinationZoneId: zoneId },
+						],
+					}),
 					...(vehicleCategoryId && { vehicleCategoryId }),
 					...(isActive !== undefined && {
 						isActive: isActive === "true",
 					}),
-					...(search && {
+					...(search && !zoneId && {
 						OR: [
 							{ name: { contains: search, mode: "insensitive" as const } },
 							{
 								description: { contains: search, mode: "insensitive" as const },
+							},
+						],
+					}),
+					...(search && zoneId && {
+						AND: [
+							{
+								OR: [
+									{ name: { contains: search, mode: "insensitive" as const } },
+									{ description: { contains: search, mode: "insensitive" as const } },
+								],
 							},
 						],
 					}),

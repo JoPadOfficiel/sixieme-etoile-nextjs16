@@ -29,7 +29,6 @@ import type {
 	MatrixData,
 } from "@saas/pricing/components";
 import type {
-	PartnerContact,
 	PricingZone,
 	VehicleCategory,
 	ZoneRoute,
@@ -63,13 +62,9 @@ export default function SettingsPricingRoutesPage() {
 	const limit = 20;
 
 	const [search, setSearch] = useState("");
-	const [fromZoneId, setFromZoneId] = useState("all");
-	const [toZoneId, setToZoneId] = useState("all");
+	const [zoneId, setZoneId] = useState("all");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
-	// Story 13.2: Partner filter
-	const [partnerId, setPartnerId] = useState("all");
-	const [partners, setPartners] = useState<PartnerContact[]>([]);
 
 	// Prefill for creating route from matrix
 	const [prefillFromZoneId, setPrefillFromZoneId] = useState<string | null>(null);
@@ -94,15 +89,12 @@ export default function SettingsPricingRoutesPage() {
 			});
 
 			if (search) params.set("search", search);
-			if (fromZoneId !== "all") params.set("fromZoneId", fromZoneId);
-			if (toZoneId !== "all") params.set("toZoneId", toZoneId);
+			if (zoneId !== "all") params.set("zoneId", zoneId);
 			if (vehicleCategoryId !== "all")
 				params.set("vehicleCategoryId", vehicleCategoryId);
 			if (statusFilter !== "all") {
 				params.set("isActive", statusFilter === "active" ? "true" : "false");
 			}
-			// Story 13.2: Partner filter
-			if (partnerId !== "all") params.set("partnerId", partnerId);
 
 			const response = await fetch(`/api/vtc/pricing/routes?${params}`);
 			if (!response.ok) throw new Error("Failed to fetch routes");
@@ -124,11 +116,9 @@ export default function SettingsPricingRoutesPage() {
 	}, [
 		page,
 		search,
-		fromZoneId,
-		toZoneId,
+		zoneId,
 		vehicleCategoryId,
 		statusFilter,
-		partnerId,
 		toast,
 		t,
 	]);
@@ -159,32 +149,6 @@ export default function SettingsPricingRoutesPage() {
 		} catch (error) {
 			console.warn("Vehicle categories API not available:", error);
 			setVehicleCategories([]);
-		}
-	}, []);
-
-	// Story 13.2: Fetch partner contacts for filter dropdown
-	const fetchPartners = useCallback(async () => {
-		try {
-			const response = await fetch("/api/vtc/contacts?isPartner=true&limit=100");
-			if (!response.ok) {
-				console.warn("Partners API not available");
-				setPartners([]);
-				return;
-			}
-
-			const data = await response.json();
-			// Map to PartnerContact format
-			const partnerContacts: PartnerContact[] = (data.data || []).map(
-				(contact: { id: string; displayName: string; companyName?: string | null }) => ({
-					id: contact.id,
-					displayName: contact.displayName,
-					companyName: contact.companyName,
-				})
-			);
-			setPartners(partnerContacts);
-		} catch (error) {
-			console.warn("Partners API not available:", error);
-			setPartners([]);
 		}
 	}, []);
 
@@ -221,8 +185,7 @@ export default function SettingsPricingRoutesPage() {
 		fetchZones();
 		fetchVehicleCategories();
 		fetchCoverageStats();
-		fetchPartners(); // Story 13.2
-	}, [fetchZones, fetchVehicleCategories, fetchCoverageStats, fetchPartners]);
+	}, [fetchZones, fetchVehicleCategories, fetchCoverageStats]);
 
 	useEffect(() => {
 		fetchRoutes();
@@ -236,7 +199,7 @@ export default function SettingsPricingRoutesPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [search, fromZoneId, toZoneId, vehicleCategoryId, statusFilter, partnerId]);
+	}, [search, zoneId, vehicleCategoryId, statusFilter]);
 
 	const handleSubmit = async (data: ZoneRouteFormData) => {
 		setIsSubmitting(true);
@@ -414,18 +377,12 @@ export default function SettingsPricingRoutesPage() {
 					onAssignPartners={handleAssignPartners}
 					search={search}
 					onSearchChange={setSearch}
-					fromZoneId={fromZoneId}
-					onFromZoneIdChange={setFromZoneId}
-					toZoneId={toZoneId}
-					onToZoneIdChange={setToZoneId}
+					zoneId={zoneId}
+					onZoneIdChange={setZoneId}
 					vehicleCategoryId={vehicleCategoryId}
 					onVehicleCategoryIdChange={setVehicleCategoryId}
 					statusFilter={statusFilter}
 					onStatusFilterChange={setStatusFilter}
-					// Story 13.2: Partner filter
-					partnerId={partnerId}
-					onPartnerIdChange={setPartnerId}
-					partners={partners}
 					page={page}
 					totalPages={totalPages}
 					total={total}

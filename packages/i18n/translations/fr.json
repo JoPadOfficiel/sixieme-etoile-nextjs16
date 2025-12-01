@@ -877,8 +877,7 @@
 			"negotiated": "Négocié"
 		},
 		"filters": {
-			"fromZone": "Zone de départ",
-			"toZone": "Zone d'arrivée",
+			"zone": "Zone",
 			"vehicleCategory": "Catégorie de véhicule",
 			"status": "Statut",
 			"partner": "Partenaire",
@@ -976,13 +975,14 @@
 			"confirm": "Supprimer"
 		},
 		"filters": {
-			"originZone": "Zone d'origine",
-			"destinationZone": "Zone de destination",
+			"zone": "Zone",
 			"vehicleCategory": "Catégorie de véhicule",
 			"status": "Statut",
+			"partner": "Partenaire",
 			"allZones": "Toutes les zones",
 			"allCategories": "Toutes les catégories",
 			"allStatus": "Tous les statuts",
+			"allPartners": "Tous les partenaires",
 			"active": "Actif",
 			"inactive": "Inactif"
 		},
@@ -1055,8 +1055,10 @@
 		"filters": {
 			"vehicleCategory": "Catégorie de véhicule",
 			"status": "Statut",
+			"partner": "Partenaire",
 			"allCategories": "Toutes les catégories",
 			"allStatus": "Tous les statuts",
+			"allPartners": "Tous les partenaires",
 			"active": "Actif",
 			"inactive": "Inactif"
 		},

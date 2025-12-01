@@ -25,6 +25,7 @@ import {
 	RulerIcon,
 	SearchIcon,
 	Trash2Icon,
+	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DispoPackage, VehicleCategory } from "../types";
@@ -35,6 +36,8 @@ interface DisposTableProps {
 	isLoading?: boolean;
 	onEdit: (dispo: DispoPackage) => void;
 	onDelete: (dispo: DispoPackage) => void;
+	// Story 14.6: Partner assignment
+	onAssignPartners?: (dispo: DispoPackage) => void;
 	// Filters
 	search: string;
 	onSearchChange: (search: string) => void;
@@ -55,6 +58,7 @@ export function DisposTable({
 	isLoading = false,
 	onEdit,
 	onDelete,
+	onAssignPartners,
 	search,
 	onSearchChange,
 	vehicleCategoryId,
@@ -235,6 +239,16 @@ export function DisposTable({
 									</TableCell>
 									<TableCell>
 										<div className="flex items-center gap-1">
+											{onAssignPartners && (
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => onAssignPartners(dispo)}
+													title={t("routes.partnerAssignment.buttonTooltip")}
+												>
+													<UsersIcon className="size-4" />
+												</Button>
+											)}
 											<Button
 												variant="ghost"
 												size="icon"

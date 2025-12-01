@@ -44,8 +44,7 @@ export default function RoutesPage() {
 
 	// Filters
 	const [search, setSearch] = useState("");
-	const [fromZoneId, setFromZoneId] = useState("all");
-	const [toZoneId, setToZoneId] = useState("all");
+	const [zoneId, setZoneId] = useState("all");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 
@@ -67,8 +66,7 @@ export default function RoutesPage() {
 			});
 
 			if (search) params.set("search", search);
-			if (fromZoneId !== "all") params.set("fromZoneId", fromZoneId);
-			if (toZoneId !== "all") params.set("toZoneId", toZoneId);
+			if (zoneId !== "all") params.set("zoneId", zoneId);
 			if (vehicleCategoryId !== "all") params.set("vehicleCategoryId", vehicleCategoryId);
 			if (statusFilter !== "all") {
 				params.set("isActive", statusFilter === "active" ? "true" : "false");
@@ -91,7 +89,7 @@ export default function RoutesPage() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [page, search, fromZoneId, toZoneId, vehicleCategoryId, statusFilter, toast, t]);
+	}, [page, search, zoneId, vehicleCategoryId, statusFilter, toast, t]);
 
 	// Fetch zones for dropdowns
 	const fetchZones = useCallback(async () => {
@@ -140,7 +138,7 @@ export default function RoutesPage() {
 	// Reset page when filters change
 	useEffect(() => {
 		setPage(1);
-	}, [search, fromZoneId, toZoneId, vehicleCategoryId, statusFilter]);
+	}, [search, zoneId, vehicleCategoryId, statusFilter]);
 
 	// Handle create/update route
 	const handleSubmit = async (data: ZoneRouteFormData) => {
@@ -262,10 +260,8 @@ export default function RoutesPage() {
 						onDelete={handleDeleteClick}
 						search={search}
 						onSearchChange={setSearch}
-						fromZoneId={fromZoneId}
-						onFromZoneIdChange={setFromZoneId}
-						toZoneId={toZoneId}
-						onToZoneIdChange={setToZoneId}
+						zoneId={zoneId}
+						onZoneIdChange={setZoneId}
 						vehicleCategoryId={vehicleCategoryId}
 						onVehicleCategoryIdChange={setVehicleCategoryId}
 						statusFilter={statusFilter}
