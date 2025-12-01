@@ -254,10 +254,18 @@ export function AddressAutocomplete({
     }
   }, [onChange]);
 
+  // Track if a suggestion is being selected to prevent blur interference
+  const isSelectingRef = useRef(false);
+
   // Handle blur - update value without coordinates if no selection made
   const handleBlur = () => {
-    // Delay to allow click on suggestion
+    // Delay to allow click on suggestion to complete
     setTimeout(() => {
+      // Don't update if we're in the middle of selecting a suggestion
+      if (isSelectingRef.current) {
+        isSelectingRef.current = false;
+        return;
+      }
       if (inputValue !== value) {
         onChange({
           address: inputValue,
@@ -265,7 +273,8 @@ export function AddressAutocomplete({
           longitude: null,
         });
       }
-    }, 200);
+      setShowSuggestions(false);
+    }, 150);
   };
 
   return (
@@ -297,14 +306,19 @@ export function AddressAutocomplete({
       {showSuggestions && suggestions.length > 0 && (
         <div
           ref={suggestionsRef}
-          className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto"
+          className="absolute z-[9999] w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none"
-              onClick={() => handleSelectSuggestion(suggestion)}
+              onMouseDown={(e) => {
+                // Prevent blur from firing before selection is complete
+                e.preventDefault();
+                isSelectingRef.current = true;
+                handleSelectSuggestion(suggestion);
+              }}
             >
               <div className="flex items-start gap-2">
                 <MapPinIcon className="size-4 mt-0.5 text-muted-foreground shrink-0" />
