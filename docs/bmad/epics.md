@@ -40,6 +40,9 @@ This document decomposes the VTC ERP PRD into **9 functional epics**, aligned wi
 - **Epic 9 – Advanced Pricing Configuration & Reporting**  
   Implement admin configuration for pricing (zones, grids, modifiers, seasonal multipliers, optional fees, promotions, fuel cache) and profitability reporting.
 
+- **Epic 14 – Flexible Route Pricing System**  
+  Extend the zone-to-zone pricing model to support multi-zone origins/destinations and specific address-based pricing with interactive map selection.
+
 ---
 
 ## Functional Requirements Inventory (Summary)
@@ -1547,9 +1550,156 @@ So that I can see which clients, grids and vehicle categories perform best.
 
 ---
 
+## Epic 14 – Flexible Route Pricing System
+
+**Status:** In Progress  
+**Created:** 2025-12-01  
+**Related FRs:** FR8, FR9, FR37
+
+### Epic Overview
+
+#### Problem Statement
+
+Le système actuel de tarification par routes (`/settings/pricing/routes`) présente plusieurs limitations critiques :
+
+1. **Rigidité Zone → Zone** : Chaque route ne peut avoir qu'une seule zone d'origine et une seule zone de destination
+2. **Impossibilité de regrouper** : Pas de moyen de définir un prix unique pour "toutes les zones Paris" → CDG
+3. **Pas d'adresses spécifiques** : Impossible de définir un prix pour un hôtel ou lieu précis
+4. **Bug Vehicle Category** : Le dropdown de sélection des catégories de véhicules ne fonctionne pas
+
+#### Business Value
+
+- **Flexibilité tarifaire** : Permet de créer des grilles de prix plus adaptées aux besoins métier
+- **Gain de temps** : Évite de créer N routes pour N zones avec le même prix
+- **Précision** : Permet des tarifs spécifiques pour des lieux stratégiques (hôtels partenaires, etc.)
+- **Expérience utilisateur** : Interface plus intuitive avec carte interactive
+
+### Stories
+
+#### Story 14.1 – Fix Vehicle Category Dropdown Bug
+
+**Status:** Done
+
+**As a** pricing administrator,  
+**I want** the vehicle category dropdown to work correctly,  
+**So that** I can create and edit routes with the proper vehicle category.
+
+**Related FRs:** FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I am on the pricing routes page,  
+**When** I open the route creation/edit drawer,  
+**Then** the vehicle category dropdown displays all available categories.
+
+**And** I can select any category and save the route successfully.
+
+**Technical Notes:**
+
+- Root cause: Frontend called `/api/vtc/vehicles/categories` but API is mounted at `/api/vtc/vehicle-categories`
+- Fix applied to 4 files: routes page, settings/pricing/routes, dispos, excursions
+
+---
+
+#### Story 14.2 – Extend ZoneRoute Schema for Multi-Zone & Address Support
+
+**Status:** Done
+
+**As a** system architect,  
+**I want** the ZoneRoute schema to support multiple zones and specific addresses,  
+**So that** the pricing engine can handle flexible route definitions.
+
+**Related FRs:** FR8 (Geographic zones), FR9 (Route matrix).
+
+**Acceptance Criteria:**
+
+**Given** the new Prisma schema,  
+**When** I create a route with multiple origin zones,  
+**Then** the zones are stored in `ZoneRouteOriginZone` junction table.
+
+**And** when I create a route with a specific address origin,  
+**Then** `originType = ADDRESS` and address fields are populated.
+
+**And** existing routes are migrated to the new schema with backward compatibility.
+
+**Technical Notes:**
+
+- Added `OriginDestinationType` enum (ZONES, ADDRESS)
+- Created `ZoneRouteOriginZone` and `ZoneRouteDestinationZone` junction tables
+- Made `fromZoneId`/`toZoneId` nullable for backward compatibility
+- Data migration script migrated 40 existing routes
+
+---
+
+#### Story 14.3 – Update Pricing UI for Flexible Routes
+
+**Status:** Pending
+
+**As a** pricing administrator,  
+**I want** the route creation UI to support multi-zone and address selection,  
+**So that** I can configure flexible pricing routes.
+
+**Related FRs:** FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I am creating a new route,  
+**When** I select "Zones" as origin type,  
+**Then** I can select multiple zones from a multi-select dropdown.
+
+**And** when I select "Address" as origin type,  
+**Then** I can search and select a specific address via Google Places autocomplete.
+
+**Prerequisites:** Story 14.2.
+
+---
+
+#### Story 14.4 – Interactive Map for Address Selection
+
+**Status:** Pending
+
+**As a** pricing administrator,  
+**I want** to select addresses visually on a map,  
+**So that** I can easily identify and configure location-based pricing.
+
+**Related FRs:** FR8 (Geographic zones).
+
+**Acceptance Criteria:**
+
+**Given** I am configuring an address-based route,  
+**When** I click on the map,  
+**Then** I can place a marker and the address is auto-filled.
+
+**Prerequisites:** Story 14.3.
+
+---
+
+#### Story 14.5 – Update Pricing Engine for Multi-Zone Routes
+
+**Status:** Pending
+
+**As a** system,  
+**I want** the pricing engine to match trips against multi-zone routes,  
+**So that** flexible pricing configurations are applied correctly.
+
+**Related FRs:** FR9 (Route matrix), FR24 (Profitability calculation).
+
+**Acceptance Criteria:**
+
+**Given** a trip from Zone A to Zone B,  
+**When** there exists a route with origin zones [A, C, D] and destination zone [B],  
+**Then** the route matches and the fixed price is applied.
+
+**And** when the origin is a specific address within a zone,  
+**Then** the address-based route takes priority over zone-based routes.
+
+**Prerequisites:** Stories 14.2, 14.3.
+
+---
+
 ## Summary
 
-This document now defines the **9-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **14-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).

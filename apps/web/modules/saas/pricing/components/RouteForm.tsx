@@ -11,30 +11,110 @@ import {
 	SelectValue,
 } from "@ui/components/select";
 import { Switch } from "@ui/components/switch";
-import { ArrowLeftRightIcon, ArrowRightIcon, Loader2Icon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@ui/components/tabs";
+import {
+	ArrowLeftRightIcon,
+	ArrowRightIcon,
+	Loader2Icon,
+	MapPinIcon,
+	MapIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type {
+	OriginDestinationType,
 	PricingZone,
 	RouteDirection,
 	VehicleCategory,
 	ZoneRoute,
 	ZoneRouteFormData,
 } from "../types";
+import { MultiZoneSelect } from "./MultiZoneSelect";
+import {
+	AddressAutocomplete,
+	type AddressResult,
+} from "../../shared/components/AddressAutocomplete";
 
-// Helper to get initial form data from route
+/**
+ * Helper to get initial form data from route
+ * Story 14.3: Extended to support multi-zone and address
+ */
 const getInitialFormData = (
 	route?: ZoneRoute | null,
 	defaultFromZoneId?: string,
 	defaultToZoneId?: string,
-): ZoneRouteFormData => ({
-	fromZoneId: route?.fromZone.id ?? defaultFromZoneId ?? "",
-	toZoneId: route?.toZone.id ?? defaultToZoneId ?? "",
-	vehicleCategoryId: route?.vehicleCategory.id ?? "",
-	direction: route?.direction ?? "BIDIRECTIONAL",
-	fixedPrice: route?.fixedPrice ?? 0,
-	isActive: route?.isActive ?? true,
-});
+): ZoneRouteFormData => {
+	// Determine origin type and zones
+	let originType: OriginDestinationType = "ZONES";
+	let originZoneIds: string[] = [];
+	let originPlaceId: string | undefined;
+	let originAddress: string | undefined;
+	let originLat: number | undefined;
+	let originLng: number | undefined;
+
+	if (route) {
+		originType = route.originType || "ZONES";
+		if (originType === "ADDRESS" && route.originPlaceId) {
+			originPlaceId = route.originPlaceId;
+			originAddress = route.originAddress || undefined;
+			originLat = route.originLat || undefined;
+			originLng = route.originLng || undefined;
+		} else {
+			// Use originZones if available, otherwise fall back to legacy fromZone
+			originZoneIds = route.originZones?.map((oz) => oz.zoneId) || [];
+			if (originZoneIds.length === 0 && route.fromZone?.id) {
+				originZoneIds = [route.fromZone.id];
+			}
+		}
+	} else if (defaultFromZoneId) {
+		originZoneIds = [defaultFromZoneId];
+	}
+
+	// Determine destination type and zones
+	let destinationType: OriginDestinationType = "ZONES";
+	let destinationZoneIds: string[] = [];
+	let destPlaceId: string | undefined;
+	let destAddress: string | undefined;
+	let destLat: number | undefined;
+	let destLng: number | undefined;
+
+	if (route) {
+		destinationType = route.destinationType || "ZONES";
+		if (destinationType === "ADDRESS" && route.destPlaceId) {
+			destPlaceId = route.destPlaceId;
+			destAddress = route.destAddress || undefined;
+			destLat = route.destLat || undefined;
+			destLng = route.destLng || undefined;
+		} else {
+			// Use destinationZones if available, otherwise fall back to legacy toZone
+			destinationZoneIds = route.destinationZones?.map((dz) => dz.zoneId) || [];
+			if (destinationZoneIds.length === 0 && route.toZone?.id) {
+				destinationZoneIds = [route.toZone.id];
+			}
+		}
+	} else if (defaultToZoneId) {
+		destinationZoneIds = [defaultToZoneId];
+	}
+
+	return {
+		originType,
+		originZoneIds,
+		originPlaceId,
+		originAddress,
+		originLat,
+		originLng,
+		destinationType,
+		destinationZoneIds,
+		destPlaceId,
+		destAddress,
+		destLat,
+		destLng,
+		vehicleCategoryId: route?.vehicleCategory.id ?? "",
+		direction: route?.direction ?? "BIDIRECTIONAL",
+		fixedPrice: route?.fixedPrice ?? 0,
+		isActive: route?.isActive ?? true,
+	};
+};
 
 interface RouteFormProps {
 	route?: ZoneRoute | null;
@@ -69,6 +149,14 @@ const DIRECTION_OPTIONS: {
 	},
 ];
 
+/**
+ * RouteForm Component
+ * 
+ * Form for creating and editing zone routes with flexible origin/destination.
+ * Supports multi-zone selection and specific address selection.
+ * 
+ * Story 14.3: Extended for flexible route pricing
+ */
 export function RouteForm({
 	route,
 	onSubmit,
@@ -90,24 +178,47 @@ export function RouteForm({
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
 
-		if (!formData.fromZoneId) {
-			newErrors.fromZoneId = t("routes.errors.fromZoneRequired");
+		// Validate origin
+		if (formData.originType === "ZONES") {
+			if (formData.originZoneIds.length === 0) {
+				newErrors.originZones = t("routes.errors.originZonesRequired");
+			}
+		} else {
+			if (!formData.originAddress) {
+				newErrors.originAddress = t("routes.errors.originAddressRequired");
+			}
 		}
-		if (!formData.toZoneId) {
-			newErrors.toZoneId = t("routes.errors.toZoneRequired");
+
+		// Validate destination
+		if (formData.destinationType === "ZONES") {
+			if (formData.destinationZoneIds.length === 0) {
+				newErrors.destinationZones = t("routes.errors.destinationZonesRequired");
+			}
+		} else {
+			if (!formData.destAddress) {
+				newErrors.destAddress = t("routes.errors.destinationAddressRequired");
+			}
 		}
+
+		// Validate vehicle category
 		if (!formData.vehicleCategoryId) {
 			newErrors.vehicleCategoryId = t("routes.errors.vehicleCategoryRequired");
 		}
+
+		// Validate price
 		if (formData.fixedPrice <= 0) {
 			newErrors.fixedPrice = t("routes.errors.fixedPricePositive");
 		}
+
+		// Check for same zone (only if both are single zones)
 		if (
-			formData.fromZoneId &&
-			formData.toZoneId &&
-			formData.fromZoneId === formData.toZoneId
+			formData.originType === "ZONES" &&
+			formData.destinationType === "ZONES" &&
+			formData.originZoneIds.length === 1 &&
+			formData.destinationZoneIds.length === 1 &&
+			formData.originZoneIds[0] === formData.destinationZoneIds[0]
 		) {
-			newErrors.toZoneId = t("routes.errors.sameZone");
+			newErrors.destinationZones = t("routes.errors.sameZone");
 		}
 
 		setErrors(newErrors);
@@ -120,9 +231,25 @@ export function RouteForm({
 		await onSubmit(formData);
 	};
 
-	// Sort zones by name for better UX
-	const sortedZones = [...zones].sort((a, b) => a.name.localeCompare(b.name));
-	const activeZones = sortedZones.filter((z) => z.isActive);
+	// Handle origin address change
+	const handleOriginAddressChange = (result: AddressResult) => {
+		setFormData((prev) => ({
+			...prev,
+			originAddress: result.address,
+			originLat: result.latitude ?? undefined,
+			originLng: result.longitude ?? undefined,
+		}));
+	};
+
+	// Handle destination address change
+	const handleDestAddressChange = (result: AddressResult) => {
+		setFormData((prev) => ({
+			...prev,
+			destAddress: result.address,
+			destLat: result.latitude ?? undefined,
+			destLng: result.longitude ?? undefined,
+		}));
+	};
 
 	// Sort vehicle categories by name
 	const sortedCategories = [...vehicleCategories].sort((a, b) =>
@@ -131,69 +258,125 @@ export function RouteForm({
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
-			{/* From Zone */}
-			<div className="space-y-2">
-				<Label htmlFor="fromZoneId">{t("routes.form.fromZone")} *</Label>
-				<Select
-					value={formData.fromZoneId}
-					onValueChange={(value) =>
-						setFormData((prev) => ({ ...prev, fromZoneId: value }))
-					}
-				>
-					<SelectTrigger
-						id="fromZoneId"
-						className={errors.fromZoneId ? "border-destructive" : ""}
+			{/* Origin Section */}
+			<div className="space-y-3">
+				<div className="flex items-center justify-between">
+					<Label className="text-base font-semibold">
+						{t("routes.form.origin")} *
+					</Label>
+					<Tabs
+						value={formData.originType}
+						onValueChange={(value) =>
+							setFormData((prev) => ({
+								...prev,
+								originType: value as OriginDestinationType,
+							}))
+						}
 					>
-						<SelectValue placeholder={t("routes.form.selectFromZone")} />
-					</SelectTrigger>
-					<SelectContent>
-						{activeZones.map((zone) => (
-							<SelectItem key={zone.id} value={zone.id}>
-								<span className="flex items-center gap-2">
-									<span>{zone.name}</span>
-									<span className="text-muted-foreground text-xs">
-										({zone.code})
-									</span>
-								</span>
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-				{errors.fromZoneId && (
-					<p className="text-destructive text-sm">{errors.fromZoneId}</p>
+						<TabsList className="h-8">
+							<TabsTrigger
+								value="ZONES"
+								className="text-xs px-3 gap-1"
+								data-testid="origin-zones-toggle"
+							>
+								<MapIcon className="size-3" />
+								{t("routes.form.zones")}
+							</TabsTrigger>
+							<TabsTrigger
+								value="ADDRESS"
+								className="text-xs px-3 gap-1"
+								data-testid="origin-address-toggle"
+							>
+								<MapPinIcon className="size-3" />
+								{t("routes.form.address")}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+				</div>
+
+				{formData.originType === "ZONES" ? (
+					<MultiZoneSelect
+						zones={zones}
+						selectedIds={formData.originZoneIds}
+						onChange={(ids) =>
+							setFormData((prev) => ({ ...prev, originZoneIds: ids }))
+						}
+						placeholder={t("routes.form.selectOriginZones")}
+						error={errors.originZones}
+						testId="origin-zones-select"
+					/>
+				) : (
+					<AddressAutocomplete
+						id="originAddress"
+						label=""
+						value={formData.originAddress || ""}
+						onChange={handleOriginAddressChange}
+						placeholder={t("routes.form.searchOriginAddress")}
+					/>
+				)}
+				{errors.originAddress && formData.originType === "ADDRESS" && (
+					<p className="text-destructive text-sm">{errors.originAddress}</p>
 				)}
 			</div>
 
-			{/* To Zone */}
-			<div className="space-y-2">
-				<Label htmlFor="toZoneId">{t("routes.form.toZone")} *</Label>
-				<Select
-					value={formData.toZoneId}
-					onValueChange={(value) =>
-						setFormData((prev) => ({ ...prev, toZoneId: value }))
-					}
-				>
-					<SelectTrigger
-						id="toZoneId"
-						className={errors.toZoneId ? "border-destructive" : ""}
+			{/* Destination Section */}
+			<div className="space-y-3">
+				<div className="flex items-center justify-between">
+					<Label className="text-base font-semibold">
+						{t("routes.form.destination")} *
+					</Label>
+					<Tabs
+						value={formData.destinationType}
+						onValueChange={(value) =>
+							setFormData((prev) => ({
+								...prev,
+								destinationType: value as OriginDestinationType,
+							}))
+						}
 					>
-						<SelectValue placeholder={t("routes.form.selectToZone")} />
-					</SelectTrigger>
-					<SelectContent>
-						{activeZones.map((zone) => (
-							<SelectItem key={zone.id} value={zone.id}>
-								<span className="flex items-center gap-2">
-									<span>{zone.name}</span>
-									<span className="text-muted-foreground text-xs">
-										({zone.code})
-									</span>
-								</span>
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-				{errors.toZoneId && (
-					<p className="text-destructive text-sm">{errors.toZoneId}</p>
+						<TabsList className="h-8">
+							<TabsTrigger
+								value="ZONES"
+								className="text-xs px-3 gap-1"
+								data-testid="destination-zones-toggle"
+							>
+								<MapIcon className="size-3" />
+								{t("routes.form.zones")}
+							</TabsTrigger>
+							<TabsTrigger
+								value="ADDRESS"
+								className="text-xs px-3 gap-1"
+								data-testid="destination-address-toggle"
+							>
+								<MapPinIcon className="size-3" />
+								{t("routes.form.address")}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+				</div>
+
+				{formData.destinationType === "ZONES" ? (
+					<MultiZoneSelect
+						zones={zones}
+						selectedIds={formData.destinationZoneIds}
+						onChange={(ids) =>
+							setFormData((prev) => ({ ...prev, destinationZoneIds: ids }))
+						}
+						placeholder={t("routes.form.selectDestinationZones")}
+						error={errors.destinationZones}
+						testId="destination-zones-select"
+					/>
+				) : (
+					<AddressAutocomplete
+						id="destAddress"
+						label=""
+						value={formData.destAddress || ""}
+						onChange={handleDestAddressChange}
+						placeholder={t("routes.form.searchDestinationAddress")}
+					/>
+				)}
+				{errors.destAddress && formData.destinationType === "ADDRESS" && (
+					<p className="text-destructive text-sm">{errors.destAddress}</p>
 				)}
 			</div>
 

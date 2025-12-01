@@ -1,0 +1,171 @@
+<story-context id="14-3-update-pricing-ui-flexible-routes" v="1.0">
+  <metadata>
+    <epicId>14</epicId>
+    <storyId>14.3</storyId>
+    <title>Update Pricing UI for Flexible Routes</title>
+    <status>in-progress</status>
+    <generatedAt>2025-12-01</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/14-3-update-pricing-ui-flexible-routes.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>pricing administrator</asA>
+    <iWant>the route creation UI to support multi-zone and address selection</iWant>
+    <soThat>I can configure flexible pricing routes with multiple origin/destination zones or specific addresses</soThat>
+    <tasks>
+      <task id="1">Create MultiZoneSelect component with checkboxes and badges</task>
+      <task id="2">Create AddressAutocomplete component with Google Places API</task>
+      <task id="3">Create OriginDestinationTypeToggle component (ZONES/ADDRESS)</task>
+      <task id="4">Update RouteForm.tsx to integrate new components</task>
+      <task id="5">Update ZoneRouteFormData type in types.ts</task>
+      <task id="6">Update API create/update endpoints for new schema</task>
+      <task id="7">Add FR/EN translations for new UI elements</task>
+      <task id="8">Ensure backward compatibility with legacy routes</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">
+      <given>I am on the route creation form</given>
+      <when>I see the "Origin" section</when>
+      <then>I can choose between "Zones" and "Address" via a toggle/tabs</then>
+    </criterion>
+    <criterion id="AC2">
+      <given>I selected "Zones" as origin type</given>
+      <when>I click on the zone selector</when>
+      <then>I can select multiple zones via checkboxes and they display as badges</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>I selected "Address" as origin type</given>
+      <when>I type in the address field</when>
+      <then>Google Places autocomplete suggests addresses and fills originPlaceId, originAddress, originLat, originLng</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>I am on the route creation form</given>
+      <when>I see the "Destination" section</when>
+      <then>I can choose between "Zones" and "Address" via a toggle/tabs</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>I selected "Zones" as destination type</given>
+      <when>I click on the zone selector</when>
+      <then>I can select multiple zones via checkboxes</then>
+    </criterion>
+    <criterion id="AC6">
+      <given>I selected "Address" as destination type</given>
+      <when>I type in the address field</when>
+      <then>Google Places autocomplete suggests addresses</then>
+    </criterion>
+    <criterion id="AC7">
+      <given>I submit the form</given>
+      <when>type is "Zones" but no zone selected OR type is "Address" but no address selected</when>
+      <then>an error message is displayed</then>
+    </criterion>
+    <criterion id="AC8">
+      <given>I submit the form with valid data</given>
+      <when>the API receives the request</when>
+      <then>data is correctly saved with originType, originZones[], or address fields</then>
+    </criterion>
+    <criterion id="AC9">
+      <given>I edit an existing route with legacy fromZoneId</given>
+      <when>the form opens</when>
+      <then>the legacy zone is displayed as selected in "Zones" mode</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/bmad/prd.md" relevance="FR8, FR9, FR37">Pricing modes, zone engine, admin configuration</doc>
+      <doc path="docs/bmad/epics.md#epic-14" relevance="high">Epic 14 - Flexible Route Pricing System</doc>
+      <doc path="docs/sprint-artifacts/14-2-extend-zoneroute-schema-multizone-address.md" relevance="prerequisite">Schema extension with multi-zone and address support</doc>
+    </docs>
+    <code>
+      <file path="apps/web/modules/saas/pricing/components/RouteForm.tsx" action="modify">Main form component to update</file>
+      <file path="apps/web/modules/saas/pricing/components/RouteDrawer.tsx" action="modify">Drawer wrapper, may need props update</file>
+      <file path="apps/web/modules/saas/pricing/types.ts" action="modify">Add new types for flexible routes</file>
+      <file path="packages/api/src/routes/vtc/zone-routes.ts" action="modify">Update create/update endpoints</file>
+      <file path="packages/i18n/translations/fr.json" action="modify">Add French translations</file>
+      <file path="packages/i18n/translations/en.json" action="modify">Add English translations</file>
+      <file path="apps/web/modules/saas/pricing/components/MultiZoneSelect.tsx" action="create">New multi-select component</file>
+      <file path="apps/web/modules/saas/pricing/components/AddressAutocomplete.tsx" action="create">New Google Places component</file>
+    </code>
+    <dependencies>
+      <dependency name="@react-google-maps/api" version="^2.19.0" purpose="Google Places Autocomplete">Optional - can use native google.maps.places</dependency>
+      <dependency name="NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" type="env" purpose="Google Maps API authentication">Required for Places API</dependency>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="backward-compatibility">Must support legacy routes with single fromZoneId/toZoneId</constraint>
+    <constraint type="api-quota">Implement debouncing for Google Places API calls</constraint>
+    <constraint type="ux">Form state complexity - consider React Hook Form or similar</constraint>
+    <constraint type="i18n">All new UI elements must have FR and EN translations</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface type="api">
+      <endpoint method="POST" path="/api/vtc/pricing/routes">
+        <requestBody>
+          {
+            "originType": "ZONES" | "ADDRESS",
+            "originZoneIds": ["zone_id_1", "zone_id_2"],
+            "originPlaceId": "ChIJ...",
+            "originAddress": "Hôtel Ritz Paris, Place Vendôme",
+            "originLat": 48.8683,
+            "originLng": 2.3293,
+            "destinationType": "ZONES" | "ADDRESS",
+            "destinationZoneIds": ["zone_id_3"],
+            "destPlaceId": null,
+            "destAddress": null,
+            "destLat": null,
+            "destLng": null,
+            "vehicleCategoryId": "cat_id",
+            "direction": "BIDIRECTIONAL",
+            "fixedPrice": 85.00,
+            "isActive": true
+          }
+        </requestBody>
+      </endpoint>
+    </interface>
+    <interface type="component">
+      <component name="MultiZoneSelect">
+        <props>
+          zones: PricingZone[]
+          selectedIds: string[]
+          onChange: (ids: string[]) => void
+          placeholder?: string
+          error?: string
+        </props>
+      </component>
+      <component name="AddressAutocomplete">
+        <props>
+          value: { placeId?: string, address?: string, lat?: number, lng?: number }
+          onChange: (value) => void
+          placeholder?: string
+          error?: string
+        </props>
+      </component>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>Playwright for E2E UI tests</standard>
+      <standard>Vitest for unit tests</standard>
+      <standard>All AC must have at least one test</standard>
+    </standards>
+    <locations>
+      <location>apps/web/modules/saas/pricing/components/__tests__/</location>
+      <location>packages/api/src/routes/vtc/__tests__/</location>
+    </locations>
+    <ideas>
+      <test id="TC1">Create route with multi-zone origin - Playwright</test>
+      <test id="TC2">Create route with address origin - Playwright</test>
+      <test id="TC3">Edit legacy route with single zone - Playwright</test>
+      <test id="TC4">Form validation errors - Playwright</test>
+      <test id="TC5">API create with originZones - Vitest/curl</test>
+      <test id="TC6">API create with address fields - Vitest/curl</test>
+      <test id="TC7">Backward compatibility with legacy fields - Vitest</test>
+    </ideas>
+  </tests>
+</story-context>

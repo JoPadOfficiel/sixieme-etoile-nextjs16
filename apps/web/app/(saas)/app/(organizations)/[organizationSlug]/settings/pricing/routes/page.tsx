@@ -447,8 +447,8 @@ export default function SettingsPricingRoutesPage() {
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{t("routes.deleteConfirmDescription", {
-								fromZone: routeToDelete?.fromZone.name ?? "",
-								toZone: routeToDelete?.toZone.name ?? "",
+								fromZone: routeToDelete?.fromZone?.name ?? "",
+								toZone: routeToDelete?.toZone?.name ?? "",
 							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>

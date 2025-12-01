@@ -60,17 +60,57 @@ const transformRoute = (route: any) => ({
 
 // Validation schemas
 const routeDirectionEnum = z.enum(["BIDIRECTIONAL", "A_TO_B", "B_TO_A"]);
+const originDestinationTypeEnum = z.enum(["ZONES", "ADDRESS"]);
 
-const createRouteSchema = z.object({
-	fromZoneId: z.string().min(1, "From zone is required"),
-	toZoneId: z.string().min(1, "To zone is required"),
+// Story 14.3: Base schema for flexible routes (without refinements for partial support)
+const routeBaseSchema = z.object({
+	// Origin configuration
+	originType: originDestinationTypeEnum.default("ZONES"),
+	originZoneIds: z.array(z.string()).optional(),
+	originPlaceId: z.string().optional(),
+	originAddress: z.string().optional(),
+	originLat: z.coerce.number().optional(),
+	originLng: z.coerce.number().optional(),
+	// Destination configuration
+	destinationType: originDestinationTypeEnum.default("ZONES"),
+	destinationZoneIds: z.array(z.string()).optional(),
+	destPlaceId: z.string().optional(),
+	destAddress: z.string().optional(),
+	destLat: z.coerce.number().optional(),
+	destLng: z.coerce.number().optional(),
+	// Legacy fields (backward compatibility)
+	fromZoneId: z.string().optional(),
+	toZoneId: z.string().optional(),
+	// Common fields
 	vehicleCategoryId: z.string().min(1, "Vehicle category is required"),
 	direction: routeDirectionEnum.default("BIDIRECTIONAL"),
 	fixedPrice: z.coerce.number().positive("Fixed price must be positive"),
 	isActive: z.boolean().default(true),
 });
 
-const updateRouteSchema = createRouteSchema.partial();
+// Create schema with refinements for validation
+const createRouteSchema = routeBaseSchema.refine(
+	(data) => {
+		// Validate origin: either zones or address must be provided
+		if (data.originType === "ZONES") {
+			return (data.originZoneIds && data.originZoneIds.length > 0) || data.fromZoneId;
+		}
+		return !!data.originAddress;
+	},
+	{ message: "Origin zones or address is required", path: ["originZoneIds"] }
+).refine(
+	(data) => {
+		// Validate destination: either zones or address must be provided
+		if (data.destinationType === "ZONES") {
+			return (data.destinationZoneIds && data.destinationZoneIds.length > 0) || data.toZoneId;
+		}
+		return !!data.destAddress;
+	},
+	{ message: "Destination zones or address is required", path: ["destinationZoneIds"] }
+);
+
+// Update schema uses partial base (no refinements for flexibility)
+const updateRouteSchema = routeBaseSchema.partial();
 
 const listRoutesSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
@@ -403,117 +443,189 @@ export const zoneRoutesRouter = new Hono()
 		},
 	)
 
-	// Create route
+	// Create route - Story 14.3: Extended for flexible routes
 	.post(
 		"/",
 		validator("json", createRouteSchema),
 		describeRoute({
 			summary: "Create zone route",
-			description: "Create a new zone route",
+			description: "Create a new zone route with multi-zone or address support",
 			tags: ["VTC - Zone Routes"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
-			// Validate that fromZone exists and belongs to the organization
-			const fromZone = await db.pricingZone.findFirst({
-				where: withTenantFilter({ id: data.fromZoneId }, organizationId),
-			});
-			if (!fromZone) {
-				throw new HTTPException(400, {
-					message: "From zone not found or does not belong to this organization",
-				});
-			}
-
-			// Validate that toZone exists and belongs to the organization
-			const toZone = await db.pricingZone.findFirst({
-				where: withTenantFilter({ id: data.toZoneId }, organizationId),
-			});
-			if (!toZone) {
-				throw new HTTPException(400, {
-					message: "To zone not found or does not belong to this organization",
-				});
-			}
-
-			// Validate that vehicleCategory exists and belongs to the organization
+			// Validate vehicle category
 			const vehicleCategory = await db.vehicleCategory.findFirst({
 				where: withTenantFilter({ id: data.vehicleCategoryId }, organizationId),
 			});
 			if (!vehicleCategory) {
 				throw new HTTPException(400, {
-					message:
-						"Vehicle category not found or does not belong to this organization",
+					message: "Vehicle category not found or does not belong to this organization",
 				});
 			}
 
-			// Check for duplicate route (same from/to/category/direction)
-			const existingRoute = await db.zoneRoute.findFirst({
-				where: withTenantFilter(
-					{
-						fromZoneId: data.fromZoneId,
-						toZoneId: data.toZoneId,
-						vehicleCategoryId: data.vehicleCategoryId,
-						direction: data.direction,
-					},
-					organizationId,
-				),
-			});
+			// Determine origin zone IDs (from new format or legacy)
+			const originZoneIds = data.originType === "ZONES"
+				? (data.originZoneIds?.length ? data.originZoneIds : (data.fromZoneId ? [data.fromZoneId] : []))
+				: [];
 
-			if (existingRoute) {
-				throw new HTTPException(409, {
-					message:
-						"A route with the same zones, vehicle category, and direction already exists",
+			// Determine destination zone IDs (from new format or legacy)
+			const destinationZoneIds = data.destinationType === "ZONES"
+				? (data.destinationZoneIds?.length ? data.destinationZoneIds : (data.toZoneId ? [data.toZoneId] : []))
+				: [];
+
+			// Validate origin zones if type is ZONES
+			if (data.originType === "ZONES" && originZoneIds.length > 0) {
+				const validOriginZones = await db.pricingZone.findMany({
+					where: withTenantFilter({ id: { in: originZoneIds } }, organizationId),
+					select: { id: true },
 				});
+				if (validOriginZones.length !== originZoneIds.length) {
+					throw new HTTPException(400, {
+						message: "One or more origin zones not found or do not belong to this organization",
+					});
+				}
 			}
 
-			const route = await db.zoneRoute.create({
-				data: withTenantCreate(
-					{
-						fromZoneId: data.fromZoneId,
-						toZoneId: data.toZoneId,
-						vehicleCategoryId: data.vehicleCategoryId,
-						direction: data.direction,
-						fixedPrice: data.fixedPrice,
-						isActive: data.isActive,
-					},
-					organizationId,
-				),
-				include: {
-					fromZone: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-							zoneType: true,
-							centerLatitude: true,
-							centerLongitude: true,
-							radiusKm: true,
+			// Validate destination zones if type is ZONES
+			if (data.destinationType === "ZONES" && destinationZoneIds.length > 0) {
+				const validDestZones = await db.pricingZone.findMany({
+					where: withTenantFilter({ id: { in: destinationZoneIds } }, organizationId),
+					select: { id: true },
+				});
+				if (validDestZones.length !== destinationZoneIds.length) {
+					throw new HTTPException(400, {
+						message: "One or more destination zones not found or do not belong to this organization",
+					});
+				}
+			}
+
+			// Create route with transaction for junction tables
+			const route = await db.$transaction(async (tx) => {
+				// Create the route
+				const newRoute = await tx.zoneRoute.create({
+					data: withTenantCreate(
+						{
+							// Origin configuration
+							originType: data.originType,
+							originPlaceId: data.originType === "ADDRESS" ? data.originPlaceId : null,
+							originAddress: data.originType === "ADDRESS" ? data.originAddress : null,
+							originLat: data.originType === "ADDRESS" ? data.originLat : null,
+							originLng: data.originType === "ADDRESS" ? data.originLng : null,
+							// Destination configuration
+							destinationType: data.destinationType,
+							destPlaceId: data.destinationType === "ADDRESS" ? data.destPlaceId : null,
+							destAddress: data.destinationType === "ADDRESS" ? data.destAddress : null,
+							destLat: data.destinationType === "ADDRESS" ? data.destLat : null,
+							destLng: data.destinationType === "ADDRESS" ? data.destLng : null,
+							// Legacy fields (for backward compatibility, use first zone)
+							fromZoneId: originZoneIds[0] || null,
+							toZoneId: destinationZoneIds[0] || null,
+							// Common fields
+							vehicleCategoryId: data.vehicleCategoryId,
+							direction: data.direction,
+							fixedPrice: data.fixedPrice,
+							isActive: data.isActive,
+						},
+						organizationId,
+					),
+				});
+
+				// Create origin zone junction entries
+				if (originZoneIds.length > 0) {
+					await tx.zoneRouteOriginZone.createMany({
+						data: originZoneIds.map((zoneId) => ({
+							zoneRouteId: newRoute.id,
+							zoneId,
+						})),
+					});
+				}
+
+				// Create destination zone junction entries
+				if (destinationZoneIds.length > 0) {
+					await tx.zoneRouteDestinationZone.createMany({
+						data: destinationZoneIds.map((zoneId) => ({
+							zoneRouteId: newRoute.id,
+							zoneId,
+						})),
+					});
+				}
+
+				// Fetch the complete route with all relations
+				return tx.zoneRoute.findUnique({
+					where: { id: newRoute.id },
+					include: {
+						fromZone: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								zoneType: true,
+								centerLatitude: true,
+								centerLongitude: true,
+								radiusKm: true,
+								priceMultiplier: true,
+							},
+						},
+						toZone: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								zoneType: true,
+								centerLatitude: true,
+								centerLongitude: true,
+								radiusKm: true,
+								priceMultiplier: true,
+							},
+						},
+						originZones: {
+							include: {
+								zone: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										zoneType: true,
+										centerLatitude: true,
+										centerLongitude: true,
+										radiusKm: true,
+										priceMultiplier: true,
+									},
+								},
+							},
+						},
+						destinationZones: {
+							include: {
+								zone: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										zoneType: true,
+										centerLatitude: true,
+										centerLongitude: true,
+										radiusKm: true,
+										priceMultiplier: true,
+									},
+								},
+							},
+						},
+						vehicleCategory: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								maxPassengers: true,
+								priceMultiplier: true,
+								defaultRatePerKm: true,
+								defaultRatePerHour: true,
+							},
 						},
 					},
-					toZone: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-							zoneType: true,
-							centerLatitude: true,
-							centerLongitude: true,
-							radiusKm: true,
-						},
-					},
-					vehicleCategory: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-							maxPassengers: true,
-							priceMultiplier: true,
-							defaultRatePerKm: true,
-							defaultRatePerHour: true,
-						},
-					},
-				},
+				});
 			});
 
 			return c.json(transformRoute(route), 201);

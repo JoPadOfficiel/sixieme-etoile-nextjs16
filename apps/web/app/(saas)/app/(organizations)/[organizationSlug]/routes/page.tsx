@@ -297,8 +297,8 @@ export default function RoutesPage() {
 						<AlertDialogTitle>{t("routes.deleteConfirmTitle")}</AlertDialogTitle>
 						<AlertDialogDescription>
 							{t("routes.deleteConfirmDescription", {
-								fromZone: routeToDelete?.fromZone.name ?? "",
-								toZone: routeToDelete?.toZone.name ?? "",
+								fromZone: routeToDelete?.fromZone?.name ?? "",
+								toZone: routeToDelete?.toZone?.name ?? "",
 							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>

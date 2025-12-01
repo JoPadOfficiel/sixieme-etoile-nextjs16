@@ -1,6 +1,8 @@
 export type ZoneType = "POLYGON" | "RADIUS" | "POINT";
 export type RouteDirection = "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
 export type CreationMethod = "DRAW" | "POSTAL_CODE" | "COORDINATES";
+// Story 14.3: Origin/Destination type for flexible routes
+export type OriginDestinationType = "ZONES" | "ADDRESS";
 
 // Predefined zone colors (8 colors)
 export const ZONE_COLORS = [
@@ -86,10 +88,40 @@ export interface VehicleCategory {
 	defaultRatePerHour: number | null;
 }
 
-// Zone Route types
+// Zone Route types - Extended in Story 14.2/14.3 for multi-zone and address support
+export interface ZoneRouteZone {
+	id: string;
+	zoneRouteId: string;
+	zoneId: string;
+	zone: {
+		id: string;
+		name: string;
+		code: string;
+		zoneType: ZoneType;
+		centerLatitude: number | null;
+		centerLongitude: number | null;
+		radiusKm: number | null;
+		priceMultiplier?: number | null;
+	};
+}
+
 export interface ZoneRoute {
 	id: string;
 	organizationId: string;
+	// Story 14.2: New flexible origin/destination
+	originType?: OriginDestinationType;
+	originZones?: ZoneRouteZone[];
+	originPlaceId?: string | null;
+	originAddress?: string | null;
+	originLat?: number | null;
+	originLng?: number | null;
+	destinationType?: OriginDestinationType;
+	destinationZones?: ZoneRouteZone[];
+	destPlaceId?: string | null;
+	destAddress?: string | null;
+	destLat?: number | null;
+	destLng?: number | null;
+	// Legacy fields (backward compatibility)
 	fromZone: {
 		id: string;
 		name: string;
@@ -98,7 +130,7 @@ export interface ZoneRoute {
 		centerLatitude: number | null;
 		centerLongitude: number | null;
 		radiusKm: number | null;
-	};
+	} | null;
 	toZone: {
 		id: string;
 		name: string;
@@ -107,7 +139,7 @@ export interface ZoneRoute {
 		centerLatitude: number | null;
 		centerLongitude: number | null;
 		radiusKm: number | null;
-	};
+	} | null;
 	vehicleCategory: VehicleCategory;
 	direction: RouteDirection;
 	fixedPrice: number;
@@ -119,13 +151,38 @@ export interface ZoneRoute {
 	hasOverride?: boolean;
 }
 
+// Story 14.3: Extended form data for flexible routes
 export interface ZoneRouteFormData {
-	fromZoneId: string;
-	toZoneId: string;
+	// Origin configuration
+	originType: OriginDestinationType;
+	originZoneIds: string[];
+	originPlaceId?: string;
+	originAddress?: string;
+	originLat?: number;
+	originLng?: number;
+	// Destination configuration
+	destinationType: OriginDestinationType;
+	destinationZoneIds: string[];
+	destPlaceId?: string;
+	destAddress?: string;
+	destLat?: number;
+	destLng?: number;
+	// Legacy fields (for backward compatibility)
+	fromZoneId?: string;
+	toZoneId?: string;
+	// Common fields
 	vehicleCategoryId: string;
 	direction: RouteDirection;
 	fixedPrice: number;
 	isActive: boolean;
+}
+
+// Story 14.3: Address value for autocomplete
+export interface AddressValue {
+	placeId?: string;
+	address?: string;
+	lat?: number;
+	lng?: number;
 }
 
 export interface ZoneRoutesListResponse {
