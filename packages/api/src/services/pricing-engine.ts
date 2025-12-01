@@ -244,17 +244,42 @@ export interface PartnerContractData {
 	dispoPackages: DispoPackageAssignment[];
 }
 
+// Story 14.5: Origin/Destination type for multi-zone and address-based routes
+export type OriginDestinationType = "ZONES" | "ADDRESS";
+
+// Story 14.5: Zone data for multi-zone routes
+export interface ZoneRouteZoneData {
+	zone: { id: string; name: string; code: string };
+}
+
 export interface ZoneRouteAssignment {
 	zoneRoute: {
 		id: string;
-		fromZoneId: string;
-		toZoneId: string;
+		// Legacy fields (backward compatibility) - nullable since Story 14.2
+		fromZoneId: string | null;
+		toZoneId: string | null;
+		// Story 14.5: Multi-zone support
+		originType: OriginDestinationType;
+		destinationType: OriginDestinationType;
+		originZones: ZoneRouteZoneData[];
+		destinationZones: ZoneRouteZoneData[];
+		// Story 14.5: Address-based route support
+		originPlaceId?: string | null;
+		originAddress?: string | null;
+		originLat?: number | null;
+		originLng?: number | null;
+		destPlaceId?: string | null;
+		destAddress?: string | null;
+		destLat?: number | null;
+		destLng?: number | null;
+		// Existing fields
 		vehicleCategoryId: string;
 		fixedPrice: number;
 		direction: "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
 		isActive: boolean;
-		fromZone: { id: string; name: string; code: string };
-		toZone: { id: string; name: string; code: string };
+		// Legacy zone relations (for backward compatibility display)
+		fromZone: { id: string; name: string; code: string } | null;
+		toZone: { id: string; name: string; code: string } | null;
 	};
 	// Story 12.2: Partner-specific price override (null = use catalog price)
 	overridePrice?: number | null;
@@ -1551,44 +1576,239 @@ function buildMatchedRouteWithPrice(
 	};
 }
 
+// ============================================================================
+// Story 14.5: Multi-Zone and Address-Based Matching Helpers
+// ============================================================================
+
+/**
+ * Story 14.5: Address matching proximity threshold in meters
+ */
+const ADDRESS_PROXIMITY_THRESHOLD_METERS = 100;
+
+/**
+ * Story 14.5: Calculate distance between two points using Haversine formula
+ * Returns distance in meters
+ */
+function calculateDistanceMeters(
+	lat1: number,
+	lng1: number,
+	lat2: number,
+	lng2: number,
+): number {
+	const R = 6371000; // Earth's radius in meters
+	const dLat = ((lat2 - lat1) * Math.PI) / 180;
+	const dLng = ((lng2 - lng1) * Math.PI) / 180;
+	const a =
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos((lat1 * Math.PI) / 180) *
+			Math.cos((lat2 * Math.PI) / 180) *
+			Math.sin(dLng / 2) *
+			Math.sin(dLng / 2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return R * c;
+}
+
+/**
+ * Story 14.5: Check if a point matches an address-based route origin/destination
+ */
+function isAddressMatch(
+	point: GeoPoint | null | undefined,
+	routeLat: number | null | undefined,
+	routeLng: number | null | undefined,
+): boolean {
+	if (!point || routeLat == null || routeLng == null) {
+		return false;
+	}
+	const distance = calculateDistanceMeters(point.lat, point.lng, routeLat, routeLng);
+	return distance <= ADDRESS_PROXIMITY_THRESHOLD_METERS;
+}
+
+/**
+ * Story 14.5: Check if a zone ID is in the route's origin zones
+ */
+function isZoneInOriginZones(
+	zoneId: string,
+	route: ZoneRouteAssignment["zoneRoute"],
+): boolean {
+	if (!route.originZones || route.originZones.length === 0) {
+		return false;
+	}
+	return route.originZones.some((oz) => oz.zone.id === zoneId);
+}
+
+/**
+ * Story 14.5: Check if a zone ID is in the route's destination zones
+ */
+function isZoneInDestinationZones(
+	zoneId: string,
+	route: ZoneRouteAssignment["zoneRoute"],
+): boolean {
+	if (!route.destinationZones || route.destinationZones.length === 0) {
+		return false;
+	}
+	return route.destinationZones.some((dz) => dz.zone.id === zoneId);
+}
+
+/**
+ * Story 14.5: Generate route name for display (handles multi-zone and address routes)
+ * Exported as getRouteDisplayName for use in calculatePrice
+ */
+export function getRouteDisplayName(route: ZoneRouteAssignment["zoneRoute"]): string {
+	let originName: string;
+	let destName: string;
+
+	// Determine origin name
+	if (route.originType === "ADDRESS" && route.originAddress) {
+		originName = route.originAddress.substring(0, 30) + (route.originAddress.length > 30 ? "..." : "");
+	} else if (route.originZones && route.originZones.length > 0) {
+		if (route.originZones.length === 1) {
+			originName = route.originZones[0].zone.name;
+		} else {
+			originName = `[${route.originZones.length} zones]`;
+		}
+	} else if (route.fromZone) {
+		originName = route.fromZone.name;
+	} else {
+		originName = "Unknown";
+	}
+
+	// Determine destination name
+	if (route.destinationType === "ADDRESS" && route.destAddress) {
+		destName = route.destAddress.substring(0, 30) + (route.destAddress.length > 30 ? "..." : "");
+	} else if (route.destinationZones && route.destinationZones.length > 0) {
+		if (route.destinationZones.length === 1) {
+			destName = route.destinationZones[0].zone.name;
+		} else {
+			destName = `[${route.destinationZones.length} zones]`;
+		}
+	} else if (route.toZone) {
+		destName = route.toZone.name;
+	} else {
+		destName = "Unknown";
+	}
+
+	return `${originName} → ${destName}`;
+}
+
+/**
+ * Story 14.5: Get route priority for sorting (lower = higher priority)
+ * Priority order:
+ * 1. ADDRESS origin + ADDRESS destination (priority 1)
+ * 2. ADDRESS origin + ZONES destination (priority 2)
+ * 3. ZONES origin + ADDRESS destination (priority 3)
+ * 4. ZONES origin + ZONES destination (priority 4)
+ * 5. Legacy fromZoneId/toZoneId only (priority 5)
+ */
+function getRoutePriority(route: ZoneRouteAssignment["zoneRoute"]): number {
+	const hasMultiZoneOrigin = route.originZones && route.originZones.length > 0;
+	const hasMultiZoneDest = route.destinationZones && route.destinationZones.length > 0;
+	const isAddressOrigin = route.originType === "ADDRESS";
+	const isAddressDest = route.destinationType === "ADDRESS";
+
+	if (isAddressOrigin && isAddressDest) return 1;
+	if (isAddressOrigin && !isAddressDest) return 2;
+	if (!isAddressOrigin && isAddressDest) return 3;
+	if (hasMultiZoneOrigin || hasMultiZoneDest) return 4;
+	return 5; // Legacy routes
+}
+
+/**
+ * Story 14.5: Check if route matches using multi-zone logic
+ * Returns { matchesForward, matchesReverse }
+ */
+function checkMultiZoneMatch(
+	fromZone: ZoneData | null,
+	toZone: ZoneData | null,
+	route: ZoneRouteAssignment["zoneRoute"],
+	pickupPoint?: GeoPoint,
+	dropoffPoint?: GeoPoint,
+): { matchesForward: boolean; matchesReverse: boolean } {
+	let originMatchForward = false;
+	let destMatchForward = false;
+	let originMatchReverse = false;
+	let destMatchReverse = false;
+
+	// Check origin match (forward direction)
+	if (route.originType === "ADDRESS") {
+		// Address-based origin: check proximity to pickup point
+		originMatchForward = isAddressMatch(pickupPoint, route.originLat, route.originLng);
+		originMatchReverse = isAddressMatch(dropoffPoint, route.originLat, route.originLng);
+	} else {
+		// Zone-based origin: check if pickup zone is in originZones
+		if (fromZone && route.originZones && route.originZones.length > 0) {
+			originMatchForward = isZoneInOriginZones(fromZone.id, route);
+		} else if (fromZone && route.fromZoneId) {
+			// Fallback to legacy fromZoneId
+			originMatchForward = route.fromZoneId === fromZone.id;
+		}
+		if (toZone && route.originZones && route.originZones.length > 0) {
+			originMatchReverse = isZoneInOriginZones(toZone.id, route);
+		} else if (toZone && route.fromZoneId) {
+			originMatchReverse = route.fromZoneId === toZone.id;
+		}
+	}
+
+	// Check destination match (forward direction)
+	if (route.destinationType === "ADDRESS") {
+		// Address-based destination: check proximity to dropoff point
+		destMatchForward = isAddressMatch(dropoffPoint, route.destLat, route.destLng);
+		destMatchReverse = isAddressMatch(pickupPoint, route.destLat, route.destLng);
+	} else {
+		// Zone-based destination: check if dropoff zone is in destinationZones
+		if (toZone && route.destinationZones && route.destinationZones.length > 0) {
+			destMatchForward = isZoneInDestinationZones(toZone.id, route);
+		} else if (toZone && route.toZoneId) {
+			// Fallback to legacy toZoneId
+			destMatchForward = route.toZoneId === toZone.id;
+		}
+		if (fromZone && route.destinationZones && route.destinationZones.length > 0) {
+			destMatchReverse = isZoneInDestinationZones(fromZone.id, route);
+		} else if (fromZone && route.toZoneId) {
+			destMatchReverse = route.toZoneId === fromZone.id;
+		}
+	}
+
+	return {
+		matchesForward: originMatchForward && destMatchForward,
+		matchesReverse: originMatchReverse && destMatchReverse,
+	};
+}
+
 /**
  * Match a zone route for a transfer with detailed search results
  * Story 12.2: Now returns effective price considering overridePrice
+ * Story 14.5: Extended to support multi-zone and address-based routes
  */
 export function matchZoneRouteWithDetails(
 	fromZone: ZoneData | null,
 	toZone: ZoneData | null,
 	vehicleCategoryId: string,
 	contractRoutes: ZoneRouteAssignment[],
+	pickupPoint?: GeoPoint,
+	dropoffPoint?: GeoPoint,
 ): MatchZoneRouteResult {
 	const routesChecked: RouteCheckResult[] = [];
 
-	if (!fromZone || !toZone) {
-		// No zones to match against - still record what routes exist
-		for (const assignment of contractRoutes) {
-			const route = assignment.zoneRoute;
-			routesChecked.push({
-				routeId: route.id,
-				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-				fromZone: route.fromZone.name,
-				toZone: route.toZone.name,
-				vehicleCategory: route.vehicleCategoryId,
-				rejectionReason: "ZONE_MISMATCH",
-			});
-		}
-		return { matchedRoute: null, routesChecked };
-	}
+	// Story 14.5: Sort routes by priority (address routes first, then multi-zone, then legacy)
+	const sortedRoutes = [...contractRoutes].sort((a, b) => {
+		return getRoutePriority(a.zoneRoute) - getRoutePriority(b.zoneRoute);
+	});
 
-	for (const assignment of contractRoutes) {
+	// Story 14.5: For address-based routes, we can match even without zones
+	// but for zone-based routes, we need at least one zone
+	const canMatchZoneBased = fromZone || toZone;
+
+	for (const assignment of sortedRoutes) {
 		const route = assignment.zoneRoute;
+		const routeName = getRouteDisplayName(route);
 
 		// Check if inactive
 		if (!route.isActive) {
 			routesChecked.push({
 				routeId: route.id,
-				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-				fromZone: route.fromZone.name,
-				toZone: route.toZone.name,
+				routeName,
+				fromZone: route.fromZone?.name ?? "N/A",
+				toZone: route.toZone?.name ?? "N/A",
 				vehicleCategory: route.vehicleCategoryId,
 				rejectionReason: "INACTIVE",
 			});
@@ -1599,80 +1819,79 @@ export function matchZoneRouteWithDetails(
 		if (route.vehicleCategoryId !== vehicleCategoryId) {
 			routesChecked.push({
 				routeId: route.id,
-				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-				fromZone: route.fromZone.name,
-				toZone: route.toZone.name,
+				routeName,
+				fromZone: route.fromZone?.name ?? "N/A",
+				toZone: route.toZone?.name ?? "N/A",
 				vehicleCategory: route.vehicleCategoryId,
 				rejectionReason: "CATEGORY_MISMATCH",
 			});
 			continue;
 		}
 
-		// Check direction
-		const matchesForward =
-			route.fromZoneId === fromZone.id && route.toZoneId === toZone.id;
-		const matchesReverse =
-			route.fromZoneId === toZone.id && route.toZoneId === fromZone.id;
+		// Story 14.5: Use multi-zone matching logic
+		const { matchesForward, matchesReverse } = checkMultiZoneMatch(
+			fromZone,
+			toZone,
+			route,
+			pickupPoint,
+			dropoffPoint,
+		);
 
+		// Check direction and return match if found
 		if (route.direction === "BIDIRECTIONAL") {
 			if (matchesForward || matchesReverse) {
-				// Story 12.2: Return with effective price
 				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			routesChecked.push({
 				routeId: route.id,
-				routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-				fromZone: route.fromZone.name,
-				toZone: route.toZone.name,
+				routeName,
+				fromZone: route.fromZone?.name ?? "N/A",
+				toZone: route.toZone?.name ?? "N/A",
 				vehicleCategory: route.vehicleCategoryId,
 				rejectionReason: "ZONE_MISMATCH",
 			});
 		} else if (route.direction === "A_TO_B") {
 			if (matchesForward) {
-				// Story 12.2: Return with effective price
 				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			if (matchesReverse) {
-				// Zones match but wrong direction
 				routesChecked.push({
 					routeId: route.id,
-					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-					fromZone: route.fromZone.name,
-					toZone: route.toZone.name,
+					routeName,
+					fromZone: route.fromZone?.name ?? "N/A",
+					toZone: route.toZone?.name ?? "N/A",
 					vehicleCategory: route.vehicleCategoryId,
 					rejectionReason: "DIRECTION_MISMATCH",
 				});
 			} else {
 				routesChecked.push({
 					routeId: route.id,
-					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-					fromZone: route.fromZone.name,
-					toZone: route.toZone.name,
+					routeName,
+					fromZone: route.fromZone?.name ?? "N/A",
+					toZone: route.toZone?.name ?? "N/A",
 					vehicleCategory: route.vehicleCategoryId,
 					rejectionReason: "ZONE_MISMATCH",
 				});
 			}
 		} else if (route.direction === "B_TO_A") {
 			if (matchesReverse) {
-				// Story 12.2: Return with effective price
 				return { matchedRoute: buildMatchedRouteWithPrice(assignment), routesChecked };
 			}
 			if (matchesForward) {
-				// Zones match but wrong direction
 				routesChecked.push({
 					routeId: route.id,
-					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-					fromZone: route.fromZone.name,
-					toZone: route.toZone.name,
+					routeName,
+					fromZone: route.fromZone?.name ?? "N/A",
+					toZone: route.toZone?.name ?? "N/A",
 					vehicleCategory: route.vehicleCategoryId,
 					rejectionReason: "DIRECTION_MISMATCH",
 				});
 			} else {
 				routesChecked.push({
 					routeId: route.id,
-					routeName: `${route.fromZone.name} → ${route.toZone.name}`,
-					fromZone: route.fromZone.name,
-					toZone: route.toZone.name,
+					routeName,
+					fromZone: route.fromZone?.name ?? "N/A",
+					toZone: route.toZone?.name ?? "N/A",
 					vehicleCategory: route.vehicleCategoryId,
 					rejectionReason: "ZONE_MISMATCH",
 				});
@@ -2145,11 +2364,14 @@ export function calculatePrice(
 
 	// 4a: For transfers, try ZoneRoute first
 	if (request.tripType === "transfer") {
+		// Story 14.5: Pass pickup/dropoff points for address-based route matching
 		const routeResult = matchZoneRouteWithDetails(
 			pickupZone,
 			dropoffZone,
 			request.vehicleCategoryId,
 			contract.zoneRoutes,
+			request.pickup,
+			request.dropoff,
 		);
 		routesChecked = routeResult.routesChecked;
 
@@ -2158,6 +2380,9 @@ export function calculatePrice(
 			const route = matchedRouteWithPrice.route;
 			// Story 12.2: Use effective price (override if set, otherwise catalog)
 			const price = matchedRouteWithPrice.effectivePrice;
+
+			// Story 14.5: Generate route name for multi-zone/address routes
+			const routeDisplayName = getRouteDisplayName(route);
 
 			// Story 12.2: Add appropriate rule based on price source
 			if (matchedRouteWithPrice.isOverride) {
@@ -2189,9 +2414,9 @@ export function calculatePrice(
 				{
 					type: "ZoneRoute",
 					id: route.id,
-					name: `${route.fromZone.name} → ${route.toZone.name}`,
-					fromZone: route.fromZone.name,
-					toZone: route.toZone.name,
+					name: routeDisplayName,
+					fromZone: route.fromZone?.name ?? "N/A",
+					toZone: route.toZone?.name ?? "N/A",
 				},
 				appliedRules,
 			);

@@ -114,6 +114,7 @@ const priceOverrideSchema = z.object({
 
 /**
  * Load contact with partner contract and assigned grids
+ * Story 14.5: Updated to include multi-zone relations (originZones, destinationZones)
  */
 async function loadContactWithContract(
 	contactId: string,
@@ -131,6 +132,29 @@ async function loadContactWithContract(
 							include: {
 								fromZone: true,
 								toZone: true,
+								// Story 14.5: Include multi-zone relations
+								originZones: {
+									include: {
+										zone: {
+											select: {
+												id: true,
+												name: true,
+												code: true,
+											},
+										},
+									},
+								},
+								destinationZones: {
+									include: {
+										zone: {
+											select: {
+												id: true,
+												name: true,
+												code: true,
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -180,8 +204,36 @@ async function loadContactWithContract(
 			(zr: any) => ({
 				zoneRoute: {
 					id: zr.zoneRoute.id,
+					// Legacy fields (backward compatibility)
 					fromZoneId: zr.zoneRoute.fromZoneId,
 					toZoneId: zr.zoneRoute.toZoneId,
+					// Story 14.5: Multi-zone support
+					originType: zr.zoneRoute.originType || "ZONES",
+					destinationType: zr.zoneRoute.destinationType || "ZONES",
+					originZones: (zr.zoneRoute.originZones || []).map((oz: any) => ({
+						zone: {
+							id: oz.zone.id,
+							name: oz.zone.name,
+							code: oz.zone.code,
+						},
+					})),
+					destinationZones: (zr.zoneRoute.destinationZones || []).map((dz: any) => ({
+						zone: {
+							id: dz.zone.id,
+							name: dz.zone.name,
+							code: dz.zone.code,
+						},
+					})),
+					// Story 14.5: Address-based route support
+					originPlaceId: zr.zoneRoute.originPlaceId,
+					originAddress: zr.zoneRoute.originAddress,
+					originLat: zr.zoneRoute.originLat,
+					originLng: zr.zoneRoute.originLng,
+					destPlaceId: zr.zoneRoute.destPlaceId,
+					destAddress: zr.zoneRoute.destAddress,
+					destLat: zr.zoneRoute.destLat,
+					destLng: zr.zoneRoute.destLng,
+					// Existing fields
 					vehicleCategoryId: zr.zoneRoute.vehicleCategoryId,
 					fixedPrice: Number(zr.zoneRoute.fixedPrice),
 					direction: zr.zoneRoute.direction as
@@ -189,17 +241,24 @@ async function loadContactWithContract(
 						| "A_TO_B"
 						| "B_TO_A",
 					isActive: zr.zoneRoute.isActive,
-					fromZone: {
-						id: zr.zoneRoute.fromZone.id,
-						name: zr.zoneRoute.fromZone.name,
-						code: zr.zoneRoute.fromZone.code,
-					},
-					toZone: {
-						id: zr.zoneRoute.toZone.id,
-						name: zr.zoneRoute.toZone.name,
-						code: zr.zoneRoute.toZone.code,
-					},
+					// Legacy zone relations (for backward compatibility display)
+					fromZone: zr.zoneRoute.fromZone
+						? {
+								id: zr.zoneRoute.fromZone.id,
+								name: zr.zoneRoute.fromZone.name,
+								code: zr.zoneRoute.fromZone.code,
+							}
+						: null,
+					toZone: zr.zoneRoute.toZone
+						? {
+								id: zr.zoneRoute.toZone.id,
+								name: zr.zoneRoute.toZone.name,
+								code: zr.zoneRoute.toZone.code,
+							}
+						: null,
 				},
+				// Story 12.2: Partner-specific price override
+				overridePrice: zr.overridePrice != null ? Number(zr.overridePrice) : null,
 			}),
 		);
 

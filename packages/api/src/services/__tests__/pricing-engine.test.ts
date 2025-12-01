@@ -47,6 +47,39 @@ const defaultPricingSettings: OrganizationPricingSettings = {
 	targetMarginPercent: 20.0,
 };
 
+/**
+ * Story 14.5: Helper to create a legacy zone route with all required fields
+ * This ensures backward compatibility with existing tests
+ */
+function createLegacyZoneRoute(config: {
+	id: string;
+	fromZoneId: string;
+	toZoneId: string;
+	vehicleCategoryId: string;
+	fixedPrice: number;
+	direction: "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
+	isActive: boolean;
+	fromZone: { id: string; name: string; code: string };
+	toZone: { id: string; name: string; code: string };
+}) {
+	return {
+		id: config.id,
+		fromZoneId: config.fromZoneId,
+		toZoneId: config.toZoneId,
+		// Story 14.5: Required multi-zone fields with legacy defaults
+		originType: "ZONES" as const,
+		destinationType: "ZONES" as const,
+		originZones: [],
+		destinationZones: [],
+		vehicleCategoryId: config.vehicleCategoryId,
+		fixedPrice: config.fixedPrice,
+		direction: config.direction,
+		isActive: config.isActive,
+		fromZone: config.fromZone,
+		toZone: config.toZone,
+	};
+}
+
 const parisZone: ZoneData = {
 	id: "zone-paris",
 	name: "Paris Center",
@@ -173,7 +206,7 @@ describe("pricing-engine", () => {
 				id: "contract-1",
 				zoneRoutes: [
 					{
-						zoneRoute: {
+						zoneRoute: createLegacyZoneRoute({
 							id: "zone-route-1",
 							fromZoneId: "zone-paris",
 							toZoneId: "zone-cdg",
@@ -183,7 +216,7 @@ describe("pricing-engine", () => {
 							isActive: true,
 							fromZone: { id: "zone-paris", name: "Paris Center", code: "PAR-CTR" },
 							toZone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" },
-						},
+						}),
 					},
 				],
 				excursionPackages: [],
@@ -211,7 +244,8 @@ describe("pricing-engine", () => {
 			expect(result.pricingMode).toBe("FIXED_GRID");
 			expect(result.price).toBe(75.0);
 			expect(result.matchedGrid?.id).toBe("zone-route-1");
-			expect(result.appliedRules.some(r => r.type === "PARTNER_GRID_MATCH" && r.gridType === "ZoneRoute")).toBe(true);
+			// Story 12.2: Changed from PARTNER_GRID_MATCH to CATALOG_PRICE
+			expect(result.appliedRules.some(r => r.type === "CATALOG_PRICE" && r.gridType === "ZoneRoute")).toBe(true);
 			expect(result.appliedRules.some(r => r.description?.toString().includes("Engagement Rule"))).toBe(true);
 		});
 
@@ -3015,6 +3049,507 @@ describe("pricing-engine", () => {
 			it("should have PRD-compliant default values", () => {
 				expect(DEFAULT_PROFITABILITY_THRESHOLDS.greenThreshold).toBe(20);
 				expect(DEFAULT_PROFITABILITY_THRESHOLDS.orangeThreshold).toBe(0);
+			});
+		});
+	});
+
+	// ============================================================================
+	// Story 14.5: Multi-Zone and Address-Based Route Matching Tests
+	// ============================================================================
+
+	describe("Story 14.5 - Multi-Zone Route Matching", () => {
+		// Additional zones for multi-zone testing
+		const paris1Zone: ZoneData = {
+			id: "zone-paris-1",
+			name: "Paris 1er",
+			code: "PAR-1",
+			zoneType: "POLYGON",
+			geometry: { type: "Polygon", coordinates: [[[2.33, 48.86], [2.35, 48.86], [2.35, 48.87], [2.33, 48.87], [2.33, 48.86]]] },
+			centerLatitude: null,
+			centerLongitude: null,
+			radiusKm: null,
+			isActive: true,
+		};
+
+		const paris2Zone: ZoneData = {
+			id: "zone-paris-2",
+			name: "Paris 2ème",
+			code: "PAR-2",
+			zoneType: "POLYGON",
+			geometry: { type: "Polygon", coordinates: [[[2.33, 48.87], [2.35, 48.87], [2.35, 48.88], [2.33, 48.88], [2.33, 48.87]]] },
+			centerLatitude: null,
+			centerLongitude: null,
+			radiusKm: null,
+			isActive: true,
+		};
+
+		const orlyZone: ZoneData = {
+			id: "zone-orly",
+			name: "Orly Airport",
+			code: "ORY",
+			zoneType: "RADIUS",
+			geometry: null,
+			centerLatitude: 48.7262,
+			centerLongitude: 2.3652,
+			radiusKm: 5,
+			isActive: true,
+		};
+
+		const multiZones: ZoneData[] = [paris1Zone, paris2Zone, cdgZone, orlyZone];
+
+		describe("AC1: Multi-Zone Origin Matching", () => {
+			const partnerWithMultiZoneOrigin: ContactData = {
+				id: "contact-multizone-origin",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-multizone-1",
+					zoneRoutes: [
+						{
+							zoneRoute: {
+								id: "route-multizone-origin",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [
+									{ zone: { id: "zone-paris-1", name: "Paris 1er", code: "PAR-1" } },
+									{ zone: { id: "zone-paris-2", name: "Paris 2ème", code: "PAR-2" } },
+								],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+								],
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 85.0,
+								direction: "BIDIRECTIONAL",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should match route when pickup zone is in originZones array", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithMultiZoneOrigin.id,
+					pickup: { lat: 48.865, lng: 2.34 }, // Paris 1er
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithMultiZoneOrigin,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(85.0);
+				expect(result.matchedGrid?.id).toBe("route-multizone-origin");
+			});
+
+			it("should match route when pickup zone is second in originZones array", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithMultiZoneOrigin.id,
+					pickup: { lat: 48.875, lng: 2.34 }, // Paris 2ème
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithMultiZoneOrigin,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(85.0);
+			});
+		});
+
+		describe("AC2: Multi-Zone Destination Matching", () => {
+			const partnerWithMultiZoneDest: ContactData = {
+				id: "contact-multizone-dest",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-multizone-2",
+					zoneRoutes: [
+						{
+							zoneRoute: {
+								id: "route-multizone-dest",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [
+									{ zone: { id: "zone-paris-1", name: "Paris 1er", code: "PAR-1" } },
+								],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+									{ zone: { id: "zone-orly", name: "Orly Airport", code: "ORY" } },
+								],
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 90.0,
+								direction: "BIDIRECTIONAL",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should match route when dropoff zone is in destinationZones array", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithMultiZoneDest.id,
+					pickup: { lat: 48.865, lng: 2.34 }, // Paris 1er
+					dropoff: { lat: 48.73, lng: 2.37 }, // Orly
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 20,
+					estimatedDurationMinutes: 35,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithMultiZoneDest,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(90.0);
+				expect(result.matchedGrid?.id).toBe("route-multizone-dest");
+			});
+		});
+
+		describe("AC3: Address-Based Route Priority", () => {
+			// Ritz Hotel coordinates (Place Vendôme, Paris)
+			const ritzLat = 48.8683;
+			const ritzLng = 2.3293;
+
+			const partnerWithAddressRoute: ContactData = {
+				id: "contact-address-route",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-address",
+					zoneRoutes: [
+						// Address-based route (should have priority)
+						{
+							zoneRoute: {
+								id: "route-address-ritz",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ADDRESS",
+								destinationType: "ZONES",
+								originZones: [],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+								],
+								originPlaceId: "ChIJN1t_tDeuEmsRUsoyG83frY4",
+								originAddress: "Hôtel Ritz Paris, Place Vendôme",
+								originLat: ritzLat,
+								originLng: ritzLng,
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 95.0, // Premium price for Ritz
+								direction: "A_TO_B",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+						// Zone-based route (lower priority)
+						{
+							zoneRoute: {
+								id: "route-zone-paris-cdg",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [
+									{ zone: { id: "zone-paris-1", name: "Paris 1er", code: "PAR-1" } },
+								],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+								],
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 80.0, // Standard price
+								direction: "BIDIRECTIONAL",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should prioritize address-based route over zone-based route", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithAddressRoute.id,
+					pickup: { lat: ritzLat, lng: ritzLng }, // Exact Ritz location
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithAddressRoute,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(95.0); // Address route price, not zone route
+				expect(result.matchedGrid?.id).toBe("route-address-ritz");
+			});
+
+			it("should match address route within proximity threshold (50m)", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithAddressRoute.id,
+					pickup: { lat: ritzLat + 0.0003, lng: ritzLng + 0.0003 }, // ~50m away
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithAddressRoute,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(95.0);
+			});
+
+			it("should fallback to zone route when outside address proximity", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithAddressRoute.id,
+					pickup: { lat: 48.865, lng: 2.34 }, // Paris 1er but not near Ritz
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithAddressRoute,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(80.0); // Zone route price
+				expect(result.matchedGrid?.id).toBe("route-zone-paris-cdg");
+			});
+		});
+
+		describe("AC4: Bidirectional Multi-Zone Routes", () => {
+			const partnerWithBidirectionalMultiZone: ContactData = {
+				id: "contact-bidir-multizone",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-bidir",
+					zoneRoutes: [
+						{
+							zoneRoute: {
+								id: "route-bidir-multizone",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [
+									{ zone: { id: "zone-paris-1", name: "Paris 1er", code: "PAR-1" } },
+									{ zone: { id: "zone-paris-2", name: "Paris 2ème", code: "PAR-2" } },
+								],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+									{ zone: { id: "zone-orly", name: "Orly Airport", code: "ORY" } },
+								],
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 100.0,
+								direction: "BIDIRECTIONAL",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should match bidirectional route in forward direction", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithBidirectionalMultiZone.id,
+					pickup: { lat: 48.865, lng: 2.34 }, // Paris 1er
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithBidirectionalMultiZone,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(100.0);
+			});
+
+			it("should match bidirectional route in reverse direction", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithBidirectionalMultiZone.id,
+					pickup: { lat: 48.73, lng: 2.37 }, // Orly (in destinationZones)
+					dropoff: { lat: 48.875, lng: 2.34 }, // Paris 2ème (in originZones)
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 20,
+					estimatedDurationMinutes: 35,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithBidirectionalMultiZone,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(100.0);
+				expect(result.matchedGrid?.id).toBe("route-bidir-multizone");
+			});
+		});
+
+		describe("AC5: Backward Compatibility with Legacy Routes", () => {
+			const partnerWithLegacyRoute: ContactData = {
+				id: "contact-legacy",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-legacy",
+					zoneRoutes: [
+						{
+							zoneRoute: {
+								id: "route-legacy",
+								fromZoneId: "zone-paris",
+								toZoneId: "zone-cdg",
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [], // Empty - using legacy fields
+								destinationZones: [], // Empty - using legacy fields
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 75.0,
+								direction: "BIDIRECTIONAL",
+								isActive: true,
+								fromZone: { id: "zone-paris", name: "Paris Center", code: "PAR-CTR" },
+								toZone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" },
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should match legacy route using fromZoneId/toZoneId", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithLegacyRoute.id,
+					pickup: { lat: 48.85, lng: 2.35 }, // Paris
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithLegacyRoute,
+					zones, // Using original zones array
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("FIXED_GRID");
+				expect(result.price).toBe(75.0);
+				expect(result.matchedGrid?.id).toBe("route-legacy");
+			});
+		});
+
+		describe("No Match - Fallback to Dynamic Pricing", () => {
+			const partnerWithMultiZoneRoute: ContactData = {
+				id: "contact-no-match",
+				isPartner: true,
+				partnerContract: {
+					id: "contract-no-match",
+					zoneRoutes: [
+						{
+							zoneRoute: {
+								id: "route-limited",
+								fromZoneId: null,
+								toZoneId: null,
+								originType: "ZONES",
+								destinationType: "ZONES",
+								originZones: [
+									{ zone: { id: "zone-paris-1", name: "Paris 1er", code: "PAR-1" } },
+								],
+								destinationZones: [
+									{ zone: { id: "zone-cdg", name: "CDG Airport", code: "CDG" } },
+								],
+								vehicleCategoryId: "vehicle-cat-1",
+								fixedPrice: 85.0,
+								direction: "A_TO_B",
+								isActive: true,
+								fromZone: null,
+								toZone: null,
+							},
+						},
+					],
+					excursionPackages: [],
+					dispoPackages: [],
+				},
+			};
+
+			it("should fallback to dynamic when pickup zone not in originZones", () => {
+				const request: PricingRequest = {
+					contactId: partnerWithMultiZoneRoute.id,
+					pickup: { lat: 48.875, lng: 2.34 }, // Paris 2ème (not in originZones)
+					dropoff: { lat: 49.01, lng: 2.55 }, // CDG
+					vehicleCategoryId: "vehicle-cat-1",
+					tripType: "transfer",
+					estimatedDistanceKm: 30,
+					estimatedDurationMinutes: 45,
+				};
+
+				const result = calculatePrice(request, {
+					contact: partnerWithMultiZoneRoute,
+					zones: multiZones,
+					pricingSettings: defaultPricingSettings,
+				});
+
+				expect(result.pricingMode).toBe("DYNAMIC");
+				expect(result.matchedGrid).toBeNull();
+				expect(result.fallbackReason).toBe("NO_ROUTE_MATCH");
 			});
 		});
 	});

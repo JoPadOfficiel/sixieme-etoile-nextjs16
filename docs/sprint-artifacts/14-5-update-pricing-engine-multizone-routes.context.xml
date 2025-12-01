@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context id="14-5-update-pricing-engine-multizone-routes" v="1.0">
+  <metadata>
+    <epicId>14</epicId>
+    <storyId>14.5</storyId>
+    <title>Update Pricing Engine for Multi-Zone Routes</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-12-01T20:30:00+01:00</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/bmad/epics.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system</asA>
+    <iWant>the pricing engine to match trips against multi-zone routes</iWant>
+    <soThat>flexible pricing configurations are applied correctly</soThat>
+    <tasks>
+      <task id="T1">Extend ZoneRouteAssignment interface to include multi-zone data (originZones, destinationZones, originType, destinationType)</task>
+      <task id="T2">Update loadContactWithContract to fetch multi-zone relations (ZoneRouteOriginZone, ZoneRouteDestinationZone)</task>
+      <task id="T3">Modify matchZoneRouteWithDetails to support multi-zone matching logic</task>
+      <task id="T4">Add address-based route matching with priority over zone-based routes</task>
+      <task id="T5">Update route name generation for multi-zone routes</task>
+      <task id="T6">Add unit tests for multi-zone and address-based matching</task>
+      <task id="T7">Add integration tests via Playwright for end-to-end pricing</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" description="Multi-zone origin matching">
+      <given>A trip from Zone A to Zone B</given>
+      <when>There exists a route with origin zones [A, C, D] and destination zone [B]</when>
+      <then>The route matches and the fixed price is applied</then>
+    </criterion>
+    <criterion id="AC2" description="Multi-zone destination matching">
+      <given>A trip from Zone A to Zone B</given>
+      <when>There exists a route with origin zone [A] and destination zones [B, E, F]</when>
+      <then>The route matches and the fixed price is applied</then>
+    </criterion>
+    <criterion id="AC3" description="Address-based route priority">
+      <given>A trip from a specific address within Zone A to Zone B</given>
+      <when>Both an address-based route (matching the address) and a zone-based route exist</when>
+      <then>The address-based route takes priority over zone-based routes</then>
+    </criterion>
+    <criterion id="AC4" description="Bidirectional multi-zone routes">
+      <given>A bidirectional route with origin zones [A, B] and destination zones [C, D]</given>
+      <when>A trip goes from Zone C to Zone A</when>
+      <then>The route matches in reverse direction</then>
+    </criterion>
+    <criterion id="AC5" description="Backward compatibility">
+      <given>Existing routes using legacy fromZoneId/toZoneId fields</given>
+      <when>The pricing engine processes a matching trip</when>
+      <then>The route still matches correctly (backward compatible)</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/bmad/epics.md</path>
+        <title>Epic 14 - Flexible Route Pricing System</title>
+        <section>Story 14.5</section>
+        <snippet>Update pricing engine to match trips against multi-zone routes. Address-based routes take priority over zone-based routes.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/14-2-extend-zoneroute-schema-multizone-address.md</path>
+        <title>Story 14.2 - Schema Extension</title>
+        <section>Technical Details</section>
+        <snippet>Schema extended with OriginDestinationType enum, ZoneRouteOriginZone and ZoneRouteDestinationZone junction tables. 40 existing routes migrated.</snippet>
+      </doc>
+      <doc>
+        <path>docs/bmad/prd.md</path>
+        <title>PRD - Zone Engine</title>
+        <section>FR Group 2 - Pricing Modes &amp; Zone Engine</section>
+        <snippet>FR9: Route matrix between zones with fixed prices per vehicle category. FR11: Engagement Rule - grid price honored for partners.</snippet>
+      </doc>
+    </docs>
+    
+    <code>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>service</kind>
+        <symbol>matchZoneRouteWithDetails</symbol>
+        <lines>1558-1684</lines>
+        <reason>Core function to modify - currently only matches single fromZoneId/toZoneId, needs to support originZones[] and destinationZones[]</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/pricing-engine.ts</path>
+        <kind>interface</kind>
+        <symbol>ZoneRouteAssignment</symbol>
+        <lines>247-261</lines>
+        <reason>Interface to extend with multi-zone fields (originType, destinationType, originZones, destinationZones, address fields)</reason>
+      </file>
+      <file>
+        <path>packages/api/src/routes/vtc/pricing-calculate.ts</path>
+        <kind>route</kind>
+        <symbol>loadContactWithContract</symbol>
+        <lines>118-258</lines>
+        <reason>Function to update - must include originZones and destinationZones relations in Prisma query</reason>
+      </file>
+      <file>
+        <path>packages/api/src/services/__tests__/pricing-engine.test.ts</path>
+        <kind>test</kind>
+        <symbol>Partner Client - Zone Route Matching</symbol>
+        <lines>164-280</lines>
+        <reason>Test suite to extend with multi-zone and address-based matching tests</reason>
+      </file>
+      <file>
+        <path>packages/database/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>ZoneRoute, ZoneRouteOriginZone, ZoneRouteDestinationZone</symbol>
+        <lines>837-916</lines>
+        <reason>Reference schema for multi-zone structure - already implemented in Story 14.2</reason>
+      </file>
+      <file>
+        <path>packages/api/src/lib/geo-utils.ts</path>
+        <kind>utility</kind>
+        <symbol>findZoneForPoint, isPointInZone</symbol>
+        <lines>all</lines>
+        <reason>Geo utilities for zone matching - may need for address proximity matching</reason>
+      </file>
+    </code>
+    
+    <dependencies>
+      <node>
+        <package>@prisma/client</package>
+        <version>^5.x</version>
+      </node>
+      <node>
+        <package>vitest</package>
+        <version>^1.x</version>
+      </node>
+      <node>
+        <package>@playwright/test</package>
+        <version>^1.x</version>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="backward-compatibility">
+      Routes using legacy fromZoneId/toZoneId must continue to work. The matching logic should check both new multi-zone fields AND legacy fields.
+    </constraint>
+    <constraint type="priority-order">
+      Address-based routes MUST take priority over zone-based routes. Priority order: ADDRESS origin/dest > ZONES origin/dest > Legacy fromZoneId/toZoneId.
+    </constraint>
+    <constraint type="engagement-rule">
+      Partner grid prices are contractually binding (Engagement Rule). The matched route's fixedPrice or overridePrice must be applied without modification.
+    </constraint>
+    <constraint type="direction-handling">
+      Bidirectional routes must match in both directions. A_TO_B and B_TO_A routes must respect direction constraints with multi-zone matching.
+    </constraint>
+    <constraint type="testing">
+      All acceptance criteria must be covered by unit tests (Vitest) and integration tests (Playwright MCP).
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>ZoneRouteAssignment (extended)</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface ZoneRouteAssignment {
+  zoneRoute: {
+    id: string;
+    // Legacy fields (backward compatibility)
+    fromZoneId: string | null;
+    toZoneId: string | null;
+    // New multi-zone fields (Story 14.5)
+    originType: "ZONES" | "ADDRESS";
+    destinationType: "ZONES" | "ADDRESS";
+    originZones?: Array&lt;{ zone: { id: string; name: string; code: string } }&gt;;
+    destinationZones?: Array&lt;{ zone: { id: string; name: string; code: string } }&gt;;
+    // Address fields
+    originPlaceId?: string | null;
+    originAddress?: string | null;
+    originLat?: number | null;
+    originLng?: number | null;
+    destPlaceId?: string | null;
+    destAddress?: string | null;
+    destLat?: number | null;
+    destLng?: number | null;
+    // Existing fields
+    vehicleCategoryId: string;
+    fixedPrice: number;
+    direction: "BIDIRECTIONAL" | "A_TO_B" | "B_TO_A";
+    isActive: boolean;
+    fromZone: { id: string; name: string; code: string } | null;
+    toZone: { id: string; name: string; code: string } | null;
+  };
+  overridePrice?: number | null;
+}
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+    <interface>
+      <name>matchZoneRouteWithDetails (updated)</name>
+      <kind>Function signature</kind>
+      <signature>
+function matchZoneRouteWithDetails(
+  fromZone: ZoneData | null,
+  toZone: ZoneData | null,
+  vehicleCategoryId: string,
+  contractRoutes: ZoneRouteAssignment[],
+  pickupPoint?: GeoPoint,  // New: for address matching
+  dropoffPoint?: GeoPoint, // New: for address matching
+): MatchZoneRouteResult
+      </signature>
+      <path>packages/api/src/services/pricing-engine.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Unit tests use Vitest with describe/it blocks. Integration tests use Playwright MCP for browser automation. 
+      API tests use curl commands with DB verification via postgres_vtc_sixiemme_etoile MCP.
+      All tests must verify both happy path and edge cases.
+    </standards>
+    <locations>
+      <location>packages/api/src/services/__tests__/pricing-engine.test.ts</location>
+      <location>apps/web/cypress/e2e/</location>
+    </locations>
+    <ideas>
+      <idea acId="AC1">Test multi-zone origin: route with originZones [Paris-1, Paris-2, Paris-3] matches trip from Paris-2</idea>
+      <idea acId="AC2">Test multi-zone destination: route with destinationZones [CDG, Orly] matches trip to Orly</idea>
+      <idea acId="AC3">Test address priority: create both address-based and zone-based routes, verify address route wins</idea>
+      <idea acId="AC4">Test bidirectional multi-zone: route A,B → C,D matches trip C → A</idea>
+      <idea acId="AC5">Test legacy routes: existing routes with fromZoneId/toZoneId still match correctly</idea>
+      <idea acId="AC1">Test no match: trip from Zone X (not in originZones) returns fallback to dynamic pricing</idea>
+    </ideas>
+  </tests>
+
+  <algorithmNotes>
+    <note title="Matching Priority Order">
+      1. ADDRESS origin + ADDRESS destination (exact address match)
+      2. ADDRESS origin + ZONES destination
+      3. ZONES origin + ADDRESS destination
+      4. ZONES origin + ZONES destination (multi-zone)
+      5. Legacy fromZoneId/toZoneId (backward compatibility)
+    </note>
+    <note title="Address Matching Logic">
+      For ADDRESS type routes:
+      - Compare pickup/dropoff coordinates with route's originLat/originLng or destLat/destLng
+      - Use a proximity threshold (e.g., 100m radius) for matching
+      - Exact PlaceId match takes highest priority
+    </note>
+    <note title="Multi-Zone Matching Logic">
+      For ZONES type routes:
+      - Check if pickup zone ID is in route's originZones array
+      - Check if dropoff zone ID is in route's destinationZones array
+      - For bidirectional: also check reverse (pickup in destinationZones, dropoff in originZones)
+    </note>
+  </algorithmNotes>
+</story-context>
