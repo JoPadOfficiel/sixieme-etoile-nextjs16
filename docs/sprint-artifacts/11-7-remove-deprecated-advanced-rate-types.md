@@ -6,6 +6,13 @@
 **I want** deprecated advanced rate types removed from the system  
 **So that** the pricing configuration is cleaner and less confusing
 
+## Status: IN PROGRESS
+
+**Sprint:** 11 - Zone Management Refactoring & UI Improvements  
+**Priority:** Medium  
+**Story Points:** 2  
+**Assignee:** Dev Team
+
 ## Background
 
 The user has identified several advanced rate types that should be removed:
@@ -16,43 +23,60 @@ The user has identified several advanced rate types that should be removed:
 
 After cleanup, only **NIGHT** and **WEEKEND** rate types should remain in the Advanced Rates section.
 
+### Already Completed (Story 11.4)
+
+The following changes were already made in Story 11.4:
+
+- ✅ Prisma schema enum `AdvancedRateAppliesTo` updated to only contain `NIGHT`, `WEEKEND`
+- ✅ Pricing engine type `AdvancedRateAppliesTo` updated
+- ✅ API validation schemas updated to only accept `NIGHT`, `WEEKEND`
+- ✅ Form dialog `RATE_TYPES` array updated
+- ✅ Filter dropdown updated
+- ✅ Helper functions updated (`requiresDistanceFields`, `requiresZoneField` return false)
+
+### Remaining Work (This Story)
+
+- ❌ Summary cards still show 6 cards (should be 3)
+- ❌ `AdvancedRateStats` type still includes deprecated fields
+- ❌ Unused icon imports in `AdvancedRateSummaryCards.tsx`
+
 ## Tasks
 
-1. **Audit existing data** - Check if any organizations have these rate types configured
-2. **Create data migration plan** - Document how to handle existing data
-3. **Update AdvancedRateAppliesTo enum** - Remove deprecated types from Prisma schema
-4. **Update API validation** - Remove deprecated types from Zod schemas
-5. **Update UI components** - Remove deprecated options from forms and filters
-6. **Update pricing engine** - Remove handling for deprecated types
-7. **Create migration script** - Migrate or archive existing deprecated rates
-8. **Update translations** - Remove unused translation keys
-9. **Update documentation** - Update any docs referencing deprecated types
-10. **Write tests** to verify deprecated types are rejected
+1. ~~**Audit existing data** - Check if any organizations have these rate types configured~~ ✅ Done
+2. ~~**Create data migration plan** - Document how to handle existing data~~ ✅ N/A - No data exists
+3. ~~**Update AdvancedRateAppliesTo enum** - Remove deprecated types from Prisma schema~~ ✅ Done (11.4)
+4. ~~**Update API validation** - Remove deprecated types from Zod schemas~~ ✅ Done (11.4)
+5. ~~**Update UI components** - Remove deprecated options from forms and filters~~ ✅ Done (11.4)
+6. ~~**Update pricing engine** - Remove handling for deprecated types~~ ✅ Done (11.4)
+7. ~~**Create migration script** - Migrate or archive existing deprecated rates~~ ✅ N/A
+8. **Update Summary Cards** - Remove deprecated cards from UI ⏳ THIS STORY
+9. **Update AdvancedRateStats type** - Remove deprecated fields ⏳ THIS STORY
+10. **Write tests** to verify the cleanup is complete ⏳ THIS STORY
 
 ## Acceptance Criteria
 
-### AC1: Types Removed from UI
+### AC1: Types Removed from UI ✅ DONE (Story 11.4)
 
 **Given** I am creating or editing an Advanced Rate  
 **When** I view the "Type" dropdown  
 **Then** I only see: NIGHT, WEEKEND  
 **And** LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY are not available
 
-### AC2: Types Removed from Filters
+### AC2: Types Removed from Filters ✅ DONE (Story 11.4)
 
 **Given** I am on the Advanced Rates list  
 **When** I view the type filter dropdown  
 **Then** I only see: All, Night, Weekend  
 **And** Long Distance, Zone-Based, Holiday are not available
 
-### AC3: API Rejects Deprecated Types
+### AC3: API Rejects Deprecated Types ✅ DONE (Story 11.4)
 
 **Given** I try to create an advanced rate via API  
 **When** I send `appliesTo: "LONG_DISTANCE"`  
 **Then** the API returns a 400 validation error  
 **And** the error message indicates the type is not valid
 
-### AC4: Existing Data Handled
+### AC4: Existing Data Handled ✅ N/A
 
 **Given** existing advanced rates with deprecated types  
 **When** the migration runs  
@@ -60,21 +84,23 @@ After cleanup, only **NIGHT** and **WEEKEND** rate types should remain in the Ad
 **And** LONG_DISTANCE rates are archived or deleted (with notification)  
 **And** HOLIDAY rates are converted to Seasonal Multipliers (if applicable)
 
-### AC5: Pricing Engine Updated
+**Note:** No existing data with deprecated types found in database.
+
+### AC5: Pricing Engine Updated ✅ DONE (Story 11.4)
 
 **Given** the pricing engine  
 **When** calculating a price  
 **Then** it no longer checks for LONG_DISTANCE, ZONE_SCENARIO, or HOLIDAY advanced rates  
 **And** zone multipliers are applied from PricingZone model instead
 
-### AC6: Summary Cards Updated
+### AC6: Summary Cards Updated ⏳ THIS STORY
 
 **Given** the Advanced Rates page  
 **When** I view the summary cards  
-**Then** I only see cards for Night Rates and Weekend Rates  
+**Then** I only see cards for Night Rates, Weekend Rates, and Total Active  
 **And** Long Distance, Zone-Based, Holiday cards are removed
 
-### AC7: Database Schema Updated
+### AC7: Database Schema Updated ✅ DONE (Story 11.4)
 
 **Given** the Prisma schema  
 **When** I view the AdvancedRateAppliesTo enum  

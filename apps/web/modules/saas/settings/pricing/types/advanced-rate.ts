@@ -36,6 +36,11 @@ export interface AdvancedRate {
 // API Response Types
 // ============================================================================
 
+/**
+ * Statistics for advanced rate summary cards
+ * Note: Only NIGHT and WEEKEND types supported (Story 11.7)
+ * LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed
+ */
 export interface AdvancedRateStats {
 	night: number;
 	weekend: number;

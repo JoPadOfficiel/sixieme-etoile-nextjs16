@@ -230,7 +230,7 @@ export const advancedRatesRouter = new Hono()
 				}),
 				db.advancedRate.count({
 					where: withTenantFilter(
-						{ isActive: true, appliesTo: { in: ["NIGHT", "WEEKEND"] } },
+						{ isActive: true, appliesTo: { in: [AdvancedRateAppliesTo.NIGHT, AdvancedRateAppliesTo.WEEKEND] } },
 						organizationId
 					),
 				}),

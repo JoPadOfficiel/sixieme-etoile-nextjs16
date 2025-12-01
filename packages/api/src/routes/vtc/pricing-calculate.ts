@@ -7,6 +7,7 @@
  */
 
 import { db } from "@repo/database";
+import { AdvancedRateAppliesTo } from "@prisma/client";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -339,8 +340,8 @@ async function loadAdvancedRates(organizationId: string): Promise<AdvancedRateDa
 	const rates = (await db.advancedRate.findMany({
 		where: withTenantFilter({ 
 			isActive: true,
-			// Only load supported rate types (NIGHT, WEEKEND)
-			appliesTo: { in: ["NIGHT", "WEEKEND"] },
+			// Only load supported rate types (NIGHT, WEEKEND) - Story 11.7
+			appliesTo: { in: [AdvancedRateAppliesTo.NIGHT, AdvancedRateAppliesTo.WEEKEND] },
 		}, organizationId),
 		orderBy: { priority: "desc" },
 	})) as any[];

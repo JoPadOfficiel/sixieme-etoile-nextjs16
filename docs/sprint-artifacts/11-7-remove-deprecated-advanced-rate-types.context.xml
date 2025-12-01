@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context: 11.7 - Remove Deprecated Advanced Rate Types
+  Epic: 11 - Zone Management Refactoring & UI Improvements
+  Generated: 2025-12-01
+-->
+<story-context>
+  <metadata>
+    <story-id>11-7</story-id>
+    <story-title>Remove Deprecated Advanced Rate Types</story-title>
+    <epic-id>11</epic-id>
+    <epic-title>Zone Management Refactoring & UI Improvements</epic-title>
+    <status>ready-for-dev</status>
+    <created>2025-12-01</created>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      Le système de pricing contient encore des références aux types de tarifs avancés
+      dépréciés (LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY) dans les composants UI,
+      bien que le schéma Prisma et le pricing engine aient déjà été mis à jour.
+      Ces vestiges créent de la confusion et des incohérences dans l'interface.
+    </summary>
+    <business-impact>
+      - Interface utilisateur incohérente avec des cartes de statistiques vides
+      - Confusion pour les opérateurs qui voient des options non fonctionnelles
+      - Code mort qui complique la maintenance
+    </business-impact>
+    <technical-debt>
+      - AdvancedRateSummaryCards.tsx affiche encore 6 cartes au lieu de 3
+      - AdvancedRateStats type inclut encore longDistance, zoneScenario, holiday
+      - Fonction isLongDistance() dépréciée mais encore présente
+    </technical-debt>
+  </problem-statement>
+
+  <objectives>
+    <objective priority="1">
+      Supprimer les cartes de statistiques pour LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY
+      du composant AdvancedRateSummaryCards.tsx
+    </objective>
+    <objective priority="2">
+      Mettre à jour le type AdvancedRateStats pour ne contenir que night, weekend, totalActive
+    </objective>
+    <objective priority="3">
+      Vérifier que l'API /stats ne retourne plus ces champs dépréciés
+    </objective>
+    <objective priority="4">
+      Valider via tests curl que le système fonctionne correctement
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Mise à jour de AdvancedRateSummaryCards.tsx (suppression des cartes dépréciées)</item>
+      <item>Mise à jour du type AdvancedRateStats dans advanced-rate.ts</item>
+      <item>Nettoyage des imports inutilisés (Route, MapPin, Sparkles icons)</item>
+      <item>Tests curl pour valider l'API</item>
+      <item>Vérification en base de données</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification du schéma Prisma (déjà fait en Story 11.4)</item>
+      <item>Modification du pricing engine (déjà fait)</item>
+      <item>Migration des données existantes (pas de données avec ces types)</item>
+      <item>Modification des traductions (seront nettoyées plus tard si nécessaire)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Le schéma Prisma enum AdvancedRateAppliesTo ne contient déjà que NIGHT et WEEKEND
+    </constraint>
+    <constraint type="dependency">
+      Story 11.3 (Zone Pricing Multipliers) et 11.4 (Merge Seasonal/Advanced) sont complétées
+    </constraint>
+    <constraint type="backward-compatibility">
+      Les champs minDistanceKm, maxDistanceKm, zoneId restent dans le modèle DB
+      pour compatibilité mais ne sont plus utilisés
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Traductions orphelines pour les types supprimés</description>
+      <mitigation>Les traductions seront nettoyées dans une tâche de maintenance future</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <files-to-modify>
+      <file path="apps/web/modules/saas/settings/pricing/components/AdvancedRateSummaryCards.tsx">
+        Supprimer les cartes longDistance, zoneScenario, holiday
+        Passer de 6 colonnes à 3 colonnes dans la grille
+        Supprimer les imports Route, MapPin, Sparkles
+      </file>
+      <file path="apps/web/modules/saas/settings/pricing/types/advanced-rate.ts">
+        Supprimer longDistance, zoneScenario, holiday du type AdvancedRateStats
+      </file>
+    </files-to-modify>
+    <files-already-updated>
+      <file path="packages/database/prisma/schema.prisma">
+        enum AdvancedRateAppliesTo ne contient que NIGHT, WEEKEND
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Type AdvancedRateAppliesTo = "NIGHT" | "WEEKEND"
+        Fonction isLongDistance() retourne toujours false (deprecated)
+      </file>
+      <file path="packages/api/src/routes/vtc/advanced-rates.ts">
+        API /stats ne retourne que night, weekend, totalActive
+      </file>
+    </files-already-updated>
+  </technical-context>
+
+  <acceptance-criteria-preview>
+    <criterion id="AC1">
+      Les cartes de statistiques n'affichent que Night, Weekend, et Total Active
+    </criterion>
+    <criterion id="AC2">
+      L'API /api/vtc/pricing/advanced-rates/stats retourne uniquement night, weekend, totalActive
+    </criterion>
+    <criterion id="AC3">
+      Aucune erreur TypeScript après les modifications
+    </criterion>
+    <criterion id="AC4">
+      L'interface Settings > Pricing > Advanced Rates fonctionne correctement
+    </criterion>
+  </acceptance-criteria-preview>
+</story-context>

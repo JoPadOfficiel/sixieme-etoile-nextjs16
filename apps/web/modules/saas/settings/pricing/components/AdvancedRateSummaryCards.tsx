@@ -3,20 +3,15 @@
 /**
  * Advanced Rate Summary Cards Component
  * Story 9.2: Settings → Pricing – Advanced Rate Modifiers
+ * Story 11.7: Removed deprecated types (LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY)
  *
  * Displays summary statistics for advanced rate modifiers by type
+ * Only NIGHT and WEEKEND types are supported
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Skeleton } from "@ui/components/skeleton";
-import {
-	Calendar,
-	MapPin,
-	Moon,
-	Route,
-	Settings,
-	Sparkles,
-} from "lucide-react";
+import { Calendar, Moon, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { AdvancedRateStats } from "../types/advanced-rate";
 
@@ -31,6 +26,8 @@ export function AdvancedRateSummaryCards({
 }: AdvancedRateSummaryCardsProps) {
 	const t = useTranslations("settings.pricing.advancedRates");
 
+	// Note: Only NIGHT and WEEKEND types supported (Story 11.7)
+	// LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed - zone pricing handled by PricingZone.priceMultiplier
 	const cards = [
 		{
 			key: "night",
@@ -49,30 +46,6 @@ export function AdvancedRateSummaryCards({
 			bgColor: "bg-purple-100 dark:bg-purple-900/30",
 		},
 		{
-			key: "longDistance",
-			title: t("stats.longDistance"),
-			value: stats?.longDistance ?? 0,
-			icon: Route,
-			color: "text-orange-600",
-			bgColor: "bg-orange-100 dark:bg-orange-900/30",
-		},
-		{
-			key: "zoneScenario",
-			title: t("stats.zoneScenario"),
-			value: stats?.zoneScenario ?? 0,
-			icon: MapPin,
-			color: "text-cyan-600",
-			bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
-		},
-		{
-			key: "holiday",
-			title: t("stats.holiday"),
-			value: stats?.holiday ?? 0,
-			icon: Sparkles,
-			color: "text-pink-600",
-			bgColor: "bg-pink-100 dark:bg-pink-900/30",
-		},
-		{
 			key: "totalActive",
 			title: t("stats.totalActive"),
 			value: stats?.totalActive ?? 0,
@@ -83,7 +56,7 @@ export function AdvancedRateSummaryCards({
 	];
 
 	return (
-		<div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+		<div className="grid gap-4 md:grid-cols-3">
 			{cards.map((card) => (
 				<Card key={card.key} data-testid={`stats-${card.key}`}>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
