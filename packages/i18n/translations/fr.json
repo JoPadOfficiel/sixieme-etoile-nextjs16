@@ -932,6 +932,26 @@
 		"pagination": {
 			"showing": "Affichage de {count} sur {total} routes",
 			"page": "Page {page} sur {totalPages}"
+		},
+		"partnerAssignment": {
+			"button": "Partenaires",
+			"buttonTooltip": "Assigner à des partenaires",
+			"dialogTitle": "Assigner aux partenaires",
+			"dialogDescription": "Sélectionnez les partenaires qui auront accès à cette route et définissez optionnellement un prix négocié.",
+			"searchPlaceholder": "Rechercher un partenaire...",
+			"noPartners": "Aucun partenaire trouvé",
+			"noPartnersDescription": "Créez d'abord des contacts partenaires pour pouvoir les assigner.",
+			"catalogPrice": "Prix catalogue",
+			"overridePrice": "Prix négocié",
+			"effectivePrice": "Prix effectif",
+			"useCatalogPrice": "Utiliser le prix catalogue",
+			"setOverridePrice": "Définir un prix négocié",
+			"partnersAssigned": "{count, plural, =0 {Aucun partenaire} one {# partenaire} other {# partenaires}}",
+			"save": "Enregistrer",
+			"cancel": "Annuler",
+			"saveSuccess": "Assignations mises à jour avec succès",
+			"saveError": "Erreur lors de la mise à jour des assignations",
+			"loadError": "Erreur lors du chargement des assignations"
 		}
 	},
 	"excursions": {

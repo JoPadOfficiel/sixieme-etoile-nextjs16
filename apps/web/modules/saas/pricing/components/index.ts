@@ -23,3 +23,5 @@ export { ZoneSidebarList } from "./ZoneSidebarList";
 export { ZonesInteractiveMap } from "./ZonesInteractiveMap";
 export { ZonesOverviewMap } from "./ZonesOverviewMap";
 export { ZonesTable } from "./ZonesTable";
+// Story 14.6: Partner assignment dialog
+export { PartnerAssignmentDialog, PartnerCountBadge } from "./PartnerAssignmentDialog";

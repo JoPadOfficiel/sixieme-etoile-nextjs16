@@ -932,6 +932,26 @@
 		"pagination": {
 			"showing": "Showing {count} of {total} routes",
 			"page": "Page {page} of {totalPages}"
+		},
+		"partnerAssignment": {
+			"button": "Partners",
+			"buttonTooltip": "Assign to partners",
+			"dialogTitle": "Assign to Partners",
+			"dialogDescription": "Select partners who will have access to this route and optionally set a negotiated price.",
+			"searchPlaceholder": "Search partner...",
+			"noPartners": "No partners found",
+			"noPartnersDescription": "Create partner contacts first to be able to assign them.",
+			"catalogPrice": "Catalog price",
+			"overridePrice": "Negotiated price",
+			"effectivePrice": "Effective price",
+			"useCatalogPrice": "Use catalog price",
+			"setOverridePrice": "Set negotiated price",
+			"partnersAssigned": "{count, plural, =0 {No partners} one {# partner} other {# partners}}",
+			"save": "Save",
+			"cancel": "Cancel",
+			"saveSuccess": "Assignments updated successfully",
+			"saveError": "Error updating assignments",
+			"loadError": "Error loading assignments"
 		}
 	},
 	"excursions": {

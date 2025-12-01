@@ -21,6 +21,7 @@ import {
 	CoverageStatsCard,
 	RouteDrawer,
 	RoutesTable,
+	PartnerAssignmentDialog,
 } from "@saas/pricing/components";
 import type {
 	CoverageStats,
@@ -79,6 +80,10 @@ export default function SettingsPricingRoutesPage() {
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [routeToDelete, setRouteToDelete] = useState<ZoneRoute | null>(null);
+
+	// Story 14.6: Partner assignment dialog
+	const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
+	const [routeForPartners, setRouteForPartners] = useState<ZoneRoute | null>(null);
 
 	const fetchRoutes = useCallback(async () => {
 		setIsLoading(true);
@@ -326,6 +331,12 @@ export default function SettingsPricingRoutesPage() {
 		setDeleteDialogOpen(true);
 	};
 
+	// Story 14.6: Handle partner assignment
+	const handleAssignPartners = (route: ZoneRoute) => {
+		setRouteForPartners(route);
+		setPartnerDialogOpen(true);
+	};
+
 	const handleAddNew = () => {
 		setEditingRoute(null);
 		setPrefillFromZoneId(null);
@@ -399,6 +410,8 @@ export default function SettingsPricingRoutesPage() {
 					isLoading={isLoading}
 					onEdit={handleEdit}
 					onDelete={handleDeleteClick}
+					// Story 14.6: Partner assignment
+					onAssignPartners={handleAssignPartners}
 					search={search}
 					onSearchChange={setSearch}
 					fromZoneId={fromZoneId}
@@ -463,6 +476,21 @@ export default function SettingsPricingRoutesPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Story 14.6: Partner Assignment Dialog */}
+			{routeForPartners && (
+				<PartnerAssignmentDialog
+					open={partnerDialogOpen}
+					onOpenChange={setPartnerDialogOpen}
+					itemId={routeForPartners.id}
+					itemType="route"
+					catalogPrice={routeForPartners.fixedPrice}
+					itemLabel={`${routeForPartners.fromZone?.name ?? "?"} → ${routeForPartners.toZone?.name ?? "?"}`}
+					onSuccess={() => {
+						fetchRoutes();
+					}}
+				/>
+			)}
 		</div>
 	);
 }

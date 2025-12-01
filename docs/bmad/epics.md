@@ -1718,6 +1718,36 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 
 ---
 
+#### Story 14.6 – Assign Rate Grids to Partners from Pricing UI
+
+**Status:** In Progress
+
+**As a** pricing administrator,  
+**I want** to assign zone routes, excursion packages, and dispo packages to partners directly from the pricing configuration pages,  
+**So that** I can efficiently manage which partners have access to which rate grids without navigating to each contact individually.
+
+**Related FRs:** FR2 (Partner contracts), FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I am on `/settings/pricing/routes`,  
+**When** I click the "Assign Partners" button on a route row,  
+**Then** a dialog opens showing all available partners with checkboxes and optional override price inputs.
+
+**And** when I save the assignments, they are persisted and visible both in the pricing UI and in the partner's contact page.
+
+**And** the same functionality applies to excursion packages and dispo packages.
+
+**Prerequisites:** Stories 12.1, 12.3, 14.2.
+
+**Technical Notes:**
+
+- New API endpoints for partner assignments by route/package ID
+- Bidirectional consistency with existing PartnerContractForm
+- Partner count badge on each pricing list item
+
+---
+
 ## Summary
 
 This document now defines the **14-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:

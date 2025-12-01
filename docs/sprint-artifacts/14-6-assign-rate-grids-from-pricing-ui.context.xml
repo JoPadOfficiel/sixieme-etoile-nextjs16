@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>14.6</story-id>
+    <title>Assign Rate Grids to Partners from Pricing UI</title>
+    <epic>Epic 14 - Flexible Route Pricing System</epic>
+    <created>2025-12-01</created>
+    <status>contexted</status>
+  </metadata>
+
+  <problem-statement>
+    <current-situation>
+      Currently, assigning rate grids (zone routes, excursion packages, dispo packages) to partners 
+      can ONLY be done from the Contact detail page via the PartnerContractForm. This creates a 
+      unidirectional workflow where administrators must:
+      1. Create a route/package in the Pricing settings
+      2. Navigate to each partner contact
+      3. Open the partner contract section
+      4. Manually add the route/package to their contract
+      
+      This is inefficient when:
+      - A new route needs to be assigned to multiple partners
+      - Checking which partners have access to a specific route
+      - Managing bulk assignments
+    </current-situation>
+    
+    <pain-points>
+      <pain-point>No visibility of partner assignments from pricing pages</pain-point>
+      <pain-point>Tedious navigation to assign one route to multiple partners</pain-point>
+      <pain-point>No way to see "who has access to this route" at a glance</pain-point>
+      <pain-point>Backend API only supports per-contact operations, not per-route</pain-point>
+    </pain-points>
+  </problem-statement>
+
+  <objectives>
+    <primary>
+      Enable bidirectional assignment workflow: from Pricing UI to Partners AND from Partners to Pricing
+    </primary>
+    <secondary>
+      <objective>Add "Assign to Partners" action on route/package/dispo list items</objective>
+      <objective>Create dialog to select partners and set override prices</objective>
+      <objective>Show partner count badge on each grid item</objective>
+      <objective>Create new backend API for bulk assignment by route/package ID</objective>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>New API endpoint: POST /api/vtc/zone-routes/:id/partner-assignments</item>
+      <item>New API endpoint: GET /api/vtc/zone-routes/:id/partner-assignments</item>
+      <item>New API endpoint: POST /api/vtc/excursion-packages/:id/partner-assignments</item>
+      <item>New API endpoint: GET /api/vtc/excursion-packages/:id/partner-assignments</item>
+      <item>New API endpoint: POST /api/vtc/dispo-packages/:id/partner-assignments</item>
+      <item>New API endpoint: GET /api/vtc/dispo-packages/:id/partner-assignments</item>
+      <item>UI: Partner assignment dialog component</item>
+      <item>UI: "Assign Partners" button on route/package/dispo rows</item>
+      <item>UI: Partner count badge on each item</item>
+      <item>Translations: FR/EN for new UI elements</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modifying the existing PartnerContractForm (it continues to work as-is)</item>
+      <item>Bulk operations across multiple routes at once</item>
+      <item>Partner filtering on pricing pages (already done in Story 13.2)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <constraint>Must use existing PartnerContract junction tables</constraint>
+      <constraint>Must respect multi-tenancy (organizationId scoping)</constraint>
+      <constraint>Must maintain data consistency with PartnerContractForm</constraint>
+    </technical>
+    <business>
+      <constraint>Only partners (isPartner=true) can be assigned</constraint>
+      <constraint>Override prices are optional (null = catalog price)</constraint>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Data inconsistency if both UIs modify same data simultaneously</description>
+      <mitigation>Use optimistic locking or last-write-wins with clear timestamps</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance with many partners</description>
+      <mitigation>Paginate partner list in dialog, lazy load assignments</mitigation>
+    </risk>
+  </risks>
+
+  <dependencies>
+    <dependency status="done">Story 12.1: Partner-specific pricing schema (PartnerContract tables)</dependency>
+    <dependency status="done">Story 12.3: Partner contract override UI (existing form)</dependency>
+    <dependency status="done">Story 14.2: Multi-zone route schema</dependency>
+  </dependencies>
+
+  <technical-context>
+    <existing-models>
+      <model name="PartnerContract">Contact-level contract with billing, payment terms, commission</model>
+      <model name="PartnerContractZoneRoute">Junction: contract ↔ route with overridePrice</model>
+      <model name="PartnerContractExcursionPackage">Junction: contract ↔ excursion with overridePrice</model>
+      <model name="PartnerContractDispoPackage">Junction: contract ↔ dispo with overridePrice</model>
+    </existing-models>
+    
+    <existing-apis>
+      <api method="GET" path="/contacts/:contactId/contract">Get partner contract</api>
+      <api method="PUT" path="/contacts/:contactId/contract">Create/update partner contract</api>
+      <api method="DELETE" path="/contacts/:contactId/contract">Delete partner contract</api>
+    </existing-apis>
+    
+    <new-apis-needed>
+      <api method="GET" path="/zone-routes/:id/partner-assignments">List partners assigned to route</api>
+      <api method="POST" path="/zone-routes/:id/partner-assignments">Bulk assign/update partners</api>
+      <api method="GET" path="/excursion-packages/:id/partner-assignments">List partners assigned</api>
+      <api method="POST" path="/excursion-packages/:id/partner-assignments">Bulk assign/update</api>
+      <api method="GET" path="/dispo-packages/:id/partner-assignments">List partners assigned</api>
+      <api method="POST" path="/dispo-packages/:id/partner-assignments">Bulk assign/update</api>
+    </new-apis-needed>
+  </technical-context>
+</story-context>

@@ -17,6 +17,12 @@ import { invoicesRouter } from "./invoices";
 import { licenseCategoriesRouter } from "./license-categories";
 import { licenseRulesRouter } from "./license-rules";
 import { partnerContractsRouter } from "./partner-contracts";
+import {
+	zoneRouteAssignmentsRouter,
+	excursionAssignmentsRouter,
+	dispoAssignmentsRouter,
+	partnersListRouter,
+} from "./partner-assignments";
 import { postalCodesRouter } from "./postal-codes";
 import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingSettingsRouter } from "./pricing-settings";
@@ -69,6 +75,11 @@ export const vtcRouter = new Hono()
 	.route("/", optionalFeesRouter)
 	.route("/", promotionsRouter)
 	.route("/", pricingSettingsRouter)
-	.route("/", reportsRouter);
+	.route("/", reportsRouter)
+	// Story 14.6: Partner assignments from pricing UI
+	.route("/", zoneRouteAssignmentsRouter)
+	.route("/", excursionAssignmentsRouter)
+	.route("/", dispoAssignmentsRouter)
+	.route("/", partnersListRouter);
 
 export type VtcRouter = typeof vtcRouter;

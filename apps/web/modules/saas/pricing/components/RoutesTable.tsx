@@ -25,6 +25,7 @@ import {
 	Loader2Icon,
 	SearchIcon,
 	Trash2Icon,
+	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type {
@@ -42,6 +43,8 @@ interface RoutesTableProps {
 	isLoading?: boolean;
 	onEdit: (route: ZoneRoute) => void;
 	onDelete: (route: ZoneRoute) => void;
+	// Story 14.6: Partner assignment
+	onAssignPartners?: (route: ZoneRoute) => void;
 	// Filters
 	search: string;
 	onSearchChange: (search: string) => void;
@@ -82,6 +85,7 @@ export function RoutesTable({
 	isLoading = false,
 	onEdit,
 	onDelete,
+	onAssignPartners,
 	search,
 	onSearchChange,
 	fromZoneId,
@@ -332,6 +336,17 @@ export function RoutesTable({
 									</TableCell>
 									<TableCell>
 										<div className="flex items-center gap-1">
+											{/* Story 14.6: Partner assignment button */}
+											{onAssignPartners && (
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => onAssignPartners(route)}
+													title={t("routes.partnerAssignment.buttonTooltip")}
+												>
+													<UsersIcon className="size-4" />
+												</Button>
+											)}
 											<Button
 												variant="ghost"
 												size="icon"
