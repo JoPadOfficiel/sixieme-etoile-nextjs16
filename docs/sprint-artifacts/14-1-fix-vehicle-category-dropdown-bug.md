@@ -1,6 +1,6 @@
 # Story 14.1: Fix Vehicle Category Dropdown Bug
 
-**Status:** drafted  
+**Status:** done  
 **Epic:** 14 - Flexible Route Pricing System  
 **Priority:** Critical  
 **Estimate:** 2 SP  
@@ -143,9 +143,40 @@ curl -X GET "http://localhost:3000/api/vtc/vehicles/categories?limit=100" \
 
 ## Definition of Done
 
-- [ ] Bug root cause identified
-- [ ] Fix implemented
-- [ ] AC1-AC4 validated
-- [ ] TC1-TC3 passing
-- [ ] No regression on existing routes functionality
-- [ ] Code committed with descriptive message
+- [x] Bug root cause identified ✅ Wrong API URL `/api/vtc/vehicles/categories` instead of `/api/vtc/vehicle-categories`
+- [x] Fix implemented ✅ Corrected URL in 4 files
+- [x] AC1-AC4 validated ✅ Playwright MCP tests passed
+- [x] TC1-TC3 passing ✅
+- [x] No regression on existing routes functionality ✅
+- [x] Code committed with descriptive message ✅
+
+---
+
+## Implementation Summary
+
+### Root Cause
+
+The frontend was calling `/api/vtc/vehicles/categories` but the API router is mounted at `/api/vtc/vehicle-categories`.
+
+### Files Modified
+
+| File                                                | Change        |
+| --------------------------------------------------- | ------------- |
+| `apps/web/.../settings/pricing/routes/page.tsx`     | Fixed API URL |
+| `apps/web/.../settings/pricing/excursions/page.tsx` | Fixed API URL |
+| `apps/web/.../settings/pricing/dispos/page.tsx`     | Fixed API URL |
+| `apps/web/.../routes/page.tsx`                      | Fixed API URL |
+
+### Tests Executed
+
+| Test Type                                 | Result  |
+| ----------------------------------------- | ------- |
+| Playwright MCP - Load categories          | ✅ Pass |
+| Playwright MCP - Edit route dropdown      | ✅ Pass |
+| Playwright MCP - All 5 categories visible | ✅ Pass |
+
+### Commit
+
+```
+fix(14-1): Fix Vehicle Category dropdown API URL
+```
