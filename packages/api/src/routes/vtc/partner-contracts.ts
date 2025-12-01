@@ -231,29 +231,42 @@ export const partnerContractsRouter = new Hono()
       }
 
       // Validate that all grid IDs belong to the organization
-      if (data.zoneRouteIds.length > 0) {
+      // Story 12.1: Support both legacy (IDs array) and new format (assignments with overridePrice)
+      const zoneRouteIdsToValidate = data.zoneRouteAssignments?.length
+        ? data.zoneRouteAssignments.map((a) => a.zoneRouteId)
+        : data.zoneRouteIds;
+      
+      if (zoneRouteIdsToValidate.length > 0) {
         const validRoutes = await db.zoneRoute.count({
-          where: { id: { in: data.zoneRouteIds }, organizationId },
+          where: { id: { in: zoneRouteIdsToValidate }, organizationId },
         });
-        if (validRoutes !== data.zoneRouteIds.length) {
+        if (validRoutes !== zoneRouteIdsToValidate.length) {
           throw new HTTPException(400, { message: "Some zone routes are invalid or belong to another organization" });
         }
       }
 
-      if (data.excursionPackageIds.length > 0) {
+      const excursionIdsToValidate = data.excursionAssignments?.length
+        ? data.excursionAssignments.map((a) => a.excursionPackageId)
+        : data.excursionPackageIds;
+
+      if (excursionIdsToValidate.length > 0) {
         const validExcursions = await db.excursionPackage.count({
-          where: { id: { in: data.excursionPackageIds }, organizationId },
+          where: { id: { in: excursionIdsToValidate }, organizationId },
         });
-        if (validExcursions !== data.excursionPackageIds.length) {
+        if (validExcursions !== excursionIdsToValidate.length) {
           throw new HTTPException(400, { message: "Some excursion packages are invalid or belong to another organization" });
         }
       }
 
-      if (data.dispoPackageIds.length > 0) {
+      const dispoIdsToValidate = data.dispoAssignments?.length
+        ? data.dispoAssignments.map((a) => a.dispoPackageId)
+        : data.dispoPackageIds;
+
+      if (dispoIdsToValidate.length > 0) {
         const validDispos = await db.dispoPackage.count({
-          where: { id: { in: data.dispoPackageIds }, organizationId },
+          where: { id: { in: dispoIdsToValidate }, organizationId },
         });
-        if (validDispos !== data.dispoPackageIds.length) {
+        if (validDispos !== dispoIdsToValidate.length) {
           throw new HTTPException(400, { message: "Some dispo packages are invalid or belong to another organization" });
         }
       }
@@ -292,22 +305,26 @@ export const partnerContractsRouter = new Hono()
         // Create new zone route assignments
         if (useNewZoneRouteFormat && data.zoneRouteAssignments) {
           // Story 12.1: New format with override prices
-          await tx.partnerContractZoneRoute.createMany({
-            data: data.zoneRouteAssignments.map((assignment) => ({
-              partnerContractId: contract.id,
-              zoneRouteId: assignment.zoneRouteId,
-              overridePrice: assignment.overridePrice ?? null,
-            })),
-          });
+          for (const assignment of data.zoneRouteAssignments) {
+            await tx.partnerContractZoneRoute.create({
+              data: {
+                partnerContractId: contract.id,
+                zoneRouteId: assignment.zoneRouteId,
+                overridePrice: assignment.overridePrice ?? null,
+              },
+            });
+          }
         } else if (data.zoneRouteIds.length > 0) {
           // Legacy format: simple ID array, no override
-          await tx.partnerContractZoneRoute.createMany({
-            data: data.zoneRouteIds.map((zoneRouteId) => ({
-              partnerContractId: contract.id,
-              zoneRouteId,
-              overridePrice: null,
-            })),
-          });
+          for (const zoneRouteId of data.zoneRouteIds) {
+            await tx.partnerContractZoneRoute.create({
+              data: {
+                partnerContractId: contract.id,
+                zoneRouteId,
+                overridePrice: null,
+              },
+            });
+          }
         }
 
         // Create new excursion assignments
