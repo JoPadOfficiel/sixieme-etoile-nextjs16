@@ -100,11 +100,11 @@ export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type'
 
 export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
 
-export const PartnerContractZoneRouteScalarFieldEnumSchema = z.enum(['id','partnerContractId','zoneRouteId']);
+export const PartnerContractZoneRouteScalarFieldEnumSchema = z.enum(['id','partnerContractId','zoneRouteId','overridePrice']);
 
-export const PartnerContractExcursionPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','excursionPackageId']);
+export const PartnerContractExcursionPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','excursionPackageId','overridePrice']);
 
-export const PartnerContractDispoPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','dispoPackageId']);
+export const PartnerContractDispoPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','dispoPackageId','overridePrice']);
 
 export const SubcontractorProfileScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','ratePerKm','ratePerHour','minimumFare','isActive','notes','createdAt','updatedAt']);
 
@@ -472,11 +472,13 @@ export type PartnerContract = z.infer<typeof PartnerContractSchema>
 
 /**
  * Junction table: PartnerContract <-> ZoneRoute
+ * Story 12.1: Added overridePrice for partner-specific pricing
  */
 export const PartnerContractZoneRouteSchema = z.object({
   id: z.string().cuid(),
   partnerContractId: z.string(),
   zoneRouteId: z.string(),
+  overridePrice: z.instanceof(Prisma.Decimal, { message: "Field 'overridePrice' must be a Decimal. Location: ['Models', 'PartnerContractZoneRoute']"}).nullable(),
 })
 
 export type PartnerContractZoneRoute = z.infer<typeof PartnerContractZoneRouteSchema>
@@ -487,11 +489,13 @@ export type PartnerContractZoneRoute = z.infer<typeof PartnerContractZoneRouteSc
 
 /**
  * Junction table: PartnerContract <-> ExcursionPackage
+ * Story 12.1: Added overridePrice for partner-specific pricing
  */
 export const PartnerContractExcursionPackageSchema = z.object({
   id: z.string().cuid(),
   partnerContractId: z.string(),
   excursionPackageId: z.string(),
+  overridePrice: z.instanceof(Prisma.Decimal, { message: "Field 'overridePrice' must be a Decimal. Location: ['Models', 'PartnerContractExcursionPackage']"}).nullable(),
 })
 
 export type PartnerContractExcursionPackage = z.infer<typeof PartnerContractExcursionPackageSchema>
@@ -502,11 +506,13 @@ export type PartnerContractExcursionPackage = z.infer<typeof PartnerContractExcu
 
 /**
  * Junction table: PartnerContract <-> DispoPackage
+ * Story 12.1: Added overridePrice for partner-specific pricing
  */
 export const PartnerContractDispoPackageSchema = z.object({
   id: z.string().cuid(),
   partnerContractId: z.string(),
   dispoPackageId: z.string(),
+  overridePrice: z.instanceof(Prisma.Decimal, { message: "Field 'overridePrice' must be a Decimal. Location: ['Models', 'PartnerContractDispoPackage']"}).nullable(),
 })
 
 export type PartnerContractDispoPackage = z.infer<typeof PartnerContractDispoPackageSchema>

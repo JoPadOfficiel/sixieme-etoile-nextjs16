@@ -19,14 +19,36 @@ import { z } from "zod";
 import { organizationMiddleware } from "../../middleware/organization";
 
 // Validation schemas
+
+// Story 12.1: Grid assignment with optional override price
+const zoneRouteAssignmentSchema = z.object({
+  zoneRouteId: z.string().min(1),
+  overridePrice: z.number().positive().optional().nullable(), // null = use catalog price
+});
+
+const excursionAssignmentSchema = z.object({
+  excursionPackageId: z.string().min(1),
+  overridePrice: z.number().positive().optional().nullable(),
+});
+
+const dispoAssignmentSchema = z.object({
+  dispoPackageId: z.string().min(1),
+  overridePrice: z.number().positive().optional().nullable(),
+});
+
 const partnerContractSchema = z.object({
   billingAddress: z.string().max(500).optional().nullable(),
   paymentTerms: z.enum(["IMMEDIATE", "DAYS_15", "DAYS_30", "DAYS_45", "DAYS_60"]).default("DAYS_30"),
   commissionPercent: z.number().min(0).max(100).default(0),
   notes: z.string().max(2000).optional().nullable(),
+  // Legacy: simple ID arrays (backward compatible, no override)
   zoneRouteIds: z.array(z.string()).default([]),
   excursionPackageIds: z.array(z.string()).default([]),
   dispoPackageIds: z.array(z.string()).default([]),
+  // Story 12.1: New format with override prices
+  zoneRouteAssignments: z.array(zoneRouteAssignmentSchema).optional(),
+  excursionAssignments: z.array(excursionAssignmentSchema).optional(),
+  dispoAssignments: z.array(dispoAssignmentSchema).optional(),
 });
 
 const contactIdParamSchema = z.object({
@@ -66,6 +88,7 @@ export const partnerContractsRouter = new Hono()
       }
 
       // Get contract with grid assignments
+      // Story 12.1: Include overridePrice from junction tables
       const contract = await db.partnerContract.findUnique({
         where: { contactId },
         include: {
@@ -105,6 +128,7 @@ export const partnerContractsRouter = new Hono()
         });
       }
 
+      // Story 12.1: Return catalog price, override price, and effective price
       return c.json({
         data: {
           id: contract.id,
@@ -113,25 +137,55 @@ export const partnerContractsRouter = new Hono()
           paymentTerms: contract.paymentTerms,
           commissionPercent: contract.commissionPercent.toString(),
           notes: contract.notes,
-          zoneRoutes: contract.zoneRoutes.map((r) => ({
-            id: r.zoneRoute.id,
-            fromZone: r.zoneRoute.fromZone,
-            toZone: r.zoneRoute.toZone,
-            vehicleCategory: r.zoneRoute.vehicleCategory,
-            fixedPrice: r.zoneRoute.fixedPrice.toString(),
-          })),
-          excursionPackages: contract.excursionPackages.map((p) => ({
-            id: p.excursionPackage.id,
-            name: p.excursionPackage.name,
-            description: p.excursionPackage.description,
-            price: p.excursionPackage.price.toString(),
-          })),
-          dispoPackages: contract.dispoPackages.map((p) => ({
-            id: p.dispoPackage.id,
-            name: p.dispoPackage.name,
-            description: p.dispoPackage.description,
-            basePrice: p.dispoPackage.basePrice.toString(),
-          })),
+          zoneRoutes: contract.zoneRoutes.map((r) => {
+            const catalogPrice = Number(r.zoneRoute.fixedPrice);
+            const overridePrice = r.overridePrice ? Number(r.overridePrice) : null;
+            const effectivePrice = overridePrice ?? catalogPrice;
+            return {
+              id: r.zoneRoute.id,
+              fromZone: r.zoneRoute.fromZone,
+              toZone: r.zoneRoute.toZone,
+              vehicleCategory: r.zoneRoute.vehicleCategory,
+              // Legacy field (backward compatible)
+              fixedPrice: catalogPrice.toString(),
+              // Story 12.1: New pricing fields
+              catalogPrice,
+              overridePrice,
+              effectivePrice,
+            };
+          }),
+          excursionPackages: contract.excursionPackages.map((p) => {
+            const catalogPrice = Number(p.excursionPackage.price);
+            const overridePrice = p.overridePrice ? Number(p.overridePrice) : null;
+            const effectivePrice = overridePrice ?? catalogPrice;
+            return {
+              id: p.excursionPackage.id,
+              name: p.excursionPackage.name,
+              description: p.excursionPackage.description,
+              // Legacy field (backward compatible)
+              price: catalogPrice.toString(),
+              // Story 12.1: New pricing fields
+              catalogPrice,
+              overridePrice,
+              effectivePrice,
+            };
+          }),
+          dispoPackages: contract.dispoPackages.map((p) => {
+            const catalogPrice = Number(p.dispoPackage.basePrice);
+            const overridePrice = p.overridePrice ? Number(p.overridePrice) : null;
+            const effectivePrice = overridePrice ?? catalogPrice;
+            return {
+              id: p.dispoPackage.id,
+              name: p.dispoPackage.name,
+              description: p.dispoPackage.description,
+              // Legacy field (backward compatible)
+              basePrice: catalogPrice.toString(),
+              // Story 12.1: New pricing fields
+              catalogPrice,
+              overridePrice,
+              effectivePrice,
+            };
+          }),
           createdAt: contract.createdAt.toISOString(),
           updatedAt: contract.updatedAt.toISOString(),
         },
@@ -223,6 +277,11 @@ export const partnerContractsRouter = new Hono()
         },
       });
 
+      // Story 12.1: Determine which format is being used (new with overrides or legacy)
+      const useNewZoneRouteFormat = data.zoneRouteAssignments && data.zoneRouteAssignments.length > 0;
+      const useNewExcursionFormat = data.excursionAssignments && data.excursionAssignments.length > 0;
+      const useNewDispoFormat = data.dispoAssignments && data.dispoAssignments.length > 0;
+
       // Sync grid assignments using transaction
       await db.$transaction(async (tx) => {
         // Delete existing assignments
@@ -230,30 +289,65 @@ export const partnerContractsRouter = new Hono()
         await tx.partnerContractExcursionPackage.deleteMany({ where: { partnerContractId: contract.id } });
         await tx.partnerContractDispoPackage.deleteMany({ where: { partnerContractId: contract.id } });
 
-        // Create new assignments
-        if (data.zoneRouteIds.length > 0) {
+        // Create new zone route assignments
+        if (useNewZoneRouteFormat && data.zoneRouteAssignments) {
+          // Story 12.1: New format with override prices
+          await tx.partnerContractZoneRoute.createMany({
+            data: data.zoneRouteAssignments.map((assignment) => ({
+              partnerContractId: contract.id,
+              zoneRouteId: assignment.zoneRouteId,
+              overridePrice: assignment.overridePrice ?? null,
+            })),
+          });
+        } else if (data.zoneRouteIds.length > 0) {
+          // Legacy format: simple ID array, no override
           await tx.partnerContractZoneRoute.createMany({
             data: data.zoneRouteIds.map((zoneRouteId) => ({
               partnerContractId: contract.id,
               zoneRouteId,
+              overridePrice: null,
             })),
           });
         }
 
-        if (data.excursionPackageIds.length > 0) {
+        // Create new excursion assignments
+        if (useNewExcursionFormat && data.excursionAssignments) {
+          // Story 12.1: New format with override prices
+          await tx.partnerContractExcursionPackage.createMany({
+            data: data.excursionAssignments.map((assignment) => ({
+              partnerContractId: contract.id,
+              excursionPackageId: assignment.excursionPackageId,
+              overridePrice: assignment.overridePrice ?? null,
+            })),
+          });
+        } else if (data.excursionPackageIds.length > 0) {
+          // Legacy format: simple ID array, no override
           await tx.partnerContractExcursionPackage.createMany({
             data: data.excursionPackageIds.map((excursionPackageId) => ({
               partnerContractId: contract.id,
               excursionPackageId,
+              overridePrice: null,
             })),
           });
         }
 
-        if (data.dispoPackageIds.length > 0) {
+        // Create new dispo assignments
+        if (useNewDispoFormat && data.dispoAssignments) {
+          // Story 12.1: New format with override prices
+          await tx.partnerContractDispoPackage.createMany({
+            data: data.dispoAssignments.map((assignment) => ({
+              partnerContractId: contract.id,
+              dispoPackageId: assignment.dispoPackageId,
+              overridePrice: assignment.overridePrice ?? null,
+            })),
+          });
+        } else if (data.dispoPackageIds.length > 0) {
+          // Legacy format: simple ID array, no override
           await tx.partnerContractDispoPackage.createMany({
             data: data.dispoPackageIds.map((dispoPackageId) => ({
               partnerContractId: contract.id,
               dispoPackageId,
+              overridePrice: null,
             })),
           });
         }

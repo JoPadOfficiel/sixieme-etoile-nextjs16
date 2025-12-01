@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-key>12-1-partner-specific-pricing-schema</story-key>
+    <epic>12 - Partner-Specific Pricing & Contract Enhancements</epic>
+    <created>2025-12-01T11:00:00+01:00</created>
+    <author>Bob (Scrum Master)</author>
+    <status>draft</status>
+  </metadata>
+
+  <problem>
+    <title>Prix Unique pour Tous les Partenaires</title>
+    <description>
+      Le système actuel de tarification VTC stocke un prix fixe unique (fixedPrice) sur les entités 
+      ZoneRoute, ExcursionPackage et DispoPackage. Ce prix s'applique à TOUS les partenaires qui 
+      ont accès à ces grilles tarifaires.
+      
+      En réalité commerciale :
+      - L'Agence A peut avoir négocié 95€ pour le trajet CDG → Paris
+      - L'Agence B paie le prix catalogue de 105€
+      - L'Agence C peut avoir un tarif premium de 115€ pour la même route
+      
+      Les tables de jonction (PartnerContractZoneRoute, PartnerContractExcursionPackage, 
+      PartnerContractDispoPackage) ne font actuellement que lier les contrats aux grilles 
+      SANS possibilité de surcharge de prix.
+    </description>
+    <business-impact>
+      - Impossibilité de négocier des prix différents par agence
+      - Perte de flexibilité commerciale
+      - Obligation de créer des routes dupliquées pour chaque niveau de prix
+      - Non-conformité avec la grille tarifaire réelle (voir PDF Grille_Tarifaire_Sixieme_Etoile_2025_VAP.pdf)
+    </business-impact>
+    <current-architecture>
+      <![CDATA[
+      ZoneRoute (fixedPrice: 105€)
+          ↓
+      PartnerContractZoneRoute (junction table - NO price override)
+          ↓
+      PartnerContract (commissionPercent only)
+      
+      Résultat: Toutes les agences = même prix
+      ]]>
+    </current-architecture>
+  </problem>
+
+  <objectives>
+    <objective id="OBJ-1" priority="critical">
+      <title>Prix Négociés par Partenaire</title>
+      <description>
+        Permettre à chaque contrat partenaire d'avoir des prix spécifiques pour chaque 
+        route, excursion et dispo assignés, indépendamment du prix catalogue.
+      </description>
+      <success-criteria>
+        - Champ overridePrice ajouté sur les 3 tables de jonction
+        - Prix nullable (null = utiliser prix catalogue)
+        - Migration sans perte de données
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-2" priority="high">
+      <title>Prix Catalogue Préservé</title>
+      <description>
+        Maintenir le prix fixe sur les entités de base (ZoneRoute, ExcursionPackage, DispoPackage) 
+        comme prix par défaut/catalogue pour les nouveaux partenaires ou les partenaires sans 
+        négociation spécifique.
+      </description>
+      <success-criteria>
+        - fixedPrice reste sur ZoneRoute
+        - price reste sur ExcursionPackage
+        - basePrice reste sur DispoPackage
+        - Ces prix servent de fallback quand overridePrice est null
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-3" priority="high">
+      <title>Logique de Résolution de Prix</title>
+      <description>
+        Le pricing engine doit résoudre le prix effectif selon la priorité :
+        1. overridePrice du contrat partenaire (si défini)
+        2. fixedPrice/price/basePrice de l'entité de base (fallback)
+      </description>
+      <success-criteria>
+        - Pricing engine mis à jour
+        - Tests unitaires couvrant les deux cas
+        - Transparence dans appliedRules
+      </success-criteria>
+    </objective>
+    
+    <objective id="OBJ-4" priority="medium">
+      <title>UI de Configuration</title>
+      <description>
+        Permettre aux utilisateurs de configurer les prix négociés dans l'interface 
+        de gestion des contrats partenaires.
+      </description>
+      <success-criteria>
+        - Formulaire de contrat partenaire étendu
+        - Affichage prix catalogue vs prix négocié
+        - Validation des prix (positifs, format EUR)
+      </success-criteria>
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification du schéma Prisma (3 tables de jonction)</item>
+      <item>Migration Prisma avec préservation des données</item>
+      <item>Mise à jour du pricing engine pour la résolution de prix</item>
+      <item>Mise à jour des APIs partner-contracts</item>
+      <item>Mise à jour des types TypeScript (frontend et backend)</item>
+      <item>UI de configuration des prix dans le contrat partenaire</item>
+      <item>Tests unitaires (Vitest)</item>
+      <item>Tests API (Curl)</item>
+      <item>Tests E2E (Playwright MCP)</item>
+      <item>Vérification DB (MCP postgres)</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Historique des changements de prix (audit trail)</item>
+      <item>Négociation automatique de prix</item>
+      <item>Import/Export de grilles tarifaires</item>
+      <item>Approbation workflow pour les changements de prix</item>
+      <item>Multi-devise (reste EUR uniquement)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint id="C-1" type="technical">
+      <title>Rétrocompatibilité</title>
+      <description>
+        Les routes, excursions et dispos existants doivent continuer à fonctionner 
+        sans modification. Les contrats partenaires existants doivent utiliser 
+        automatiquement le prix catalogue (overridePrice = null).
+      </description>
+    </constraint>
+    
+    <constraint id="C-2" type="technical">
+      <title>Multi-tenancy</title>
+      <description>
+        Les prix négociés sont spécifiques à chaque organisation ET à chaque partenaire.
+        Un partenaire dans l'organisation A n'affecte pas les prix dans l'organisation B.
+      </description>
+    </constraint>
+    
+    <constraint id="C-3" type="performance">
+      <title>Performance du Pricing Engine</title>
+      <description>
+        La résolution de prix ne doit pas ajouter de latence significative.
+        Les données de prix négociés sont déjà chargées avec le contrat partenaire.
+      </description>
+    </constraint>
+    
+    <constraint id="C-4" type="business">
+      <title>Engagement Rule Préservée</title>
+      <description>
+        La règle d'engagement (FR11) doit continuer à s'appliquer : le prix négocié 
+        ou catalogue est appliqué même si le trajet est non-rentable.
+      </description>
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk id="R-1" severity="high" probability="low">
+      <title>Migration Échoue</title>
+      <description>La migration Prisma pourrait échouer sur des données existantes</description>
+      <mitigation>
+        - Tester la migration sur une copie de la base de production
+        - Script de rollback préparé
+        - Champs nullable pour éviter les contraintes
+      </mitigation>
+    </risk>
+    
+    <risk id="R-2" severity="medium" probability="medium">
+      <title>Régression du Pricing Engine</title>
+      <description>
+        La modification de la logique de résolution de prix pourrait casser 
+        des cas existants
+      </description>
+      <mitigation>
+        - Tests unitaires exhaustifs avant/après
+        - Tests de non-régression sur les scénarios existants
+        - Déploiement progressif avec monitoring
+      </mitigation>
+    </risk>
+    
+    <risk id="R-3" severity="low" probability="medium">
+      <title>Confusion UI</title>
+      <description>
+        Les utilisateurs pourraient confondre prix catalogue et prix négocié
+      </description>
+      <mitigation>
+        - Labels clairs dans l'UI
+        - Affichage côte à côte des deux prix
+        - Tooltip explicatif
+      </mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/database/prisma/schema.prisma">
+        Tables de jonction actuelles sans overridePrice
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Fonctions matchZoneRoute, matchExcursion, matchDispo
+        Utilisent directement fixedPrice/price/basePrice
+      </file>
+      <file path="packages/api/src/routes/vtc/partner-contracts.ts">
+        API CRUD pour les contrats partenaires
+        Retourne les routes assignées sans distinction de prix
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        Endpoint de calcul de prix
+        Charge le contrat partenaire avec ses routes
+      </file>
+      <file path="apps/web/modules/saas/pricing/types.ts">
+        Types TypeScript pour ZoneRoute, ExcursionPackage, DispoPackage
+      </file>
+    </existing-code>
+    
+    <related-prd-sections>
+      <section ref="FR2">
+        Pour chaque partner client, le système stocke les données de contrat incluant 
+        les grilles tarifaires assignées et le pourcentage de commission optionnel.
+      </section>
+      <section ref="FR11">
+        Engagement Rule: Quand un client partenaire demande un trajet qui correspond 
+        à une route ou forfait configuré, le prix de vente est pris de la grille et 
+        n'est pas modifié par les vérifications de rentabilité.
+      </section>
+      <section ref="FR36">
+        Pour les contrats partenaires avec commissions, le système calcule les montants 
+        de commission et les intègre dans les calculs de rentabilité et les données de facture.
+      </section>
+    </related-prd-sections>
+    
+    <related-epics>
+      <epic ref="Epic 2">CRM & Partner Contracts</epic>
+      <epic ref="Epic 3">Zone Engine & Partner Fixed Grids (Method 1)</epic>
+    </related-epics>
+  </technical-context>
+
+  <stories-breakdown>
+    <story id="12-1" title="Partner-Specific Pricing Schema">
+      <description>
+        Ajouter overridePrice aux tables de jonction et créer la migration Prisma
+      </description>
+      <effort>3 points</effort>
+    </story>
+    
+    <story id="12-2" title="Pricing Engine Override Support">
+      <description>
+        Modifier le pricing engine pour utiliser overridePrice quand disponible
+      </description>
+      <effort>3 points</effort>
+    </story>
+    
+    <story id="12-3" title="Partner Contract UI - Price Override">
+      <description>
+        Ajouter l'UI de configuration des prix négociés dans le contrat partenaire
+      </description>
+      <effort>5 points</effort>
+    </story>
+  </stories-breakdown>
+
+  <validation>
+    <checklist>
+      <item status="pending">Problème clairement défini</item>
+      <item status="pending">Objectifs SMART</item>
+      <item status="pending">Périmètre délimité</item>
+      <item status="pending">Contraintes identifiées</item>
+      <item status="pending">Risques évalués avec mitigations</item>
+      <item status="pending">Contexte technique documenté</item>
+      <item status="pending">Stories décomposées</item>
+    </checklist>
+  </validation>
+</story-context>
