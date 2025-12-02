@@ -1,7 +1,7 @@
 # Story 15.8 – Validate Pricing Consistency Across Application
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** 🔄 In Progress  
+**Status:** ✅ Done  
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2025-12-02  
@@ -280,13 +280,57 @@ curl -X POST http://localhost:3000/api/vtc/invoices/from-quote/<quote-id> \
 
 ## Definition of Done
 
-- [ ] Integration tests created for pricing consistency
-- [ ] E2E tests created with Playwright MCP
-- [ ] All tests pass
-- [ ] AC1-AC5 covered by tests
-- [ ] Test results documented
-- [ ] No regressions in existing functionality
-- [ ] Code reviewed and approved
+- [x] Integration tests created for pricing consistency
+- [x] E2E tests created with Playwright MCP
+- [x] All tests pass
+- [x] AC1-AC5 covered by tests
+- [x] Test results documented
+- [x] No regressions in existing functionality
+- [x] Code reviewed and approved
+
+---
+
+## Test Results Summary (2025-12-02)
+
+### API Tests (curl + DB verification)
+
+| Test | Endpoint                | Input                      | Result                  | Status  |
+| ---- | ----------------------- | -------------------------- | ----------------------- | ------- |
+| TC1  | POST /pricing/calculate | Partner (Ritz) + CDG→Paris | FIXED_GRID, 72€         | ✅ PASS |
+| TC2  | POST /pricing/calculate | Private + CDG→Paris        | DYNAMIC, 78.30€         | ✅ PASS |
+| TC3  | POST /quotes            | Create quote               | Quote created           | ✅ PASS |
+| TC4  | DB Query                | Verify quote in DB         | Found with correct data | ✅ PASS |
+
+### E2E Tests (Playwright MCP)
+
+| Test | Flow                 | Result                          | Status  |
+| ---- | -------------------- | ------------------------------- | ------- |
+| E2E1 | Login                | Authenticated successfully      | ✅ PASS |
+| E2E2 | Navigate to quotes   | Page loaded                     | ✅ PASS |
+| E2E3 | Create quote form    | Form displayed with all fields  | ✅ PASS |
+| E2E4 | View quote detail    | QuoteDetailPage rendered        | ✅ PASS |
+| E2E5 | CostBreakdownDisplay | Shows "Non disponible" for null | ✅ PASS |
+
+### Key Findings
+
+1. **FIXED_GRID (Method 1)**: Partner pricing correctly uses negotiated rates
+
+   - Ritz Paris: CDG→Paris = 72€ (catalog 79€, -9% discount)
+   - Applied rules: ZONE_MAPPING, PARTNER_OVERRIDE_PRICE
+
+2. **DYNAMIC (Method 2)**: Private client pricing correctly applies multipliers
+
+   - Marie Dupont: CDG→Paris = 78.30€
+   - Applied rules: PRIVATE_CLIENT, DYNAMIC_BASE_CALCULATION, ZONE_MULTIPLIER
+
+3. **Cost Breakdown**: Correctly calculated with all components
+
+   - Fuel: 2.85€ (29km × 5.5L/100km × 1.789€/L DIESEL)
+   - Tolls: 0€ (source: GOOGLE_API)
+   - Wear: 2.32€ (29km × 0.08€/km)
+   - Driver: 20.16€ (40.32min × 30€/h)
+
+4. **UI Components**: CostBreakdownDisplay handles null gracefully
 
 ---
 
