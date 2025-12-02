@@ -1,6 +1,7 @@
 /**
  * Vehicle Category Multiplier Tests
  * Story 15.3: Apply Vehicle Category Price Multipliers in Dynamic Pricing
+ * Story 15.4: Extended VehicleCategoryInfo with rates
  */
 
 import { describe, it, expect } from "vitest";
@@ -10,15 +11,26 @@ import {
 	type AppliedVehicleCategoryMultiplierRule,
 } from "../pricing-engine";
 
+// Helper to create a VehicleCategoryInfo with default rates (Story 15.4)
+function createCategory(
+	overrides: Partial<VehicleCategoryInfo> & { id: string; code: string; name: string; priceMultiplier: number }
+): VehicleCategoryInfo {
+	return {
+		defaultRatePerKm: null,
+		defaultRatePerHour: null,
+		...overrides,
+	};
+}
+
 describe("applyVehicleCategoryMultiplier", () => {
 	describe("Multiplier Application", () => {
 		it("should apply 2.5× multiplier for Autocar", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-autocar",
 				code: "AUTOCAR",
 				name: "Autocar",
 				priceMultiplier: 2.5,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -31,12 +43,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should apply 2.0× multiplier for Luxe", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-luxe",
 				code: "LUXE",
 				name: "Luxe",
 				priceMultiplier: 2.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -46,12 +58,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should apply 1.8× multiplier for Minibus", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-minibus",
 				code: "MINIBUS",
 				name: "Minibus",
 				priceMultiplier: 1.8,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -60,12 +72,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should apply 1.3× multiplier for Van Premium", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-van",
 				code: "VAN_PREMIUM",
 				name: "Van Premium",
 				priceMultiplier: 1.3,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -75,12 +87,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 
 	describe("Neutral Multiplier (1.0×)", () => {
 		it("should not add rule for Berline with 1.0× multiplier", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-berline",
 				code: "BERLINE",
 				name: "Berline",
 				priceMultiplier: 1.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -89,12 +101,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should return unchanged price for neutral multiplier", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-standard",
 				code: "STANDARD",
 				name: "Standard",
 				priceMultiplier: 1.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(150.50, category);
 
@@ -121,12 +133,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 
 	describe("Rounding", () => {
 		it("should round to 2 decimal places", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-custom",
 				code: "CUSTOM",
 				name: "Custom",
 				priceMultiplier: 1.333,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -134,12 +146,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should handle complex decimal multiplication", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-test",
 				code: "TEST",
 				name: "Test",
 				priceMultiplier: 1.15,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(99.99, category);
 
@@ -150,12 +162,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 
 	describe("Rule Details", () => {
 		it("should include all required fields in applied rule", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-123",
 				code: "VAN_PREMIUM",
 				name: "Van Premium",
 				priceMultiplier: 1.5,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(200, category);
 
@@ -172,12 +184,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should generate correct description", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-autocar",
 				code: "AUTOCAR",
 				name: "Autocar",
 				priceMultiplier: 2.5,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -191,12 +203,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		it("should correctly price Paris-CDG with Autocar (2.5×)", () => {
 			// Base price for Paris-CDG: 100€
 			const basePrice = 100;
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-autocar",
 				code: "AUTOCAR",
 				name: "Autocar",
 				priceMultiplier: 2.5,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(basePrice, category);
 
@@ -207,12 +219,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		it("should correctly price Paris-CDG with Berline (1.0×)", () => {
 			// Base price for Paris-CDG: 100€
 			const basePrice = 100;
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-berline",
 				code: "BERLINE",
 				name: "Berline",
 				priceMultiplier: 1.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(basePrice, category);
 
@@ -224,13 +236,13 @@ describe("applyVehicleCategoryMultiplier", () => {
 		it("should show significant price difference between categories", () => {
 			const basePrice = 150;
 
-			const berlineResult = applyVehicleCategoryMultiplier(basePrice, {
+			const berlineResult = applyVehicleCategoryMultiplier(basePrice, createCategory({
 				id: "1", code: "BERLINE", name: "Berline", priceMultiplier: 1.0,
-			});
+			}));
 
-			const autocarResult = applyVehicleCategoryMultiplier(basePrice, {
+			const autocarResult = applyVehicleCategoryMultiplier(basePrice, createCategory({
 				id: "2", code: "AUTOCAR", name: "Autocar", priceMultiplier: 2.5,
-			});
+			}));
 
 			// Berline: 150€, Autocar: 375€
 			expect(berlineResult.adjustedPrice).toBe(150);
@@ -244,12 +256,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 
 	describe("Edge Cases", () => {
 		it("should handle zero base price", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-test",
 				code: "TEST",
 				name: "Test",
 				priceMultiplier: 2.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(0, category);
 
@@ -258,12 +270,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should handle very small multiplier", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-discount",
 				code: "DISCOUNT",
 				name: "Discount",
 				priceMultiplier: 0.5,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 
@@ -271,12 +283,12 @@ describe("applyVehicleCategoryMultiplier", () => {
 		});
 
 		it("should handle very large multiplier", () => {
-			const category: VehicleCategoryInfo = {
+			const category = createCategory({
 				id: "cat-vip",
 				code: "VIP",
 				name: "VIP",
 				priceMultiplier: 5.0,
-			};
+			});
 
 			const result = applyVehicleCategoryMultiplier(100, category);
 

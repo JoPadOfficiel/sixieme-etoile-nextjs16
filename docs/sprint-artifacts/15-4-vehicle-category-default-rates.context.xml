@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.4</story-id>
+    <title>Use Vehicle Category Default Rates for Dynamic Pricing</title>
+    <epic>Epic 15: Pricing Engine Accuracy & Real Cost Integration</epic>
+    <created>2025-12-02</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem>
+    <current-state>
+      Le pricing engine utilise les taux globaux de l'organisation (baseRatePerKm, baseRatePerHour)
+      pour tous les véhicules, ignorant les taux spécifiques par catégorie déjà définis dans
+      VehicleCategory.defaultRatePerKm et VehicleCategory.defaultRatePerHour.
+    </current-state>
+    
+    <impact>
+      <item type="financial">
+        Un Autocar avec defaultRatePerKm: 4.50€ est facturé au taux Berline de 1.80€/km,
+        causant une perte de 60% sur le tarif de base avant même les multiplicateurs.
+      </item>
+      <item type="business">
+        Les coûts opérationnels plus élevés des véhicules lourds (carburant, usure, chauffeur)
+        ne sont pas reflétés dans le prix de base.
+      </item>
+      <item type="transparency">
+        Aucune visibilité sur les taux utilisés dans DynamicBaseCalculationRule.
+      </item>
+    </impact>
+
+    <example>
+      <scenario>Trajet 100km avec Autocar vs Berline</scenario>
+      <current>
+        - Berline: 100km × 1.80€ = 180€ (org rate)
+        - Autocar: 100km × 1.80€ = 180€ (WRONG! using org rate)
+      </current>
+      <expected>
+        - Berline: 100km × 1.80€ = 180€ (category rate)
+        - Autocar: 100km × 4.50€ = 450€ (category rate)
+      </expected>
+    </example>
+  </problem>
+
+  <objectives>
+    <primary>
+      Utiliser VehicleCategory.defaultRatePerKm et defaultRatePerHour dans
+      calculateDynamicBasePrice() pour que chaque catégorie ait des tarifs de base appropriés.
+    </primary>
+    <secondary>
+      <item>Fallback vers les taux de l'organisation si les taux de catégorie sont null</item>
+      <item>Mettre à jour DynamicBaseCalculationRule pour montrer la source des taux</item>
+      <item>Ne pas affecter le pricing FIXED_GRID</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Étendre VehicleCategoryInfo avec defaultRatePerKm et defaultRatePerHour</item>
+      <item>Modifier calculateDynamicBasePrice() pour accepter les taux de catégorie</item>
+      <item>Implémenter la logique de fallback (Category → Organization)</item>
+      <item>Mettre à jour DynamicBaseCalculationRule avec rateSource</item>
+      <item>Tests unitaires pour la résolution des taux</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification des multiplicateurs (Story 15.3 - déjà fait)</item>
+      <item>UI pour afficher les taux</item>
+      <item>Modification des contrats partenaires</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Les taux de catégorie doivent être appliqués AVANT le multiplicateur de catégorie</item>
+      <item>Le fallback doit être transparent dans DynamicBaseCalculationRule</item>
+      <item>Ne pas modifier le comportement FIXED_GRID</item>
+    </technical>
+    <business>
+      <item>Taux null = fallback vers taux organisation</item>
+      <item>Contrats partenaires = prix fixe, pas de taux dynamique</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk level="medium">
+      <description>Augmentation significative des prix pour les catégories premium</description>
+      <mitigation>C'est le comportement attendu - les prix actuels sont incorrects</mitigation>
+    </risk>
+    <risk level="low">
+      <description>Régression sur les calculs existants</description>
+      <mitigation>Tests de non-régression avec taux null (fallback)</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <relevant-functions>
+          <function name="calculateDynamicBasePrice">Calcule le prix de base avec MAX(distance×rate, duration×rate)</function>
+          <function name="buildDynamicResult">Construit le résultat avec appliedRules</function>
+        </relevant-functions>
+        <relevant-types>
+          <type name="VehicleCategoryInfo">Déjà créé en Story 15.3, à étendre</type>
+          <type name="DynamicBaseCalculationRule">À mettre à jour avec rateSource</type>
+        </relevant-types>
+      </file>
+      <file path="packages/database/prisma/schema.prisma">
+        <model name="VehicleCategory">
+          <field name="defaultRatePerKm" type="Decimal?" description="Taux par km pour cette catégorie"/>
+          <field name="defaultRatePerHour" type="Decimal?" description="Taux horaire pour cette catégorie"/>
+        </model>
+      </file>
+    </existing-code>
+
+    <data-model>
+      <entity name="VehicleCategory">
+        <field name="defaultRatePerKm" type="Decimal(10,4)?"/>
+        <field name="defaultRatePerHour" type="Decimal(10,2)?"/>
+        <values>
+          <value code="BERLINE" ratePerKm="1.80" ratePerHour="45.0"/>
+          <value code="VAN_PREMIUM" ratePerKm="2.20" ratePerHour="55.0"/>
+          <value code="MINIBUS" ratePerKm="3.00" ratePerHour="75.0"/>
+          <value code="AUTOCAR" ratePerKm="4.50" ratePerHour="120.0"/>
+          <value code="LUXE" ratePerKm="3.50" ratePerHour="90.0"/>
+        </values>
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="high">
+      <title>Category Rates Used for Autocar</title>
+      <given>A dynamic pricing calculation for category "Autocar" with defaultRatePerKm: 4.50</given>
+      <when>The base price is calculated for a 100km trip</when>
+      <then>It uses 100 × 4.50 = 450€ (not 100 × 1.80 = 180€)</then>
+    </criterion>
+
+    <criterion id="AC2" priority="high">
+      <title>Fallback to Organization Rates</title>
+      <given>A VehicleCategory with defaultRatePerKm: null</given>
+      <when>The base price is calculated</when>
+      <then>It falls back to OrganizationPricingSettings.baseRatePerKm</then>
+      <and>DynamicBaseCalculationRule shows rateSource: "ORGANIZATION"</and>
+    </criterion>
+
+    <criterion id="AC3" priority="high">
+      <title>FIXED_GRID Not Affected</title>
+      <given>A FIXED_GRID pricing (Method 1) with a matching partner contract</given>
+      <when>The route matches the contract</when>
+      <then>The category rates are NOT used</then>
+      <and>The contract price is used as-is</and>
+    </criterion>
+
+    <criterion id="AC4" priority="medium">
+      <title>Rate Source Transparency</title>
+      <given>A successful dynamic pricing calculation</given>
+      <when>The result is returned</when>
+      <then>DynamicBaseCalculationRule includes rateSource: "CATEGORY" | "ORGANIZATION"</then>
+      <and>The actual rates used are shown in inputs</and>
+    </criterion>
+
+    <criterion id="AC5" priority="medium">
+      <title>Both Rates Applied Correctly</title>
+      <given>A category with defaultRatePerKm: 4.50 and defaultRatePerHour: 120</given>
+      <when>The base price is calculated</when>
+      <then>MAX(distance×4.50, duration×120) is used</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="unit">
+      <name>Autocar uses category rates</name>
+      <input>distanceKm: 100, categoryRatePerKm: 4.50, orgRatePerKm: 1.80</input>
+      <expected>basePrice: 450, rateSource: "CATEGORY"</expected>
+    </scenario>
+    <scenario id="TS2" type="unit">
+      <name>Fallback to org rates when category is null</name>
+      <input>distanceKm: 100, categoryRatePerKm: null, orgRatePerKm: 1.80</input>
+      <expected>basePrice: 180, rateSource: "ORGANIZATION"</expected>
+    </scenario>
+    <scenario id="TS3" type="integration">
+      <name>FIXED_GRID ignores category rates</name>
+      <input>pricingMode: FIXED_GRID, contractPrice: 150, categoryRatePerKm: 4.50</input>
+      <expected>finalPrice: 150, no dynamic calculation</expected>
+    </scenario>
+    <scenario id="TS4" type="unit">
+      <name>Duration-based wins when higher</name>
+      <input>distanceKm: 50, durationMinutes: 120, categoryRatePerKm: 2.0, categoryRatePerHour: 80</input>
+      <expected>basePrice: 160 (duration wins: 2h × 80€)</expected>
+    </scenario>
+  </test-scenarios>
+</story-context>

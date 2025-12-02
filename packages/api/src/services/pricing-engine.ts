@@ -443,12 +443,66 @@ export interface ZoneMultiplierResult {
 
 /**
  * Story 15.3: Vehicle category information for pricing
+ * Story 15.4: Extended with default rates
  */
 export interface VehicleCategoryInfo {
 	id: string;
 	code: string;
 	name: string;
 	priceMultiplier: number;
+	// Story 15.4: Category-specific rates (null = use org rates)
+	defaultRatePerKm: number | null;
+	defaultRatePerHour: number | null;
+}
+
+// ============================================================================
+// Story 15.4: Rate Resolution Types
+// ============================================================================
+
+/**
+ * Story 15.4: Source of the rates used for pricing
+ */
+export type RateSource = "CATEGORY" | "ORGANIZATION";
+
+/**
+ * Story 15.4: Resolved rates with source information
+ */
+export interface ResolvedRates {
+	ratePerKm: number;
+	ratePerHour: number;
+	rateSource: RateSource;
+}
+
+/**
+ * Story 15.4: Resolve rates with fallback chain
+ * Priority: Category → Organization
+ * 
+ * @param vehicleCategory - Category with optional rates
+ * @param orgSettings - Organization pricing settings (fallback)
+ * @returns Resolved rates with source
+ */
+export function resolveRates(
+	vehicleCategory: VehicleCategoryInfo | undefined,
+	orgSettings: { baseRatePerKm: number; baseRatePerHour: number },
+): ResolvedRates {
+	// Check if category has BOTH rates set
+	if (
+		vehicleCategory?.defaultRatePerKm != null &&
+		vehicleCategory?.defaultRatePerHour != null
+	) {
+		return {
+			ratePerKm: vehicleCategory.defaultRatePerKm,
+			ratePerHour: vehicleCategory.defaultRatePerHour,
+			rateSource: "CATEGORY",
+		};
+	}
+
+	// Fallback to organization rates
+	return {
+		ratePerKm: orgSettings.baseRatePerKm,
+		ratePerHour: orgSettings.baseRatePerHour,
+		rateSource: "ORGANIZATION",
+	};
 }
 
 /**
@@ -2411,6 +2465,7 @@ export function matchDispoPackage(
 /**
  * Result of dynamic base price calculation with full details
  * PRD Formula: basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
+ * Story 15.4: Added rateSource for transparency
  */
 export interface DynamicBaseCalculationResult {
 	distanceBasedPrice: number;
@@ -2424,6 +2479,8 @@ export interface DynamicBaseCalculationResult {
 		baseRatePerKm: number;
 		baseRatePerHour: number;
 		targetMarginPercent: number;
+		// Story 15.4: Track rate source for transparency
+		rateSource?: RateSource;
 	};
 }
 
@@ -2437,24 +2494,32 @@ export const DEFAULT_PRICING_SETTINGS: OrganizationPricingSettings = {
 };
 
 /**
- * Calculate dynamic base price with full calculation details
+ * Calculate dynamic base price with full calculation details (Story 4.1)
+ * Story 15.4: Now accepts optional category rates
  * PRD Formula: basePrice = max(distanceKm × baseRatePerKm, durationHours × baseRatePerHour)
  * 
  * @param distanceKm - Trip distance in kilometers
  * @param durationMinutes - Trip duration in minutes
  * @param settings - Organization pricing settings
+ * @param categoryRates - Optional category-specific rates (Story 15.4)
  * @returns Full calculation result with inputs and intermediate values
  */
 export function calculateDynamicBasePrice(
 	distanceKm: number,
 	durationMinutes: number,
 	settings: OrganizationPricingSettings,
+	categoryRates?: { ratePerKm: number; ratePerHour: number; rateSource: RateSource } | null,
 ): DynamicBaseCalculationResult {
 	const durationHours = durationMinutes / 60;
 
+	// Story 15.4: Use category rates if provided, otherwise org rates
+	const ratePerKm = categoryRates?.ratePerKm ?? settings.baseRatePerKm;
+	const ratePerHour = categoryRates?.ratePerHour ?? settings.baseRatePerHour;
+	const rateSource: RateSource = categoryRates?.rateSource ?? "ORGANIZATION";
+
 	// Calculate both price methods
-	const distanceBasedPrice = Math.round(distanceKm * settings.baseRatePerKm * 100) / 100;
-	const durationBasedPrice = Math.round(durationHours * settings.baseRatePerHour * 100) / 100;
+	const distanceBasedPrice = Math.round(distanceKm * ratePerKm * 100) / 100;
+	const durationBasedPrice = Math.round(durationHours * ratePerHour * 100) / 100;
 
 	// Select the higher price (PRD max formula)
 	const selectedMethod: "distance" | "duration" = 
@@ -2473,9 +2538,10 @@ export function calculateDynamicBasePrice(
 		inputs: {
 			distanceKm,
 			durationMinutes,
-			baseRatePerKm: settings.baseRatePerKm,
-			baseRatePerHour: settings.baseRatePerHour,
+			baseRatePerKm: ratePerKm,
+			baseRatePerHour: ratePerHour,
 			targetMarginPercent: settings.targetMarginPercent,
+			rateSource, // Story 15.4: Track rate source
 		},
 	};
 }
@@ -2892,14 +2958,17 @@ function buildDynamicResult(
 	// Story 15.3: Vehicle category for price multiplier
 	vehicleCategory: VehicleCategoryInfo | undefined = undefined,
 ): PricingResult {
-	// Calculate with full details
-	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
+	// Story 15.4: Resolve rates with fallback chain (Category → Organization)
+	const resolvedRates = resolveRates(vehicleCategory, settings);
+	
+	// Calculate with full details using resolved rates
+	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings, resolvedRates);
 	let price = calculation.priceWithMargin;
 	
-	// Add enhanced calculation rule (Story 4.1 - AC3)
+	// Add enhanced calculation rule (Story 4.1 - AC3, Story 15.4 - rate source)
 	appliedRules.push({
 		type: "DYNAMIC_BASE_CALCULATION",
-		description: `Base price calculated using max(distance, duration) formula - ${calculation.selectedMethod} method selected`,
+		description: `Base price calculated using max(distance, duration) formula - ${calculation.selectedMethod} method selected (rates from ${resolvedRates.rateSource})`,
 		inputs: calculation.inputs,
 		calculation: {
 			distanceBasedPrice: calculation.distanceBasedPrice,

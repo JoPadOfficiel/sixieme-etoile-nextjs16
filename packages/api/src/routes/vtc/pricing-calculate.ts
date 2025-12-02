@@ -518,7 +518,7 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
-			// Validate vehicle category exists and load consumption (Story 15.2)
+			// Validate vehicle category exists and load consumption + rates (Story 15.2 + 15.4)
 			const vehicleCategory = await db.vehicleCategory.findFirst({
 				where: withTenantFilter(
 					{ id: data.vehicleCategoryId },
@@ -530,6 +530,8 @@ export const pricingCalculateRouter = new Hono()
 					name: true,
 					priceMultiplier: true,
 					averageConsumptionL100km: true, // Story 15.2
+					defaultRatePerKm: true,         // Story 15.4
+					defaultRatePerHour: true,       // Story 15.4
 				},
 			});
 
@@ -640,12 +642,19 @@ export const pricingCalculateRouter = new Hono()
 				pricingSettings: effectivePricingSettings,
 				advancedRates,
 				seasonalMultipliers,
-				// Story 15.3: Pass vehicle category for price multiplier
+				// Story 15.3 + 15.4: Pass vehicle category for multiplier and rates
 				vehicleCategory: vehicleCategory ? {
 					id: vehicleCategory.id,
 					code: vehicleCategory.code,
 					name: vehicleCategory.name,
 					priceMultiplier: Number(vehicleCategory.priceMultiplier),
+					// Story 15.4: Category-specific rates
+					defaultRatePerKm: vehicleCategory.defaultRatePerKm
+						? Number(vehicleCategory.defaultRatePerKm)
+						: null,
+					defaultRatePerHour: vehicleCategory.defaultRatePerHour
+						? Number(vehicleCategory.defaultRatePerHour)
+						: null,
 				} : undefined,
 			});
 
