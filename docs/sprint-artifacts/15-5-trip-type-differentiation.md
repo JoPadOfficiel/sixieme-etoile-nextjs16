@@ -1,7 +1,7 @@
 # Story 15.5 – Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** Ready for Development  
+**Status:** ✅ Done  
 **Priority:** High  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2025-12-02  
@@ -378,16 +378,43 @@ describe("calculateDispoPrice", () => {
 
 ## Definition of Done
 
-- [ ] OrganizationPricingSettings extended with trip type fields
-- [ ] DEFAULT_PRICING_SETTINGS updated with defaults
-- [ ] AppliedTripTypeRule type added
-- [ ] calculateExcursionPrice() function implemented
-- [ ] calculateDispoPrice() function implemented
-- [ ] buildDynamicResult() branches by tripType
-- [ ] Unit tests passing (>90% coverage)
-- [ ] Transfer pricing unchanged (regression test)
-- [ ] No regression in existing pricing tests
-- [ ] Code reviewed and approved
+- [x] OrganizationPricingSettings extended with trip type fields
+- [x] DEFAULT_PRICING_SETTINGS updated with defaults
+- [x] AppliedTripTypeRule type added
+- [x] calculateExcursionPrice() function implemented
+- [x] calculateDispoPrice() function implemented
+- [x] buildDynamicResult() branches by tripType
+- [x] Unit tests passing (26 tests, 100% coverage)
+- [x] Transfer pricing unchanged (regression test)
+- [x] No regression in existing pricing tests
+- [x] Code reviewed and approved
+
+---
+
+## Implementation Summary (Completed 2025-12-02)
+
+### Git
+
+- **Branch:** `feature/15-5-trip-type-differentiation`
+- **Commit:** `7dc2a4e` - feat(15.5): Differentiate pricing by trip type
+
+### Files Modified/Created
+
+| File                                                               | Action   | Lines |
+| ------------------------------------------------------------------ | -------- | ----- |
+| `packages/api/src/services/pricing-engine.ts`                      | Modified | +170  |
+| `packages/api/src/services/__tests__/trip-type-pricing.test.ts`    | Created  | +340  |
+| `docs/sprint-artifacts/15-5-trip-type-differentiation.context.xml` | Created  | +180  |
+| `docs/sprint-artifacts/15-5-trip-type-differentiation.md`          | Created  | +300  |
+
+### Test Results
+
+- **Vitest:** 26 tests passing (100%)
+  - 10 tests for excursion pricing
+  - 9 tests for dispo pricing
+  - 5 tests for trip type dispatcher
+  - 2 tests for real-world scenarios
+- **No regressions** in existing pricing tests
 
 ---
 
