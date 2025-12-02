@@ -40,6 +40,10 @@ const PRICING_ZONE_IDS: Record<string, string> = {};
 const DRIVER_IDS: string[] = [];
 const VEHICLE_IDS: string[] = [];
 const CONTACT_IDS: Record<string, string> = {};
+const ZONE_ROUTE_IDS: Record<string, string> = {};
+const EXCURSION_PACKAGE_IDS: Record<string, string> = {};
+const DISPO_PACKAGE_IDS: Record<string, string> = {};
+const PARTNER_CONTRACT_IDS: Record<string, string> = {};
 
 async function main() {
   try {
@@ -267,7 +271,7 @@ async function createPricingZones() {
   // - Paris centre: 0.9× - competitive pricing, high demand
   // - Intermediate zones: 1.0× - standard pricing
   // - Airports: 1.1-1.2× - premium transfers
-  // - Far zones: 1.2-1.3× - long approach/return trips
+  // - Far zones: 1.2-1.5× - long approach/return trips
   // 
   // The pricing engine uses Math.max(pickup, dropoff) multiplier
   // This ensures profitability on trips involving expensive zones
@@ -277,25 +281,42 @@ async function createPricingZones() {
     
     // === NEAR GARAGE ZONES (0.9× - minimal deadhead) ===
     { name: "Marne-la-Vallée", code: "MARNE_LA_VALLEE", zoneType: "RADIUS" as const, centerLatitude: 48.8705, centerLongitude: 2.7765, radiusKm: 6.0, color: "#06b6d4", priceMultiplier: 0.9, multiplierDescription: "Marne-la-Vallée - proche garage, tarif avantageux" },
-    { name: "Disneyland", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0, color: "#0ea5e9", priceMultiplier: 0.9, multiplierDescription: "Disneyland - proche garage, forte demande touristique" },
+    { name: "Disneyland Paris", code: "DISNEY", zoneType: "RADIUS" as const, centerLatitude: 48.8674, centerLongitude: 2.7836, radiusKm: 3.0, color: "#0ea5e9", priceMultiplier: 0.9, multiplierDescription: "Disneyland - proche garage, forte demande touristique" },
     { name: "Est Urbain", code: "EST_URBAIN", zoneType: "RADIUS" as const, centerLatitude: 48.852, centerLongitude: 2.6, radiusKm: 10.0, color: "#f43f5e", priceMultiplier: 0.9, multiplierDescription: "Est urbain - proche du garage, tarif modéré" },
     
     // === PARIS ZONES (0.9× - competitive pricing, high demand) ===
-    { name: "Zone Premium Paris", code: "PARIS_PREMIUM", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 4.0, color: "#10b981", priceMultiplier: 0.9, multiplierDescription: "Zone centrale Paris - tarif compétitif haute demande" },
-    { name: "Paris Intra-Muros", code: "PARIS_INTRA", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 8.0, color: "#3b82f6", priceMultiplier: 0.9, multiplierDescription: "Paris intra-muros - tarif compétitif" },
+    { name: "Paris 1-8 (Centre/Luxe)", code: "PARIS_CENTRE", zoneType: "RADIUS" as const, centerLatitude: 48.8698, centerLongitude: 2.3078, radiusKm: 3.0, color: "#10b981", priceMultiplier: 0.9, multiplierDescription: "Paris centre - arrondissements 1 à 8, zone luxe" },
+    { name: "Paris 9-20 (Périphérique)", code: "PARIS_PERIPHERIQUE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 6.0, color: "#3b82f6", priceMultiplier: 0.9, multiplierDescription: "Paris périphérique - arrondissements 9 à 20" },
     
-    // === INTERMEDIATE ZONES (1.0× - standard pricing) ===
+    // === GARES PARISIENNES (1.0× - forte demande, accès facile) ===
+    { name: "Gare du Nord", code: "GARE_NORD", zoneType: "RADIUS" as const, centerLatitude: 48.8809, centerLongitude: 2.3553, radiusKm: 0.5, color: "#ec4899", priceMultiplier: 1.0, multiplierDescription: "Gare du Nord - Eurostar, Thalys" },
+    { name: "Gare de Lyon", code: "GARE_LYON", zoneType: "RADIUS" as const, centerLatitude: 48.8443, centerLongitude: 2.3735, radiusKm: 0.5, color: "#f97316", priceMultiplier: 1.0, multiplierDescription: "Gare de Lyon - TGV Sud-Est" },
+    { name: "Gare Montparnasse", code: "GARE_MONTPARNASSE", zoneType: "RADIUS" as const, centerLatitude: 48.8414, centerLongitude: 2.3200, radiusKm: 0.5, color: "#84cc16", priceMultiplier: 1.0, multiplierDescription: "Gare Montparnasse - TGV Atlantique" },
+    { name: "Gare Saint-Lazare", code: "GARE_ST_LAZARE", zoneType: "RADIUS" as const, centerLatitude: 48.8763, centerLongitude: 2.3246, radiusKm: 0.5, color: "#06b6d4", priceMultiplier: 1.0, multiplierDescription: "Gare Saint-Lazare - Normandie" },
+    
+    // === INTERMEDIATE ZONES (1.0-1.1× - standard pricing) ===
     { name: "La Défense", code: "LA_DEFENSE", zoneType: "RADIUS" as const, centerLatitude: 48.8920, centerLongitude: 2.2362, radiusKm: 2.0, color: "#a855f7", priceMultiplier: 1.0, multiplierDescription: "La Défense - zone affaires, tarif standard" },
-    { name: "Petite Couronne", code: "PETITE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 15.0, color: "#8b5cf6", priceMultiplier: 1.1, multiplierDescription: "Petite couronne - majoration distance modérée" },
+    { name: "Petite Couronne Nord", code: "PETITE_COURONNE_NORD", zoneType: "RADIUS" as const, centerLatitude: 48.9300, centerLongitude: 2.3500, radiusKm: 8.0, color: "#8b5cf6", priceMultiplier: 1.1, multiplierDescription: "Petite couronne nord - Saint-Denis, Aubervilliers" },
+    { name: "Petite Couronne Sud", code: "PETITE_COURONNE_SUD", zoneType: "RADIUS" as const, centerLatitude: 48.7800, centerLongitude: 2.3500, radiusKm: 8.0, color: "#7c3aed", priceMultiplier: 1.1, multiplierDescription: "Petite couronne sud - Boulogne, Issy" },
+    { name: "Petite Couronne Ouest", code: "PETITE_COURONNE_OUEST", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.2000, radiusKm: 8.0, color: "#6366f1", priceMultiplier: 1.1, multiplierDescription: "Petite couronne ouest - Neuilly, Levallois" },
     
     // === AIRPORT ZONES (1.1-1.2× - premium transfers) ===
     { name: "Aéroport Orly", code: "ORLY", zoneType: "RADIUS" as const, centerLatitude: 48.7262, centerLongitude: 2.3652, radiusKm: 3.0, color: "#14b8a6", priceMultiplier: 1.1, multiplierDescription: "Aéroport Orly - transferts aéroport" },
-    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0, color: "#6366f1", priceMultiplier: 1.2, multiplierDescription: "Aéroport CDG - transferts premium longue distance" },
+    { name: "Aéroport CDG", code: "CDG", zoneType: "RADIUS" as const, centerLatitude: 49.0097, centerLongitude: 2.5479, radiusKm: 5.0, color: "#0891b2", priceMultiplier: 1.2, multiplierDescription: "Aéroport CDG - transferts premium longue distance" },
     { name: "Le Bourget", code: "LBG", zoneType: "RADIUS" as const, centerLatitude: 48.9694, centerLongitude: 2.4414, radiusKm: 2.0, color: "#ef4444", priceMultiplier: 1.2, multiplierDescription: "Le Bourget - aviation d'affaires premium" },
     
-    // === FAR ZONES (1.2-1.3× - long approach/return) ===
-    { name: "Brie-sur-Orge", code: "BRIE_SUR_ORGE", zoneType: "RADIUS" as const, centerLatitude: 48.644, centerLongitude: 2.331, radiusKm: 6.0, color: "#f97316", priceMultiplier: 1.2, multiplierDescription: "Brie-sur-Orge - zone sud éloignée" },
-    { name: "Grande Couronne", code: "GRANDE_COURONNE", zoneType: "RADIUS" as const, centerLatitude: 48.8566, centerLongitude: 2.3522, radiusKm: 30.0, color: "#f59e0b", priceMultiplier: 1.3, multiplierDescription: "Grande couronne - majoration trajets longs" },
+    // === TOURISTIC ZONES (1.1-1.3× - excursions) ===
+    { name: "Versailles", code: "VERSAILLES", zoneType: "RADIUS" as const, centerLatitude: 48.8049, centerLongitude: 2.1204, radiusKm: 5.0, color: "#d946ef", priceMultiplier: 1.2, multiplierDescription: "Château de Versailles - zone touristique" },
+    { name: "Fontainebleau", code: "FONTAINEBLEAU", zoneType: "RADIUS" as const, centerLatitude: 48.4047, centerLongitude: 2.7017, radiusKm: 8.0, color: "#c026d3", priceMultiplier: 1.3, multiplierDescription: "Fontainebleau - château et forêt" },
+    { name: "Chantilly", code: "CHANTILLY", zoneType: "RADIUS" as const, centerLatitude: 49.1944, centerLongitude: 2.4711, radiusKm: 5.0, color: "#a21caf", priceMultiplier: 1.3, multiplierDescription: "Chantilly - château et hippodrome" },
+    { name: "Giverny", code: "GIVERNY", zoneType: "RADIUS" as const, centerLatitude: 49.0758, centerLongitude: 1.5339, radiusKm: 3.0, color: "#86198f", priceMultiplier: 1.4, multiplierDescription: "Giverny - Maison de Monet" },
+    
+    // === FAR ZONES (1.2-1.5× - long approach/return) ===
+    { name: "Grande Couronne Est", code: "GRANDE_COURONNE_EST", zoneType: "RADIUS" as const, centerLatitude: 48.8500, centerLongitude: 2.8000, radiusKm: 15.0, color: "#f59e0b", priceMultiplier: 1.2, multiplierDescription: "Grande couronne est - Meaux, Coulommiers" },
+    { name: "Grande Couronne Ouest", code: "GRANDE_COURONNE_OUEST", zoneType: "RADIUS" as const, centerLatitude: 48.8500, centerLongitude: 1.9000, radiusKm: 15.0, color: "#eab308", priceMultiplier: 1.3, multiplierDescription: "Grande couronne ouest - Saint-Germain, Poissy" },
+    { name: "Grande Couronne Sud", code: "GRANDE_COURONNE_SUD", zoneType: "RADIUS" as const, centerLatitude: 48.6500, centerLongitude: 2.3500, radiusKm: 15.0, color: "#ca8a04", priceMultiplier: 1.3, multiplierDescription: "Grande couronne sud - Évry, Corbeil" },
+    { name: "Reims", code: "REIMS", zoneType: "RADIUS" as const, centerLatitude: 49.2583, centerLongitude: 4.0317, radiusKm: 10.0, color: "#b45309", priceMultiplier: 1.5, multiplierDescription: "Reims - Champagne, longue distance" },
+    { name: "Deauville", code: "DEAUVILLE", zoneType: "RADIUS" as const, centerLatitude: 49.3583, centerLongitude: 0.0750, radiusKm: 5.0, color: "#92400e", priceMultiplier: 1.5, multiplierDescription: "Deauville - Normandie, longue distance" },
   ];
   for (const z of zones) {
     const created = await prisma.pricingZone.create({
@@ -308,61 +329,165 @@ async function createPricingZones() {
 
 async function createZoneRoutes() {
   console.log("\n🛣️ Creating Zone Routes...");
+  // Grille tarifaire réaliste basée sur les standards VTC Paris
+  // Prix TTC en euros, direction bidirectionnelle
   const routes = [
-    // === BUSSY-SAINT-MARTIN (Garage) Routes - Advantageous pricing ===
-    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "BERLINE", price: 85.0 },
-    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 110.0 },
-    { from: "BUSSY_ST_MARTIN", to: "PARIS_PREMIUM", category: "LUXE", price: 160.0 },
-    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "BERLINE", price: 75.0 },
-    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "VAN_PREMIUM", price: 95.0 },
-    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "BERLINE", price: 90.0 },
-    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "BERLINE", price: 45.0 },
-    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "VAN_PREMIUM", price: 60.0 },
-    
-    // === MARNE-LA-VALLÉE Routes (Near garage - competitive) ===
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "BERLINE", price: 95.0 },
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 125.0 },
-    { from: "MARNE_LA_VALLEE", to: "PARIS_PREMIUM", category: "LUXE", price: 175.0 },
-    { from: "MARNE_LA_VALLEE", to: "CDG", category: "BERLINE", price: 70.0 },
-    { from: "MARNE_LA_VALLEE", to: "CDG", category: "VAN_PREMIUM", price: 90.0 },
-    
-    // === PARIS Routes ===
-    { from: "PARIS_PREMIUM", to: "PETITE_COURONNE", category: "BERLINE", price: 65.0 },
-    { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "BERLINE", price: 95.0 },
-    { from: "PARIS_PREMIUM", to: "GRANDE_COURONNE", category: "VAN_PREMIUM", price: 130.0 },
-    { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "BERLINE", price: 115.0 },
-    { from: "PARIS_PREMIUM", to: "BRIE_SUR_ORGE", category: "VAN_PREMIUM", price: 160.0 },
-    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "BERLINE", price: 75.0 },
-    { from: "PARIS_INTRA", to: "EST_URBAIN", category: "VAN_PREMIUM", price: 100.0 },
-    
-    // === EST URBAIN Routes (Near garage) ===
-    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "BERLINE", price: 55.0 },
-    { from: "EST_URBAIN", to: "MARNE_LA_VALLEE", category: "VAN_PREMIUM", price: 75.0 },
-    { from: "EST_URBAIN", to: "BUSSY_ST_MARTIN", category: "BERLINE", price: 45.0 },
-    { from: "EST_URBAIN", to: "BUSSY_ST_MARTIN", category: "VAN_PREMIUM", price: 60.0 },
-    
-    // === AIRPORT Routes ===
-    { from: "CDG", to: "PARIS_PREMIUM", category: "BERLINE", price: 80.0 },
-    { from: "CDG", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 105.0 },
-    { from: "CDG", to: "PARIS_PREMIUM", category: "LUXE", price: 155.0 },
-    { from: "ORLY", to: "PARIS_PREMIUM", category: "BERLINE", price: 60.0 },
-    { from: "ORLY", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 80.0 },
+    // ============================================================================
+    // AÉROPORT CDG - TRANSFERTS (Routes les plus demandées)
+    // ============================================================================
+    { from: "CDG", to: "PARIS_CENTRE", category: "BERLINE", price: 75.0 },
+    { from: "CDG", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "CDG", to: "PARIS_CENTRE", category: "LUXE", price: 145.0 },
+    { from: "CDG", to: "PARIS_CENTRE", category: "MINIBUS", price: 165.0 },
+    { from: "CDG", to: "PARIS_PERIPHERIQUE", category: "BERLINE", price: 70.0 },
+    { from: "CDG", to: "PARIS_PERIPHERIQUE", category: "VAN_PREMIUM", price: 90.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 85.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "LUXE", price: 160.0 },
+    { from: "CDG", to: "DISNEY", category: "BERLINE", price: 65.0 },
+    { from: "CDG", to: "DISNEY", category: "VAN_PREMIUM", price: 85.0 },
+    { from: "CDG", to: "DISNEY", category: "MINIBUS", price: 145.0 },
+    { from: "CDG", to: "VERSAILLES", category: "BERLINE", price: 130.0 },
+    { from: "CDG", to: "VERSAILLES", category: "VAN_PREMIUM", price: 165.0 },
     { from: "CDG", to: "ORLY", category: "BERLINE", price: 105.0 },
     { from: "CDG", to: "ORLY", category: "VAN_PREMIUM", price: 135.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 90.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "LBG", to: "PARIS_PREMIUM", category: "LUXE", price: 130.0 },
-    { from: "LBG", to: "PARIS_PREMIUM", category: "BERLINE", price: 85.0 },
+    { from: "CDG", to: "GARE_NORD", category: "BERLINE", price: 65.0 },
+    { from: "CDG", to: "GARE_NORD", category: "VAN_PREMIUM", price: 85.0 },
+    { from: "CDG", to: "GARE_LYON", category: "BERLINE", price: 75.0 },
+    { from: "CDG", to: "GARE_LYON", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "CDG", to: "PETITE_COURONNE_NORD", category: "BERLINE", price: 55.0 },
+    { from: "CDG", to: "PETITE_COURONNE_NORD", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "CDG", to: "CHANTILLY", category: "BERLINE", price: 85.0 },
+    { from: "CDG", to: "CHANTILLY", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "CDG", to: "REIMS", category: "BERLINE", price: 220.0 },
+    { from: "CDG", to: "REIMS", category: "VAN_PREMIUM", price: 280.0 },
     
-    // === DISNEY Routes ===
-    { from: "DISNEY", to: "PARIS_PREMIUM", category: "BERLINE", price: 90.0 },
-    { from: "DISNEY", to: "PARIS_PREMIUM", category: "VAN_PREMIUM", price: 120.0 },
-    { from: "DISNEY", to: "CDG", category: "BERLINE", price: 65.0 },
-    { from: "DISNEY", to: "CDG", category: "VAN_PREMIUM", price: 85.0 },
+    // ============================================================================
+    // AÉROPORT ORLY - TRANSFERTS
+    // ============================================================================
+    { from: "ORLY", to: "PARIS_CENTRE", category: "BERLINE", price: 55.0 },
+    { from: "ORLY", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "ORLY", to: "PARIS_CENTRE", category: "LUXE", price: 115.0 },
+    { from: "ORLY", to: "PARIS_PERIPHERIQUE", category: "BERLINE", price: 50.0 },
+    { from: "ORLY", to: "PARIS_PERIPHERIQUE", category: "VAN_PREMIUM", price: 70.0 },
+    { from: "ORLY", to: "LA_DEFENSE", category: "BERLINE", price: 70.0 },
+    { from: "ORLY", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "ORLY", to: "VERSAILLES", category: "BERLINE", price: 75.0 },
+    { from: "ORLY", to: "VERSAILLES", category: "VAN_PREMIUM", price: 100.0 },
+    { from: "ORLY", to: "DISNEY", category: "BERLINE", price: 95.0 },
+    { from: "ORLY", to: "DISNEY", category: "VAN_PREMIUM", price: 125.0 },
+    { from: "ORLY", to: "GARE_LYON", category: "BERLINE", price: 50.0 },
+    { from: "ORLY", to: "GARE_LYON", category: "VAN_PREMIUM", price: 70.0 },
+    { from: "ORLY", to: "GARE_MONTPARNASSE", category: "BERLINE", price: 45.0 },
+    { from: "ORLY", to: "GARE_MONTPARNASSE", category: "VAN_PREMIUM", price: 65.0 },
+    { from: "ORLY", to: "FONTAINEBLEAU", category: "BERLINE", price: 95.0 },
+    { from: "ORLY", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 125.0 },
+    
+    // ============================================================================
+    // LE BOURGET (Aviation d'affaires) - PREMIUM
+    // ============================================================================
+    { from: "LBG", to: "PARIS_CENTRE", category: "BERLINE", price: 75.0 },
+    { from: "LBG", to: "PARIS_CENTRE", category: "LUXE", price: 135.0 },
+    { from: "LBG", to: "LA_DEFENSE", category: "BERLINE", price: 85.0 },
+    { from: "LBG", to: "LA_DEFENSE", category: "LUXE", price: 145.0 },
+    { from: "LBG", to: "VERSAILLES", category: "LUXE", price: 185.0 },
+    { from: "LBG", to: "CHANTILLY", category: "LUXE", price: 165.0 },
+    { from: "LBG", to: "DEAUVILLE", category: "LUXE", price: 450.0 },
+    
+    // ============================================================================
+    // GARES PARISIENNES - TRANSFERTS
+    // ============================================================================
+    { from: "GARE_NORD", to: "PARIS_CENTRE", category: "BERLINE", price: 35.0 },
+    { from: "GARE_NORD", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 50.0 },
+    { from: "GARE_NORD", to: "LA_DEFENSE", category: "BERLINE", price: 55.0 },
+    { from: "GARE_NORD", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "GARE_LYON", to: "PARIS_CENTRE", category: "BERLINE", price: 35.0 },
+    { from: "GARE_LYON", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 50.0 },
+    { from: "GARE_LYON", to: "DISNEY", category: "BERLINE", price: 85.0 },
+    { from: "GARE_LYON", to: "DISNEY", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "GARE_LYON", to: "FONTAINEBLEAU", category: "BERLINE", price: 95.0 },
+    { from: "GARE_LYON", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 125.0 },
+    { from: "GARE_MONTPARNASSE", to: "PARIS_CENTRE", category: "BERLINE", price: 35.0 },
+    { from: "GARE_MONTPARNASSE", to: "VERSAILLES", category: "BERLINE", price: 55.0 },
+    { from: "GARE_MONTPARNASSE", to: "VERSAILLES", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "GARE_ST_LAZARE", to: "PARIS_CENTRE", category: "BERLINE", price: 30.0 },
+    { from: "GARE_ST_LAZARE", to: "LA_DEFENSE", category: "BERLINE", price: 45.0 },
+    { from: "GARE_ST_LAZARE", to: "DEAUVILLE", category: "BERLINE", price: 320.0 },
+    { from: "GARE_ST_LAZARE", to: "DEAUVILLE", category: "VAN_PREMIUM", price: 420.0 },
+    { from: "GARE_ST_LAZARE", to: "GIVERNY", category: "BERLINE", price: 145.0 },
+    
+    // ============================================================================
+    // DISNEYLAND PARIS - TRANSFERTS
+    // ============================================================================
+    { from: "DISNEY", to: "PARIS_CENTRE", category: "BERLINE", price: 85.0 },
+    { from: "DISNEY", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "DISNEY", to: "PARIS_CENTRE", category: "MINIBUS", price: 175.0 },
+    { from: "DISNEY", to: "VERSAILLES", category: "BERLINE", price: 135.0 },
+    { from: "DISNEY", to: "VERSAILLES", category: "VAN_PREMIUM", price: 175.0 },
+    { from: "DISNEY", to: "FONTAINEBLEAU", category: "BERLINE", price: 95.0 },
+    { from: "DISNEY", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 125.0 },
+    
+    // ============================================================================
+    // PARIS CENTRE - DESTINATIONS TOURISTIQUES
+    // ============================================================================
+    { from: "PARIS_CENTRE", to: "VERSAILLES", category: "BERLINE", price: 65.0 },
+    { from: "PARIS_CENTRE", to: "VERSAILLES", category: "VAN_PREMIUM", price: 85.0 },
+    { from: "PARIS_CENTRE", to: "VERSAILLES", category: "LUXE", price: 125.0 },
+    { from: "PARIS_CENTRE", to: "FONTAINEBLEAU", category: "BERLINE", price: 115.0 },
+    { from: "PARIS_CENTRE", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "PARIS_CENTRE", to: "CHANTILLY", category: "BERLINE", price: 95.0 },
+    { from: "PARIS_CENTRE", to: "CHANTILLY", category: "VAN_PREMIUM", price: 125.0 },
+    { from: "PARIS_CENTRE", to: "GIVERNY", category: "BERLINE", price: 145.0 },
+    { from: "PARIS_CENTRE", to: "GIVERNY", category: "VAN_PREMIUM", price: 185.0 },
+    { from: "PARIS_CENTRE", to: "REIMS", category: "BERLINE", price: 280.0 },
+    { from: "PARIS_CENTRE", to: "REIMS", category: "VAN_PREMIUM", price: 360.0 },
+    { from: "PARIS_CENTRE", to: "DEAUVILLE", category: "BERLINE", price: 350.0 },
+    { from: "PARIS_CENTRE", to: "DEAUVILLE", category: "VAN_PREMIUM", price: 450.0 },
+    { from: "PARIS_CENTRE", to: "LA_DEFENSE", category: "BERLINE", price: 45.0 },
+    { from: "PARIS_CENTRE", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 65.0 },
+    { from: "PARIS_CENTRE", to: "PETITE_COURONNE_NORD", category: "BERLINE", price: 55.0 },
+    { from: "PARIS_CENTRE", to: "PETITE_COURONNE_SUD", category: "BERLINE", price: 55.0 },
+    { from: "PARIS_CENTRE", to: "PETITE_COURONNE_OUEST", category: "BERLINE", price: 55.0 },
+    { from: "PARIS_CENTRE", to: "GRANDE_COURONNE_EST", category: "BERLINE", price: 95.0 },
+    { from: "PARIS_CENTRE", to: "GRANDE_COURONNE_OUEST", category: "BERLINE", price: 95.0 },
+    { from: "PARIS_CENTRE", to: "GRANDE_COURONNE_SUD", category: "BERLINE", price: 95.0 },
+    
+    // ============================================================================
+    // BUSSY-SAINT-MARTIN (Garage) - TARIFS AVANTAGEUX
+    // ============================================================================
+    { from: "BUSSY_ST_MARTIN", to: "PARIS_CENTRE", category: "BERLINE", price: 75.0 },
+    { from: "BUSSY_ST_MARTIN", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 95.0 },
+    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "BERLINE", price: 55.0 },
+    { from: "BUSSY_ST_MARTIN", to: "CDG", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "BERLINE", price: 85.0 },
+    { from: "BUSSY_ST_MARTIN", to: "ORLY", category: "VAN_PREMIUM", price: 110.0 },
+    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "BERLINE", price: 35.0 },
+    { from: "BUSSY_ST_MARTIN", to: "DISNEY", category: "VAN_PREMIUM", price: 50.0 },
+    { from: "BUSSY_ST_MARTIN", to: "LA_DEFENSE", category: "BERLINE", price: 85.0 },
+    { from: "BUSSY_ST_MARTIN", to: "VERSAILLES", category: "BERLINE", price: 115.0 },
+    
+    // ============================================================================
+    // MARNE-LA-VALLÉE - TARIFS COMPÉTITIFS
+    // ============================================================================
+    { from: "MARNE_LA_VALLEE", to: "PARIS_CENTRE", category: "BERLINE", price: 80.0 },
+    { from: "MARNE_LA_VALLEE", to: "PARIS_CENTRE", category: "VAN_PREMIUM", price: 105.0 },
+    { from: "MARNE_LA_VALLEE", to: "CDG", category: "BERLINE", price: 60.0 },
+    { from: "MARNE_LA_VALLEE", to: "CDG", category: "VAN_PREMIUM", price: 80.0 },
+    { from: "MARNE_LA_VALLEE", to: "ORLY", category: "BERLINE", price: 90.0 },
+    { from: "MARNE_LA_VALLEE", to: "ORLY", category: "VAN_PREMIUM", price: 115.0 },
+    
+    // ============================================================================
+    // LA DÉFENSE - ZONE AFFAIRES
+    // ============================================================================
+    { from: "LA_DEFENSE", to: "VERSAILLES", category: "BERLINE", price: 55.0 },
+    { from: "LA_DEFENSE", to: "VERSAILLES", category: "VAN_PREMIUM", price: 75.0 },
+    { from: "LA_DEFENSE", to: "DEAUVILLE", category: "BERLINE", price: 340.0 },
+    { from: "LA_DEFENSE", to: "DEAUVILLE", category: "VAN_PREMIUM", price: 440.0 },
   ];
+  
   for (const r of routes) {
-    await prisma.zoneRoute.create({
+    const routeKey = `${r.from}_${r.to}_${r.category}`;
+    const created = await prisma.zoneRoute.create({
       data: {
         id: randomUUID(),
         organizationId: ORGANIZATION_ID,
@@ -376,38 +501,92 @@ async function createZoneRoutes() {
         updatedAt: new Date(),
       },
     });
+    ZONE_ROUTE_IDS[routeKey] = created.id;
   }
   console.log(`   ✅ ${routes.length} routes`);
 }
 
 async function createExcursionPackages() {
   console.log("\n🏰 Creating Excursion Packages...");
+  // Excursions touristiques réalistes avec tarifs professionnels
   const pkgs = [
-    { name: "Journée Versailles", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 80.0, price: 350.0 },
-    { name: "Journée Giverny", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 160.0, price: 480.0 },
-    { name: "Journée Champagne", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 300.0, price: 750.0 },
-    { name: "Châteaux de la Loire", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 950.0 },
+    // === EXCURSIONS DEMI-JOURNÉE (4-5h) ===
+    { name: "Versailles Demi-Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 60.0, price: 290.0 },
+    { name: "Versailles Demi-Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 5.0, includedDistanceKm: 60.0, price: 380.0 },
+    { name: "Fontainebleau Demi-Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 100.0, price: 320.0 },
+    { name: "Chantilly Demi-Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 80.0, price: 310.0 },
+    
+    // === EXCURSIONS JOURNÉE COMPLÈTE (8-10h) ===
+    { name: "Versailles Journée Complète Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 80.0, price: 420.0 },
+    { name: "Versailles Journée Complète Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 8.0, includedDistanceKm: 80.0, price: 540.0 },
+    { name: "Versailles Journée Complète Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 8.0, includedDistanceKm: 80.0, price: 720.0 },
+    { name: "Giverny Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 180.0, price: 480.0 },
+    { name: "Giverny Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 8.0, includedDistanceKm: 180.0, price: 620.0 },
+    { name: "Champagne Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 650.0 },
+    { name: "Champagne Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 850.0 },
+    { name: "Champagne Journée Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1100.0 },
+    { name: "Fontainebleau + Vaux Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 9.0, includedDistanceKm: 150.0, price: 520.0 },
+    { name: "Fontainebleau + Vaux Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 9.0, includedDistanceKm: 150.0, price: 680.0 },
+    
+    // === EXCURSIONS LONGUE DISTANCE (10-14h) ===
+    { name: "Châteaux de la Loire Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 850.0 },
+    { name: "Châteaux de la Loire Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1100.0 },
+    { name: "Châteaux de la Loire Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1450.0 },
+    { name: "Normandie D-Day Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 950.0 },
+    { name: "Normandie D-Day Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 1250.0 },
+    { name: "Mont Saint-Michel Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1100.0 },
+    { name: "Mont Saint-Michel Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1400.0 },
+    { name: "Deauville Journée Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 980.0 },
+    
+    // === EXCURSIONS SPÉCIALES ===
+    { name: "Paris by Night Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 3.0, includedDistanceKm: 40.0, price: 180.0 },
+    { name: "Paris by Night Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 3.0, includedDistanceKm: 40.0, price: 320.0 },
+    { name: "Shopping Outlets Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 100.0, price: 350.0 },
+    { name: "Shopping Outlets Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 6.0, includedDistanceKm: 100.0, price: 450.0 },
   ];
   for (const p of pkgs) {
-    await prisma.excursionPackage.create({
+    const created = await prisma.excursionPackage.create({
       data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...p, isActive: true, createdAt: new Date(), updatedAt: new Date() },
     });
+    EXCURSION_PACKAGE_IDS[p.name] = created.id;
   }
   console.log(`   ✅ ${pkgs.length} packages`);
 }
 
 async function createDispoPackages() {
   console.log("\n⏰ Creating Dispo Packages...");
+  // Forfaits mise à disposition avec tarifs professionnels
   const pkgs = [
-    { name: "Dispo 4h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 200.0, overageRatePerKm: 2.00, overageRatePerHour: 50.0 },
-    { name: "Dispo 8h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 380.0, overageRatePerKm: 1.80, overageRatePerHour: 45.0 },
-    { name: "Dispo 4h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 280.0, overageRatePerKm: 2.50, overageRatePerHour: 65.0 },
-    { name: "Dispo 4h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 4.0, includedDistanceKm: 50.0, basePrice: 400.0, overageRatePerKm: 4.00, overageRatePerHour: 100.0 },
+    // === BERLINE ===
+    { name: "Dispo 3h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 3.0, includedDistanceKm: 40.0, basePrice: 150.0, overageRatePerKm: 2.20, overageRatePerHour: 55.0 },
+    { name: "Dispo 4h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 195.0, overageRatePerKm: 2.00, overageRatePerHour: 50.0 },
+    { name: "Dispo 6h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 100.0, basePrice: 280.0, overageRatePerKm: 1.90, overageRatePerHour: 48.0 },
+    { name: "Dispo 8h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 360.0, overageRatePerKm: 1.80, overageRatePerHour: 45.0 },
+    { name: "Dispo 10h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 440.0, overageRatePerKm: 1.70, overageRatePerHour: 42.0 },
+    
+    // === VAN PREMIUM ===
+    { name: "Dispo 3h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 3.0, includedDistanceKm: 40.0, basePrice: 195.0, overageRatePerKm: 2.80, overageRatePerHour: 70.0 },
+    { name: "Dispo 4h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 255.0, overageRatePerKm: 2.60, overageRatePerHour: 65.0 },
+    { name: "Dispo 6h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 6.0, includedDistanceKm: 100.0, basePrice: 365.0, overageRatePerKm: 2.40, overageRatePerHour: 62.0 },
+    { name: "Dispo 8h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 470.0, overageRatePerKm: 2.30, overageRatePerHour: 58.0 },
+    { name: "Dispo 10h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 570.0, overageRatePerKm: 2.20, overageRatePerHour: 55.0 },
+    
+    // === LUXE ===
+    { name: "Dispo 3h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 3.0, includedDistanceKm: 35.0, basePrice: 290.0, overageRatePerKm: 4.50, overageRatePerHour: 110.0 },
+    { name: "Dispo 4h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 4.0, includedDistanceKm: 50.0, basePrice: 380.0, overageRatePerKm: 4.20, overageRatePerHour: 100.0 },
+    { name: "Dispo 6h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 6.0, includedDistanceKm: 80.0, basePrice: 550.0, overageRatePerKm: 4.00, overageRatePerHour: 95.0 },
+    { name: "Dispo 8h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 8.0, includedDistanceKm: 120.0, basePrice: 720.0, overageRatePerKm: 3.80, overageRatePerHour: 90.0 },
+    
+    // === MINIBUS ===
+    { name: "Dispo 4h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 380.0, overageRatePerKm: 3.50, overageRatePerHour: 95.0 },
+    { name: "Dispo 8h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 720.0, overageRatePerKm: 3.20, overageRatePerHour: 85.0 },
+    { name: "Dispo 10h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 880.0, overageRatePerKm: 3.00, overageRatePerHour: 80.0 },
   ];
   for (const p of pkgs) {
-    await prisma.dispoPackage.create({
+    const created = await prisma.dispoPackage.create({
       data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...p, isActive: true, createdAt: new Date(), updatedAt: new Date() },
     });
+    DISPO_PACKAGE_IDS[p.name] = created.id;
   }
   console.log(`   ✅ ${pkgs.length} packages`);
 }
@@ -587,14 +766,29 @@ async function createVehicles() {
 async function createContacts() {
   console.log("\n📞 Creating Contacts...");
   const contacts = [
+    // === CLIENTS PARTICULIERS ===
     { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const },
     { type: "INDIVIDUAL" as const, displayName: "Jean Martin", firstName: "Jean", lastName: "Martin", email: "jean.martin@outlook.fr", phone: "+33 6 22 33 44 55", isPartner: false, defaultClientType: "PRIVATE" as const },
     { type: "INDIVIDUAL" as const, displayName: "Sophie Bernard", firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@free.fr", phone: "+33 6 33 44 55 66", isPartner: false, defaultClientType: "PRIVATE" as const },
+    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const },
+    { type: "INDIVIDUAL" as const, displayName: "Claire Moreau", firstName: "Claire", lastName: "Moreau", email: "claire.moreau@orange.fr", phone: "+33 6 55 66 77 88", isPartner: false, defaultClientType: "PRIVATE" as const },
+    
+    // === HÔTELS DE LUXE PARTENAIRES ===
     { type: "BUSINESS" as const, displayName: "Hôtel Ritz Paris", companyName: "Hôtel Ritz Paris", email: "concierge@ritzparis.com", phone: "+33 1 43 16 30 30", vatNumber: "FR12345678901", isPartner: true, defaultClientType: "PARTNER" as const },
     { type: "BUSINESS" as const, displayName: "Four Seasons George V", companyName: "Four Seasons George V", email: "concierge@fourseasons.com", phone: "+33 1 49 52 70 00", vatNumber: "FR23456789012", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "AGENCY" as const, displayName: "Paris Luxury Travel", companyName: "Paris Luxury Travel", email: "booking@parisluxury.com", phone: "+33 1 55 66 77 88", vatNumber: "FR34567890123", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "TechCorp France", companyName: "TechCorp France", email: "transport@techcorp.fr", phone: "+33 1 44 55 66 77", vatNumber: "FR45678901234", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const },
+    { type: "BUSINESS" as const, displayName: "Le Bristol Paris", companyName: "Oetker Collection - Le Bristol", email: "concierge.paris@oetkercollection.com", phone: "+33 1 53 43 43 00", vatNumber: "FR33456789013", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "BUSINESS" as const, displayName: "Hôtel Plaza Athénée", companyName: "Dorchester Collection - Plaza Athénée", email: "reservations.hpa@dorchestercollection.com", phone: "+33 1 53 67 66 65", vatNumber: "FR44567890124", isPartner: true, defaultClientType: "PARTNER" as const },
+    
+    // === AGENCES DE VOYAGE RÉELLES (DMC - Destination Management Companies) ===
+    // Ces agences sont des réceptifs qui gèrent des groupes et VIP
+    { type: "AGENCY" as const, displayName: "PARISCityVISION", companyName: "PARISCityVISION SAS", email: "groups@pariscityvision.com", phone: "+33 1 44 55 61 00", vatNumber: "FR55678901235", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "AGENCY" as const, displayName: "France Tourisme", companyName: "France Tourisme DMC", email: "reservation@francetourisme.fr", phone: "+33 1 53 10 35 35", vatNumber: "FR66789012346", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "AGENCY" as const, displayName: "Euroscope Paris", companyName: "Euroscope International", email: "transport@euroscope.fr", phone: "+33 1 45 26 26 26", vatNumber: "FR77890123457", isPartner: true, defaultClientType: "PARTNER" as const },
+    
+    // === ENTREPRISES CORPORATE ===
+    { type: "BUSINESS" as const, displayName: "LVMH Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "travel.services@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "BUSINESS" as const, displayName: "L'Oréal Corporate", companyName: "L'Oréal SA", email: "corporate.travel@loreal.com", phone: "+33 1 47 56 70 00", vatNumber: "FR99012345679", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "BUSINESS" as const, displayName: "BNP Paribas Events", companyName: "BNP Paribas SA", email: "events.transport@bnpparibas.com", phone: "+33 1 40 14 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const },
   ];
   for (const c of contacts) {
     const created = await prisma.contact.create({
@@ -606,22 +800,412 @@ async function createContacts() {
 }
 
 async function createPartnerContracts() {
-  console.log("\n🤝 Creating Partner Contracts...");
-  const partners = ["Hôtel Ritz Paris", "Four Seasons George V", "Paris Luxury Travel", "TechCorp France"];
-  for (const name of partners) {
-    await prisma.partnerContract.create({
+  console.log("\n🤝 Creating Partner Contracts with Custom Pricing...");
+  
+  // ============================================================================
+  // PARTNER CONTRACT CONFIGURATIONS
+  // Contrats réalistes avec tarifs négociés selon le volume et le type de client
+  // - Hôtels de luxe: -8 à -12% (volume régulier, clientèle premium)
+  // - Agences DMC: -12 à -18% (gros volumes, groupes)
+  // - Corporate: -5 à -8% (volume modéré, paiement rapide)
+  // ============================================================================
+  
+  const partnerConfigs = [
+    // ============================================================================
+    // HÔTELS DE LUXE - Tarifs négociés premium
+    // ============================================================================
+    {
+      name: "Hôtel Ritz Paris",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
+      zoneRoutes: [
+        // Aéroports vers Paris Centre (clientèle internationale)
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 68.0 },       // Catalog: 75€, -9%
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 88.0 },   // Catalog: 95€, -7%
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 130.0 },         // Catalog: 145€, -10%
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 50.0 },      // Catalog: 55€, -9%
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 68.0 },  // Catalog: 75€, -9%
+        { routeKey: "ORLY_PARIS_CENTRE_LUXE", overridePrice: 105.0 },        // Catalog: 115€, -9%
+        { routeKey: "LBG_PARIS_CENTRE_LUXE", overridePrice: 120.0 },         // Catalog: 135€, -11%
+        { routeKey: "LBG_PARIS_CENTRE_BERLINE", overridePrice: 68.0 },       // Catalog: 75€, -9%
+        // Gares
+        { routeKey: "GARE_NORD_PARIS_CENTRE_BERLINE", overridePrice: 32.0 }, // Catalog: 35€, -9%
+        { routeKey: "GARE_LYON_PARIS_CENTRE_BERLINE", overridePrice: 32.0 }, // Catalog: 35€, -9%
+        // Destinations touristiques
+        { routeKey: "PARIS_CENTRE_VERSAILLES_BERLINE", overridePrice: 58.0 },// Catalog: 65€, -11%
+        { routeKey: "PARIS_CENTRE_VERSAILLES_LUXE", overridePrice: 112.0 },  // Catalog: 125€, -10%
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Berline", overridePrice: 380.0 },  // Catalog: 420€, -10%
+        { name: "Versailles Journée Complète Luxe", overridePrice: 650.0 },     // Catalog: 720€, -10%
+        { name: "Giverny Journée Berline", overridePrice: 435.0 },              // Catalog: 480€, -9%
+        { name: "Champagne Journée Berline", overridePrice: 590.0 },            // Catalog: 650€, -9%
+        { name: "Deauville Journée Luxe", overridePrice: 890.0 },               // Catalog: 980€, -9%
+        { name: "Paris by Night Luxe", overridePrice: 290.0 },                  // Catalog: 320€, -9%
+      ],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 175.0 },    // Catalog: 195€, -10%
+        { name: "Dispo 8h Berline", overridePrice: 325.0 },    // Catalog: 360€, -10%
+        { name: "Dispo 4h Luxe", overridePrice: 345.0 },       // Catalog: 380€, -9%
+        { name: "Dispo 8h Luxe", overridePrice: 650.0 },       // Catalog: 720€, -10%
+      ],
+    },
+    {
+      name: "Four Seasons George V",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 69.0 },
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 89.0 },
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 132.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 51.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 69.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_LUXE", overridePrice: 106.0 },
+        { routeKey: "LBG_PARIS_CENTRE_LUXE", overridePrice: 122.0 },
+        { routeKey: "PARIS_CENTRE_VERSAILLES_LUXE", overridePrice: 115.0 },
+        { routeKey: "PARIS_CENTRE_CHANTILLY_BERLINE", overridePrice: 88.0 },
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Berline", overridePrice: 385.0 },
+        { name: "Versailles Journée Complète Luxe", overridePrice: 660.0 },
+        { name: "Champagne Journée Berline", overridePrice: 600.0 },
+        { name: "Fontainebleau + Vaux Journée Berline", overridePrice: 475.0 },
+      ],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 178.0 },
+        { name: "Dispo 8h Berline", overridePrice: 330.0 },
+        { name: "Dispo 4h Luxe", overridePrice: 350.0 },
+        { name: "Dispo 8h Luxe", overridePrice: 660.0 },
+      ],
+    },
+    {
+      name: "Le Bristol Paris",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 68.0 },
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 128.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 50.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_LUXE", overridePrice: 104.0 },
+        { routeKey: "LBG_PARIS_CENTRE_LUXE", overridePrice: 118.0 },
+        { routeKey: "PARIS_CENTRE_VERSAILLES_LUXE", overridePrice: 110.0 },
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Luxe", overridePrice: 640.0 },
+        { name: "Champagne Journée Berline", overridePrice: 585.0 },
+        { name: "Deauville Journée Luxe", overridePrice: 880.0 },
+      ],
+      dispos: [
+        { name: "Dispo 4h Luxe", overridePrice: 340.0 },
+        { name: "Dispo 8h Luxe", overridePrice: 640.0 },
+        { name: "Dispo 6h Luxe", overridePrice: 495.0 },
+      ],
+    },
+    {
+      name: "Hôtel Plaza Athénée",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 67.0 },
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 126.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_LUXE", overridePrice: 102.0 },
+        { routeKey: "LBG_PARIS_CENTRE_LUXE", overridePrice: 116.0 },
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Luxe", overridePrice: 635.0 },
+        { name: "Paris by Night Luxe", overridePrice: 285.0 },
+      ],
+      dispos: [
+        { name: "Dispo 4h Luxe", overridePrice: 335.0 },
+        { name: "Dispo 8h Luxe", overridePrice: 635.0 },
+      ],
+    },
+    
+    // ============================================================================
+    // AGENCES DMC (Destination Management Companies) - Meilleurs tarifs (gros volumes)
+    // ============================================================================
+    {
+      name: "PARISCityVISION",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 15.0,
+      // Agence spécialisée groupes et excursions - tarifs très compétitifs
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 62.0 },       // Catalog: 75€, -17%
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 78.0 },   // Catalog: 95€, -18%
+        { routeKey: "CDG_PARIS_CENTRE_MINIBUS", overridePrice: 138.0 },      // Catalog: 165€, -16%
+        { routeKey: "CDG_DISNEY_BERLINE", overridePrice: 54.0 },             // Catalog: 65€, -17%
+        { routeKey: "CDG_DISNEY_VAN_PREMIUM", overridePrice: 70.0 },         // Catalog: 85€, -18%
+        { routeKey: "CDG_DISNEY_MINIBUS", overridePrice: 120.0 },            // Catalog: 145€, -17%
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 46.0 },      // Catalog: 55€, -16%
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 62.0 },  // Catalog: 75€, -17%
+        { routeKey: "ORLY_DISNEY_BERLINE", overridePrice: 78.0 },            // Catalog: 95€, -18%
+        { routeKey: "ORLY_DISNEY_VAN_PREMIUM", overridePrice: 102.0 },       // Catalog: 125€, -18%
+        { routeKey: "DISNEY_PARIS_CENTRE_BERLINE", overridePrice: 70.0 },    // Catalog: 85€, -18%
+        { routeKey: "DISNEY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 90.0 },// Catalog: 110€, -18%
+        { routeKey: "DISNEY_PARIS_CENTRE_MINIBUS", overridePrice: 145.0 },   // Catalog: 175€, -17%
+        { routeKey: "PARIS_CENTRE_VERSAILLES_BERLINE", overridePrice: 54.0 },// Catalog: 65€, -17%
+        { routeKey: "PARIS_CENTRE_VERSAILLES_VAN_PREMIUM", overridePrice: 70.0 }, // Catalog: 85€, -18%
+        { routeKey: "GARE_LYON_DISNEY_BERLINE", overridePrice: 70.0 },       // Catalog: 85€, -18%
+        { routeKey: "GARE_LYON_DISNEY_VAN_PREMIUM", overridePrice: 90.0 },   // Catalog: 110€, -18%
+      ],
+      excursions: [
+        { name: "Versailles Demi-Journée Berline", overridePrice: 240.0 },   // Catalog: 290€, -17%
+        { name: "Versailles Demi-Journée Van", overridePrice: 315.0 },       // Catalog: 380€, -17%
+        { name: "Versailles Journée Complète Berline", overridePrice: 350.0 }, // Catalog: 420€, -17%
+        { name: "Versailles Journée Complète Van", overridePrice: 450.0 },   // Catalog: 540€, -17%
+        { name: "Giverny Journée Berline", overridePrice: 400.0 },           // Catalog: 480€, -17%
+        { name: "Giverny Journée Van", overridePrice: 515.0 },               // Catalog: 620€, -17%
+        { name: "Champagne Journée Berline", overridePrice: 540.0 },         // Catalog: 650€, -17%
+        { name: "Champagne Journée Van", overridePrice: 705.0 },             // Catalog: 850€, -17%
+        { name: "Champagne Journée Minibus", overridePrice: 915.0 },         // Catalog: 1100€, -17%
+        { name: "Châteaux de la Loire Berline", overridePrice: 705.0 },      // Catalog: 850€, -17%
+        { name: "Châteaux de la Loire Van", overridePrice: 915.0 },          // Catalog: 1100€, -17%
+        { name: "Châteaux de la Loire Minibus", overridePrice: 1205.0 },     // Catalog: 1450€, -17%
+        { name: "Fontainebleau Demi-Journée Berline", overridePrice: 265.0 },// Catalog: 320€, -17%
+        { name: "Shopping Outlets Berline", overridePrice: 290.0 },          // Catalog: 350€, -17%
+        { name: "Shopping Outlets Van", overridePrice: 375.0 },              // Catalog: 450€, -17%
+      ],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 162.0 },    // Catalog: 195€, -17%
+        { name: "Dispo 8h Berline", overridePrice: 300.0 },    // Catalog: 360€, -17%
+        { name: "Dispo 4h Van", overridePrice: 212.0 },        // Catalog: 255€, -17%
+        { name: "Dispo 8h Van", overridePrice: 390.0 },        // Catalog: 470€, -17%
+        { name: "Dispo 4h Minibus", overridePrice: 315.0 },    // Catalog: 380€, -17%
+        { name: "Dispo 8h Minibus", overridePrice: 600.0 },    // Catalog: 720€, -17%
+      ],
+    },
+    {
+      name: "France Tourisme",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 15.0,
+      // DMC spécialisée tourisme haut de gamme
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 63.0 },
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 80.0 },
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 122.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 47.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 63.0 },
+        { routeKey: "CDG_VERSAILLES_BERLINE", overridePrice: 108.0 },
+        { routeKey: "CDG_VERSAILLES_VAN_PREMIUM", overridePrice: 138.0 },
+        { routeKey: "PARIS_CENTRE_FONTAINEBLEAU_BERLINE", overridePrice: 96.0 },
+        { routeKey: "PARIS_CENTRE_FONTAINEBLEAU_VAN_PREMIUM", overridePrice: 125.0 },
+        { routeKey: "PARIS_CENTRE_CHANTILLY_BERLINE", overridePrice: 80.0 },
+        { routeKey: "PARIS_CENTRE_CHANTILLY_VAN_PREMIUM", overridePrice: 105.0 },
+        { routeKey: "PARIS_CENTRE_GIVERNY_BERLINE", overridePrice: 122.0 },
+        { routeKey: "PARIS_CENTRE_GIVERNY_VAN_PREMIUM", overridePrice: 155.0 },
+        { routeKey: "PARIS_CENTRE_REIMS_BERLINE", overridePrice: 235.0 },
+        { routeKey: "PARIS_CENTRE_REIMS_VAN_PREMIUM", overridePrice: 300.0 },
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Berline", overridePrice: 355.0 },
+        { name: "Versailles Journée Complète Van", overridePrice: 455.0 },
+        { name: "Giverny Journée Berline", overridePrice: 405.0 },
+        { name: "Giverny Journée Van", overridePrice: 525.0 },
+        { name: "Champagne Journée Berline", overridePrice: 550.0 },
+        { name: "Champagne Journée Van", overridePrice: 720.0 },
+        { name: "Fontainebleau + Vaux Journée Berline", overridePrice: 440.0 },
+        { name: "Fontainebleau + Vaux Journée Van", overridePrice: 575.0 },
+        { name: "Châteaux de la Loire Berline", overridePrice: 720.0 },
+        { name: "Châteaux de la Loire Van", overridePrice: 930.0 },
+        { name: "Normandie D-Day Berline", overridePrice: 805.0 },
+        { name: "Normandie D-Day Van", overridePrice: 1060.0 },
+        { name: "Mont Saint-Michel Berline", overridePrice: 930.0 },
+        { name: "Mont Saint-Michel Van", overridePrice: 1185.0 },
+      ],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 165.0 },
+        { name: "Dispo 8h Berline", overridePrice: 305.0 },
+        { name: "Dispo 10h Berline", overridePrice: 375.0 },
+        { name: "Dispo 4h Van", overridePrice: 215.0 },
+        { name: "Dispo 8h Van", overridePrice: 400.0 },
+        { name: "Dispo 10h Van", overridePrice: 485.0 },
+      ],
+    },
+    {
+      name: "Euroscope Paris",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 15.0,
+      // DMC spécialisée groupes corporate et incentive
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 64.0 },
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 81.0 },
+        { routeKey: "CDG_PARIS_CENTRE_MINIBUS", overridePrice: 140.0 },
+        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 72.0 },
+        { routeKey: "CDG_LA_DEFENSE_VAN_PREMIUM", overridePrice: 93.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 47.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 64.0 },
+        { routeKey: "ORLY_LA_DEFENSE_BERLINE", overridePrice: 60.0 },
+        { routeKey: "ORLY_LA_DEFENSE_VAN_PREMIUM", overridePrice: 81.0 },
+        { routeKey: "PARIS_CENTRE_LA_DEFENSE_BERLINE", overridePrice: 38.0 },
+        { routeKey: "PARIS_CENTRE_LA_DEFENSE_VAN_PREMIUM", overridePrice: 55.0 },
+        { routeKey: "LA_DEFENSE_VERSAILLES_BERLINE", overridePrice: 47.0 },
+        { routeKey: "LA_DEFENSE_VERSAILLES_VAN_PREMIUM", overridePrice: 64.0 },
+      ],
+      excursions: [
+        { name: "Versailles Journée Complète Berline", overridePrice: 360.0 },
+        { name: "Versailles Journée Complète Van", overridePrice: 460.0 },
+        { name: "Champagne Journée Berline", overridePrice: 555.0 },
+        { name: "Champagne Journée Van", overridePrice: 725.0 },
+        { name: "Champagne Journée Minibus", overridePrice: 940.0 },
+        { name: "Chantilly Demi-Journée Berline", overridePrice: 265.0 },
+      ],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 166.0 },
+        { name: "Dispo 8h Berline", overridePrice: 307.0 },
+        { name: "Dispo 4h Van", overridePrice: 217.0 },
+        { name: "Dispo 8h Van", overridePrice: 400.0 },
+        { name: "Dispo 4h Minibus", overridePrice: 324.0 },
+        { name: "Dispo 8h Minibus", overridePrice: 615.0 },
+        { name: "Dispo 10h Minibus", overridePrice: 750.0 },
+      ],
+    },
+    
+    // ============================================================================
+    // CORPORATE - Tarifs modérés (paiement rapide, volume régulier)
+    // ============================================================================
+    {
+      name: "LVMH Travel",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 8.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 70.0 },
+        { routeKey: "CDG_PARIS_CENTRE_LUXE", overridePrice: 135.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 52.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_LUXE", overridePrice: 108.0 },
+        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 80.0 },
+        { routeKey: "PARIS_CENTRE_LA_DEFENSE_BERLINE", overridePrice: 42.0 },
+        { routeKey: "LBG_PARIS_CENTRE_LUXE", overridePrice: 125.0 },
+      ],
+      excursions: [],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 185.0 },
+        { name: "Dispo 8h Berline", overridePrice: 342.0 },
+        { name: "Dispo 4h Luxe", overridePrice: 360.0 },
+        { name: "Dispo 8h Luxe", overridePrice: 680.0 },
+      ],
+    },
+    {
+      name: "L'Oréal Corporate",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 8.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 71.0 },
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 90.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 52.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 71.0 },
+        { routeKey: "CDG_PETITE_COURONNE_NORD_BERLINE", overridePrice: 52.0 },
+        { routeKey: "PARIS_CENTRE_PETITE_COURONNE_NORD_BERLINE", overridePrice: 52.0 },
+      ],
+      excursions: [],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 186.0 },
+        { name: "Dispo 8h Berline", overridePrice: 345.0 },
+        { name: "Dispo 4h Van", overridePrice: 243.0 },
+        { name: "Dispo 8h Van", overridePrice: 450.0 },
+      ],
+    },
+    {
+      name: "BNP Paribas Events",
+      paymentTerms: "IMMEDIATE" as const,
+      commissionPercent: 5.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_CENTRE_BERLINE", overridePrice: 72.0 },
+        { routeKey: "CDG_PARIS_CENTRE_VAN_PREMIUM", overridePrice: 91.0 },
+        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 82.0 },
+        { routeKey: "CDG_LA_DEFENSE_VAN_PREMIUM", overridePrice: 106.0 },
+        { routeKey: "ORLY_PARIS_CENTRE_BERLINE", overridePrice: 53.0 },
+        { routeKey: "ORLY_LA_DEFENSE_BERLINE", overridePrice: 67.0 },
+        { routeKey: "PARIS_CENTRE_LA_DEFENSE_BERLINE", overridePrice: 43.0 },
+        { routeKey: "PARIS_CENTRE_LA_DEFENSE_VAN_PREMIUM", overridePrice: 62.0 },
+      ],
+      excursions: [],
+      dispos: [
+        { name: "Dispo 4h Berline", overridePrice: 188.0 },
+        { name: "Dispo 8h Berline", overridePrice: 348.0 },
+        { name: "Dispo 4h Van", overridePrice: 246.0 },
+        { name: "Dispo 8h Van", overridePrice: 455.0 },
+        { name: "Dispo 10h Van", overridePrice: 550.0 },
+      ],
+    },
+  ];
+
+  let totalZoneRoutes = 0;
+  let totalExcursions = 0;
+  let totalDispos = 0;
+
+  for (const config of partnerConfigs) {
+    // Create the partner contract
+    const contract = await prisma.partnerContract.create({
       data: {
         id: randomUUID(),
         organizationId: ORGANIZATION_ID,
-        contactId: CONTACT_IDS[name],
-        paymentTerms: name.includes("Hôtel") ? "DAYS_30" : "DAYS_15",
-        commissionPercent: name.includes("Travel") ? 15.0 : 10.0,
+        contactId: CONTACT_IDS[config.name],
+        paymentTerms: config.paymentTerms,
+        commissionPercent: config.commissionPercent,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     });
+    PARTNER_CONTRACT_IDS[config.name] = contract.id;
+
+    // Assign zone routes with custom prices
+    for (const route of config.zoneRoutes) {
+      const zoneRouteId = ZONE_ROUTE_IDS[route.routeKey];
+      if (zoneRouteId) {
+        await prisma.partnerContractZoneRoute.create({
+          data: {
+            id: randomUUID(),
+            partnerContractId: contract.id,
+            zoneRouteId: zoneRouteId,
+            overridePrice: route.overridePrice,
+          },
+        });
+        totalZoneRoutes++;
+      } else {
+        console.log(`   ⚠️ Route not found: ${route.routeKey}`);
+      }
+    }
+
+    // Assign excursion packages with custom prices
+    for (const excursion of config.excursions) {
+      const excursionId = EXCURSION_PACKAGE_IDS[excursion.name];
+      if (excursionId) {
+        await prisma.partnerContractExcursionPackage.create({
+          data: {
+            id: randomUUID(),
+            partnerContractId: contract.id,
+            excursionPackageId: excursionId,
+            overridePrice: excursion.overridePrice,
+          },
+        });
+        totalExcursions++;
+      } else {
+        console.log(`   ⚠️ Excursion not found: ${excursion.name}`);
+      }
+    }
+
+    // Assign dispo packages with custom prices
+    for (const dispo of config.dispos) {
+      const dispoId = DISPO_PACKAGE_IDS[dispo.name];
+      if (dispoId) {
+        await prisma.partnerContractDispoPackage.create({
+          data: {
+            id: randomUUID(),
+            partnerContractId: contract.id,
+            dispoPackageId: dispoId,
+            overridePrice: dispo.overridePrice,
+          },
+        });
+        totalDispos++;
+      } else {
+        console.log(`   ⚠️ Dispo not found: ${dispo.name}`);
+      }
+    }
+
+    console.log(`   ✅ ${config.name}: ${config.zoneRoutes.length} routes, ${config.excursions.length} excursions, ${config.dispos.length} dispos`);
   }
-  console.log(`   ✅ ${partners.length} contracts`);
+
+  console.log(`   📊 Total: ${partnerConfigs.length} contracts, ${totalZoneRoutes} zone routes, ${totalExcursions} excursions, ${totalDispos} dispos`);
 }
 
 async function createIntegrationSettings() {
@@ -683,18 +1267,31 @@ function printSummary() {
   console.log(`   • 5 Operating Bases (Bussy-Saint-Martin HQ, Paris, CDG, Orly, La Défense)`);
   console.log(`   • 3 License Categories (B, D1, D) with RSE rules`);
   console.log(`   • 5 Vehicle Categories (Berline, Van, Minibus, Autocar, Luxe)`);
-  console.log(`   • 12 Pricing Zones (multi-rayon Paris + hubs)`);
-  console.log(`   • 21 Zone Routes with fixed pricing`);
-  console.log(`   • 4 Excursion Packages`);
-  console.log(`   • 4 Dispo Packages`);
+  console.log(`   • 27 Pricing Zones (Paris, gares, aéroports, destinations touristiques)`);
+  console.log(`   • 100+ Zone Routes with fixed pricing`);
+  console.log(`   • 26 Excursion Packages (demi-journée, journée, longue distance)`);
+  console.log(`   • 18 Dispo Packages (3h à 10h, toutes catégories)`);
   console.log(`   • 2 Advanced Rates (night, weekend)`);
   console.log(`   • 4 Seasonal Multipliers`);
   console.log(`   • 6 Optional Fees`);
   console.log(`   • 4 Promotions`);
   console.log(`   • 8 Drivers with multi-license support`);
   console.log(`   • 15 Vehicles (5 Sixième Étoile + 10 supplémentaires)`);
-  console.log(`   • 8 Contacts (individuals, businesses, agencies)`);
-  console.log(`   • 4 Partner Contracts`);
+  console.log(`   • 15 Contacts (particuliers, hôtels, agences, corporate)`);
+  console.log(`   • 10 Partner Contracts with custom pricing:`);
+  console.log(`     📍 HÔTELS DE LUXE (10% commission, paiement 30j, -8 à -12%):`);
+  console.log(`       - Hôtel Ritz Paris`);
+  console.log(`       - Four Seasons George V`);
+  console.log(`       - Le Bristol Paris`);
+  console.log(`       - Hôtel Plaza Athénée`);
+  console.log(`     📍 AGENCES DMC (15% commission, paiement 15j, -15 à -18%):`);
+  console.log(`       - PARISCityVISION (groupes, excursions)`);
+  console.log(`       - France Tourisme (tourisme haut de gamme)`);
+  console.log(`       - Euroscope Paris (corporate, incentive)`);
+  console.log(`     📍 CORPORATE (5-8% commission, paiement rapide, -5 à -8%):`);
+  console.log(`       - LVMH Travel`);
+  console.log(`       - L'Oréal Corporate`);
+  console.log(`       - BNP Paribas Events`);
   console.log(`   • No default quotes or invoices seeded`);
   console.log(`   • API keys configured (Google Maps, CollectAPI)`);
 }

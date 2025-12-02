@@ -33,6 +33,11 @@ import {
 } from "../../services/pricing-engine";
 import { getFuelPrice, type FuelPriceResult } from "../../services/fuel-price-service";
 import {
+	getTollCost,
+	calculateFallbackToll,
+	type TollResult,
+} from "../../services/toll-service";
+import {
 	selectOptimalVehicle,
 	transformVehicleToCandidate,
 	type VehicleCandidate,
@@ -623,6 +628,68 @@ export const pricingCalculateRouter = new Hono()
 					fuelType: pricingSettings.fuelPriceSource.fuelType,
 					countryCode: pricingSettings.fuelPriceSource.countryCode,
 				};
+			}
+
+			// Story 15.1: Get real toll costs from Google Routes API
+			if (googleMapsApiKey) {
+				try {
+					const tollResult = await getTollCost(data.pickup, data.dropoff, {
+						apiKey: googleMapsApiKey,
+						fallbackRatePerKm: pricingSettings.tollCostPerKm ?? 0.12,
+					});
+
+					if (tollResult.amount >= 0) {
+						// Update toll cost in tripAnalysis with real data
+						const oldTollAmount = result.tripAnalysis.costBreakdown.tolls.amount;
+						const tollDifference = tollResult.amount - oldTollAmount;
+
+						// Update toll component
+						result.tripAnalysis.costBreakdown.tolls = {
+							...result.tripAnalysis.costBreakdown.tolls,
+							amount: tollResult.amount,
+							source: tollResult.source,
+							isFromCache: tollResult.isFromCache,
+						};
+
+						// Update total cost
+						result.tripAnalysis.costBreakdown.total = Math.round(
+							(result.tripAnalysis.costBreakdown.total + tollDifference) * 100
+						) / 100;
+
+						// Update internal cost and margins
+						result.tripAnalysis.totalInternalCost = Math.round(
+							(result.tripAnalysis.totalInternalCost + tollDifference) * 100
+						) / 100;
+						result.internalCost = result.tripAnalysis.totalInternalCost;
+						result.margin = Math.round((result.price - result.internalCost) * 100) / 100;
+						result.marginPercent = result.price > 0
+							? Math.round((result.margin / result.price) * 100 * 100) / 100
+							: 0;
+
+						// Update profitability indicator based on new margin
+						const greenThreshold = pricingSettings.greenMarginThreshold ?? 20;
+						const orangeThreshold = pricingSettings.orangeMarginThreshold ?? 0;
+						if (result.marginPercent >= greenThreshold) {
+							result.profitabilityIndicator = "green";
+						} else if (result.marginPercent >= orangeThreshold) {
+							result.profitabilityIndicator = "orange";
+						} else {
+							result.profitabilityIndicator = "red";
+						}
+
+						// Set toll source for transparency
+						result.tripAnalysis.tollSource = tollResult.source;
+					} else {
+						// API failed, mark as estimate
+						result.tripAnalysis.tollSource = "ESTIMATE";
+					}
+				} catch (error) {
+					console.warn(`[PRICING] Toll lookup failed, using estimate:`, error);
+					result.tripAnalysis.tollSource = "ESTIMATE";
+				}
+			} else {
+				// No API key, using estimate
+				result.tripAnalysis.tollSource = "ESTIMATE";
 			}
 
 			// Log negative margin partner trips for analysis

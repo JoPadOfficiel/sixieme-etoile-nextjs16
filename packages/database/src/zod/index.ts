@@ -170,6 +170,8 @@ export const ComplianceAuditLogScalarFieldEnumSchema = z.enum(['id','organizatio
 
 export const QuoteStatusAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousStatus','newStatus','userId','timestamp','reason']);
 
+export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destinationHash','tollAmount','currency','source','fetchedAt','expiresAt']);
+
 export const SortOrderSchema = z.enum(['asc','desc']);
 
 export const NullableJsonNullValueInputSchema = z.enum(['DbNull','JsonNull',]).transform((value) => value === 'JsonNull' ? Prisma.JsonNull : value === 'DbNull' ? Prisma.DbNull : value);
@@ -1310,3 +1312,24 @@ export const QuoteStatusAuditLogSchema = z.object({
 })
 
 export type QuoteStatusAuditLog = z.infer<typeof QuoteStatusAuditLogSchema>
+
+/////////////////////////////////////////
+// TOLL CACHE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * TollCache - Caches toll costs from Google Routes API
+ * Story 15.1: Integrate Google Routes API for Real Toll Costs
+ */
+export const TollCacheSchema = z.object({
+  id: z.string().cuid(),
+  originHash: z.string(),
+  destinationHash: z.string(),
+  tollAmount: z.instanceof(Prisma.Decimal, { message: "Field 'tollAmount' must be a Decimal. Location: ['Models', 'TollCache']"}),
+  currency: z.string(),
+  source: z.string(),
+  fetchedAt: z.coerce.date(),
+  expiresAt: z.coerce.date(),
+})
+
+export type TollCache = z.infer<typeof TollCacheSchema>

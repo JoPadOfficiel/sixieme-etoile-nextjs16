@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.1</story-id>
+    <story-key>15-1-integrate-google-routes-api-real-toll-costs</story-key>
+    <title>Integrate Google Routes API for Real Toll Costs</title>
+    <epic>Epic 15: Pricing Engine Accuracy &amp; Real Cost Integration</epic>
+    <created-date>2025-12-02</created-date>
+    <status>ready-for-development</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      The current pricing engine uses a flat rate per km (0.12€/km) to estimate toll costs,
+      which produces inaccurate results. A 465km Paris-Lyon trip calculates 55.80€ in tolls
+      when the actual highway toll is approximately 35€. Conversely, trips within Paris
+      (no highways) incorrectly show toll costs when there should be none.
+    </summary>
+    <current-behavior>
+      <code-reference file="packages/api/src/services/pricing-engine.ts" lines="812-821">
+        calculateTollCost() uses distanceKm × tollCostPerKm (flat rate)
+      </code-reference>
+      <code-reference file="packages/api/src/routes/vtc/pricing-calculate.ts" lines="370">
+        tollCostPerKm loaded from OrganizationPricingSettings (default 0.12€/km)
+      </code-reference>
+    </current-behavior>
+    <impact>
+      - Inaccurate profitability calculations
+      - Quotes may be over/under-priced
+      - Loss of competitive advantage on non-highway routes
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Integrate Google Routes API v2 to fetch real toll costs</objective>
+    <objective id="2">Cache toll results to minimize API calls and costs</objective>
+    <objective id="3">Provide graceful fallback when API is unavailable</objective>
+    <objective id="4">Add transparency about toll data source in tripAnalysis</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>New toll-service.ts for Google Routes API integration</item>
+      <item>Toll result caching with 24h TTL</item>
+      <item>Modification of calculateCostBreakdown() to use real tolls</item>
+      <item>TollCostComponent enhancement with source field</item>
+      <item>Fallback to flat rate when API fails</item>
+    </in-scope>
+    <out-of-scope>
+      <item>UI changes to display toll source (Story 15.7)</item>
+      <item>Invoice cost breakdown storage (Story 15.7)</item>
+      <item>Other cost components (fuel, driver, wear)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="technical">
+      Google Routes API requires API key with Routes API enabled (different from Distance Matrix)
+    </constraint>
+    <constraint type="cost">
+      Routes API pricing: $5 per 1000 requests - caching is essential
+    </constraint>
+    <constraint type="performance">
+      Toll lookup must not add more than 500ms to pricing calculation
+    </constraint>
+    <constraint type="backward-compatibility">
+      Existing quotes must continue to work with their stored tripAnalysis
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Google Routes API may not return toll info for all routes</description>
+      <mitigation>Fallback to flat rate with warning flag</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>API rate limits during high quote volume</description>
+      <mitigation>Implement caching and request queuing</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <relevant-functions>
+          - calculateTollCost(): Current flat-rate implementation
+          - calculateCostBreakdown(): Aggregates all cost components
+          - calculateShadowSegments(): Creates TripAnalysis
+        </relevant-functions>
+      </file>
+      <file path="packages/api/src/services/vehicle-selection.ts">
+        <relevant-functions>
+          - callGoogleDistanceMatrix(): Existing Google API integration pattern
+          - getRoutingForCandidate(): Where routing data is fetched
+        </relevant-functions>
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        <relevant-functions>
+          - loadPricingSettings(): Loads org settings including tollCostPerKm
+          - loadGoogleMapsApiKey(): Gets API key for Google services
+        </relevant-functions>
+      </file>
+    </existing-code>
+
+    <database-schema>
+      <model name="OrganizationPricingSettings">
+        <field name="tollCostPerKm" type="Decimal" usage="fallback-rate"/>
+      </model>
+      <model name="OrganizationIntegrationSettings">
+        <field name="googleMapsApiKey" type="String" usage="api-authentication"/>
+      </model>
+      <new-model name="TollCache" required="true">
+        <field name="id" type="String"/>
+        <field name="originHash" type="String" description="Hash of origin coordinates"/>
+        <field name="destinationHash" type="String" description="Hash of destination coordinates"/>
+        <field name="tollAmount" type="Decimal"/>
+        <field name="currency" type="String" default="EUR"/>
+        <field name="source" type="String" description="GOOGLE_API"/>
+        <field name="fetchedAt" type="DateTime"/>
+        <field name="expiresAt" type="DateTime"/>
+      </new-model>
+    </database-schema>
+
+    <api-reference>
+      <google-routes-api>
+        <endpoint>POST https://routes.googleapis.com/directions/v2:computeRoutes</endpoint>
+        <headers>
+          <header name="X-Goog-Api-Key">API_KEY</header>
+          <header name="X-Goog-FieldMask">routes.travelAdvisory.tollInfo,routes.distanceMeters,routes.duration</header>
+        </headers>
+        <request-body>
+          {
+            "origin": { "location": { "latLng": { "latitude": 48.8566, "longitude": 2.3522 } } },
+            "destination": { "location": { "latLng": { "latitude": 45.7640, "longitude": 4.8357 } } },
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_AWARE",
+            "computeAlternativeRoutes": false,
+            "extraComputations": ["TOLLS"]
+          }
+        </request-body>
+        <response-example>
+          {
+            "routes": [{
+              "distanceMeters": 465000,
+              "duration": "14400s",
+              "travelAdvisory": {
+                "tollInfo": {
+                  "estimatedPrice": [{ "currencyCode": "EUR", "units": "35", "nanos": 0 }]
+                }
+              }
+            }]
+          }
+        </response-example>
+      </google-routes-api>
+    </api-reference>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      <given>A trip from Paris to Lyon (465km via A6)</given>
+      <when>The pricing engine calculates toll costs</when>
+      <then>It calls Google Routes API and extracts tollInfo.estimatedPrice</then>
+      <and>Stores the real toll amount (≈35€) instead of flat rate (55.80€)</and>
+    </criterion>
+    <criterion id="AC2">
+      <given>A trip within Paris (no highways)</given>
+      <when>The pricing engine calculates toll costs</when>
+      <then>The toll cost is 0€ as returned by Google Routes API</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>Google Routes API is unavailable or returns an error</given>
+      <when>The pricing engine calculates toll costs</when>
+      <then>It falls back to tollCostPerKm rate</then>
+      <and>Sets tollSource to "ESTIMATE" in tripAnalysis</and>
+    </criterion>
+    <criterion id="AC4">
+      <given>A toll lookup was performed in the last 24 hours for same origin/destination</given>
+      <when>The pricing engine calculates toll costs</when>
+      <then>It uses the cached value without calling the API</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>A successful Google Routes API response</given>
+      <when>The toll cost is stored in tripAnalysis</when>
+      <then>tollSource is set to "GOOGLE_API"</then>
+      <and>The response is cached for 24 hours</and>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="unit">
+      <name>Parse Google Routes API toll response</name>
+      <input>Valid API response with tollInfo</input>
+      <expected>Extracted toll amount in EUR</expected>
+    </scenario>
+    <scenario id="TS2" type="unit">
+      <name>Handle missing tollInfo in response</name>
+      <input>API response without tollInfo (no tolls on route)</input>
+      <expected>Toll amount = 0€</expected>
+    </scenario>
+    <scenario id="TS3" type="unit">
+      <name>Cache hit for repeated lookups</name>
+      <input>Same origin/destination within 24h</input>
+      <expected>No API call, cached value returned</expected>
+    </scenario>
+    <scenario id="TS4" type="integration">
+      <name>End-to-end toll calculation Paris-Lyon</name>
+      <input>Quote request Paris → Lyon</input>
+      <expected>Toll cost ≈ 35€, source = GOOGLE_API</expected>
+    </scenario>
+    <scenario id="TS5" type="integration">
+      <name>Fallback on API error</name>
+      <input>Quote request with invalid API key</input>
+      <expected>Toll cost = distance × fallbackRate, source = ESTIMATE</expected>
+    </scenario>
+  </test-scenarios>
+
+  <dependencies>
+    <dependency type="story">Story 1.5 - Integration Settings (completed)</dependency>
+    <dependency type="external">Google Routes API access with billing enabled</dependency>
+    <dependency type="package">None - uses native fetch</dependency>
+  </dependencies>
+
+  <implementation-notes>
+    <note priority="high">
+      Create new file: packages/api/src/services/toll-service.ts
+    </note>
+    <note priority="high">
+      Add TollCache model to schema.prisma with TTL index
+    </note>
+    <note priority="medium">
+      Modify TollCostComponent type to include source field
+    </note>
+    <note priority="medium">
+      Update calculateCostBreakdown() to call toll service
+    </note>
+    <note priority="low">
+      Add toll cache cleanup job (optional, TTL handles expiry)
+    </note>
+  </implementation-notes>
+</story-context>

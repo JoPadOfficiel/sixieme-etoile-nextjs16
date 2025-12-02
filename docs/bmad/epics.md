@@ -1748,9 +1748,288 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 
 ---
 
+## Epic 15: Pricing Engine Accuracy & Real Cost Integration
+
+**Goal:** Fix all pricing inconsistencies by integrating real toll costs from Google Routes API, using vehicle-specific fuel consumption, applying vehicle category multipliers, and ensuring pricing varies correctly by trip type and vehicle selection.
+
+### Story 15.1 – Integrate Google Routes API for Real Toll Costs
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to fetch real toll costs from Google Routes API instead of using a flat rate per km,  
+**So that** quotes reflect actual highway toll costs for each specific route.
+
+**Related FRs:** FR14 (Operational cost components), FR22 (Shadow calculation costs).
+
+**Acceptance Criteria:**
+
+**Given** a trip from Paris to Lyon (465km via A6),  
+**When** the pricing engine calculates toll costs,  
+**Then** it calls Google Routes API with `computeAlternativeRoutes: false` and `routingPreference: TRAFFIC_AWARE`,  
+**And** extracts the `tollInfo.estimatedPrice` from the response,  
+**And** stores the real toll amount (≈35€) instead of the flat rate (55.80€).
+
+**Given** a trip within Paris (no highways),  
+**When** the pricing engine calculates toll costs,  
+**Then** the toll cost is 0€ as returned by Google Routes API.
+
+**Given** Google Routes API is unavailable or returns an error,  
+**When** the pricing engine calculates toll costs,  
+**Then** it falls back to the configured `tollCostPerKm` rate with a warning flag in `tripAnalysis`.
+
+**Prerequisites:** Story 1.5 (Integration settings for Google Maps API key).
+
+**Technical Notes:**
+
+- Use Google Routes API v2 (`routes.googleapis.com/v2:computeRoutes`)
+- Request `routes.travelAdvisory.tollInfo` in the field mask
+- Cache toll results for identical origin-destination pairs (24h TTL)
+- Add `tollSource: "GOOGLE_API" | "ESTIMATE"` to TripAnalysis
+
+---
+
+### Story 15.2 – Use Vehicle-Specific Fuel Consumption in All Pricing Paths
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to always use the vehicle's specific fuel consumption rate when a vehicle category is selected,  
+**So that** fuel costs are accurate for each vehicle type (Berline 5.5L vs Autocar 18L).
+
+**Related FRs:** FR14 (Fuel cost), FR22 (Cost breakdown per segment).
+
+**Acceptance Criteria:**
+
+**Given** a quote for vehicle category "Autocar" with average consumption 18L/100km,  
+**When** the pricing engine calculates fuel cost for a 100km trip,  
+**Then** it uses 18L × 1.789€/L = 32.20€ (not 8.5L × 1.789€ = 15.21€).
+
+**Given** a quote with `enableVehicleSelection: false`,  
+**When** the pricing engine calculates fuel cost,  
+**Then** it looks up the average consumption for the selected `vehicleCategoryId` from VehicleCategory or Vehicle table.
+
+**Given** a VehicleCategory without any vehicles,  
+**When** the pricing engine calculates fuel cost,  
+**Then** it falls back to `OrganizationPricingSettings.fuelConsumptionL100km`.
+
+**Prerequisites:** Story 4.2 (Operational cost components).
+
+**Technical Notes:**
+
+- Add `averageConsumptionL100km` field to VehicleCategory model
+- Modify `calculateCostBreakdown()` to accept optional `vehicleCategoryId`
+- Load vehicle category data in `pricing-calculate.ts` and pass to engine
+
+---
+
+### Story 15.3 – Apply Vehicle Category Price Multipliers in Dynamic Pricing
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to apply the `VehicleCategory.priceMultiplier` to dynamic pricing calculations,  
+**So that** premium vehicles (Luxe 2.0×, Autocar 2.5×) are priced appropriately higher than standard vehicles.
+
+**Related FRs:** FR60 (Vehicle category multipliers), FR15 (Configurable multipliers).
+
+**Acceptance Criteria:**
+
+**Given** a dynamic pricing calculation for category "Luxe" with `priceMultiplier: 2.0`,  
+**When** the base price is calculated as 100€,  
+**Then** the final price before other multipliers is 200€,  
+**And** an `appliedRule` of type `VEHICLE_CATEGORY_MULTIPLIER` is added to the result.
+
+**Given** a dynamic pricing calculation for category "Berline" with `priceMultiplier: 1.0`,  
+**When** the base price is calculated,  
+**Then** no vehicle category multiplier rule is applied (multiplier is neutral).
+
+**Given** a FIXED_GRID pricing (Method 1),  
+**When** the route matches a partner contract,  
+**Then** the vehicle category multiplier is NOT applied (contract price is fixed).
+
+**Prerequisites:** Story 4.1 (Base dynamic price calculation).
+
+**Technical Notes:**
+
+- Add `AppliedVehicleCategoryMultiplierRule` type to pricing-engine.ts
+- Apply multiplier AFTER base price, BEFORE zone/advanced/seasonal multipliers
+- Load VehicleCategory.priceMultiplier in pricing-calculate.ts
+
+---
+
+### Story 15.4 – Use Vehicle Category Default Rates for Dynamic Pricing
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to use `VehicleCategory.defaultRatePerKm` and `defaultRatePerHour` instead of organization-wide rates,  
+**So that** each vehicle category has appropriate base rates (Autocar 4.50€/km vs Berline 1.80€/km).
+
+**Related FRs:** FR13 (Dynamic pricing base), FR60 (Vehicle category configuration).
+
+**Acceptance Criteria:**
+
+**Given** a dynamic pricing calculation for category "Autocar" with `defaultRatePerKm: 4.50`,  
+**When** the base price is calculated using MAX(distance×rate, duration×rate),  
+**Then** it uses 4.50€/km (not the organization default 1.80€/km).
+
+**Given** a VehicleCategory with `defaultRatePerKm: null`,  
+**When** the base price is calculated,  
+**Then** it falls back to `OrganizationPricingSettings.baseRatePerKm`.
+
+**Given** a FIXED_GRID pricing (Method 1),  
+**When** the route matches,  
+**Then** the category rates are NOT used (contract price applies).
+
+**Prerequisites:** Story 15.3 (Vehicle category multipliers).
+
+**Technical Notes:**
+
+- Modify `calculateDynamicBasePrice()` to accept category rates
+- Pass VehicleCategory data to pricing engine
+- Update `DynamicBaseCalculationRule` to show which rates were used
+
+---
+
+### Story 15.5 – Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to apply different pricing logic based on trip type,  
+**So that** excursions and mise-à-disposition have appropriate pricing models.
+
+**Related FRs:** FR10 (Excursion and dispo forfaits), FR12 (Dynamic pricing fallback).
+
+**Acceptance Criteria:**
+
+**Given** a trip type "excursion" with no matching ExcursionPackage,  
+**When** dynamic pricing is calculated,  
+**Then** it uses duration-based pricing with a minimum duration threshold (e.g., 4 hours),  
+**And** applies an excursion surcharge multiplier from settings.
+
+**Given** a trip type "dispo" with no matching DispoPackage,  
+**When** dynamic pricing is calculated,  
+**Then** it uses hourly rate × requested hours,  
+**And** adds overage rates for distance exceeding included km.
+
+**Given** a trip type "transfer",  
+**When** dynamic pricing is calculated,  
+**Then** it uses the standard MAX(distance×rate, duration×rate) formula.
+
+**Prerequisites:** Story 4.1 (Base dynamic price calculation).
+
+**Technical Notes:**
+
+- Add `excursionSurchargePercent` and `dispoMinimumHours` to OrganizationPricingSettings
+- Modify `buildDynamicResult()` to branch by tripType
+- Add `TripTypeRule` to appliedRules for transparency
+
+---
+
+### Story 15.6 – Use Correct Fuel Type from Vehicle/Category
+
+**Status:** Pending
+
+**As a** pricing engine,  
+**I want** to use the correct fuel type (DIESEL, GASOLINE, LPG) based on the vehicle,  
+**So that** fuel costs reflect actual fuel prices (DIESEL 1.789€ vs LPG 0.999€).
+
+**Related FRs:** FR14 (Fuel cost), FR41 (Fuel price cache).
+
+**Acceptance Criteria:**
+
+**Given** a vehicle with fuel type "LPG" and LPG price 0.999€/L in cache,  
+**When** the pricing engine calculates fuel cost,  
+**Then** it uses 0.999€/L (not the default DIESEL 1.789€/L).
+
+**Given** a vehicle category without explicit fuel type,  
+**When** the pricing engine calculates fuel cost,  
+**Then** it defaults to DIESEL.
+
+**Prerequisites:** Story 15.2 (Vehicle-specific consumption).
+
+**Technical Notes:**
+
+- Add `fuelType: FuelType` field to Vehicle and VehicleCategory models
+- Modify `getFuelPrice()` to accept fuelType parameter
+- Pass fuel type through pricing calculation chain
+
+---
+
+### Story 15.7 – Propagate Cost Breakdown to Quotes and Invoices
+
+**Status:** Pending
+
+**As a** finance user,  
+**I want** quotes and invoices to store the detailed cost breakdown (fuel, tolls, driver, wear),  
+**So that** I can audit pricing decisions and understand profitability.
+
+**Related FRs:** FR34 (Deep-copy rule for invoices), FR55 (Trip Transparency).
+
+**Acceptance Criteria:**
+
+**Given** a quote is created with tripAnalysis containing cost breakdown,  
+**When** I view the quote detail,  
+**Then** I see the breakdown: Fuel X€, Tolls Y€, Driver Z€, Wear W€.
+
+**Given** a quote is converted to an invoice,  
+**When** the invoice is created,  
+**Then** the cost breakdown is deep-copied to the invoice record,  
+**And** later changes to pricing settings do not affect the stored breakdown.
+
+**Given** a quote with `tollSource: "GOOGLE_API"`,  
+**When** I view the quote,  
+**Then** I see an indicator that real toll data was used.
+
+**Prerequisites:** Story 15.1 (Real toll costs), Story 7.1 (Invoice creation).
+
+**Technical Notes:**
+
+- Add `costBreakdown: Json` field to Invoice model
+- Copy tripAnalysis.costBreakdown during invoice creation
+- Add UI component to display breakdown in quote/invoice detail
+
+---
+
+### Story 15.8 – Validate Pricing Consistency Across Application
+
+**Status:** Pending
+
+**As a** QA engineer,  
+**I want** comprehensive tests validating pricing consistency across quotes, invoices, and dispatch,  
+**So that** all pricing paths produce identical results for the same inputs.
+
+**Related FRs:** FR7 (Dual pricing modes), FR24 (Profitability indicator).
+
+**Acceptance Criteria:**
+
+**Given** identical inputs (contact, pickup, dropoff, vehicle category, pickup time),  
+**When** pricing is calculated via quote creation, dispatch preview, and invoice recalculation,  
+**Then** all three produce the same price, internal cost, and profitability indicator.
+
+**Given** a partner with assigned grid route,  
+**When** pricing is calculated,  
+**Then** Method 1 (FIXED_GRID) is used consistently across all entry points.
+
+**Given** a private client with no grid match,  
+**When** pricing is calculated,  
+**Then** Method 2 (DYNAMIC) is used with all multipliers applied consistently.
+
+**Prerequisites:** All previous Story 15.x stories.
+
+**Technical Notes:**
+
+- Create integration test suite covering all pricing entry points
+- Add Playwright E2E tests for quote → invoice flow
+- Verify tripAnalysis is identical across paths
+
+---
+
 ## Summary
 
-This document now defines the **14-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **15-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).

@@ -16,6 +16,12 @@ import {
 	getCommissionPercent,
 	type CommissionData,
 } from "./commission-service";
+import {
+	getTollCost,
+	calculateFallbackToll,
+	type TollResult,
+	type TollSource,
+} from "./toll-service";
 
 // Europe/Paris timezone constant
 const PARIS_TZ = "Europe/Paris";
@@ -443,6 +449,9 @@ export interface TollCostComponent {
 	amount: number;
 	distanceKm: number;
 	ratePerKm: number;
+	// Story 15.1: Track toll data source for transparency
+	source?: "GOOGLE_API" | "ESTIMATE";
+	isFromCache?: boolean;
 }
 
 export interface WearCostComponent {
@@ -536,6 +545,9 @@ export interface TripAnalysis {
 	
 	// Story 4.8: Fuel price source for transparency
 	fuelPriceSource?: FuelPriceSourceInfo;
+	
+	// Story 15.1: Toll source for transparency
+	tollSource?: "GOOGLE_API" | "ESTIMATE";
 }
 
 /**
@@ -891,6 +903,115 @@ export function calculateCostBreakdown(
 		driver,
 		parking,
 		total,
+	};
+}
+
+/**
+ * Story 15.1: Toll configuration for async cost calculation
+ */
+export interface TollConfig {
+	origin: GeoPoint;
+	destination: GeoPoint;
+	apiKey?: string;
+}
+
+/**
+ * Story 15.1: Calculate cost breakdown with real toll costs from Google Routes API
+ * 
+ * This async version fetches real toll costs when API key is provided.
+ * Falls back to flat rate calculation when API is unavailable.
+ * 
+ * @param distanceKm - Distance in kilometers
+ * @param durationMinutes - Duration in minutes
+ * @param settings - Organization pricing settings
+ * @param tollConfig - Optional toll configuration with origin/destination and API key
+ * @param parkingCost - Optional parking cost
+ * @param parkingDescription - Optional parking description
+ * @returns Cost breakdown with toll source information
+ */
+export async function calculateCostBreakdownWithTolls(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	tollConfig?: TollConfig,
+	parkingCost: number = 0,
+	parkingDescription: string = "",
+): Promise<{ breakdown: CostBreakdown; tollSource: TollSource }> {
+	// Use settings or defaults
+	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
+	const fuelPricePerLiter = settings.fuelPricePerLiter ?? DEFAULT_COST_PARAMETERS.fuelPricePerLiter;
+	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
+	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
+	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
+
+	// Calculate non-toll components
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelPricePerLiter);
+	const wear = calculateWearCost(distanceKm, wearCostPerKm);
+	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
+	const parking: ParkingCostComponent = {
+		amount: parkingCost,
+		description: parkingDescription,
+	};
+
+	// Calculate toll cost
+	let tolls: TollCostComponent;
+	let tollSource: TollSource = "ESTIMATE";
+
+	if (tollConfig?.origin && tollConfig?.destination && tollConfig?.apiKey) {
+		// Try to get real toll cost from Google Routes API
+		const tollResult = await getTollCost(tollConfig.origin, tollConfig.destination, {
+			apiKey: tollConfig.apiKey,
+			fallbackRatePerKm: tollCostPerKm,
+		});
+
+		if (tollResult.amount >= 0) {
+			// API returned a valid result (0 or positive)
+			tolls = {
+				amount: tollResult.amount,
+				distanceKm,
+				ratePerKm: 0, // Not used for API results
+				source: tollResult.source,
+				isFromCache: tollResult.isFromCache,
+			};
+			tollSource = tollResult.source;
+		} else {
+			// API failed, use fallback
+			tolls = {
+				amount: calculateFallbackToll(distanceKm, tollCostPerKm),
+				distanceKm,
+				ratePerKm: tollCostPerKm,
+				source: "ESTIMATE",
+				isFromCache: false,
+			};
+			tollSource = "ESTIMATE";
+		}
+	} else {
+		// No toll config or API key - use flat rate estimate
+		tolls = {
+			amount: Math.round(distanceKm * tollCostPerKm * 100) / 100,
+			distanceKm,
+			ratePerKm: tollCostPerKm,
+			source: "ESTIMATE",
+			isFromCache: false,
+		};
+		tollSource = "ESTIMATE";
+	}
+
+	// Calculate total
+	const total = Math.round(
+		(fuel.amount + tolls.amount + wear.amount + driver.amount + parking.amount) * 100
+	) / 100;
+
+	return {
+		breakdown: {
+			fuel,
+			tolls,
+			wear,
+			driver,
+			parking,
+			total,
+		},
+		tollSource,
 	};
 }
 

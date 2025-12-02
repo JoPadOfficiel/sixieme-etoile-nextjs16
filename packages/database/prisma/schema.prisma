@@ -1618,3 +1618,30 @@ model QuoteStatusAuditLog {
   @@index([timestamp])
   @@map("quote_status_audit_log")
 }
+
+// ----------------------------------------------------------------------------
+// TOLL CACHE (Story 15.1)
+// ----------------------------------------------------------------------------
+
+/// TollCache - Caches toll costs from Google Routes API
+/// Story 15.1: Integrate Google Routes API for Real Toll Costs
+model TollCache {
+  id String @id @default(cuid())
+
+  // Route identification (hashed coordinates for efficient lookup)
+  originHash      String // SHA256 hash of "lat,lng" rounded to 4 decimals
+  destinationHash String // SHA256 hash of "lat,lng" rounded to 4 decimals
+
+  // Toll data
+  tollAmount Decimal @db.Decimal(10, 2)
+  currency   String  @default("EUR")
+
+  // Metadata
+  source    String   @default("GOOGLE_API") // "GOOGLE_API" or "ESTIMATE"
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([originHash, destinationHash])
+  @@index([expiresAt])
+  @@map("toll_cache")
+}
