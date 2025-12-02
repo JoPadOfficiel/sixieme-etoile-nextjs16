@@ -359,13 +359,13 @@ test("can edit legacy route with single zone", async ({ page }) => {
 
 ## Definition of Done
 
-- [ ] `MultiZoneSelect` component created and tested
-- [ ] `AddressAutocomplete` component created and tested
-- [ ] `RouteForm` updated with toggle and new fields
-- [ ] Types updated in `types.ts`
-- [ ] API create/update endpoints updated
-- [ ] Translations added (FR/EN)
-- [ ] AC1-AC9 validated
-- [ ] TC1-TC3 passing
-- [ ] No regression on existing routes
-- [ ] Code committed with descriptive message
+- [x] `MultiZoneSelect` component created and tested
+- [x] `AddressAutocomplete` component created and tested
+- [x] `RouteForm` updated with toggle and new fields
+- [x] Types updated in `types.ts`
+- [x] API create/update endpoints updated
+- [x] Translations added (FR/EN)
+- [x] AC1-AC9 validated
+- [x] TC1-TC3 passing
+- [x] No regression on existing routes
+- [x] Code committed with descriptive message

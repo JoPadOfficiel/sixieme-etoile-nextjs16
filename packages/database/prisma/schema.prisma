@@ -1272,8 +1272,9 @@ model Quote {
   commissionAmount  Decimal? @db.Decimal(10, 2) // Calculated commission amount
 
   // Analysis context (JSON)
-  tripAnalysis Json? // Shadow calculation: segments A/B/C, distances, durations, cost breakdown
-  appliedRules Json? // Which grids, multipliers, promotions, optional fees were used
+  tripAnalysis  Json? // Shadow calculation: segments A/B/C, distances, durations, cost breakdown
+  appliedRules  Json? // Which grids, multipliers, promotions, optional fees were used
+  costBreakdown Json? // Story 15.7: Detailed cost breakdown (fuel, tolls, driver, wear)
 
   // Validity
   validUntil DateTime?
@@ -1367,6 +1368,9 @@ model Invoice {
 
   // Commission (for partner invoices)
   commissionAmount Decimal? @db.Decimal(10, 2)
+
+  // Story 15.7: Deep-copied cost breakdown from quote
+  costBreakdown Json? // Immutable snapshot of cost breakdown at invoice creation
 
   // Notes
   notes String?

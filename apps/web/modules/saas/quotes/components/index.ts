@@ -26,3 +26,6 @@ export { CapacityWarningAlert } from "./CapacityWarningAlert";
 // Optional Fees & Promotions
 export { AddQuoteFeeDialog, type AddedFee } from "./AddQuoteFeeDialog";
 export { AddedFeesList } from "./AddedFeesList";
+
+// Story 15.7: Cost Breakdown Display
+export { CostBreakdownDisplay } from "./CostBreakdownDisplay";

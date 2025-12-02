@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.7</story-id>
+    <title>Propagate Cost Breakdown to Quotes and Invoices</title>
+    <epic>Epic 15: Pricing Engine Accuracy & Real Cost Integration</epic>
+    <created>2025-12-02</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem>
+    <current-state>
+      Les devis et factures stockent uniquement le prix final et le coût interne total,
+      sans détail des composants (carburant, péages, chauffeur, usure).
+      Les utilisateurs finance ne peuvent pas auditer les décisions de tarification.
+    </current-state>
+    
+    <impact>
+      <item type="transparency">
+        Impossible de voir comment le prix a été calculé après coup.
+        Aucune visibilité sur la source des péages (API Google vs estimation).
+      </item>
+      <item type="audit">
+        Difficile de comprendre pourquoi une course est rentable ou non.
+        Pas de traçabilité des paramètres utilisés au moment du calcul.
+      </item>
+      <item type="compliance">
+        En cas de litige, impossible de justifier le détail des coûts.
+      </item>
+    </impact>
+
+    <example>
+      <scenario>Facture de 150€ avec marge de 25%</scenario>
+      <current>
+        - Prix: 150€
+        - Coût interne: 112.50€
+        - Marge: 25%
+        - Détail: ???
+      </current>
+      <expected>
+        - Prix: 150€
+        - Coût interne: 112.50€
+          - Carburant: 35€ (DIESEL, 200km)
+          - Péages: 25€ (Google API)
+          - Chauffeur: 45€ (3h)
+          - Usure: 7.50€
+        - Marge: 25%
+      </expected>
+    </example>
+  </problem>
+
+  <objectives>
+    <primary>
+      Stocker et afficher le détail des coûts (fuel, tolls, driver, wear)
+      dans les devis et factures pour permettre l'audit et la transparence.
+    </primary>
+    <secondary>
+      <item>Ajouter costBreakdown JSON aux modèles Quote et Invoice</item>
+      <item>Deep-copy du breakdown lors de la création de facture</item>
+      <item>Afficher l'indicateur de source des péages (API vs estimation)</item>
+      <item>Composant UI pour afficher le breakdown</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Ajouter champ costBreakdown à Quote et Invoice (Prisma)</item>
+      <item>Copier tripAnalysis.costBreakdown lors de la création</item>
+      <item>API pour récupérer le breakdown</item>
+      <item>Composant React CostBreakdownDisplay</item>
+      <item>Afficher tollSource dans le breakdown</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification des calculs de coûts (déjà fait)</item>
+      <item>Export PDF du breakdown</item>
+      <item>Historique des modifications de breakdown</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Le breakdown doit être un JSON immuable (deep-copy)</item>
+      <item>Les changements de paramètres ne doivent pas affecter les factures existantes</item>
+      <item>Le breakdown doit inclure tollSource pour la transparence</item>
+    </technical>
+    <business>
+      <item>Le breakdown doit être visible dans le détail du devis/facture</item>
+      <item>L'indicateur de source des péages doit être clair</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk level="low">
+      <description>Migration des données existantes</description>
+      <mitigation>Les devis/factures existants auront costBreakdown null</mitigation>
+    </risk>
+    <risk level="low">
+      <description>Taille du JSON stocké</description>
+      <mitigation>Le breakdown est petit (~500 bytes)</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/database/prisma/schema.prisma">
+        <model name="Quote">À étendre avec costBreakdown</model>
+        <model name="Invoice">À étendre avec costBreakdown</model>
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <type name="CostBreakdown">Déjà défini avec tous les composants</type>
+        <type name="TripAnalysis">Contient costBreakdown</type>
+      </file>
+    </existing-code>
+
+    <data-model>
+      <entity name="CostBreakdown">
+        <field name="fuel" type="FuelCostComponent"/>
+        <field name="tolls" type="TollCostComponent"/>
+        <field name="wear" type="WearCostComponent"/>
+        <field name="driver" type="DriverCostComponent"/>
+        <field name="parking" type="ParkingCostComponent"/>
+        <field name="total" type="number"/>
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="high">
+      <title>Quote Stores Cost Breakdown</title>
+      <given>A quote is created with tripAnalysis containing cost breakdown</given>
+      <when>I view the quote detail</when>
+      <then>I see the breakdown: Fuel X€, Tolls Y€, Driver Z€, Wear W€</then>
+    </criterion>
+
+    <criterion id="AC2" priority="high">
+      <title>Invoice Deep-Copies Breakdown</title>
+      <given>A quote is converted to an invoice</given>
+      <when>The invoice is created</when>
+      <then>The cost breakdown is deep-copied to the invoice record</then>
+      <and>Later changes to pricing settings do not affect the stored breakdown</and>
+    </criterion>
+
+    <criterion id="AC3" priority="medium">
+      <title>Toll Source Indicator</title>
+      <given>A quote with tollSource: "GOOGLE_API"</given>
+      <when>I view the quote</when>
+      <then>I see an indicator that real toll data was used</then>
+    </criterion>
+
+    <criterion id="AC4" priority="medium">
+      <title>Backward Compatibility</title>
+      <given>An existing quote/invoice without costBreakdown</given>
+      <when>I view the detail</when>
+      <then>The UI handles null gracefully (shows "N/A" or hides section)</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="integration">
+      <name>Quote creation stores breakdown</name>
+      <input>Create quote with pricing result containing costBreakdown</input>
+      <expected>Quote.costBreakdown contains all cost components</expected>
+    </scenario>
+    <scenario id="TS2" type="integration">
+      <name>Invoice deep-copies breakdown</name>
+      <input>Convert quote to invoice</input>
+      <expected>Invoice.costBreakdown is identical to Quote.costBreakdown</expected>
+    </scenario>
+    <scenario id="TS3" type="unit">
+      <name>CostBreakdownDisplay component</name>
+      <input>Render with valid breakdown</input>
+      <expected>Shows fuel, tolls, driver, wear amounts</expected>
+    </scenario>
+  </test-scenarios>
+</story-context>

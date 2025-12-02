@@ -23,22 +23,39 @@ export type RegulatoryCategory = "LIGHT" | "HEAVY";
 // ============================================================================
 
 /**
+ * Fuel type for accurate cost calculation
+ * Story 15.6: Added fuel type support
+ */
+export type FuelType = "DIESEL" | "GASOLINE" | "LPG" | "ELECTRIC";
+
+/**
+ * Toll data source for transparency
+ * Story 15.1: Track toll data source
+ */
+export type TollSource = "GOOGLE_API" | "ESTIMATE";
+
+/**
  * Fuel cost breakdown
+ * Story 15.6: Extended with fuelType
  */
 export interface FuelCostBreakdown {
   amount: number;
   distanceKm: number;
   consumptionL100km: number;
   pricePerLiter: number;
+  fuelType?: FuelType; // Story 15.6
 }
 
 /**
  * Tolls cost breakdown
+ * Story 15.1: Extended with source and cache info
  */
 export interface TollsCostBreakdown {
   amount: number;
   distanceKm: number;
   ratePerKm: number;
+  source?: TollSource; // Story 15.1
+  isFromCache?: boolean; // Story 15.1
 }
 
 /**
