@@ -14,6 +14,17 @@ import type {
 import { getProfitabilityLevel } from "../types";
 
 /**
+ * Story 16.7: Excursion stop for multi-stop pricing
+ */
+interface ExcursionStopInput {
+  address: string;
+  latitude: number;
+  longitude: number;
+  order: number;
+  notes?: string;
+}
+
+/**
  * Input for pricing calculation API
  */
 interface PricingCalculationInput {
@@ -28,6 +39,10 @@ interface PricingCalculationInput {
   enableVehicleSelection?: boolean;
   // Story 16.6: Round trip flag for transfer pricing
   isRoundTrip?: boolean;
+  // Story 16.7: Excursion stops for multi-stop pricing
+  stops?: ExcursionStopInput[];
+  // Story 16.7: Return date for multi-day excursions
+  returnDate?: string;
 }
 
 /**
@@ -363,6 +378,16 @@ export function usePricingCalculation(
           enableVehicleSelection: true,
           // Story 16.6: Pass round trip flag for transfer pricing
           isRoundTrip: formData.isRoundTrip,
+          // Story 16.7: Pass excursion stops for multi-stop pricing
+          stops: formData.stops?.map((stop, index) => ({
+            address: stop.address,
+            latitude: stop.latitude ?? 0,
+            longitude: stop.longitude ?? 0,
+            order: stop.order ?? index,
+            notes: stop.notes,
+          })),
+          // Story 16.7: Pass return date for multi-day excursions
+          returnDate: formData.returnDate?.toISOString(),
         };
 
         mutation.mutate(input);

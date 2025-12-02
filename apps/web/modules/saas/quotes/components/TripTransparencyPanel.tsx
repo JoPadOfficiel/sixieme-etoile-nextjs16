@@ -326,7 +326,7 @@ export function TripTransparencyPanel({
           </Card>
         </TabsContent>
 
-        {/* Route Tab - Segments A/B/C */}
+        {/* Route Tab - Segments A/B/C or Excursion Legs */}
         <TabsContent value="route" className="mt-4">
           {/* Route Map Preview */}
           {routeCoordinates && (routeCoordinates.pickup || routeCoordinates.dropoff) && (
@@ -339,59 +339,133 @@ export function TripTransparencyPanel({
           )}
           <Card>
             <CardContent className="pt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("quotes.create.tripTransparency.segment")}</TableHead>
-                    <TableHead className="text-right">
-                      {t("quotes.create.tripTransparency.distance")}
-                    </TableHead>
-                    <TableHead className="text-right">
-                      {t("quotes.create.tripTransparency.duration")}
-                    </TableHead>
-                    <TableHead className="text-right">
-                      {t("quotes.create.tripTransparency.cost")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tripAnalysis.segments.approach && (
+              {/* Story 16.7: Display excursion legs if present */}
+              {tripAnalysis.excursionLegs && tripAnalysis.excursionLegs.length > 0 ? (
+                <>
+                  {/* Excursion Multi-Stop Badge */}
+                  <div className="mb-4 flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      <MapIcon className="size-3 mr-1" />
+                      {t("quotes.create.tripTransparency.excursion")} ({tripAnalysis.totalStops ?? tripAnalysis.excursionLegs.length - 1} {t("quotes.create.tripTransparency.stops")})
+                    </Badge>
+                    {tripAnalysis.isMultiDay && (
+                      <Badge variant="outline" className="text-xs">
+                        {t("quotes.create.tripTransparency.multiDay")}
+                      </Badge>
+                    )}
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>{t("quotes.create.tripTransparency.leg")}</TableHead>
+                        <TableHead className="text-right">
+                          {t("quotes.create.tripTransparency.distance")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("quotes.create.tripTransparency.duration")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("quotes.create.tripTransparency.cost")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tripAnalysis.excursionLegs.map((leg) => (
+                        <TableRow key={leg.order}>
+                          <TableCell className="font-medium">{leg.order}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{leg.fromAddress}</span>
+                              <span className="text-xs text-muted-foreground">→ {leg.toAddress}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatDistance(leg.distanceKm)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatDuration(leg.durationMinutes)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatPrice(leg.cost.total)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Total Row */}
+                      <TableRow className="font-medium bg-muted/50">
+                        <TableCell></TableCell>
+                        <TableCell>
+                          {t("quotes.create.tripTransparency.total")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatDistance(tripAnalysis.totalDistanceKm)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatDuration(tripAnalysis.totalDurationMinutes)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatPrice(tripAnalysis.totalInternalCost)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              ) : (
+                /* Standard Transfer/Dispo segments */
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("quotes.create.tripTransparency.segment")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("quotes.create.tripTransparency.distance")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("quotes.create.tripTransparency.duration")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("quotes.create.tripTransparency.cost")}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tripAnalysis.segments.approach && (
+                      <SegmentRow
+                        segment={tripAnalysis.segments.approach}
+                        label={t("quotes.create.tripTransparency.segments.approach")}
+                        description={t("quotes.create.tripTransparency.segments.approachDesc")}
+                      />
+                    )}
                     <SegmentRow
-                      segment={tripAnalysis.segments.approach}
-                      label={t("quotes.create.tripTransparency.segments.approach")}
-                      description={t("quotes.create.tripTransparency.segments.approachDesc")}
+                      segment={tripAnalysis.segments.service}
+                      label={t("quotes.create.tripTransparency.segments.service")}
+                      description={t("quotes.create.tripTransparency.segments.serviceDesc")}
+                      isMain
                     />
-                  )}
-                  <SegmentRow
-                    segment={tripAnalysis.segments.service}
-                    label={t("quotes.create.tripTransparency.segments.service")}
-                    description={t("quotes.create.tripTransparency.segments.serviceDesc")}
-                    isMain
-                  />
-                  {tripAnalysis.segments.return && (
-                    <SegmentRow
-                      segment={tripAnalysis.segments.return}
-                      label={t("quotes.create.tripTransparency.segments.return")}
-                      description={t("quotes.create.tripTransparency.segments.returnDesc")}
-                    />
-                  )}
-                  {/* Total Row */}
-                  <TableRow className="font-medium bg-muted/50">
-                    <TableCell>
-                      {t("quotes.create.tripTransparency.total")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatDistance(tripAnalysis.totalDistanceKm)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatDuration(tripAnalysis.totalDurationMinutes)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatPrice(tripAnalysis.totalInternalCost)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                    {tripAnalysis.segments.return && (
+                      <SegmentRow
+                        segment={tripAnalysis.segments.return}
+                        label={t("quotes.create.tripTransparency.segments.return")}
+                        description={t("quotes.create.tripTransparency.segments.returnDesc")}
+                      />
+                    )}
+                    {/* Total Row */}
+                    <TableRow className="font-medium bg-muted/50">
+                      <TableCell>
+                        {t("quotes.create.tripTransparency.total")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatDistance(tripAnalysis.totalDistanceKm)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatDuration(tripAnalysis.totalDurationMinutes)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPrice(tripAnalysis.totalInternalCost)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              )}
 
               {/* Routing Source */}
               <div className="mt-4 text-xs text-muted-foreground flex items-center gap-1">

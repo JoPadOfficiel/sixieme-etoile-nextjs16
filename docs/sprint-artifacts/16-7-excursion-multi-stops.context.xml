@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.7</story-id>
+    <story-name>Calcul Prix Excursion Multi-Arrêts</story-name>
+    <epic>Epic 16 - Quote Refactoring</epic>
+    <created>2025-12-02</created>
+    <author>Bob (Scrum Master)</author>
+  </metadata>
+
+  <problem-statement>
+    <current-situation>
+      Le moteur de tarification actuel ne gère pas correctement les excursions avec plusieurs arrêts intermédiaires.
+      Actuellement, seuls les segments A (approach), B (service), et C (return) sont supportés dans TripAnalysis.
+      Les excursions multi-arrêts (ex: Paris → Versailles → Giverny → Paris) ne calculent pas la distance totale correcte.
+    </current-situation>
+    
+    <pain-points>
+      <pain-point priority="high">
+        Distance incorrecte : Le calcul ne prend pas en compte les arrêts intermédiaires
+      </pain-point>
+      <pain-point priority="high">
+        Segments limités : TripAnalysis.segments ne supporte que 3 segments (A/B/C)
+      </pain-point>
+      <pain-point priority="medium">
+        Pas de visualisation des arrêts : L'UI ne montre pas chaque leg séparément
+      </pain-point>
+      <pain-point priority="low">
+        Gestion multi-jours : Les excursions sur plusieurs jours ne sont pas gérées
+      </pain-point>
+    </pain-points>
+    
+    <business-impact>
+      Sous-facturation des excursions multi-arrêts car la distance réelle n'est pas calculée.
+      Perte de marge estimée : 15-25% sur les excursions complexes.
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary-objective>
+      Calculer la distance totale d'une excursion en sommant toutes les distances entre les arrêts :
+      distance(A→B) + distance(B→C) + distance(C→D) + ...
+    </primary-objective>
+    
+    <secondary-objectives>
+      <objective>Appliquer la durée minimale (4h) conformément à Story 15.5</objective>
+      <objective>Stocker chaque leg comme un segment séparé dans tripAnalysis</objective>
+      <objective>Gérer les excursions multi-jours avec returnDate</objective>
+    </secondary-objectives>
+    
+    <success-metrics>
+      <metric>100% des excursions multi-arrêts facturées sur la distance totale réelle</metric>
+      <metric>Chaque segment visible dans TripTransparencyPanel</metric>
+      <metric>Durée minimale appliquée automatiquement</metric>
+    </success-metrics>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification du calcul de distance pour gérer un tableau de waypoints</item>
+      <item>Extension de TripAnalysis.segments pour supporter N segments</item>
+      <item>Appel Google Routes API avec waypoints</item>
+      <item>Application de la durée minimale (4h) pour excursions</item>
+      <item>Affichage des segments dans TripTransparencyPanel</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modification du formulaire de création (déjà fait en 16.2)</item>
+      <item>Gestion des surcharges overnight (future story)</item>
+      <item>Optimisation de l'ordre des arrêts (pas demandé)</item>
+    </out-of-scope>
+    
+    <dependencies>
+      <dependency status="done">Story 16.1 - Schema Quote étendu</dependency>
+      <dependency status="done">Story 16.2 - Formulaire dynamique</dependency>
+      <dependency status="done">Story 15.5 - Trip type differentiation (durée minimale)</dependency>
+      <dependency status="done">Story 15.1/15.2 - Google Routes API integration</dependency>
+    </dependencies>
+  </scope>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Contient calculatePrice(), buildDynamicResult(), calculateShadowSegments().
+        TripAnalysis.segments supporte actuellement: approach | service | return.
+        Doit être étendu pour supporter un tableau de N segments.
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        API de calcul de prix. Doit passer les stops à la fonction de routing.
+      </file>
+      <file path="packages/api/src/lib/routing.ts">
+        Fonctions de routing Google. Doit supporter waypoints intermédiaires.
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Affichage des segments. Doit afficher N segments au lieu de 3.
+      </file>
+    </existing-code>
+    
+    <data-model>
+      <entity name="QuoteStop">
+        Défini dans Story 16.1 : { address, latitude, longitude, order, notes }
+      </entity>
+      <entity name="TripAnalysis.segments">
+        Actuellement: { approach?, service, return? }
+        Cible: Array de { type, distanceKm, durationMinutes, cost, fromAddress?, toAddress? }
+      </entity>
+    </data-model>
+    
+    <apis>
+      <api name="Google Routes API">
+        Supporte les waypoints intermédiaires via le paramètre "intermediates".
+        Retourne la distance et durée pour chaque leg.
+      </api>
+    </apis>
+  </technical-context>
+
+  <constraints>
+    <technical-constraints>
+      <constraint>Google Routes API limite à 25 waypoints par requête</constraint>
+      <constraint>Maintenir la rétrocompatibilité avec les quotes existantes (segments A/B/C)</constraint>
+      <constraint>Performance : éviter les appels API multiples si possible</constraint>
+    </technical-constraints>
+    
+    <business-constraints>
+      <constraint>Durée minimale de 4h pour toutes les excursions (Story 15.5)</constraint>
+      <constraint>Le prix doit toujours être >= au prix minimum configuré</constraint>
+    </business-constraints>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Complexité de la migration des segments A/B/C vers un tableau</description>
+      <mitigation>Garder la structure existante pour les transfers, nouveau format pour excursions</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Coût API Google Routes augmenté avec waypoints</description>
+      <mitigation>Optimiser en un seul appel avec tous les waypoints</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="must-have">
+      <title>Multi-Stop Distance</title>
+      <given>An excursion with stops [A → B → C → D]</given>
+      <when>The pricing engine calculates distance</when>
+      <then>It sums: distance(A→B) + distance(B→C) + distance(C→D)</then>
+    </criterion>
+    
+    <criterion id="AC2" priority="must-have">
+      <title>Minimum Duration Applied</title>
+      <given>An excursion with total duration 2 hours</given>
+      <when>The pricing engine calculates</when>
+      <then>It uses the minimum duration (4 hours) per Story 15.5</then>
+      <and>The TRIP_TYPE rule shows minimumApplied: true</and>
+    </criterion>
+    
+    <criterion id="AC3" priority="must-have">
+      <title>Stops in Trip Analysis</title>
+      <given>An excursion with multiple stops</given>
+      <when>The quote is saved</when>
+      <then>tripAnalysis.segments includes each leg as a separate segment</then>
+    </criterion>
+    
+    <criterion id="AC4" priority="should-have">
+      <title>Return Date Handling</title>
+      <given>An excursion with returnDate different from pickupAt</given>
+      <when>The pricing engine calculates</when>
+      <then>It considers the multi-day nature (future: overnight surcharges)</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-strategy>
+    <unit-tests>
+      <test>calculateExcursionDistance() with 2, 3, 4 stops</test>
+      <test>applyMinimumDuration() for excursions under 4h</test>
+      <test>buildExcursionSegments() creates correct segment array</test>
+    </unit-tests>
+    
+    <integration-tests>
+      <test>API pricing/calculate with excursion + stops returns correct total distance</test>
+      <test>TripAnalysis.segments contains all legs</test>
+    </integration-tests>
+    
+    <e2e-tests>
+      <test>Create excursion quote with 3 stops, verify price and segments in UI</test>
+      <test>Verify minimum duration badge appears for short excursions</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

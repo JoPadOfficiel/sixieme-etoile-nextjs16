@@ -487,6 +487,26 @@ export interface EffectiveCosts {
 }
 
 /**
+ * Story 16.7: Excursion leg for multi-stop excursions
+ */
+export interface ExcursionLeg {
+  order: number;
+  fromAddress: string;
+  toAddress: string;
+  fromCoords: { lat: number; lng: number };
+  toCoords: { lat: number; lng: number };
+  distanceKm: number;
+  durationMinutes: number;
+  cost: {
+    fuel: number;
+    tolls: number;
+    wear: number;
+    driver: number;
+    total: number;
+  };
+}
+
+/**
  * Trip analysis from shadow calculation
  */
 export interface TripAnalysis {
@@ -514,6 +534,10 @@ export interface TripAnalysis {
     service: SegmentAnalysis;
     return: SegmentAnalysis | null;
   };
+  // Story 16.7: Excursion legs for multi-stop excursions
+  excursionLegs?: ExcursionLeg[];
+  isMultiDay?: boolean;
+  totalStops?: number;
   totalDistanceKm: number;
   totalDurationMinutes: number;
   totalInternalCost: number;

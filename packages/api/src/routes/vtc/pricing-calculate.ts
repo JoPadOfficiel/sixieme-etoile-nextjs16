@@ -20,10 +20,14 @@ import {
 	calculatePrice,
 	applyPriceOverride,
 	resolveFuelConsumption,
+	calculateExcursionLegs,
+	buildExcursionTripAnalysis,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
+	type ExcursionCalculationInput,
 	type ExcursionPackageAssignment,
+	type ExcursionStop,
 	type FuelConsumptionResolution,
 	type OrganizationPricingSettings,
 	type PartnerContractData,
@@ -56,6 +60,15 @@ const geoPointSchema = z.object({
 	lng: z.coerce.number().min(-180).max(180),
 });
 
+// Story 16.7: Excursion stop schema
+const excursionStopSchema = z.object({
+	address: z.string().min(1, "Stop address is required"),
+	latitude: z.coerce.number().min(-90).max(90),
+	longitude: z.coerce.number().min(-180).max(180),
+	order: z.coerce.number().int().nonnegative(),
+	notes: z.string().optional(),
+});
+
 const calculatePricingSchema = z.object({
 	contactId: z.string().min(1, "Contact ID is required"),
 	pickup: geoPointSchema,
@@ -74,6 +87,10 @@ const calculatePricingSchema = z.object({
 	maxCandidatesForRouting: z.coerce.number().int().positive().optional(),
 	// Story 16.6: Round trip flag for transfer pricing
 	isRoundTrip: z.boolean().default(false),
+	// Story 16.7: Excursion stops for multi-stop pricing
+	stops: z.array(excursionStopSchema).optional(),
+	// Story 16.7: Return date for multi-day excursions
+	returnDate: z.string().optional(),
 });
 
 // Story 4.4: Price override schema

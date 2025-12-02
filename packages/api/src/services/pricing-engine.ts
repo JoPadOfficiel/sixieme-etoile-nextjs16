@@ -756,6 +756,27 @@ export interface FuelPriceSourceInfo {
 }
 
 /**
+ * Story 16.7: Excursion leg for multi-stop excursions
+ * Each leg represents a segment between two consecutive stops
+ */
+export interface ExcursionLeg {
+	order: number;
+	fromAddress: string;
+	toAddress: string;
+	fromCoords: { lat: number; lng: number };
+	toCoords: { lat: number; lng: number };
+	distanceKm: number;
+	durationMinutes: number;
+	cost: {
+		fuel: number;
+		tolls: number;
+		wear: number;
+		driver: number;
+		total: number;
+	};
+}
+
+/**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
  */
@@ -772,6 +793,11 @@ export interface TripAnalysis {
 		service: SegmentAnalysis;
 		return: SegmentAnalysis | null; // null if no vehicle selected
 	};
+	
+	// Story 16.7: Excursion legs for multi-stop excursions
+	excursionLegs?: ExcursionLeg[];
+	isMultiDay?: boolean;
+	totalStops?: number;
 	
 	// Totals
 	totalDistanceKm: number;
@@ -1512,6 +1538,215 @@ export function calculateShadowSegments(
 		totalInternalCost: Math.round(totalInternalCost * 100) / 100,
 		calculatedAt,
 		routingSource,
+	};
+}
+
+// ============================================================================
+// Story 16.7: Excursion Multi-Stop Calculation
+// ============================================================================
+
+/**
+ * Story 16.7: Input for excursion leg calculation
+ */
+export interface ExcursionStop {
+	address: string;
+	latitude: number;
+	longitude: number;
+	order: number;
+}
+
+/**
+ * Story 16.7: Input for excursion calculation
+ */
+export interface ExcursionCalculationInput {
+	pickup: { lat: number; lng: number; address?: string };
+	dropoff: { lat: number; lng: number; address?: string };
+	stops: ExcursionStop[];
+	returnDate?: string; // ISO date string
+	pickupAt?: string; // ISO date string
+}
+
+/**
+ * Story 16.7: Calculate excursion legs from pickup, stops, and dropoff
+ * Creates an array of ExcursionLeg objects for multi-stop excursions
+ * 
+ * @param input - Excursion calculation input with stops
+ * @param legDistances - Array of distances for each leg (from routing)
+ * @param legDurations - Array of durations for each leg (from routing)
+ * @param settings - Organization pricing settings for cost calculation
+ * @returns Array of ExcursionLeg objects
+ */
+export function calculateExcursionLegs(
+	input: ExcursionCalculationInput,
+	legDistances: number[],
+	legDurations: number[],
+	settings: OrganizationPricingSettings,
+): ExcursionLeg[] {
+	// Build the full route: pickup → stop1 → stop2 → ... → dropoff
+	const sortedStops = [...input.stops].sort((a, b) => a.order - b.order);
+	
+	const waypoints: Array<{
+		address: string;
+		lat: number;
+		lng: number;
+	}> = [
+		{ address: input.pickup.address ?? "Pickup", lat: input.pickup.lat, lng: input.pickup.lng },
+		...sortedStops.map(s => ({ address: s.address, lat: s.latitude, lng: s.longitude })),
+		{ address: input.dropoff.address ?? "Dropoff", lat: input.dropoff.lat, lng: input.dropoff.lng },
+	];
+	
+	const legs: ExcursionLeg[] = [];
+	
+	for (let i = 0; i < waypoints.length - 1; i++) {
+		const from = waypoints[i];
+		const to = waypoints[i + 1];
+		const distanceKm = legDistances[i] ?? 0;
+		const durationMinutes = legDurations[i] ?? 0;
+		
+		// Calculate cost for this leg
+		const legCost = calculateLegCost(distanceKm, durationMinutes, settings);
+		
+		legs.push({
+			order: i + 1,
+			fromAddress: from.address,
+			toAddress: to.address,
+			fromCoords: { lat: from.lat, lng: from.lng },
+			toCoords: { lat: to.lat, lng: to.lng },
+			distanceKm: Math.round(distanceKm * 100) / 100,
+			durationMinutes: Math.round(durationMinutes * 100) / 100,
+			cost: legCost,
+		});
+	}
+	
+	return legs;
+}
+
+/**
+ * Story 16.7: Calculate cost for a single excursion leg
+ */
+function calculateLegCost(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+): ExcursionLeg["cost"] {
+	// Use defaults if settings are not provided
+	const fuelConsumption = settings.fuelConsumptionL100km ?? 7.5;
+	const fuelPrice = settings.fuelPricePerLiter ?? 1.80;
+	const tollRate = settings.tollCostPerKm ?? 0.12;
+	const wearRate = settings.wearCostPerKm ?? 0.08;
+	const driverRate = settings.driverHourlyCost ?? 30;
+	
+	const fuel = Math.round(
+		distanceKm * (fuelConsumption / 100) * fuelPrice * 100
+	) / 100;
+	
+	const tolls = Math.round(distanceKm * tollRate * 100) / 100;
+	
+	const wear = Math.round(distanceKm * wearRate * 100) / 100;
+	
+	const driver = Math.round(
+		(durationMinutes / 60) * driverRate * 100
+	) / 100;
+	
+	const total = Math.round((fuel + tolls + wear + driver) * 100) / 100;
+	
+	return { fuel, tolls, wear, driver, total };
+}
+
+/**
+ * Story 16.7: Build TripAnalysis for excursion with multiple stops
+ * 
+ * @param legs - Array of ExcursionLeg objects
+ * @param settings - Organization pricing settings
+ * @param returnDate - Optional return date for multi-day excursions
+ * @param pickupAt - Pickup date/time
+ * @returns Complete TripAnalysis with excursion legs
+ */
+export function buildExcursionTripAnalysis(
+	legs: ExcursionLeg[],
+	settings: OrganizationPricingSettings,
+	returnDate?: string,
+	pickupAt?: string,
+): TripAnalysis {
+	const calculatedAt = new Date().toISOString();
+	
+	// Calculate totals from all legs
+	const totalDistanceKm = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
+	const totalDurationMinutes = legs.reduce((sum, leg) => sum + leg.durationMinutes, 0);
+	const totalInternalCost = legs.reduce((sum, leg) => sum + leg.cost.total, 0);
+	
+	// Use defaults if settings are not provided
+	const fuelConsumption = settings.fuelConsumptionL100km ?? 7.5;
+	const fuelPrice = settings.fuelPricePerLiter ?? 1.80;
+	const tollRate = settings.tollCostPerKm ?? 0.12;
+	const wearRate = settings.wearCostPerKm ?? 0.08;
+	const driverRate = settings.driverHourlyCost ?? 30;
+	
+	// Combine cost breakdowns with proper types
+	const costBreakdown: CostBreakdown = {
+		fuel: {
+			amount: Math.round(legs.reduce((sum, leg) => sum + leg.cost.fuel, 0) * 100) / 100,
+			distanceKm: totalDistanceKm,
+			consumptionL100km: fuelConsumption,
+			pricePerLiter: fuelPrice,
+			fuelType: "DIESEL",
+		},
+		tolls: {
+			amount: Math.round(legs.reduce((sum, leg) => sum + leg.cost.tolls, 0) * 100) / 100,
+			distanceKm: totalDistanceKm,
+			ratePerKm: tollRate,
+			source: "ESTIMATE",
+		},
+		wear: {
+			amount: Math.round(legs.reduce((sum, leg) => sum + leg.cost.wear, 0) * 100) / 100,
+			distanceKm: totalDistanceKm,
+			ratePerKm: wearRate,
+		},
+		driver: {
+			amount: Math.round(legs.reduce((sum, leg) => sum + leg.cost.driver, 0) * 100) / 100,
+			durationMinutes: totalDurationMinutes,
+			hourlyRate: driverRate,
+		},
+		parking: {
+			amount: 0,
+			description: "Not applicable for excursions",
+		},
+		total: Math.round(totalInternalCost * 100) / 100,
+	};
+	
+	// Check if multi-day excursion
+	let isMultiDay = false;
+	if (returnDate && pickupAt) {
+		const pickupDate = new Date(pickupAt).toDateString();
+		const returnDateStr = new Date(returnDate).toDateString();
+		isMultiDay = pickupDate !== returnDateStr;
+	}
+	
+	// Create a service segment for compatibility
+	const serviceSegment: SegmentAnalysis = {
+		name: "service",
+		description: `Excursion with ${legs.length} legs`,
+		distanceKm: totalDistanceKm,
+		durationMinutes: totalDurationMinutes,
+		cost: costBreakdown,
+		isEstimated: false,
+	};
+	
+	return {
+		costBreakdown,
+		segments: {
+			approach: null,
+			service: serviceSegment,
+			return: null,
+		},
+		excursionLegs: legs,
+		isMultiDay,
+		totalStops: legs.length - 1, // Number of intermediate stops (excluding pickup/dropoff)
+		totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+		totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
+		totalInternalCost: Math.round(totalInternalCost * 100) / 100,
+		calculatedAt,
+		routingSource: "GOOGLE_API",
 	};
 }
 
