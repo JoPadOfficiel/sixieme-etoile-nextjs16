@@ -183,6 +183,9 @@
 	"common": {
 		"optional": "Optional",
 		"remove": "Remove",
+		"moveUp": "Move up",
+		"moveDown": "Move down",
+		"max": "max",
 		"map": {
 			"noApiKey": "Google Maps API key not configured",
 			"configureInSettings": "Configure it in Organization Settings > Integrations",
@@ -2058,6 +2061,26 @@
 				"excursion": "Excursion",
 				"dispo": "Mise à disposition",
 				"off_grid": "Off-grid"
+			},
+			"tripTypeFields": {
+				"roundTrip": "Round trip",
+				"roundTripHint": "Price will be doubled for return journey",
+				"addStop": "Add a stop",
+				"removeStop": "Remove stop",
+				"stopLabel": "Stop {number}",
+				"intermediateStops": "Intermediate stops",
+				"noStopsYet": "No stops added yet. Click 'Add a stop' to add intermediate destinations.",
+				"returnDate": "Return date",
+				"returnDateHint": "Leave empty for same-day return",
+				"durationHours": "Duration (hours)",
+				"durationHoursHint": "Minimum 1 hour, maximum 24 hours",
+				"maxKilometers": "Max kilometers included",
+				"maxKilometersHint": "Calculated: {hours}h × 50 km/h = {km} km",
+				"dropoffOptional": "Dropoff Address (optional)",
+				"notesRequired": "Notes (required for off-grid)",
+				"notesPlaceholder": "Describe the trip: destination, special requirements...",
+				"offGridInfo": "Off-grid trip",
+				"offGridInfoHint": "For off-grid trips, please describe the destination and requirements in the Notes field below."
 			},
 			"pickup": "Pickup Address",
 			"pickupPlaceholder": "Enter pickup address...",

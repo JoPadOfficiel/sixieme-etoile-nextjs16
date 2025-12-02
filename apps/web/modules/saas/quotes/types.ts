@@ -135,11 +135,13 @@ export interface Contact {
 
 /**
  * Story 16.1: Stop structure for excursion trips
+ * Story 16.2: Added id for React key and nullable coordinates
  */
 export interface QuoteStop {
+  id: string;
   address: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   order: number;
 }
 

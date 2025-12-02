@@ -20,6 +20,7 @@ import { cn } from "@ui/lib";
 import { AddressAutocomplete } from "@saas/shared/components/AddressAutocomplete";
 import { ContactSelector } from "./ContactSelector";
 import { VehicleCategorySelector } from "./VehicleCategorySelector";
+import { TripTypeFormFields } from "./TripTypeFormFields";
 import type { CreateQuoteFormData, TripType, Contact, VehicleCategory, AddressWithCoordinates } from "../types";
 
 interface QuoteBasicInfoPanelProps {
@@ -153,15 +154,30 @@ export function QuoteBasicInfoPanel({
             required
           />
 
-          {/* Dropoff Address */}
-          <AddressAutocomplete
-            id="dropoff"
-            label={t("quotes.create.dropoff")}
-            value={formData.dropoffAddress}
-            onChange={handleDropoffChange}
-            placeholder={t("quotes.create.dropoffPlaceholder")}
+          {/* Dropoff Address - Conditional based on trip type */}
+          {/* DISPO: Hidden, OFF_GRID: Optional, Others: Required */}
+          {formData.tripType !== "DISPO" && (
+            <AddressAutocomplete
+              id="dropoff"
+              label={
+                formData.tripType === "OFF_GRID"
+                  ? t("quotes.create.tripTypeFields.dropoffOptional")
+                  : t("quotes.create.dropoff")
+              }
+              value={formData.dropoffAddress}
+              onChange={handleDropoffChange}
+              placeholder={t("quotes.create.dropoffPlaceholder")}
+              disabled={disabled}
+              required={formData.tripType !== "OFF_GRID"}
+            />
+          )}
+
+          {/* Trip Type Specific Fields */}
+          <TripTypeFormFields
+            tripType={formData.tripType}
+            formData={formData}
+            onFormChange={onFormChange}
             disabled={disabled}
-            required
           />
 
           {/* Pickup DateTime */}

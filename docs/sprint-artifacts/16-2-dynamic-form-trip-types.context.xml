@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.2</story-id>
+    <story-key>16-2-dynamic-form-trip-types</story-key>
+    <title>Formulaire Dynamique par Type de Trajet</title>
+    <epic>Epic 16 - Refactorisation du Système de Devis par Type de Trajet</epic>
+    <created>2025-12-02</created>
+    <status>ready-for-dev</status>
+    <priority>high</priority>
+    <estimated-effort>5 Story Points</estimated-effort>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Le formulaire de création de devis (QuoteBasicInfoPanel) affiche actuellement les mêmes champs 
+      pour tous les types de trajets (Transfer, Excursion, Mise à disposition, Off-grid). 
+      Cela pose plusieurs problèmes :
+      
+      1. **Transfer** : Pas d'option aller-retour disponible
+      2. **Excursion** : Impossible d'ajouter des arrêts intermédiaires ou une date de retour
+      3. **Mise à disposition** : Le champ dropoff est affiché alors qu'il n'est pas pertinent
+      4. **Off-grid** : Le dropoff est obligatoire alors qu'il devrait être optionnel
+      
+      La Story 16.1 a ajouté les champs nécessaires au schéma Prisma (isRoundTrip, stops, 
+      returnDate, durationHours, maxKilometers) et rendu dropoffAddress optionnel.
+      Cette story doit maintenant adapter l'interface utilisateur.
+    </description>
+    <impact>
+      - Expérience utilisateur dégradée : champs non pertinents affichés
+      - Données incomplètes : impossible de saisir les informations spécifiques
+      - Erreurs de validation : champs obligatoires qui ne devraient pas l'être
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Créer un composant TripTypeFormFields qui affiche les champs spécifiques selon le type de trajet</objective>
+    <objective id="2">Ajouter une checkbox "Aller-retour" pour le type TRANSFER</objective>
+    <objective id="3">Ajouter un système d'arrêts dynamiques pour le type EXCURSION</objective>
+    <objective id="4">Afficher durée/km max et masquer dropoff pour le type DISPO</objective>
+    <objective id="5">Rendre dropoff optionnel et notes obligatoires pour OFF_GRID</objective>
+    <objective id="6">Mettre à jour les validations du formulaire selon le type</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Création du composant TripTypeFormFields</item>
+      <item>Modification de QuoteBasicInfoPanel pour intégrer TripTypeFormFields</item>
+      <item>Ajout des traductions pour les nouveaux labels</item>
+      <item>Validation conditionnelle des champs selon le type de trajet</item>
+      <item>Calcul automatique de maxKilometers (durationHours × 50)</item>
+      <item>Composant StopsEditor pour gérer les arrêts d'excursion</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification du pricing engine (Story 16.3+)</item>
+      <item>Intégration des zones dans le calcul (Story 16.3)</item>
+      <item>Prix bloqués pour les agences (Story 16.5)</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <existing-files>
+      <file path="apps/web/modules/saas/quotes/components/QuoteBasicInfoPanel.tsx">
+        Composant actuel du formulaire - à modifier pour intégrer les champs dynamiques
+      </file>
+      <file path="apps/web/modules/saas/quotes/types.ts">
+        Types TypeScript déjà mis à jour avec CreateQuoteFormData incluant les nouveaux champs
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/CreateQuoteCockpit.tsx">
+        Composant parent qui gère le state du formulaire - déjà mis à jour pour envoyer les nouveaux champs
+      </file>
+      <file path="packages/api/src/routes/vtc/quotes.ts">
+        API avec validation Zod conditionnelle déjà implémentée
+      </file>
+    </existing-files>
+
+    <new-files>
+      <file path="apps/web/modules/saas/quotes/components/TripTypeFormFields.tsx">
+        Nouveau composant qui affiche les champs spécifiques selon tripType
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/StopsEditor.tsx">
+        Nouveau composant pour gérer la liste dynamique d'arrêts (EXCURSION)
+      </file>
+    </new-files>
+
+    <dependencies>
+      <dependency>Story 16.1 - Schéma Quote étendu (TERMINÉE)</dependency>
+      <dependency>AddressAutocomplete - Composant existant pour l'autocomplétion d'adresses</dependency>
+      <dependency>next-intl - Pour les traductions</dependency>
+      <dependency>lucide-react - Pour les icônes</dependency>
+    </dependencies>
+
+    <form-data-structure>
+      <![CDATA[
+interface CreateQuoteFormData {
+  // ... existing fields ...
+  tripType: TripType;
+  dropoffAddress: string;  // Optional for DISPO and OFF_GRID
+  
+  // Story 16.1 fields to use:
+  isRoundTrip: boolean;           // For TRANSFER
+  stops: QuoteStop[];             // For EXCURSION
+  returnDate: Date | null;        // For EXCURSION
+  durationHours: number | null;   // For DISPO
+  maxKilometers: number | null;   // For DISPO (calculated: durationHours × 50)
+}
+
+interface QuoteStop {
+  id: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  order: number;
+}
+      ]]>
+    </form-data-structure>
+  </technical-context>
+
+  <constraints>
+    <constraint type="ux">Les champs doivent s'afficher/masquer de manière fluide lors du changement de type</constraint>
+    <constraint type="validation">La validation doit être cohérente entre frontend et backend (Zod)</constraint>
+    <constraint type="i18n">Toutes les nouvelles chaînes doivent être traduites (en + fr)</constraint>
+    <constraint type="accessibility">Les nouveaux champs doivent être accessibles (labels, aria)</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Complexité du composant StopsEditor avec drag-and-drop potentiel</description>
+      <mitigation>Commencer par une version simple avec boutons up/down, améliorer ensuite</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Performance si beaucoup d'arrêts sont ajoutés</description>
+      <mitigation>Limiter à 10 arrêts maximum</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">TRANSFER: Checkbox "Aller-retour" visible et fonctionnelle</criterion>
+    <criterion id="AC2">EXCURSION: Bouton "Ajouter un arrêt" + liste dynamique + date retour optionnelle</criterion>
+    <criterion id="AC3">DISPO: Champs durée + km max visibles, dropoff masqué</criterion>
+    <criterion id="AC4">OFF_GRID: Dropoff optionnel, notes obligatoires avec placeholder</criterion>
+    <criterion id="AC5">Validation: Erreurs affichées pour les champs manquants selon le type</criterion>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <test type="unit">Tests Vitest pour TripTypeFormFields et StopsEditor</test>
+    <test type="e2e">Tests Playwright pour chaque type de trajet</test>
+    <test type="api">Tests curl pour vérifier la création avec les nouveaux champs</test>
+    <test type="db">Vérification en base via MCP postgres</test>
+  </test-strategy>
+</story-context>

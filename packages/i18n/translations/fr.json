@@ -183,6 +183,9 @@
 	"common": {
 		"optional": "Optionnel",
 		"remove": "Supprimer",
+		"moveUp": "Monter",
+		"moveDown": "Descendre",
+		"max": "max",
 		"map": {
 			"noApiKey": "Clé API Google Maps non configurée",
 			"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations",
@@ -2058,6 +2061,26 @@
 				"excursion": "Excursion",
 				"dispo": "Mise à disposition",
 				"off_grid": "Hors grille"
+			},
+			"tripTypeFields": {
+				"roundTrip": "Aller-retour",
+				"roundTripHint": "Le prix sera doublé pour le trajet retour",
+				"addStop": "Ajouter un arrêt",
+				"removeStop": "Supprimer l'arrêt",
+				"stopLabel": "Arrêt {number}",
+				"intermediateStops": "Arrêts intermédiaires",
+				"noStopsYet": "Aucun arrêt ajouté. Cliquez sur 'Ajouter un arrêt' pour ajouter des destinations intermédiaires.",
+				"returnDate": "Date de retour",
+				"returnDateHint": "Laisser vide pour un retour le même jour",
+				"durationHours": "Durée (heures)",
+				"durationHoursHint": "Minimum 1 heure, maximum 24 heures",
+				"maxKilometers": "Kilomètres max inclus",
+				"maxKilometersHint": "Calculé : {hours}h × 50 km/h = {km} km",
+				"dropoffOptional": "Adresse de destination (optionnel)",
+				"notesRequired": "Notes (obligatoire pour hors grille)",
+				"notesPlaceholder": "Décrivez le trajet : destination, exigences particulières...",
+				"offGridInfo": "Trajet hors grille",
+				"offGridInfoHint": "Pour les trajets hors grille, veuillez décrire la destination et les exigences dans le champ Notes ci-dessous."
 			},
 			"pickup": "Adresse de prise en charge",
 			"pickupPlaceholder": "Entrez l'adresse de prise en charge...",
