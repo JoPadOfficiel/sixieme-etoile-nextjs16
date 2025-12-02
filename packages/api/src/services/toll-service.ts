@@ -440,6 +440,251 @@ export class TollService {
 }
 
 // ============================================================================
+// Story 16.7: Excursion Multi-Stop Routing
+// ============================================================================
+
+/**
+ * Result of excursion route calculation
+ */
+export interface ExcursionRouteResult {
+	/** Array of leg distances in km */
+	legDistances: number[];
+	/** Array of leg durations in minutes */
+	legDurations: number[];
+	/** Total distance in km */
+	totalDistanceKm: number;
+	/** Total duration in minutes */
+	totalDurationMinutes: number;
+	/** Whether the API call was successful */
+	success: boolean;
+	/** Error message if failed */
+	error?: string;
+}
+
+/**
+ * Story 16.7: Call Google Routes API with waypoints for excursion routing
+ * 
+ * @param origin - Origin point
+ * @param destination - Destination point
+ * @param waypoints - Array of intermediate waypoints
+ * @param apiKey - Google Maps API key
+ * @returns Route result with leg distances and durations
+ */
+export async function callGoogleRoutesAPIWithWaypoints(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	waypoints: GeoPoint[],
+	apiKey: string,
+): Promise<ExcursionRouteResult> {
+	try {
+		// Build intermediates array for Google Routes API
+		const intermediates = waypoints.map((wp) => ({
+			location: {
+				latLng: { latitude: wp.lat, longitude: wp.lng },
+			},
+		}));
+
+		const response = await fetch(GOOGLE_ROUTES_API_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Goog-Api-Key": apiKey,
+				"X-Goog-FieldMask":
+					"routes.legs.distanceMeters,routes.legs.duration,routes.distanceMeters,routes.duration",
+			},
+			body: JSON.stringify({
+				origin: {
+					location: {
+						latLng: { latitude: origin.lat, longitude: origin.lng },
+					},
+				},
+				destination: {
+					location: {
+						latLng: { latitude: destination.lat, longitude: destination.lng },
+					},
+				},
+				intermediates: intermediates.length > 0 ? intermediates : undefined,
+				travelMode: "DRIVE",
+				routingPreference: "TRAFFIC_AWARE",
+				computeAlternativeRoutes: false,
+			}),
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(
+				`[ExcursionRouting] Google Routes API HTTP error: ${response.status} - ${errorText}`,
+			);
+			return {
+				legDistances: [],
+				legDurations: [],
+				totalDistanceKm: 0,
+				totalDurationMinutes: 0,
+				success: false,
+				error: `HTTP ${response.status}`,
+			};
+		}
+
+		const data = await response.json() as {
+			routes?: Array<{
+				distanceMeters?: number;
+				duration?: string;
+				legs?: Array<{
+					distanceMeters?: number;
+					duration?: string;
+				}>;
+			}>;
+			error?: { message: string };
+		};
+
+		if (data.error) {
+			console.error(
+				`[ExcursionRouting] Google Routes API error: ${data.error.message}`,
+			);
+			return {
+				legDistances: [],
+				legDurations: [],
+				totalDistanceKm: 0,
+				totalDurationMinutes: 0,
+				success: false,
+				error: data.error.message,
+			};
+		}
+
+		const route = data.routes?.[0];
+		if (!route) {
+			return {
+				legDistances: [],
+				legDurations: [],
+				totalDistanceKm: 0,
+				totalDurationMinutes: 0,
+				success: false,
+				error: "No route found",
+			};
+		}
+
+		// Parse leg distances and durations
+		const legs = route.legs || [];
+		const legDistances = legs.map((leg) => 
+			leg.distanceMeters ? leg.distanceMeters / 1000 : 0
+		);
+		const legDurations = legs.map((leg) => {
+			if (!leg.duration) return 0;
+			// Duration is in format "123s"
+			const seconds = parseInt(leg.duration.replace("s", ""), 10);
+			return seconds / 60;
+		});
+
+		// Calculate totals
+		const totalDistanceKm = route.distanceMeters 
+			? route.distanceMeters / 1000 
+			: legDistances.reduce((sum, d) => sum + d, 0);
+		
+		const totalDurationMinutes = route.duration
+			? parseInt(route.duration.replace("s", ""), 10) / 60
+			: legDurations.reduce((sum, d) => sum + d, 0);
+
+		return {
+			legDistances,
+			legDurations,
+			totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+			totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
+			success: true,
+		};
+	} catch (error) {
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error";
+		console.error(`[ExcursionRouting] API call failed: ${errorMessage}`);
+		return {
+			legDistances: [],
+			legDurations: [],
+			totalDistanceKm: 0,
+			totalDurationMinutes: 0,
+			success: false,
+			error: errorMessage,
+		};
+	}
+}
+
+/**
+ * Story 16.7: Calculate excursion route with Haversine fallback
+ * Uses Google Routes API if available, falls back to Haversine estimates
+ * 
+ * @param origin - Origin point
+ * @param destination - Destination point
+ * @param waypoints - Array of intermediate waypoints
+ * @param apiKey - Google Maps API key (optional)
+ * @returns Route result with leg distances and durations
+ */
+export async function calculateExcursionRoute(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	waypoints: GeoPoint[],
+	apiKey?: string,
+): Promise<ExcursionRouteResult> {
+	// Try Google Routes API first if we have an API key
+	if (apiKey) {
+		const apiResult = await callGoogleRoutesAPIWithWaypoints(
+			origin,
+			destination,
+			waypoints,
+			apiKey,
+		);
+		if (apiResult.success) {
+			return apiResult;
+		}
+		console.warn(`[ExcursionRouting] API failed, falling back to Haversine: ${apiResult.error}`);
+	}
+
+	// Fallback to Haversine calculation
+	const allPoints = [origin, ...waypoints, destination];
+	const legDistances: number[] = [];
+	const legDurations: number[] = [];
+
+	for (let i = 0; i < allPoints.length - 1; i++) {
+		const from = allPoints[i];
+		const to = allPoints[i + 1];
+		const distance = haversineDistance(from, to);
+		legDistances.push(Math.round(distance * 100) / 100);
+		// Estimate duration: 40 km/h average speed
+		legDurations.push(Math.round((distance / 40) * 60 * 100) / 100);
+	}
+
+	const totalDistanceKm = legDistances.reduce((sum, d) => sum + d, 0);
+	const totalDurationMinutes = legDurations.reduce((sum, d) => sum + d, 0);
+
+	return {
+		legDistances,
+		legDurations,
+		totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+		totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
+		success: true,
+	};
+}
+
+/**
+ * Calculate Haversine distance between two points
+ * @returns Distance in kilometers
+ */
+function haversineDistance(from: GeoPoint, to: GeoPoint): number {
+	const R = 6371; // Earth's radius in km
+	const dLat = toRad(to.lat - from.lat);
+	const dLng = toRad(to.lng - from.lng);
+	const a =
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(toRad(from.lat)) *
+			Math.cos(toRad(to.lat)) *
+			Math.sin(dLng / 2) *
+			Math.sin(dLng / 2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return R * c;
+}
+
+function toRad(deg: number): number {
+	return deg * (Math.PI / 180);
+}
+
+// ============================================================================
 // Cleanup Function
 // ============================================================================
 

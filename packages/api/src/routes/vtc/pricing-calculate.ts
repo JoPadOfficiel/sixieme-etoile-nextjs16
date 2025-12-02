@@ -676,6 +676,8 @@ export const pricingCalculateRouter = new Hono()
 					defaultRatePerHour: vehicleCategory.defaultRatePerHour
 						? Number(vehicleCategory.defaultRatePerHour)
 						: null,
+					// Story 15.6: Fuel type - default to null (DIESEL will be used)
+					fuelType: null,
 				} : undefined,
 			});
 

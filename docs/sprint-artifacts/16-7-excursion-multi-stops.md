@@ -1,7 +1,7 @@
 # Story 16.7 – Calcul Prix Excursion Multi-Arrêts
 
 **Epic:** 16 - Quote Refactoring  
-**Status:** In Progress  
+**Status:** done
 **Priority:** Medium  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2025-12-02  
@@ -227,10 +227,10 @@ stops: z.array(z.object({
 - [x] Multi-stop distance calculated correctly (sum of all legs)
 - [x] Minimum duration (4h) applied for excursions (via Story 15.5)
 - [x] excursionLegs array in tripAnalysis
-- [ ] Google Routes API called with waypoints (requires routing integration)
+- [x] Google Routes API called with waypoints (`calculateExcursionRoute()` in toll-service.ts)
 - [x] UI displays all legs in TripTransparency
-- [ ] Unit tests passing (Vitest)
-- [ ] E2E tests passing (Playwright)
+- [x] Unit tests passing (Vitest) - 11 tests in `excursion-pricing.test.ts`
+- [x] E2E tests passing (Playwright) - Formulaire Excursion vérifié
 
 ## Implementation Progress
 
@@ -271,7 +271,24 @@ stops: z.array(z.object({
    - Added table for displaying each leg
 
 6. **Translations** (`packages/i18n/translations/en.json`, `fr.json`)
+
    - Added: excursion, stops, multiDay, leg
+
+7. **Google Routes API with Waypoints** (`packages/api/src/services/toll-service.ts`)
+
+   - Added `ExcursionRouteResult` interface
+   - Added `callGoogleRoutesAPIWithWaypoints()` function
+   - Added `calculateExcursionRoute()` with Haversine fallback
+   - Added `haversineDistance()` helper function
+
+8. **Unit Tests** (`packages/api/src/services/__tests__/excursion-pricing.test.ts`)
+
+   - 11 tests covering `calculateExcursionLegs()` and `buildExcursionTripAnalysis()`
+   - Tests for 2-stop, 3-stop, 4-stop excursions
+   - Tests for cost calculation, stop ordering, multi-day detection
+
+9. **Bug Fix** (`packages/api/src/routes/vtc/pricing-calculate.ts`)
+   - Fixed `VehicleCategoryInfo.fuelType` error by setting default to `null`
 
 ---
 
