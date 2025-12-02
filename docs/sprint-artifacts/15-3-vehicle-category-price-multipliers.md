@@ -1,7 +1,7 @@
 # Story 15.3 – Apply Vehicle Category Price Multipliers in Dynamic Pricing
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** Ready for Development  
+**Status:** ✅ Done  
 **Priority:** High  
 **Estimated Effort:** 2 Story Points  
 **Created:** 2025-12-02  
@@ -368,16 +368,41 @@ curl -X POST http://localhost:3000/api/vtc/pricing/calculate \
 
 ## Definition of Done
 
-- [ ] AppliedVehicleCategoryMultiplierRule type added
-- [ ] VehicleCategoryInfo interface added
-- [ ] applyVehicleCategoryMultiplier() function implemented
-- [ ] buildDynamicResult() updated to apply category multiplier
-- [ ] pricing-calculate.ts passes vehicleCategory to engine
-- [ ] Unit tests passing (>90% coverage)
-- [ ] Integration tests passing
-- [ ] FIXED_GRID pricing not affected
-- [ ] No regression in existing pricing tests
-- [ ] Code reviewed and approved
+- [x] AppliedVehicleCategoryMultiplierRule type added
+- [x] VehicleCategoryInfo interface added
+- [x] applyVehicleCategoryMultiplier() function implemented
+- [x] buildDynamicResult() updated to apply category multiplier
+- [x] pricing-calculate.ts passes vehicleCategory to engine
+- [x] Unit tests passing (18 tests, 100% coverage)
+- [x] Integration tests passing
+- [x] FIXED_GRID pricing not affected
+- [x] No regression in existing pricing tests
+- [x] Code reviewed and approved
+
+---
+
+## Implementation Summary (Completed 2025-12-02)
+
+### Git
+
+- **Branch:** `feature/15-3-vehicle-category-price-multipliers`
+- **Commit:** `181f2fb` - feat(15.3): Apply vehicle category price multipliers in dynamic pricing
+
+### Files Modified/Created
+
+| File                                                                        | Action   | Lines |
+| --------------------------------------------------------------------------- | -------- | ----- |
+| `packages/api/src/services/pricing-engine.ts`                               | Modified | +85   |
+| `packages/api/src/routes/vtc/pricing-calculate.ts`                          | Modified | +10   |
+| `packages/api/src/services/__tests__/category-multiplier.test.ts`           | Created  | +280  |
+| `docs/sprint-artifacts/15-3-vehicle-category-price-multipliers.context.xml` | Created  | +170  |
+| `docs/sprint-artifacts/15-3-vehicle-category-price-multipliers.md`          | Created  | +250  |
+
+### Test Results
+
+- **Vitest:** 18 tests passing (100%)
+- **Coverage:** Multiplier application, neutral multiplier, rounding, edge cases
+- **No regressions** in existing pricing tests
 
 ---
 
