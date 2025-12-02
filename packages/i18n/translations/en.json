@@ -2208,6 +2208,8 @@
 				},
 				"commission": "Commission",
 				"netMargin": "Net Margin",
+				"zones": "Zones",
+				"zoneMultiplierApplied": "Zone multiplier ×{multiplier} applied to price",
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"

@@ -120,7 +120,18 @@ export function TripTransparencyPanel({
     );
   }
 
-  const { tripAnalysis, marginPercent, internalCost, price, pricingMode, matchedGrid, commissionData } = pricingResult;
+  const { tripAnalysis, marginPercent, internalCost, price, pricingMode, matchedGrid, commissionData, appliedRules } = pricingResult;
+
+  // Story 16.3: Extract zone multiplier rule for display
+  const zoneMultiplierRule = appliedRules?.find(rule => rule.type === "ZONE_MULTIPLIER") as {
+    type: string;
+    description: string;
+    pickupZone?: { code: string; name: string; multiplier: number };
+    dropoffZone?: { code: string; name: string; multiplier: number };
+    appliedMultiplier?: number;
+    priceBefore?: number;
+    priceAfter?: number;
+  } | undefined;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -262,6 +273,35 @@ export function TripTransparencyPanel({
                         {tripAnalysis.vehicleSelection.selectedVehicle.baseName}
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {/* Story 16.3: Zone Multiplier Info */}
+                {zoneMultiplierRule && (
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <MapIcon className="size-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {t("quotes.create.tripTransparency.zones")}:
+                        </span>
+                        <span className="font-medium">
+                          {zoneMultiplierRule.pickupZone?.name ?? "Unknown"} → {zoneMultiplierRule.dropoffZone?.name ?? "Unknown"}
+                        </span>
+                      </div>
+                      {zoneMultiplierRule.appliedMultiplier && zoneMultiplierRule.appliedMultiplier !== 1.0 && (
+                        <Badge variant="outline" className="text-xs">
+                          ×{zoneMultiplierRule.appliedMultiplier.toFixed(2)}
+                        </Badge>
+                      )}
+                    </div>
+                    {zoneMultiplierRule.appliedMultiplier && zoneMultiplierRule.appliedMultiplier !== 1.0 && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {t("quotes.create.tripTransparency.zoneMultiplierApplied", {
+                          multiplier: zoneMultiplierRule.appliedMultiplier.toFixed(2),
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

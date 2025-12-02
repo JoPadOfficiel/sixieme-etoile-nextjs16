@@ -2208,6 +2208,8 @@
 				},
 				"commission": "Commission",
 				"netMargin": "Marge nette",
+				"zones": "Zones",
+				"zoneMultiplierApplied": "Multiplicateur de zone ×{multiplier} appliqué au prix",
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"

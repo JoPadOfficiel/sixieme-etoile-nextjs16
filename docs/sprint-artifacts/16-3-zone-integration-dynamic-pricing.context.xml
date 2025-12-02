@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.3</story-id>
+    <story-key>16-3-zone-integration-dynamic-pricing</story-key>
+    <title>Intégration des Zones dans le Calcul Dynamique</title>
+    <epic>Epic 16 - Refactorisation du Système de Devis par Type de Trajet</epic>
+    <created>2025-12-02</created>
+    <status>ready-for-dev</status>
+    <priority>high</priority>
+    <estimated-effort>5 Story Points</estimated-effort>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Le moteur de pricing dynamique calcule actuellement les prix sans tenir compte 
+      des zones géographiques. Le système de cercles concentriques (Paris/Bussy) et 
+      les zones spéciales (CDG, Orly, Versailles, etc.) sont définis dans la base de 
+      données mais ne sont pas utilisés dans le calcul des prix.
+      
+      Problèmes actuels :
+      1. Un trajet Paris → CDG coûte le même prix qu'un trajet Paris → Bussy
+      2. Les trajets depuis le garage Bussy ne bénéficient pas du coefficient réduit (0.8×)
+      3. Les zones spéciales (aéroports, sites touristiques) n'ont pas de majoration
+      4. Aucune transparence sur les multiplicateurs de zone appliqués
+    </description>
+    <impact>
+      - Sous-tarification des trajets vers zones éloignées (perte de marge)
+      - Sur-tarification des trajets depuis Bussy (perte de compétitivité)
+      - Incohérence avec les grilles contractuelles qui utilisent les zones
+      - Opérateurs sans visibilité sur la logique de pricing géographique
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Implémenter la détection de zone pour un point GPS (findZoneForPoint)</objective>
+    <objective id="2">Appliquer Math.max(pickup_zone, dropoff_zone) comme multiplicateur</objective>
+    <objective id="3">Gérer la priorité : zones spéciales > cercles concentriques</objective>
+    <objective id="4">Ajouter la règle ZONE_MULTIPLIER dans appliedRules pour transparence</objective>
+    <objective id="5">Supporter le coefficient réduit Bussy (0.8×) pour les départs du garage</objective>
+    <objective id="6">Intégrer le multiplicateur de zone dans la chaîne de calcul existante</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Fonction findZoneForPoint(lat, lng) → Zone avec multiplicateur</item>
+      <item>Fonction getZoneMultiplier(pickup, dropoff) → multiplicateur final</item>
+      <item>Modification de buildDynamicResult() pour appliquer le multiplicateur</item>
+      <item>Ajout de AppliedZoneMultiplierRule dans les types</item>
+      <item>Affichage du multiplicateur de zone dans TripTransparencyPanel</item>
+      <item>Tests unitaires pour la détection de zones</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification des définitions de zones (déjà dans seed-vtc-complete.ts)</item>
+      <item>Interface d'administration des zones (Epic futur)</item>
+      <item>Zones dynamiques basées sur le trafic (hors scope)</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <existing-files>
+      <file path="packages/database/prisma/seed-vtc-complete.ts">
+        Contient les définitions des zones : cercles Paris (PARIS_0 à PARIS_100), 
+        cercles Bussy (BUSSY_0 à BUSSY_40), zones spéciales (CDG, ORLY, VERSAILLES, etc.)
+      </file>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Moteur de pricing actuel - buildDynamicResult() à modifier pour intégrer les zones
+      </file>
+      <file path="packages/database/prisma/schema.prisma">
+        Modèle Zone existant avec code, name, centerLat, centerLng, radiusKm, multiplier
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Panel de transparence - à modifier pour afficher le multiplicateur de zone
+      </file>
+    </existing-files>
+
+    <zone-system>
+      <![CDATA[
+## Système de Cercles Concentriques
+
+### Centre PARIS (Notre-Dame: 48.8566, 2.3522)
+| Code      | Rayon | Multiplicateur |
+|-----------|-------|----------------|
+| PARIS_0   | 5km   | 1.0×           |
+| PARIS_10  | 10km  | 1.0×           |
+| PARIS_20  | 20km  | 1.1×           |
+| PARIS_30  | 30km  | 1.2×           |
+| PARIS_40  | 40km  | 1.3×           |
+| PARIS_60  | 60km  | 1.4×           |
+| PARIS_100 | 100km | 1.5×           |
+
+### Centre BUSSY (Garage: 48.8495, 2.6905)
+| Code      | Rayon | Multiplicateur |
+|-----------|-------|----------------|
+| BUSSY_0   | 5km   | 0.8×           |
+| BUSSY_10  | 10km  | 0.85×          |
+| BUSSY_15  | 15km  | 0.9×           |
+| BUSSY_25  | 25km  | 0.95×          |
+| BUSSY_40  | 40km  | 1.0×           |
+
+### Zones Spéciales (priorité sur cercles)
+| Code         | Centre              | Rayon | Multiplicateur |
+|--------------|---------------------|-------|----------------|
+| CDG          | 49.0097, 2.5479     | 5km   | 1.2×           |
+| ORLY         | 48.7262, 2.3652     | 4km   | 1.1×           |
+| LBG          | 48.9694, 2.4414     | 3km   | 1.2×           |
+| LA_DEFENSE   | 48.8918, 2.2362     | 3km   | 1.0×           |
+| VERSAILLES   | 48.8049, 2.1204     | 5km   | 1.2×           |
+| FONTAINEBLEAU| 48.4010, 2.7010     | 8km   | 1.3×           |
+| CHANTILLY    | 49.1944, 2.4731     | 5km   | 1.3×           |
+| GIVERNY      | 49.0758, 1.5339     | 5km   | 1.4×           |
+| REIMS        | 49.2583, 4.0317     | 10km  | 1.5×           |
+| DEAUVILLE    | 49.3583, 0.0750     | 10km  | 1.5×           |
+| ROUEN        | 49.4432, 1.0993     | 10km  | 1.5×           |
+      ]]>
+    </zone-system>
+
+    <algorithm>
+      <![CDATA[
+function findZoneForPoint(lat: number, lng: number): Zone | null {
+  // 1. Vérifier les zones spéciales en premier (priorité)
+  for (const specialZone of specialZones) {
+    if (haversineDistance(lat, lng, specialZone.centerLat, specialZone.centerLng) <= specialZone.radiusKm) {
+      return specialZone;
+    }
+  }
+  
+  // 2. Vérifier les cercles concentriques (du plus petit au plus grand)
+  // Pour chaque centre (Paris, Bussy), trouver le plus petit cercle contenant le point
+  const parisZone = findSmallestContainingCircle(lat, lng, PARIS_CENTER, parisCircles);
+  const bussyZone = findSmallestContainingCircle(lat, lng, BUSSY_CENTER, bussyCircles);
+  
+  // 3. Retourner la zone avec le plus petit multiplicateur (avantage client)
+  // ou la zone Paris si les deux sont null
+  return selectBestZone(parisZone, bussyZone);
+}
+
+function getZoneMultiplier(pickup: Coordinates, dropoff: Coordinates): ZoneMultiplierResult {
+  const pickupZone = findZoneForPoint(pickup.lat, pickup.lng);
+  const dropoffZone = findZoneForPoint(dropoff.lat, dropoff.lng);
+  
+  const pickupMultiplier = pickupZone?.multiplier ?? 1.0;
+  const dropoffMultiplier = dropoffZone?.multiplier ?? 1.0;
+  
+  return {
+    pickupZone: pickupZone?.code ?? 'UNKNOWN',
+    dropoffZone: dropoffZone?.code ?? 'UNKNOWN',
+    pickupMultiplier,
+    dropoffMultiplier,
+    appliedMultiplier: Math.max(pickupMultiplier, dropoffMultiplier),
+  };
+}
+      ]]>
+    </algorithm>
+
+    <dependencies>
+      <dependency>Story 16.1 - Schéma Quote étendu (DONE)</dependency>
+      <dependency>Story 16.2 - Formulaire dynamique (DONE)</dependency>
+      <dependency>Story 15.3 - Vehicle category multipliers (DONE)</dependency>
+      <dependency>Zones seedées dans la base de données</dependency>
+    </dependencies>
+  </technical-context>
+
+  <constraints>
+    <constraint type="performance">La détection de zone doit être rapide (&lt;10ms) car appelée à chaque calcul de prix</constraint>
+    <constraint type="precision">Utiliser la formule Haversine pour les distances (précision GPS)</constraint>
+    <constraint type="order">Appliquer le multiplicateur de zone APRÈS le prix de base, AVANT le multiplicateur véhicule</constraint>
+    <constraint type="transparency">Toujours inclure la règle ZONE_MULTIPLIER dans appliedRules, même si multiplier = 1.0</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="medium">
+      <description>Performance si beaucoup de zones à vérifier</description>
+      <mitigation>Optimiser avec un index spatial ou un cache des zones en mémoire</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Point GPS hors de toutes les zones définies</description>
+      <mitigation>Retourner multiplier = 1.0 par défaut avec zone = 'UNKNOWN'</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Chevauchement de zones spéciales et cercles</description>
+      <mitigation>Priorité claire : zones spéciales > cercles concentriques</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Détection correcte de la zone pour un point GPS</criterion>
+    <criterion id="AC2">Application de Math.max(pickup, dropoff) comme multiplicateur</criterion>
+    <criterion id="AC3">Priorité des zones spéciales sur les cercles concentriques</criterion>
+    <criterion id="AC4">Règle ZONE_MULTIPLIER visible dans appliedRules</criterion>
+    <criterion id="AC5">Coefficient réduit Bussy (0.8×) fonctionnel</criterion>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <test type="unit">Tests Vitest pour findZoneForPoint et getZoneMultiplier</test>
+    <test type="integration">Tests du pricing engine avec différentes combinaisons de zones</test>
+    <test type="e2e">Tests Playwright vérifiant l'affichage du multiplicateur dans TripTransparency</test>
+    <test type="api">Tests curl pour vérifier appliedRules contient ZONE_MULTIPLIER</test>
+    <test type="db">Vérification des zones via MCP postgres</test>
+  </test-strategy>
+</story-context>

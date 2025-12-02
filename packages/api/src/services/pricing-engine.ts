@@ -449,11 +449,12 @@ export interface AppliedZoneMultiplierRule extends AppliedRule {
 
 /**
  * Result of zone multiplier application
+ * Story 16.3: appliedRule is now always present for transparency
  */
 export interface ZoneMultiplierResult {
 	adjustedPrice: number;
 	appliedMultiplier: number;
-	appliedRule: AppliedZoneMultiplierRule | null;
+	appliedRule: AppliedRule; // Story 16.3: Always present
 }
 
 // ============================================================================
@@ -1858,6 +1859,8 @@ export function applyAllMultipliers(
  * Apply zone pricing multiplier based on pickup and dropoff zones
  * Uses the highest multiplier between pickup and dropoff zone (Math.max)
  * 
+ * Story 16.3: Always includes ZONE_MULTIPLIER rule for transparency
+ * 
  * @param basePrice - The base price before zone multiplier
  * @param pickupZone - The pickup zone data (may include priceMultiplier)
  * @param dropoffZone - The dropoff zone data (may include priceMultiplier)
@@ -1871,17 +1874,8 @@ export function applyZoneMultiplier(
 	const pickupMultiplier = pickupZone?.priceMultiplier ?? 1.0;
 	const dropoffMultiplier = dropoffZone?.priceMultiplier ?? 1.0;
 	
-	// Use the highest multiplier
+	// Use the highest multiplier (Math.max as per zone pricing spec)
 	const effectiveMultiplier = Math.max(pickupMultiplier, dropoffMultiplier);
-	
-	// If multiplier is 1.0 (default), no adjustment needed
-	if (effectiveMultiplier === 1.0) {
-		return {
-			adjustedPrice: basePrice,
-			appliedMultiplier: 1.0,
-			appliedRule: null,
-		};
-	}
 	
 	// Determine which zone provided the multiplier
 	const isPickupHigher = pickupMultiplier >= dropoffMultiplier;
@@ -1890,20 +1884,33 @@ export function applyZoneMultiplier(
 	
 	const adjustedPrice = Math.round(basePrice * effectiveMultiplier * 100) / 100;
 	
+	// Story 16.3: Always include ZONE_MULTIPLIER rule for transparency
+	// Even if multiplier is 1.0, we want to show which zones were detected
+	const appliedRule: AppliedRule = {
+		type: "ZONE_MULTIPLIER",
+		description: effectiveMultiplier === 1.0
+			? `Zone multiplier: no adjustment (${pickupZone?.code ?? "UNKNOWN"} → ${dropoffZone?.code ?? "UNKNOWN"})`
+			: `Zone multiplier applied: ${sourceZone?.name ?? "Unknown"} (${effectiveMultiplier}×)`,
+		pickupZone: {
+			code: pickupZone?.code ?? "UNKNOWN",
+			name: pickupZone?.name ?? "Unknown",
+			multiplier: pickupMultiplier,
+		},
+		dropoffZone: {
+			code: dropoffZone?.code ?? "UNKNOWN",
+			name: dropoffZone?.name ?? "Unknown",
+			multiplier: dropoffMultiplier,
+		},
+		appliedMultiplier: effectiveMultiplier,
+		source,
+		priceBefore: basePrice,
+		priceAfter: adjustedPrice,
+	};
+	
 	return {
 		adjustedPrice,
 		appliedMultiplier: effectiveMultiplier,
-		appliedRule: sourceZone ? {
-			type: "ZONE_MULTIPLIER",
-			description: `Zone multiplier applied: ${sourceZone.name} (${effectiveMultiplier}×)`,
-			zoneId: sourceZone.id,
-			zoneName: sourceZone.name,
-			zoneCode: sourceZone.code,
-			multiplier: effectiveMultiplier,
-			source,
-			priceBefore: basePrice,
-			priceAfter: adjustedPrice,
-		} : null,
+		appliedRule,
 	};
 }
 
@@ -3261,12 +3268,11 @@ function buildDynamicResult(
 		appliedRules.push(categoryMultiplierResult.appliedRule);
 	}
 
-	// Story 11.3: Apply zone pricing multiplier (after category multiplier)
+	// Story 11.3 + 16.3: Apply zone pricing multiplier (after category multiplier)
+	// Always add the zone multiplier rule for transparency
 	const zoneMultiplierResult = applyZoneMultiplier(price, pickupZone, dropoffZone);
-	if (zoneMultiplierResult.appliedRule) {
-		price = zoneMultiplierResult.adjustedPrice;
-		appliedRules.push(zoneMultiplierResult.appliedRule);
-	}
+	price = zoneMultiplierResult.adjustedPrice;
+	appliedRules.push(zoneMultiplierResult.appliedRule);
 
 	// Story 4.3: Apply multipliers if context is provided
 	if (multiplierContext && (advancedRates.length > 0 || seasonalMultipliers.length > 0)) {
