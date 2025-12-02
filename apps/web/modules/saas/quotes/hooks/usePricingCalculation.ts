@@ -33,7 +33,8 @@ interface PricingCalculationInput {
   // Story 16.8: Dropoff is optional for DISPO trips
   dropoff?: { lat: number; lng: number };
   vehicleCategoryId: string;
-  tripType: "transfer" | "excursion" | "dispo";
+  // Story 16.9: Added off_grid for manual pricing trips
+  tripType: "transfer" | "excursion" | "dispo" | "off_grid";
   pickupAt?: string;
   passengerCount: number;
   luggageCount?: number;
@@ -325,14 +326,17 @@ export function usePricingCalculation(
   }, []);
 
   // Map trip type to API format
-  const mapTripType = (tripType: string): "transfer" | "excursion" | "dispo" => {
+  // Story 16.9: Added off_grid for manual pricing trips
+  const mapTripType = (tripType: string): "transfer" | "excursion" | "dispo" | "off_grid" => {
     switch (tripType) {
       case "EXCURSION":
         return "excursion";
       case "DISPO":
         return "dispo";
-      case "TRANSFER":
+      // Story 16.9: OFF_GRID is handled separately (no API call)
       case "OFF_GRID":
+        return "off_grid";
+      case "TRANSFER":
       default:
         return "transfer";
     }
@@ -346,6 +350,14 @@ export function usePricingCalculation(
       // Clear existing timer
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
+      }
+
+      // Story 16.9: Skip pricing calculation for OFF_GRID
+      // OFF_GRID trips require manual pricing only
+      if (formData.tripType === "OFF_GRID") {
+        setPricingResult(null);
+        setError(null);
+        return;
       }
 
       // Check if we can calculate

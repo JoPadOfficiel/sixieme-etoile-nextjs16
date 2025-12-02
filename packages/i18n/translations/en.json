@@ -2237,6 +2237,9 @@
 				"overageKm": "Overage",
 				"overageRate": "Overage rate",
 				"overageAmount": "Overage amount",
+				"offGrid": "Off-grid",
+				"offGridManualPricing": "Manual pricing required",
+				"offGridNoCalculation": "No automatic calculation for off-grid trips",
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"

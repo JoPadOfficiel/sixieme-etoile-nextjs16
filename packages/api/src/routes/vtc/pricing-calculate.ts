@@ -75,7 +75,8 @@ const calculatePricingSchema = z.object({
 	// Story 16.8: Dropoff is optional for DISPO trips
 	dropoff: geoPointSchema.optional(),
 	vehicleCategoryId: z.string().min(1, "Vehicle category ID is required"),
-	tripType: z.enum(["transfer", "excursion", "dispo"]).default("transfer"),
+	// Story 16.9: Added off_grid for manual pricing trips
+	tripType: z.enum(["transfer", "excursion", "dispo", "off_grid"]).default("transfer"),
 	pickupAt: z.string().optional(),
 	estimatedDurationMinutes: z.coerce.number().positive().optional(),
 	estimatedDistanceKm: z.coerce.number().positive().optional(),
@@ -528,6 +529,22 @@ export const pricingCalculateRouter = new Hono()
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
+
+			// Story 16.9: OFF_GRID trips don't need pricing calculation
+			// Return a minimal response indicating manual pricing is required
+			if (data.tripType === "off_grid") {
+				return c.json({
+					pricingMode: "MANUAL" as const,
+					price: 0,
+					currency: "EUR",
+					internalCost: 0,
+					profitabilityPercent: 0,
+					profitabilityIndicator: "UNKNOWN" as const,
+					appliedRules: [],
+					tripAnalysis: null,
+					message: "Off-grid trips require manual pricing",
+				});
+			}
 
 			// Story 16.8: Validate dropoff is required for non-DISPO trips
 			if (data.tripType !== "dispo" && !data.dropoff) {

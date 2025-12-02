@@ -2237,6 +2237,9 @@
 				"overageKm": "Dépassement",
 				"overageRate": "Tarif dépassement",
 				"overageAmount": "Montant dépassement",
+				"offGrid": "Hors-grille",
+				"offGridManualPricing": "Tarification manuelle requise",
+				"offGridNoCalculation": "Pas de calcul automatique pour les trajets hors-grille",
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"

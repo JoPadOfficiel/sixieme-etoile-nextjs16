@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.9</story-id>
+    <story-name>Support Off-Grid avec Notes Obligatoires</story-name>
+    <epic>Epic 16 - Quote Refactoring</epic>
+    <created>2025-12-02</created>
+    <author>Bob (Scrum Master)</author>
+  </metadata>
+
+  <problem-statement>
+    <current-situation>
+      Le système de devis actuel ne gère pas correctement les trajets "off-grid" 
+      (trajets atypiques qui ne correspondent pas aux catégories standard).
+      Le formulaire tente de calculer un prix automatiquement même quand ce n'est pas pertinent.
+      Les notes ne sont pas obligatoires, ce qui peut mener à des devis sans contexte.
+    </current-situation>
+    
+    <pain-points>
+      <pain-point priority="high">
+        Calcul automatique inapproprié : Le système essaie de calculer un prix pour des trajets non-standards
+      </pain-point>
+      <pain-point priority="high">
+        Dropoff requis : Le formulaire exige une adresse de destination même pour OFF_GRID
+      </pain-point>
+      <pain-point priority="medium">
+        Notes non obligatoires : Les devis off-grid peuvent être créés sans description
+      </pain-point>
+      <pain-point priority="low">
+        Pas d'estimation de rentabilité : L'opérateur ne sait pas si le prix manuel est rentable
+      </pain-point>
+    </pain-points>
+    
+    <business-impact>
+      Impossibilité de gérer correctement les demandes atypiques.
+      Risque de devis sans contexte suffisant pour l'exécution.
+      Difficulté à évaluer la rentabilité des trajets off-grid.
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary-objective>
+      Permettre la création de devis off-grid avec un formulaire minimal et des notes obligatoires.
+    </primary-objective>
+    
+    <secondary-objectives>
+      <objective>Désactiver le calcul automatique de prix pour OFF_GRID</objective>
+      <objective>Rendre les notes obligatoires uniquement pour OFF_GRID</objective>
+      <objective>Afficher "—" comme prix suggéré pour OFF_GRID</objective>
+      <objective>Calculer une rentabilité estimée basée sur l'approche</objective>
+    </secondary-objectives>
+    
+    <success-metrics>
+      <metric>100% des devis OFF_GRID ont des notes</metric>
+      <metric>Aucun calcul automatique pour OFF_GRID</metric>
+      <metric>Indicateur de rentabilité affiché pour tous les OFF_GRID</metric>
+    </success-metrics>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Désactiver le calcul de prix pour tripType = OFF_GRID</item>
+      <item>Rendre dropoff optionnel pour OFF_GRID</item>
+      <item>Rendre notes obligatoires pour OFF_GRID</item>
+      <item>Afficher "—" comme prix suggéré</item>
+      <item>Calculer rentabilité basée sur approche (pickup → base)</item>
+      <item>Validation conditionnelle du formulaire</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modification du schéma Quote (déjà fait en 16.1)</item>
+      <item>Création de nouveaux types de trajets</item>
+      <item>Calcul de prix automatique pour OFF_GRID</item>
+    </out-of-scope>
+    
+    <dependencies>
+      <dependency status="done">Story 16.1 - Schema Quote étendu (tripType OFF_GRID)</dependency>
+      <dependency status="done">Story 16.2 - Formulaire dynamique (champs conditionnels)</dependency>
+      <dependency status="done">Story 16.8 - DISPO pricing (dropoff optionnel pattern)</dependency>
+    </dependencies>
+  </scope>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        Endpoint de calcul de prix.
+        Doit retourner un résultat spécial pour OFF_GRID (pas de calcul).
+      </file>
+      <file path="apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts">
+        Hook de calcul de prix.
+        Doit ne pas appeler l'API pour OFF_GRID.
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/CreateQuoteForm.tsx">
+        Formulaire de création de devis.
+        Doit rendre notes obligatoires pour OFF_GRID.
+      </file>
+    </existing-code>
+    
+    <data-model>
+      <entity name="Quote">
+        tripType: "OFF_GRID" (déjà supporté)
+        notes: string (obligatoire pour OFF_GRID)
+        dropoffAddress: null (optionnel pour OFF_GRID)
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <constraints>
+    <technical-constraints>
+      <constraint>Rétrocompatibilité avec les devis existants</constraint>
+      <constraint>Validation conditionnelle du formulaire selon tripType</constraint>
+      <constraint>Ne pas appeler l'API de pricing pour OFF_GRID</constraint>
+    </technical-constraints>
+    
+    <business-constraints>
+      <constraint>Notes obligatoires pour documenter le trajet</constraint>
+      <constraint>Prix manuel obligatoire (pas de suggestion)</constraint>
+      <constraint>Rentabilité estimée pour aider l'opérateur</constraint>
+    </business-constraints>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Opérateur oublie de remplir les notes</description>
+      <mitigation>Validation stricte avec message clair</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Prix manuel trop bas (non rentable)</description>
+      <mitigation>Afficher indicateur de rentabilité basé sur approche</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="must-have">
+      <title>Minimal Required Fields</title>
+      <given>An off-grid quote</given>
+      <when>I create the quote</when>
+      <then>Only these fields are required: Contact, Pickup address, Pickup date/time, Vehicle category, Notes, Final price</then>
+    </criterion>
+    
+    <criterion id="AC2" priority="must-have">
+      <title>No Automatic Pricing</title>
+      <given>An off-grid quote</given>
+      <when>I fill in the form</when>
+      <then>No automatic pricing calculation is triggered</then>
+      <and>The suggested price shows "—" (not calculated)</and>
+      <and>I must manually enter the final price</and>
+    </criterion>
+    
+    <criterion id="AC3" priority="must-have">
+      <title>Notes Validation</title>
+      <given>An off-grid quote with empty notes</given>
+      <when>I try to submit</when>
+      <then>Validation fails with "Notes are required for off-grid trips"</then>
+    </criterion>
+    
+    <criterion id="AC4" priority="should-have">
+      <title>Profitability Calculation</title>
+      <given>An off-grid quote with manual price</given>
+      <when>I enter the final price</when>
+      <then>The profitability indicator updates based on estimated internal cost</then>
+      <and>Internal cost is estimated from pickup address only (approach segment)</and>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-strategy>
+    <unit-tests>
+      <test>Form validation with/without notes for OFF_GRID</test>
+      <test>Pricing hook skips API call for OFF_GRID</test>
+    </unit-tests>
+    
+    <integration-tests>
+      <test>API returns special response for OFF_GRID</test>
+    </integration-tests>
+    
+    <e2e-tests>
+      <test>Create OFF_GRID quote without dropoff address</test>
+      <test>Verify notes validation error</test>
+      <test>Verify suggested price shows "—"</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

@@ -161,10 +161,12 @@ export function QuotePricingPanel({
   };
 
   // Check if form is valid for submission
+  // Story 16.8 & 16.9: Dropoff is optional for DISPO and OFF_GRID trips
+  const isDropoffRequired = formData.tripType !== "DISPO" && formData.tripType !== "OFF_GRID";
   const isFormValid =
     formData.contactId &&
     formData.pickupAddress &&
-    formData.dropoffAddress &&
+    (!isDropoffRequired || formData.dropoffAddress) &&
     formData.pickupAt &&
     formData.vehicleCategoryId &&
     formData.finalPrice > 0;
@@ -444,7 +446,8 @@ export function QuotePricingPanel({
           {!formData.pickupAddress && (
             <p>• {t("quotes.create.validation.pickupRequired")}</p>
           )}
-          {!formData.dropoffAddress && (
+          {/* Story 16.8 & 16.9: Only show dropoff validation for non-DISPO/OFF_GRID */}
+          {isDropoffRequired && !formData.dropoffAddress && (
             <p>• {t("quotes.create.validation.dropoffRequired")}</p>
           )}
           {!formData.pickupAt && (
