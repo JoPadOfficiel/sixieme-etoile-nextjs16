@@ -1660,13 +1660,14 @@ describe("pricing-engine", () => {
 		describe("Individual Cost Calculations", () => {
 			it("should calculate fuel cost correctly", () => {
 				// Formula: distanceKm × (consumptionL100km / 100) × pricePerLiter
-				// 50km × (8.0 / 100) × 1.80 = 50 × 0.08 × 1.80 = 7.20
-				const result = calculateFuelCost(50, 8.0, 1.80);
+				// 50km × (8.0 / 100) × 1.789 (DIESEL default) = 50 × 0.08 × 1.789 = 7.16
+				const result = calculateFuelCost(50, 8.0, "DIESEL");
 				
-				expect(result.amount).toBe(7.2);
+				expect(result.amount).toBe(7.16);
 				expect(result.distanceKm).toBe(50);
 				expect(result.consumptionL100km).toBe(8.0);
-				expect(result.pricePerLiter).toBe(1.80);
+				expect(result.pricePerLiter).toBe(1.789);
+				expect(result.fuelType).toBe("DIESEL");
 			});
 
 			it("should calculate toll cost correctly", () => {

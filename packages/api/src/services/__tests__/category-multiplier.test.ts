@@ -11,13 +11,14 @@ import {
 	type AppliedVehicleCategoryMultiplierRule,
 } from "../pricing-engine";
 
-// Helper to create a VehicleCategoryInfo with default rates (Story 15.4)
+// Helper to create a VehicleCategoryInfo with default values (Story 15.4 + 15.6)
 function createCategory(
 	overrides: Partial<VehicleCategoryInfo> & { id: string; code: string; name: string; priceMultiplier: number }
 ): VehicleCategoryInfo {
 	return {
 		defaultRatePerKm: null,
 		defaultRatePerHour: null,
+		fuelType: null, // Story 15.6
 		...overrides,
 	};
 }

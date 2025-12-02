@@ -11,13 +11,14 @@ import {
 	type OrganizationPricingSettings,
 } from "../pricing-engine";
 
-// Helper to create a VehicleCategoryInfo
+// Helper to create a VehicleCategoryInfo (Story 15.4 + 15.6)
 function createCategory(
 	overrides: Partial<VehicleCategoryInfo> & { id: string; code: string; name: string; priceMultiplier: number }
 ): VehicleCategoryInfo {
 	return {
 		defaultRatePerKm: null,
 		defaultRatePerHour: null,
+		fuelType: null, // Story 15.6
 		...overrides,
 	};
 }

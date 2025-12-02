@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.6</story-id>
+    <title>Use Correct Fuel Type from Vehicle/Category</title>
+    <epic>Epic 15: Pricing Engine Accuracy & Real Cost Integration</epic>
+    <created>2025-12-02</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem>
+    <current-state>
+      Le pricing engine utilise toujours le prix du DIESEL par défaut pour calculer
+      les coûts de carburant, ignorant le type de carburant réel du véhicule.
+      Les véhicules LPG, essence ou électriques sont facturés au prix du diesel.
+    </current-state>
+    
+    <impact>
+      <item type="financial">
+        Un véhicule LPG avec prix 0.999€/L est facturé au prix DIESEL 1.789€/L,
+        surestimant le coût carburant de 79%.
+      </item>
+      <item type="business">
+        Les véhicules électriques n'ont pas de coût carburant mais un coût électricité
+        qui n'est pas pris en compte.
+      </item>
+      <item type="transparency">
+        Aucune visibilité sur le type de carburant utilisé dans le calcul.
+      </item>
+    </impact>
+
+    <example>
+      <scenario>Trajet 100km avec véhicule LPG (10L/100km)</scenario>
+      <current>
+        - Consommation: 10L
+        - Prix utilisé: DIESEL 1.789€/L
+        - Coût calculé: 17.89€ (WRONG!)
+      </current>
+      <expected>
+        - Consommation: 10L
+        - Prix utilisé: LPG 0.999€/L
+        - Coût calculé: 9.99€
+      </expected>
+    </example>
+  </problem>
+
+  <objectives>
+    <primary>
+      Utiliser le type de carburant correct (DIESEL, GASOLINE, LPG, ELECTRIC)
+      du véhicule ou de la catégorie pour calculer les coûts de carburant.
+    </primary>
+    <secondary>
+      <item>Ajouter fuelType à VehicleCategoryInfo</item>
+      <item>Modifier getFuelPrice() pour accepter fuelType</item>
+      <item>Afficher le type de carburant dans FuelCostComponent</item>
+      <item>Fallback vers DIESEL si fuelType non défini</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Étendre VehicleCategoryInfo avec fuelType</item>
+      <item>Modifier calculateFuelCost() pour utiliser le bon prix</item>
+      <item>Mettre à jour FuelCostComponent avec fuelType</item>
+      <item>Ajouter les prix par type de carburant dans le cache</item>
+      <item>Tests unitaires pour chaque type de carburant</item>
+    </in-scope>
+    <out-of-scope>
+      <item>UI pour configurer le type de carburant</item>
+      <item>Migration des véhicules existants</item>
+      <item>Calcul détaillé pour véhicules électriques (kWh)</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Le fuelType doit être passé dans la chaîne de calcul</item>
+      <item>Fallback vers DIESEL si fuelType non défini</item>
+      <item>Les prix doivent être en cache (FuelPriceCache)</item>
+    </technical>
+    <business>
+      <item>Prix par défaut: DIESEL 1.789€, GASOLINE 1.899€, LPG 0.999€, ELECTRIC 0.25€/kWh</item>
+      <item>Les véhicules électriques utilisent kWh, pas L/100km</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk level="low">
+      <description>Véhicules sans fuelType défini</description>
+      <mitigation>Fallback vers DIESEL (comportement actuel)</mitigation>
+    </risk>
+    <risk level="low">
+      <description>Prix de carburant non en cache</description>
+      <mitigation>Utiliser les prix par défaut</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <relevant-functions>
+          <function name="calculateFuelCost">Calcule le coût carburant - à modifier</function>
+          <function name="buildCostBreakdown">Construit le breakdown - à modifier</function>
+        </relevant-functions>
+        <relevant-types>
+          <type name="FuelCostComponent">À étendre avec fuelType</type>
+          <type name="VehicleCategoryInfo">À étendre avec fuelType</type>
+        </relevant-types>
+      </file>
+      <file path="packages/database/prisma/schema.prisma">
+        <model name="VehicleCategory">
+          <field name="fuelType" type="FuelType?" description="Type de carburant par défaut"/>
+        </model>
+      </file>
+    </existing-code>
+
+    <data-model>
+      <entity name="FuelType">
+        <values>
+          <value code="DIESEL" defaultPrice="1.789"/>
+          <value code="GASOLINE" defaultPrice="1.899"/>
+          <value code="LPG" defaultPrice="0.999"/>
+          <value code="ELECTRIC" defaultPrice="0.25" unit="kWh"/>
+        </values>
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="high">
+      <title>LPG Vehicle Uses LPG Price</title>
+      <given>A vehicle category with fuelType "LPG" and LPG price 0.999€/L</given>
+      <when>The pricing engine calculates fuel cost for 100km (10L/100km)</when>
+      <then>It uses 0.999€/L → 9.99€ (not 17.89€ with DIESEL)</then>
+    </criterion>
+
+    <criterion id="AC2" priority="high">
+      <title>Fallback to DIESEL</title>
+      <given>A vehicle category without fuelType defined</given>
+      <when>The pricing engine calculates fuel cost</when>
+      <then>It defaults to DIESEL price</then>
+    </criterion>
+
+    <criterion id="AC3" priority="medium">
+      <title>Fuel Type in Cost Breakdown</title>
+      <given>A successful pricing calculation</given>
+      <when>The result is returned</when>
+      <then>FuelCostComponent includes fuelType used</then>
+    </criterion>
+
+    <criterion id="AC4" priority="medium">
+      <title>Electric Vehicle Handling</title>
+      <given>A vehicle category with fuelType "ELECTRIC"</given>
+      <when>The pricing engine calculates fuel cost</when>
+      <then>It uses electricity price per kWh</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="unit">
+      <name>LPG vehicle uses LPG price</name>
+      <input>fuelType: "LPG", distanceKm: 100, consumption: 10L/100km, lpgPrice: 0.999</input>
+      <expected>fuelCost: 9.99€, fuelType: "LPG"</expected>
+    </scenario>
+    <scenario id="TS2" type="unit">
+      <name>Fallback to DIESEL when no fuelType</name>
+      <input>fuelType: null, distanceKm: 100, consumption: 10L/100km</input>
+      <expected>fuelCost: 17.89€, fuelType: "DIESEL"</expected>
+    </scenario>
+    <scenario id="TS3" type="unit">
+      <name>Gasoline vehicle uses gasoline price</name>
+      <input>fuelType: "GASOLINE", distanceKm: 100, consumption: 8L/100km, gasolinePrice: 1.899</input>
+      <expected>fuelCost: 15.19€, fuelType: "GASOLINE"</expected>
+    </scenario>
+  </test-scenarios>
+</story-context>

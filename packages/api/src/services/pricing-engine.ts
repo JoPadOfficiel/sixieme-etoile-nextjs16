@@ -38,6 +38,20 @@ export type ProfitabilityIndicator = "green" | "orange" | "red";
 // Story 15.2: Fuel consumption source for transparency
 export type FuelConsumptionSource = "VEHICLE" | "CATEGORY" | "ORGANIZATION" | "DEFAULT";
 
+// Story 15.6: Fuel type for accurate fuel cost calculation
+export type FuelType = "DIESEL" | "GASOLINE" | "LPG" | "ELECTRIC";
+
+/**
+ * Story 15.6: Default fuel prices per type
+ * DIESEL: 1.789€/L, GASOLINE: 1.899€/L, LPG: 0.999€/L, ELECTRIC: 0.25€/kWh
+ */
+export const DEFAULT_FUEL_PRICES: Record<FuelType, number> = {
+	DIESEL: 1.789,
+	GASOLINE: 1.899,
+	LPG: 0.999,
+	ELECTRIC: 0.25, // per kWh
+};
+
 // Fallback reason for dynamic pricing
 export type FallbackReason =
 	| "PRIVATE_CLIENT" // Contact is not a partner
@@ -458,6 +472,8 @@ export interface VehicleCategoryInfo {
 	// Story 15.4: Category-specific rates (null = use org rates)
 	defaultRatePerKm: number | null;
 	defaultRatePerHour: number | null;
+	// Story 15.6: Fuel type for accurate fuel cost (null = DIESEL)
+	fuelType: FuelType | null;
 }
 
 // ============================================================================
@@ -507,6 +523,65 @@ export function resolveRates(
 		ratePerKm: orgSettings.baseRatePerKm,
 		ratePerHour: orgSettings.baseRatePerHour,
 		rateSource: "ORGANIZATION",
+	};
+}
+
+// ============================================================================
+// Story 15.6: Fuel Type Resolution
+// ============================================================================
+
+/**
+ * Story 15.6: Get fuel price for a specific fuel type
+ * Falls back to default prices if not in custom prices
+ * 
+ * @param fuelType - Type of fuel
+ * @param customPrices - Optional custom prices per fuel type
+ * @returns Price per liter (or kWh for electric)
+ */
+export function getFuelPrice(
+	fuelType: FuelType,
+	customPrices?: Partial<Record<FuelType, number>>,
+): number {
+	return customPrices?.[fuelType] ?? DEFAULT_FUEL_PRICES[fuelType];
+}
+
+/**
+ * Story 15.6: Resolve fuel type with fallback to DIESEL
+ * 
+ * @param vehicleCategory - Category with optional fuel type
+ * @returns Resolved fuel type (defaults to DIESEL)
+ */
+export function resolveFuelType(
+	vehicleCategory: VehicleCategoryInfo | undefined,
+): FuelType {
+	return vehicleCategory?.fuelType ?? "DIESEL";
+}
+
+/**
+ * Story 15.6: Calculate fuel cost with correct fuel type
+ * 
+ * @param distanceKm - Distance in km
+ * @param consumptionL100km - Fuel consumption in L/100km
+ * @param fuelType - Type of fuel
+ * @param customPrices - Optional custom prices per fuel type
+ * @returns Fuel cost component with all details
+ */
+export function calculateFuelCost(
+	distanceKm: number,
+	consumptionL100km: number,
+	fuelType: FuelType,
+	customPrices?: Partial<Record<FuelType, number>>,
+): FuelCostComponent {
+	const pricePerLiter = getFuelPrice(fuelType, customPrices);
+	const litersUsed = (distanceKm / 100) * consumptionL100km;
+	const amount = Math.round(litersUsed * pricePerLiter * 100) / 100;
+
+	return {
+		amount,
+		distanceKm,
+		consumptionL100km,
+		pricePerLiter,
+		fuelType,
 	};
 }
 
@@ -576,6 +651,8 @@ export interface FuelCostComponent {
 	distanceKm: number;
 	consumptionL100km: number;
 	pricePerLiter: number;
+	// Story 15.6: Track fuel type used for transparency
+	fuelType: FuelType;
 }
 
 export interface TollCostComponent {
@@ -989,23 +1066,7 @@ export function resolveFuelConsumption(
 	};
 }
 
-/**
- * Calculate fuel cost
- * Formula: distanceKm × (fuelConsumptionL100km / 100) × fuelPricePerLiter
- */
-export function calculateFuelCost(
-	distanceKm: number,
-	consumptionL100km: number,
-	pricePerLiter: number,
-): FuelCostComponent {
-	const amount = Math.round(distanceKm * (consumptionL100km / 100) * pricePerLiter * 100) / 100;
-	return {
-		amount,
-		distanceKm,
-		consumptionL100km,
-		pricePerLiter,
-	};
-}
+// Note: calculateFuelCost moved to Story 15.6 section above
 
 /**
  * Calculate toll cost
@@ -1056,8 +1117,9 @@ export function calculateDriverCost(
 }
 
 /**
- * Calculate complete cost breakdown (Story 4.2)
+ * Calculate complete cost breakdown (Story 4.2 + 15.6)
  * Returns all cost components and total internal cost
+ * Story 15.6: Now accepts fuelType for accurate fuel cost
  */
 export function calculateCostBreakdown(
 	distanceKm: number,
@@ -1065,16 +1127,16 @@ export function calculateCostBreakdown(
 	settings: OrganizationPricingSettings,
 	parkingCost: number = 0,
 	parkingDescription: string = "",
+	fuelType: FuelType = "DIESEL",
 ): CostBreakdown {
 	// Use settings or defaults
 	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
-	const fuelPricePerLiter = settings.fuelPricePerLiter ?? DEFAULT_COST_PARAMETERS.fuelPricePerLiter;
 	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
 	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
 	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
 
-	// Calculate each component
-	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelPricePerLiter);
+	// Story 15.6: Calculate fuel with correct fuel type
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelType);
 	const tolls = calculateTollCost(distanceKm, tollCostPerKm);
 	const wear = calculateWearCost(distanceKm, wearCostPerKm);
 	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
@@ -1107,6 +1169,7 @@ export interface TollConfig {
 
 /**
  * Story 15.1: Calculate cost breakdown with real toll costs from Google Routes API
+ * Story 15.6: Now accepts fuelType for accurate fuel cost
  * 
  * This async version fetches real toll costs when API key is provided.
  * Falls back to flat rate calculation when API is unavailable.
@@ -1117,6 +1180,7 @@ export interface TollConfig {
  * @param tollConfig - Optional toll configuration with origin/destination and API key
  * @param parkingCost - Optional parking cost
  * @param parkingDescription - Optional parking description
+ * @param fuelType - Optional fuel type (defaults to DIESEL)
  * @returns Cost breakdown with toll source information
  */
 export async function calculateCostBreakdownWithTolls(
@@ -1126,16 +1190,16 @@ export async function calculateCostBreakdownWithTolls(
 	tollConfig?: TollConfig,
 	parkingCost: number = 0,
 	parkingDescription: string = "",
+	fuelType: FuelType = "DIESEL",
 ): Promise<{ breakdown: CostBreakdown; tollSource: TollSource }> {
 	// Use settings or defaults
 	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
-	const fuelPricePerLiter = settings.fuelPricePerLiter ?? DEFAULT_COST_PARAMETERS.fuelPricePerLiter;
 	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
 	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
 	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
 
-	// Calculate non-toll components
-	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelPricePerLiter);
+	// Story 15.6: Calculate fuel with correct fuel type
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelType);
 	const wear = calculateWearCost(distanceKm, wearCostPerKm);
 	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
 	const parking: ParkingCostComponent = {
@@ -1275,7 +1339,7 @@ function createSegmentAnalysis(
  */
 function combineCostBreakdowns(breakdowns: CostBreakdown[]): CostBreakdown {
 	const combined: CostBreakdown = {
-		fuel: { amount: 0, distanceKm: 0, consumptionL100km: 0, pricePerLiter: 0 },
+		fuel: { amount: 0, distanceKm: 0, consumptionL100km: 0, pricePerLiter: 0, fuelType: "DIESEL" },
 		tolls: { amount: 0, distanceKm: 0, ratePerKm: 0 },
 		wear: { amount: 0, distanceKm: 0, ratePerKm: 0 },
 		driver: { amount: 0, durationMinutes: 0, hourlyRate: 0 },
