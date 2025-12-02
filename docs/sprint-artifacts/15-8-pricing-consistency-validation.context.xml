@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.8</story-id>
+    <title>Validate Pricing Consistency Across Application</title>
+    <epic>Epic 15: Pricing Engine Accuracy & Real Cost Integration</epic>
+    <created>2025-12-02</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem>
+    <current-state>
+      Les stories 15.1-15.7 ont implémenté de nombreuses améliorations au moteur de pricing:
+      - Péages réels via Google Routes API
+      - Consommation carburant spécifique par véhicule
+      - Multiplicateurs de catégorie de véhicule
+      - Taux par défaut par catégorie
+      - Différenciation par type de trajet
+      - Type de carburant correct
+      - Propagation du cost breakdown aux devis/factures
+      
+      Cependant, il n'existe pas de suite de tests complète validant que tous ces
+      changements fonctionnent de manière cohérente à travers l'application.
+    </current-state>
+    
+    <impact>
+      <item type="quality">
+        Sans tests de validation, des régressions peuvent passer inaperçues.
+        Les incohérences entre les différents points d'entrée (quote, dispatch, invoice)
+        peuvent créer des problèmes de facturation.
+      </item>
+      <item type="business">
+        Des prix incohérents entre le devis et la facture créent des litiges clients.
+        Une tarification incorrecte impacte directement la rentabilité.
+      </item>
+      <item type="audit">
+        Impossible de prouver que le système fonctionne correctement sans tests.
+        Difficile de certifier la conformité des calculs.
+      </item>
+    </impact>
+
+    <example>
+      <scenario>Même trajet calculé via différents points d'entrée</scenario>
+      <current>
+        - Quote creation: 150€
+        - Dispatch preview: 148€ (bug: multiplicateur manquant)
+        - Invoice recalculation: 152€ (bug: taux différent)
+      </current>
+      <expected>
+        - Quote creation: 150€
+        - Dispatch preview: 150€
+        - Invoice recalculation: 150€
+        - tripAnalysis identique partout
+      </expected>
+    </example>
+  </problem>
+
+  <objectives>
+    <primary>
+      Créer une suite de tests complète validant la cohérence de la tarification
+      à travers tous les points d'entrée de l'application.
+    </primary>
+    <secondary>
+      <item>Tests d'intégration couvrant quote, dispatch, invoice</item>
+      <item>Tests E2E Playwright pour le flux complet quote → invoice</item>
+      <item>Validation que Method 1 (FIXED_GRID) et Method 2 (DYNAMIC) sont cohérentes</item>
+      <item>Vérification que tripAnalysis est identique partout</item>
+      <item>Tests de non-régression pour les stories 15.1-15.7</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Tests d'intégration API pour pricing-calculate</item>
+      <item>Tests E2E Playwright pour création de devis</item>
+      <item>Tests E2E Playwright pour conversion devis → facture</item>
+      <item>Tests de cohérence Method 1 vs Method 2</item>
+      <item>Tests de validation du cost breakdown</item>
+      <item>Tests de validation des multiplicateurs appliqués</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Nouveaux développements fonctionnels</item>
+      <item>Modifications du moteur de pricing</item>
+      <item>Tests de performance/charge</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>Utiliser Vitest pour les tests unitaires/intégration</item>
+      <item>Utiliser Playwright MCP pour les tests E2E</item>
+      <item>Les tests doivent être reproductibles avec les données de seed</item>
+      <item>Cookie d'authentification fourni pour les tests E2E</item>
+    </technical>
+    <business>
+      <item>Couvrir tous les critères d'acceptation des stories 15.1-15.7</item>
+      <item>Valider les scénarios partenaire (FIXED_GRID) et privé (DYNAMIC)</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk level="low">
+      <description>Données de test insuffisantes</description>
+      <mitigation>Utiliser les données de seed-vtc-complete.ts</mitigation>
+    </risk>
+    <risk level="medium">
+      <description>Tests flaky dus à l'état de la base</description>
+      <mitigation>Utiliser des assertions flexibles et vérifier l'état initial</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <function name="calculatePrice">Moteur de pricing principal</function>
+        <function name="calculateCostBreakdown">Calcul du breakdown</function>
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        <endpoint name="POST /pricing/calculate">Point d'entrée API</endpoint>
+      </file>
+      <file path="packages/api/src/routes/vtc/quotes.ts">
+        <endpoint name="POST /quotes">Création de devis</endpoint>
+      </file>
+      <file path="packages/api/src/routes/vtc/invoices.ts">
+        <endpoint name="POST /invoices/from-quote/:quoteId">Conversion en facture</endpoint>
+      </file>
+    </existing-code>
+
+    <test-data>
+      <entity name="Contacts">
+        <item>Hôtel Ritz Paris (partenaire avec contrat)</item>
+        <item>Client privé (sans contrat)</item>
+      </entity>
+      <entity name="VehicleCategories">
+        <item>BERLINE (priceMultiplier: 1.0)</item>
+        <item>VAN_PREMIUM (priceMultiplier: 1.3)</item>
+        <item>LUXE (priceMultiplier: 1.9)</item>
+      </entity>
+      <entity name="ZoneRoutes">
+        <item>CDG → PARIS_0 (routes fixes)</item>
+        <item>ORLY → PARIS_0 (routes fixes)</item>
+      </entity>
+    </test-data>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="high">
+      <title>Pricing Consistency Across Entry Points</title>
+      <given>Identical inputs (contact, pickup, dropoff, vehicle category, pickup time)</given>
+      <when>Pricing is calculated via quote creation, dispatch preview, and invoice recalculation</when>
+      <then>All three produce the same price, internal cost, and profitability indicator</then>
+    </criterion>
+
+    <criterion id="AC2" priority="high">
+      <title>Method 1 (FIXED_GRID) Consistency</title>
+      <given>A partner with assigned grid route</given>
+      <when>Pricing is calculated</when>
+      <then>Method 1 (FIXED_GRID) is used consistently across all entry points</then>
+    </criterion>
+
+    <criterion id="AC3" priority="high">
+      <title>Method 2 (DYNAMIC) Consistency</title>
+      <given>A private client with no grid match</given>
+      <when>Pricing is calculated</when>
+      <then>Method 2 (DYNAMIC) is used with all multipliers applied consistently</then>
+    </criterion>
+
+    <criterion id="AC4" priority="medium">
+      <title>TripAnalysis Identical</title>
+      <given>A quote created and then converted to invoice</given>
+      <when>Comparing tripAnalysis between quote and invoice</when>
+      <then>The tripAnalysis and costBreakdown are identical</then>
+    </criterion>
+
+    <criterion id="AC5" priority="medium">
+      <title>E2E Quote to Invoice Flow</title>
+      <given>A user creates a quote via the UI</given>
+      <when>The quote is accepted and converted to invoice</when>
+      <then>The invoice displays the same pricing and cost breakdown</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="integration">
+      <name>Partner pricing uses FIXED_GRID</name>
+      <input>Contact: Hôtel Ritz Paris, Route: CDG → Paris</input>
+      <expected>pricingMode: FIXED_GRID, price matches contract</expected>
+    </scenario>
+    <scenario id="TS2" type="integration">
+      <name>Private client uses DYNAMIC</name>
+      <input>Contact: Client privé, Route: CDG → Paris</input>
+      <expected>pricingMode: DYNAMIC, all multipliers applied</expected>
+    </scenario>
+    <scenario id="TS3" type="e2e">
+      <name>Quote creation via UI</name>
+      <input>Create quote via Playwright</input>
+      <expected>Quote saved with correct pricing</expected>
+    </scenario>
+    <scenario id="TS4" type="e2e">
+      <name>Quote to Invoice conversion</name>
+      <input>Convert accepted quote to invoice</input>
+      <expected>Invoice has identical costBreakdown</expected>
+    </scenario>
+  </test-scenarios>
+</story-context>
