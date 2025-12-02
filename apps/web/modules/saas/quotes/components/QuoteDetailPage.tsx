@@ -8,6 +8,7 @@ import { QuoteHeader } from "./QuoteHeader";
 import { QuoteCommercialSummary } from "./QuoteCommercialSummary";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
 import { QuoteActivityLog } from "./QuoteActivityLog";
+import { CostBreakdownDisplay } from "./CostBreakdownDisplay";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
@@ -191,9 +192,14 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
 
       {/* 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column - Commercial Summary */}
-        <div className="lg:col-span-3">
+        {/* Left Column - Commercial Summary + Cost Breakdown */}
+        <div className="lg:col-span-3 space-y-4">
           <QuoteCommercialSummary quote={data} />
+          {/* Story 15.7: Display cost breakdown for audit */}
+          <CostBreakdownDisplay 
+            breakdown={data.costBreakdown || data.tripAnalysis?.costBreakdown} 
+            compact 
+          />
         </div>
 
         {/* Center Column - Trip Transparency */}

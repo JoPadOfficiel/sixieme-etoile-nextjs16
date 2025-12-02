@@ -150,9 +150,9 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','createdAt','updatedAt','vehicleId','driverId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','createdAt','updatedAt','vehicleId','driverId']);
 
-export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','notes','createdAt','updatedAt']);
+export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','costBreakdown','notes','createdAt','updatedAt']);
 
 export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sortOrder','createdAt','updatedAt']);
 
@@ -1084,6 +1084,7 @@ export const QuoteSchema = z.object({
   commissionAmount: z.instanceof(Prisma.Decimal, { message: "Field 'commissionAmount' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
   tripAnalysis: JsonValueSchema.nullable(),
   appliedRules: JsonValueSchema.nullable(),
+  costBreakdown: JsonValueSchema.nullable(),
   validUntil: z.coerce.date().nullable(),
   notes: z.string().nullable(),
   sentAt: z.coerce.date().nullable(),
@@ -1131,6 +1132,7 @@ export const InvoiceSchema = z.object({
   totalInclVat: z.instanceof(Prisma.Decimal, { message: "Field 'totalInclVat' must be a Decimal. Location: ['Models', 'Invoice']"}),
   currency: z.string(),
   commissionAmount: z.instanceof(Prisma.Decimal, { message: "Field 'commissionAmount' must be a Decimal. Location: ['Models', 'Invoice']"}).nullable(),
+  costBreakdown: JsonValueSchema.nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

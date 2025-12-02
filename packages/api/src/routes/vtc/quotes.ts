@@ -71,6 +71,12 @@ const createQuoteSchema = z.object({
 		.optional()
 		.nullable()
 		.describe("Applied pricing rules, multipliers, promotions"),
+	// Story 15.7: Cost breakdown for audit
+	costBreakdown: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Detailed cost breakdown: fuel, tolls, driver, wear"),
 	validUntil: z
 		.string()
 		.datetime()
@@ -111,6 +117,8 @@ const updateQuoteSchema = z.object({
 	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
 	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details"),
 	appliedRules: z.record(z.unknown()).optional().nullable().describe("Applied pricing rules"),
+	// Story 15.7: Cost breakdown for audit
+	costBreakdown: z.record(z.unknown()).optional().nullable().describe("Detailed cost breakdown"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 	validUntil: z
 		.string()
@@ -342,6 +350,10 @@ export const quotesRouter = new Hono()
 						appliedRules: data.appliedRules as
 							| Prisma.InputJsonValue
 							| undefined,
+						// Story 15.7: Store cost breakdown for audit
+						costBreakdown: data.costBreakdown as
+							| Prisma.InputJsonValue
+							| undefined,
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
 						notes: data.notes,
 						status: "DRAFT",
@@ -510,6 +522,12 @@ export const quotesRouter = new Hono()
 						appliedRules: data.appliedRules === null 
 							? Prisma.JsonNull 
 							: data.appliedRules as Prisma.InputJsonValue 
+					}),
+					// Story 15.7: Cost breakdown for audit
+					...(data.costBreakdown !== undefined && { 
+						costBreakdown: data.costBreakdown === null 
+							? Prisma.JsonNull 
+							: data.costBreakdown as Prisma.InputJsonValue 
 					}),
 					// Standard update fields
 					...(data.finalPrice !== undefined && { finalPrice: data.finalPrice }),

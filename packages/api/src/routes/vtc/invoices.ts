@@ -481,13 +481,14 @@ export const invoicesRouter = new Hono()
 							totalVat: totals.totalVat,
 							totalInclVat: totals.totalInclVat,
 							commissionAmount,
+							// Story 15.7: Deep-copy cost breakdown from quote
+							costBreakdown: quote.costBreakdown ?? undefined,
 							notes: `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
 						},
 						organizationId,
 					),
 				});
 
-				// Create all invoice lines (transport + optional fees + promotions)
 				if (invoiceLines.length > 0) {
 					await tx.invoiceLine.createMany({
 						data: invoiceLines.map((line) => ({
