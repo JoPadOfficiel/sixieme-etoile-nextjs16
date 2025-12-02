@@ -53,7 +53,7 @@ interface RoutesTableProps {
 	onVehicleCategoryIdChange: (categoryId: string) => void;
 	statusFilter: string;
 	onStatusFilterChange: (status: string) => void;
-	// Pagination
+		// Pagination
 	page: number;
 	totalPages: number;
 	total: number;

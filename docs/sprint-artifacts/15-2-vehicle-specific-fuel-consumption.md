@@ -1,7 +1,7 @@
 # Story 15.2 – Use Vehicle-Specific Fuel Consumption in All Pricing Paths
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** ✅ Done  
+**Status:** Done  
 **Priority:** High  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2025-12-02  
