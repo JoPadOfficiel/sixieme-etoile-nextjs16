@@ -438,6 +438,41 @@ export interface ZoneMultiplierResult {
 }
 
 // ============================================================================
+// Story 15.3: Vehicle Category Multiplier Types
+// ============================================================================
+
+/**
+ * Story 15.3: Vehicle category information for pricing
+ */
+export interface VehicleCategoryInfo {
+	id: string;
+	code: string;
+	name: string;
+	priceMultiplier: number;
+}
+
+/**
+ * Story 15.3: Applied vehicle category multiplier rule for transparency
+ */
+export interface AppliedVehicleCategoryMultiplierRule extends AppliedRule {
+	type: "VEHICLE_CATEGORY_MULTIPLIER";
+	categoryId: string;
+	categoryCode: string;
+	categoryName: string;
+	multiplier: number;
+	priceBefore: number;
+	priceAfter: number;
+}
+
+/**
+ * Story 15.3: Result of vehicle category multiplier application
+ */
+export interface VehicleCategoryMultiplierResult {
+	adjustedPrice: number;
+	appliedRule: AppliedVehicleCategoryMultiplierRule | null;
+}
+
+// ============================================================================
 // Cost Breakdown Types (Story 4.2)
 // ============================================================================
 
@@ -1714,6 +1749,52 @@ export function applyZoneMultiplier(
 }
 
 // ============================================================================
+// Story 15.3: Vehicle Category Multiplier Application
+// ============================================================================
+
+/**
+ * Story 15.3: Apply vehicle category price multiplier
+ * 
+ * This function applies the category's priceMultiplier to the base price.
+ * It returns the adjusted price and an optional rule if multiplier != 1.0.
+ * 
+ * @param basePrice - The price before category multiplier
+ * @param vehicleCategory - The vehicle category info (optional)
+ * @returns Adjusted price and applied rule (if multiplier != 1.0)
+ */
+export function applyVehicleCategoryMultiplier(
+	basePrice: number,
+	vehicleCategory: VehicleCategoryInfo | undefined,
+): VehicleCategoryMultiplierResult {
+	// No category info - return unchanged
+	if (!vehicleCategory) {
+		return { adjustedPrice: basePrice, appliedRule: null };
+	}
+
+	const multiplier = vehicleCategory.priceMultiplier;
+
+	// Neutral multiplier (1.0) - no rule added
+	if (multiplier === 1.0) {
+		return { adjustedPrice: basePrice, appliedRule: null };
+	}
+
+	const adjustedPrice = Math.round(basePrice * multiplier * 100) / 100;
+
+	const appliedRule: AppliedVehicleCategoryMultiplierRule = {
+		type: "VEHICLE_CATEGORY_MULTIPLIER",
+		description: `Vehicle category multiplier applied: ${vehicleCategory.name} (${multiplier}×)`,
+		categoryId: vehicleCategory.id,
+		categoryCode: vehicleCategory.code,
+		categoryName: vehicleCategory.name,
+		multiplier,
+		priceBefore: basePrice,
+		priceAfter: adjustedPrice,
+	};
+
+	return { adjustedPrice, appliedRule };
+}
+
+// ============================================================================
 // Grid Matching Functions
 // ============================================================================
 
@@ -2422,6 +2503,8 @@ export interface PricingEngineContext {
 	// Story 4.3: Multipliers (optional for backward compatibility)
 	advancedRates?: AdvancedRateData[];
 	seasonalMultipliers?: SeasonalMultiplierData[];
+	// Story 15.3: Vehicle category for price multiplier
+	vehicleCategory?: VehicleCategoryInfo;
 }
 
 /**
@@ -2433,7 +2516,7 @@ export function calculatePrice(
 	context: PricingEngineContext,
 ): PricingResult {
 	const appliedRules: AppliedRule[] = [];
-	const { contact, zones, pricingSettings, advancedRates = [], seasonalMultipliers = [] } = context;
+	const { contact, zones, pricingSettings, advancedRates = [], seasonalMultipliers = [], vehicleCategory } = context;
 
 	// Default values for distance/duration estimation
 	const estimatedDistanceKm = request.estimatedDistanceKm ?? 30;
@@ -2482,6 +2565,8 @@ export function calculatePrice(
 			// Story 11.3: Pass zones for zone pricing multiplier
 			pickupZone,
 			dropoffZone,
+			// Story 15.3: Pass vehicle category for price multiplier
+			vehicleCategory,
 		);
 	}
 
@@ -2516,6 +2601,8 @@ export function calculatePrice(
 			// Story 11.3: No zones for NO_CONTRACT case
 			null,
 			null,
+			// Story 15.3: Pass vehicle category for price multiplier
+			vehicleCategory,
 		);
 	}
 
@@ -2774,6 +2861,8 @@ export function calculatePrice(
 		// Story 11.3: Pass zones for zone pricing multiplier
 		pickupZone,
 		dropoffZone,
+		// Story 15.3: Pass vehicle category for price multiplier
+		vehicleCategory,
 	);
 }
 
@@ -2800,6 +2889,8 @@ function buildDynamicResult(
 	// Story 11.3: Zone data for zone pricing multipliers
 	pickupZone: ZoneData | null = null,
 	dropoffZone: ZoneData | null = null,
+	// Story 15.3: Vehicle category for price multiplier
+	vehicleCategory: VehicleCategoryInfo | undefined = undefined,
 ): PricingResult {
 	// Calculate with full details
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings);
@@ -2820,7 +2911,14 @@ function buildDynamicResult(
 		usingDefaultSettings,
 	});
 
-	// Story 11.3: Apply zone pricing multiplier FIRST (before other multipliers)
+	// Story 15.3: Apply vehicle category multiplier FIRST (after base price, before zone)
+	const categoryMultiplierResult = applyVehicleCategoryMultiplier(price, vehicleCategory);
+	if (categoryMultiplierResult.appliedRule) {
+		price = categoryMultiplierResult.adjustedPrice;
+		appliedRules.push(categoryMultiplierResult.appliedRule);
+	}
+
+	// Story 11.3: Apply zone pricing multiplier (after category multiplier)
 	const zoneMultiplierResult = applyZoneMultiplier(price, pickupZone, dropoffZone);
 	if (zoneMultiplierResult.appliedRule) {
 		price = zoneMultiplierResult.adjustedPrice;

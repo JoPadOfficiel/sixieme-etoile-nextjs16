@@ -30,6 +30,7 @@ import {
 	type PricingRequest,
 	type PricingResult,
 	type SeasonalMultiplierData,
+	type VehicleCategoryInfo,
 	type ZoneRouteAssignment,
 	type VehicleSelectionInfo,
 } from "../../services/pricing-engine";
@@ -632,13 +633,20 @@ export const pricingCalculateRouter = new Hono()
 				estimatedDistanceKm: effectiveDistanceKm,
 			};
 
-			// Calculate price (Story 4.3: now includes multipliers)
+			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category)
 			const result = calculatePrice(pricingRequest, {
 				contact,
 				zones,
 				pricingSettings: effectivePricingSettings,
 				advancedRates,
 				seasonalMultipliers,
+				// Story 15.3: Pass vehicle category for price multiplier
+				vehicleCategory: vehicleCategory ? {
+					id: vehicleCategory.id,
+					code: vehicleCategory.code,
+					name: vehicleCategory.name,
+					priceMultiplier: Number(vehicleCategory.priceMultiplier),
+				} : undefined,
 			});
 
 			// Story 4.5: Add vehicle selection info to tripAnalysis
