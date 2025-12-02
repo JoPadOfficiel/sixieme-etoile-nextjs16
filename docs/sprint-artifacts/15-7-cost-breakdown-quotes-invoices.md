@@ -502,11 +502,13 @@ describe("Quote Cost Breakdown", () => {
 - **Total**: Sum of all cost components
 - **Tooltips**: Detailed calculation breakdown on hover
 
-### Pending
+### Completed Actions
 
-- Migration needs to be run: `pnpm prisma migrate dev`
-- Quote/Invoice creation routes need to store costBreakdown
-- Integration with QuoteDetailPage to display breakdown
+- ✅ Migration applied: `20251202112646_story_15_7_cost_breakdown`
+- ✅ Quote routes updated to store costBreakdown
+- ✅ Invoice routes updated to deep-copy costBreakdown from quote
+- ✅ QuoteDetailPage displays CostBreakdownDisplay component
+- ✅ Database reseeded with new schema
 
 ---
 
