@@ -2224,6 +2224,8 @@
 				"netMargin": "Net Margin",
 				"zones": "Zones",
 				"zoneMultiplierApplied": "Zone multiplier ×{multiplier} applied to price",
+				"roundTrip": "Round Trip ×2",
+				"roundTripApplied": "Round trip multiplier applied - price and costs doubled",
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"

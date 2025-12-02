@@ -21,6 +21,7 @@ import {
   MapIcon,
   PencilIcon,
   PercentIcon,
+  RefreshCwIcon,
   RouteIcon,
   TruckIcon,
 } from "lucide-react";
@@ -133,6 +134,15 @@ export function TripTransparencyPanel({
     priceAfter?: number;
   } | undefined;
 
+  // Story 16.6: Extract round trip rule for display
+  const roundTripRule = appliedRules?.find(rule => rule.type === "ROUND_TRIP") as {
+    type: string;
+    description: string;
+    multiplier: number;
+    priceBeforeRoundTrip?: number;
+    priceAfterRoundTrip?: number;
+  } | undefined;
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Pricing Mode Badge */}
@@ -149,6 +159,13 @@ export function TripTransparencyPanel({
           {matchedGrid && (
             <Badge variant="outline" className="text-xs">
               {matchedGrid.name}
+            </Badge>
+          )}
+          {/* Story 16.6: Round Trip Badge */}
+          {roundTripRule && (
+            <Badge variant="default" className="text-xs bg-purple-600 hover:bg-purple-700">
+              <RefreshCwIcon className="size-3 mr-1" />
+              {t("quotes.create.tripTransparency.roundTrip")}
             </Badge>
           )}
         </div>

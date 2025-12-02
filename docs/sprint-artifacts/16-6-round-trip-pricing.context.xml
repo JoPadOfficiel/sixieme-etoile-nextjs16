@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.6</story-id>
+    <story-key>16-6-round-trip-pricing</story-key>
+    <title>Calcul Prix Aller-Retour pour Transfer</title>
+    <epic>Epic 16 - Refactorisation du Système de Devis par Type de Trajet</epic>
+    <created>2025-12-02</created>
+    <status>ready-for-dev</status>
+    <priority>medium</priority>
+    <estimated-effort>2 Story Points</estimated-effort>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Actuellement, lorsqu'un opérateur coche "Aller-retour" sur un devis de type TRANSFER,
+      le prix n'est pas automatiquement doublé. Le champ `isRoundTrip` existe dans le schéma
+      (Story 16.1) et le formulaire (Story 16.2), mais le moteur de pricing ne l'utilise pas.
+      
+      Problèmes actuels :
+      1. Le prix affiché est le même pour un aller simple et un aller-retour
+      2. Le coût interne ne reflète pas les deux trajets
+      3. Les prix grille partenaires ne sont pas doublés non plus
+      4. Aucune règle `ROUND_TRIP` dans `appliedRules` pour la transparence
+    </description>
+    <impact>
+      - Sous-tarification des allers-retours (perte de 50% du revenu)
+      - Incohérence entre le prix affiché et le service réel
+      - Marge incorrecte (coût interne non doublé)
+      - Pas de traçabilité de l'application du multiplicateur ×2
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Doubler le prix de base pour les transferts aller-retour</objective>
+    <objective id="2">Doubler le coût interne (shadow calculation)</objective>
+    <objective id="3">Doubler les prix grille partenaires pour aller-retour</objective>
+    <objective id="4">Ajouter la règle ROUND_TRIP dans appliedRules</objective>
+    <objective id="5">Afficher les segments Aller et Retour dans TripTransparency</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification de buildDynamicResult() pour appliquer ×2</item>
+      <item>Modification de buildGridResult() pour appliquer ×2</item>
+      <item>Création du type AppliedRoundTripRule</item>
+      <item>Modification du shadow calculation pour doubler les coûts</item>
+      <item>Affichage des segments Aller/Retour dans TripTransparencyPanel</item>
+      <item>Traductions en/fr pour les nouveaux labels</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Calcul de routes différentes pour l'aller et le retour (même route inversée)</item>
+      <item>Gestion des arrêts intermédiaires pour aller-retour (Story 16.7)</item>
+      <item>Tarification différenciée aller vs retour</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <existing-files>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Moteur de pricing - buildDynamicResult() et buildGridResult() à modifier
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Panel de transparence - affichage des segments à modifier
+      </file>
+      <file path="apps/web/modules/saas/quotes/types.ts">
+        Types - ajouter AppliedRoundTripRule
+      </file>
+    </existing-files>
+
+    <pricing-flow>
+      <![CDATA[
+## Flow de Pricing Actuel
+
+1. calculatePrice(request) est appelé
+2. Si partenaire avec grille → buildGridResult()
+3. Sinon → buildDynamicResult()
+4. Shadow calculation calcule le coût interne
+5. Résultat retourné avec appliedRules
+
+## Modification Requise
+
+Après le calcul du prix de base, si isRoundTrip = true :
+1. Multiplier le prix par 2
+2. Multiplier le coût interne par 2
+3. Ajouter la règle ROUND_TRIP dans appliedRules
+      ]]>
+    </pricing-flow>
+
+    <round-trip-rule>
+      <![CDATA[
+interface AppliedRoundTripRule {
+  type: "ROUND_TRIP";
+  description: string;
+  multiplier: 2;
+  priceBeforeRoundTrip: number;
+  priceAfterRoundTrip: number;
+  internalCostBeforeRoundTrip: number;
+  internalCostAfterRoundTrip: number;
+}
+      ]]>
+    </round-trip-rule>
+
+    <dependencies>
+      <dependency>Story 16.1 - Schema Quote étendu avec isRoundTrip (DONE)</dependency>
+      <dependency>Story 16.2 - Formulaire avec checkbox aller-retour (DONE)</dependency>
+      <dependency>Story 15.5 - Trip type pricing (DONE)</dependency>
+    </dependencies>
+  </technical-context>
+
+  <constraints>
+    <constraint type="pricing">Le multiplicateur est toujours ×2 (pas configurable)</constraint>
+    <constraint type="order">Appliquer ROUND_TRIP APRÈS tous les autres multiplicateurs</constraint>
+    <constraint type="transparency">Toujours inclure la règle ROUND_TRIP dans appliedRules</constraint>
+    <constraint type="i18n">Tous les textes doivent être traduits (en + fr)</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Double application du multiplicateur si mal placé</description>
+      <mitigation>Appliquer une seule fois, en dernier, avec vérification</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Confusion utilisateur sur le prix affiché</description>
+      <mitigation>Badge "Aller-Retour" visible + segments séparés</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Prix doublé pour isRoundTrip = true</criterion>
+    <criterion id="AC2">Coût interne doublé</criterion>
+    <criterion id="AC3">Prix grille partenaire doublé</criterion>
+    <criterion id="AC4">Segments Aller/Retour affichés séparément</criterion>
+    <criterion id="AC5">Règle ROUND_TRIP dans appliedRules</criterion>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <test type="unit">Tests Vitest pour le multiplicateur ×2</test>
+    <test type="integration">Tests du pricing engine avec isRoundTrip</test>
+    <test type="e2e">Tests Playwright vérifiant l'affichage du prix doublé</test>
+    <test type="e2e">Tests Playwright vérifiant les segments Aller/Retour</test>
+  </test-strategy>
+</story-context>

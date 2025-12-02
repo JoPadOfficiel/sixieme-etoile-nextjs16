@@ -117,6 +117,8 @@ export interface PricingRequest {
 	pickupAt?: string;
 	estimatedDurationMinutes?: number;
 	estimatedDistanceKm?: number;
+	// Story 16.6: Round trip flag for transfer pricing
+	isRoundTrip?: boolean;
 }
 
 export interface AppliedRule {
@@ -455,6 +457,32 @@ export interface ZoneMultiplierResult {
 	adjustedPrice: number;
 	appliedMultiplier: number;
 	appliedRule: AppliedRule; // Story 16.3: Always present
+}
+
+// ============================================================================
+// Story 16.6: Round Trip Multiplier Types
+// ============================================================================
+
+/**
+ * Story 16.6: Applied round trip multiplier rule for transparency
+ */
+export interface AppliedRoundTripRule extends AppliedRule {
+	type: "ROUND_TRIP";
+	description: string;
+	multiplier: 2;
+	priceBeforeRoundTrip: number;
+	priceAfterRoundTrip: number;
+	internalCostBeforeRoundTrip: number;
+	internalCostAfterRoundTrip: number;
+}
+
+/**
+ * Story 16.6: Result of round trip multiplier application
+ */
+export interface RoundTripMultiplierResult {
+	adjustedPrice: number;
+	adjustedInternalCost: number;
+	appliedRule: AppliedRoundTripRule | null;
 }
 
 // ============================================================================
@@ -1915,6 +1943,56 @@ export function applyZoneMultiplier(
 }
 
 // ============================================================================
+// Story 16.6: Round Trip Multiplier Application
+// ============================================================================
+
+/**
+ * Story 16.6: Apply round trip multiplier (×2) for transfer quotes
+ * 
+ * This function doubles both the price and internal cost for round-trip transfers.
+ * It always returns a rule when isRoundTrip is true for transparency.
+ * 
+ * @param price - The price before round trip multiplier
+ * @param internalCost - The internal cost before round trip multiplier
+ * @param isRoundTrip - Whether this is a round trip
+ * @returns Adjusted price, internal cost, and applied rule
+ */
+export function applyRoundTripMultiplier(
+	price: number,
+	internalCost: number,
+	isRoundTrip: boolean,
+): RoundTripMultiplierResult {
+	// Not a round trip - return unchanged
+	if (!isRoundTrip) {
+		return {
+			adjustedPrice: price,
+			adjustedInternalCost: internalCost,
+			appliedRule: null,
+		};
+	}
+
+	// Apply ×2 multiplier
+	const adjustedPrice = Math.round(price * 2 * 100) / 100;
+	const adjustedInternalCost = Math.round(internalCost * 2 * 100) / 100;
+
+	const appliedRule: AppliedRoundTripRule = {
+		type: "ROUND_TRIP",
+		description: "Round trip multiplier applied (×2)",
+		multiplier: 2,
+		priceBeforeRoundTrip: price,
+		priceAfterRoundTrip: adjustedPrice,
+		internalCostBeforeRoundTrip: internalCost,
+		internalCostAfterRoundTrip: adjustedInternalCost,
+	};
+
+	return {
+		adjustedPrice,
+		adjustedInternalCost,
+		appliedRule,
+	};
+}
+
+// ============================================================================
 // Story 15.3: Vehicle Category Multiplier Application
 // ============================================================================
 
@@ -2887,6 +2965,8 @@ export function calculatePrice(
 			vehicleCategory,
 			// Story 15.5: Pass trip type for differentiated pricing
 			request.tripType,
+			// Story 16.6: Pass round trip flag
+			request.isRoundTrip ?? false,
 		);
 	}
 
@@ -2925,6 +3005,8 @@ export function calculatePrice(
 			vehicleCategory,
 			// Story 15.5: Pass trip type for differentiated pricing
 			request.tripType,
+			// Story 16.6: Pass round trip flag
+			request.isRoundTrip ?? false,
 		);
 	}
 
@@ -3009,6 +3091,9 @@ export function calculatePrice(
 					toZone: route.toZone?.name ?? "N/A",
 				},
 				appliedRules,
+				null, // shadowInput
+				// Story 16.6: Pass round trip flag
+				request.isRoundTrip ?? false,
 			);
 		}
 	}
@@ -3064,6 +3149,9 @@ export function calculatePrice(
 					toZone: excursion.destinationZone?.name,
 				},
 				appliedRules,
+				null, // shadowInput
+				// Story 16.6: Pass round trip flag (excursions don't use round trip)
+				false,
 			);
 		}
 	}
@@ -3115,6 +3203,9 @@ export function calculatePrice(
 					name: dispo.name,
 				},
 				appliedRules,
+				null, // shadowInput
+				// Story 16.6: Pass round trip flag (dispos don't use round trip)
+				false,
 			);
 		}
 	}
@@ -3187,15 +3278,18 @@ export function calculatePrice(
 		vehicleCategory,
 		// Story 15.5: Pass trip type for differentiated pricing
 		request.tripType,
+		// Story 16.6: Pass round trip flag
+		request.isRoundTrip ?? false,
 	);
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3 + 15.5)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3 + 15.5 + 16.6)
  * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
  * Story 11.3: Now applies zone pricing multipliers
  * Story 15.5: Now applies trip type specific pricing
+ * Story 16.6: Now applies round trip multiplier (×2) for transfers
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -3218,6 +3312,8 @@ function buildDynamicResult(
 	vehicleCategory: VehicleCategoryInfo | undefined = undefined,
 	// Story 15.5: Trip type for differentiated pricing
 	tripType: TripType = "transfer",
+	// Story 16.6: Round trip flag for transfer pricing
+	isRoundTrip: boolean = false,
 ): PricingResult {
 	// Story 15.4: Resolve rates with fallback chain (Category → Organization)
 	const resolvedRates = resolveRates(vehicleCategory, settings);
@@ -3300,7 +3396,19 @@ function buildDynamicResult(
 	);
 	
 	// Use total internal cost from shadow calculation
-	const internalCost = tripAnalysis.totalInternalCost;
+	let internalCost = tripAnalysis.totalInternalCost;
+	
+	// Story 16.6: Apply round trip multiplier (×2) LAST, after all other adjustments
+	// Only applies to TRANSFER trip type with isRoundTrip = true
+	if (isRoundTrip && tripType === "transfer") {
+		const roundTripResult = applyRoundTripMultiplier(price, internalCost, true);
+		price = roundTripResult.adjustedPrice;
+		internalCost = roundTripResult.adjustedInternalCost;
+		if (roundTripResult.appliedRule) {
+			appliedRules.push(roundTripResult.appliedRule);
+		}
+	}
+	
 	const margin = Math.round((price - internalCost) * 100) / 100;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
@@ -3370,8 +3478,9 @@ function buildDynamicResult(
 }
 
 /**
- * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5, Story 4.6)
+ * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5, Story 4.6, Story 16.6)
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
+ * Story 16.6: Now applies round trip multiplier (×2) for transfers
  */
 function buildGridResult(
 	price: number,
@@ -3382,6 +3491,8 @@ function buildGridResult(
 	appliedRules: AppliedRule[],
 	// Story 4.6: Shadow calculation input (from vehicle selection)
 	shadowInput: ShadowCalculationInput | null = null,
+	// Story 16.6: Round trip flag for transfer pricing
+	isRoundTrip: boolean = false,
 ): PricingResult {
 	// Story 4.6: Calculate shadow segments (A/B/C)
 	const tripAnalysis = calculateShadowSegments(
@@ -3392,7 +3503,18 @@ function buildGridResult(
 	);
 	
 	// Use total internal cost from shadow calculation
-	const internalCost = tripAnalysis.totalInternalCost;
+	let internalCost = tripAnalysis.totalInternalCost;
+	
+	// Story 16.6: Apply round trip multiplier (×2) for grid prices too
+	if (isRoundTrip) {
+		const roundTripResult = applyRoundTripMultiplier(price, internalCost, true);
+		price = roundTripResult.adjustedPrice;
+		internalCost = roundTripResult.adjustedInternalCost;
+		if (roundTripResult.appliedRule) {
+			appliedRules.push(roundTripResult.appliedRule);
+		}
+	}
+	
 	const margin = Math.round((price - internalCost) * 100) / 100;
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;

@@ -26,6 +26,8 @@ interface PricingCalculationInput {
   passengerCount: number;
   luggageCount?: number;
   enableVehicleSelection?: boolean;
+  // Story 16.6: Round trip flag for transfer pricing
+  isRoundTrip?: boolean;
 }
 
 /**
@@ -359,6 +361,8 @@ export function usePricingCalculation(
           passengerCount: formData.passengerCount,
           luggageCount: formData.luggageCount,
           enableVehicleSelection: true,
+          // Story 16.6: Pass round trip flag for transfer pricing
+          isRoundTrip: formData.isRoundTrip,
         };
 
         mutation.mutate(input);

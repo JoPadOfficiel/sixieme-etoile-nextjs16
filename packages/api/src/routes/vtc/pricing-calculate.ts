@@ -72,6 +72,8 @@ const calculatePricingSchema = z.object({
 	enableVehicleSelection: z.boolean().default(true),
 	haversineThresholdKm: z.coerce.number().positive().optional(),
 	maxCandidatesForRouting: z.coerce.number().int().positive().optional(),
+	// Story 16.6: Round trip flag for transfer pricing
+	isRoundTrip: z.boolean().default(false),
 });
 
 // Story 4.4: Price override schema
@@ -633,6 +635,8 @@ export const pricingCalculateRouter = new Hono()
 				pickupAt: data.pickupAt,
 				estimatedDurationMinutes: effectiveDurationMinutes,
 				estimatedDistanceKm: effectiveDistanceKm,
+				// Story 16.6: Round trip flag for transfer pricing
+				isRoundTrip: data.isRoundTrip,
 			};
 
 			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category)

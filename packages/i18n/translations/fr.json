@@ -2224,6 +2224,8 @@
 				"netMargin": "Marge nette",
 				"zones": "Zones",
 				"zoneMultiplierApplied": "Multiplicateur de zone ×{multiplier} appliqué au prix",
+				"roundTrip": "Aller-Retour ×2",
+				"roundTripApplied": "Multiplicateur aller-retour appliqué - prix et coûts doublés",
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"
