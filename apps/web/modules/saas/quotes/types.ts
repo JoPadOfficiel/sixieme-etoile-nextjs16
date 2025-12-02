@@ -133,6 +133,16 @@ export interface Contact {
   phone: string | null;
 }
 
+/**
+ * Story 16.1: Stop structure for excursion trips
+ */
+export interface QuoteStop {
+  address: string;
+  latitude: number;
+  longitude: number;
+  order: number;
+}
+
 export interface Quote {
   id: string;
   organizationId: string;
@@ -145,9 +155,16 @@ export interface Quote {
   pickupAddress: string;
   pickupLatitude: string | null;
   pickupLongitude: string | null;
-  dropoffAddress: string;
+  // Story 16.1: Made optional for DISPO and OFF_GRID
+  dropoffAddress: string | null;
   dropoffLatitude: string | null;
   dropoffLongitude: string | null;
+  // Story 16.1: Trip type specific fields
+  isRoundTrip: boolean;           // For TRANSFER
+  stops: QuoteStop[] | null;      // For EXCURSION
+  returnDate: string | null;      // For EXCURSION
+  durationHours: string | null;   // For DISPO (Decimal as string)
+  maxKilometers: string | null;   // For DISPO (Decimal as string)
   passengerCount: number;
   luggageCount: number;
   vehicleCategoryId: string;
@@ -320,9 +337,13 @@ export function formatMargin(margin: string | number | null | undefined): string
 
 /**
  * Format trip summary (pickup → dropoff)
+ * Story 16.1: Handle optional dropoff for DISPO and OFF_GRID
  */
-export function formatTripSummary(pickupAddress: string, dropoffAddress: string): string {
+export function formatTripSummary(pickupAddress: string, dropoffAddress: string | null): string {
   const pickup = pickupAddress.split(",")[0] || pickupAddress;
+  if (!dropoffAddress) {
+    return pickup; // For DISPO and OFF_GRID without destination
+  }
   const dropoff = dropoffAddress.split(",")[0] || dropoffAddress;
   return `${pickup} → ${dropoff}`;
 }
@@ -334,6 +355,7 @@ export function formatTripSummary(pickupAddress: string, dropoffAddress: string)
 /**
  * Form data for creating a new quote
  * Story 6.6: Extended with airport helper and optional fees fields
+ * Story 16.1: Extended with trip type specific fields
  */
 export interface CreateQuoteFormData {
   contactId: string;
@@ -342,6 +364,7 @@ export interface CreateQuoteFormData {
   pickupAddress: string;
   pickupLatitude: number | null;
   pickupLongitude: number | null;
+  // Story 16.1: Made optional for DISPO and OFF_GRID
   dropoffAddress: string;
   dropoffLatitude: number | null;
   dropoffLongitude: number | null;
@@ -357,10 +380,17 @@ export interface CreateQuoteFormData {
   flightNumber: string;
   waitingTimeMinutes: number;
   selectedOptionalFeeIds: string[];
+  // Story 16.1: Trip type specific fields
+  isRoundTrip: boolean;           // For TRANSFER
+  stops: QuoteStop[];             // For EXCURSION
+  returnDate: Date | null;        // For EXCURSION
+  durationHours: number | null;   // For DISPO
+  maxKilometers: number | null;   // For DISPO (calculated: durationHours × 50)
 }
 
 /**
  * Initial form data for create quote
+ * Story 16.1: Extended with trip type specific field defaults
  */
 export const initialCreateQuoteFormData: CreateQuoteFormData = {
   contactId: "",
@@ -384,6 +414,12 @@ export const initialCreateQuoteFormData: CreateQuoteFormData = {
   flightNumber: "",
   waitingTimeMinutes: 45, // Default 45 minutes for airport transfers
   selectedOptionalFeeIds: [],
+  // Story 16.1: Trip type specific field defaults
+  isRoundTrip: false,           // For TRANSFER
+  stops: [],                    // For EXCURSION
+  returnDate: null,             // For EXCURSION
+  durationHours: null,          // For DISPO
+  maxKilometers: null,          // For DISPO (calculated: durationHours × 50)
 };
 
 /**

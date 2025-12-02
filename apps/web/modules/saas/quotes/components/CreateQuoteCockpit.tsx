@@ -172,9 +172,16 @@ export function CreateQuoteCockpit() {
           pickupAddress: formData.pickupAddress,
           pickupLatitude: formData.pickupLatitude,
           pickupLongitude: formData.pickupLongitude,
-          dropoffAddress: formData.dropoffAddress,
+          // Story 16.1: dropoffAddress is optional for DISPO and OFF_GRID
+          dropoffAddress: formData.dropoffAddress || null,
           dropoffLatitude: formData.dropoffLatitude,
           dropoffLongitude: formData.dropoffLongitude,
+          // Story 16.1: Trip type specific fields
+          isRoundTrip: formData.isRoundTrip,
+          stops: formData.stops.length > 0 ? formData.stops : null,
+          returnDate: formData.returnDate?.toISOString() ?? null,
+          durationHours: formData.durationHours,
+          maxKilometers: formData.maxKilometers,
           passengerCount: formData.passengerCount,
           luggageCount: formData.luggageCount,
           suggestedPrice: pricingResult?.price ?? formData.finalPrice,

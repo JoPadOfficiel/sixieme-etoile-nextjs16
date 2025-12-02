@@ -1249,9 +1249,17 @@ model Quote {
   pickupLongitude Decimal? @db.Decimal(10, 7)
 
   // Dropoff details
-  dropoffAddress   String
+  // Story 16.1: Made optional for DISPO and OFF_GRID trip types
+  dropoffAddress   String?
   dropoffLatitude  Decimal? @db.Decimal(10, 7)
   dropoffLongitude Decimal? @db.Decimal(10, 7)
+
+  // Story 16.1: Trip type specific fields
+  isRoundTrip   Boolean   @default(false) // For TRANSFER - indicates round-trip
+  stops         Json? // For EXCURSION - array of intermediate stops
+  returnDate    DateTime? // For EXCURSION - optional return date
+  durationHours Decimal?  @db.Decimal(5, 2) // For DISPO - duration in hours
+  maxKilometers Decimal?  @db.Decimal(8, 2) // For DISPO - max km included (calculated)
 
   // Passengers and luggage
   passengerCount Int

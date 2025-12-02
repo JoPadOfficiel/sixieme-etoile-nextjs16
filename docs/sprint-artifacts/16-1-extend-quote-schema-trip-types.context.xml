@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.1</story-id>
+    <story-title>Étendre le Schéma Quote pour les Types de Trajets</story-title>
+    <epic>Epic 16: Refactorisation du Système de Devis par Type de Trajet</epic>
+    <created>2025-12-02</created>
+    <status>Ready for Development</status>
+    <priority>High</priority>
+    <estimated-effort>3 Story Points</estimated-effort>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Le modèle Quote actuel dans Prisma n'a pas les champs nécessaires pour stocker
+      les données spécifiques à chaque type de trajet (Transfer, Excursion, Dispo, Off-grid).
+      
+      Actuellement, tous les types de trajets utilisent les mêmes champs:
+      - pickupAddress (obligatoire)
+      - dropoffAddress (obligatoire)
+      - pickupAt (obligatoire)
+      
+      Cela empêche de:
+      - Créer des transferts aller-retour
+      - Stocker les arrêts intermédiaires pour les excursions
+      - Définir la durée et le km max pour les mises à disposition
+      - Créer des trajets off-grid sans destination obligatoire
+    </description>
+    
+    <current-schema>
+      <![CDATA[
+model Quote {
+  // ... existing fields ...
+  
+  // Pickup details
+  pickupAt        DateTime
+  pickupAddress   String
+  pickupLatitude  Decimal? @db.Decimal(10, 7)
+  pickupLongitude Decimal? @db.Decimal(10, 7)
+
+  // Dropoff details
+  dropoffAddress   String  // PROBLÈME: Obligatoire pour tous les types
+  dropoffLatitude  Decimal? @db.Decimal(10, 7)
+  dropoffLongitude Decimal? @db.Decimal(10, 7)
+  
+  // Trip type
+  tripType    TripType  // TRANSFER, EXCURSION, DISPO, OFF_GRID
+  
+  // MANQUANT: Champs spécifiques par type
+}
+      ]]>
+    </current-schema>
+    
+    <business-impact>
+      - Impossibilité de créer des devis aller-retour pour les transferts
+      - Impossibilité de gérer les excursions avec plusieurs arrêts
+      - Impossibilité de créer des mises à disposition avec durée et km max
+      - Impossibilité de créer des trajets off-grid sans destination
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">
+      Ajouter le champ isRoundTrip pour les transferts aller-retour
+    </objective>
+    <objective id="2">
+      Ajouter les champs stops et returnDate pour les excursions
+    </objective>
+    <objective id="3">
+      Ajouter les champs durationHours et maxKilometers pour les mises à disposition
+    </objective>
+    <objective id="4">
+      Rendre dropoffAddress optionnel pour DISPO et OFF_GRID
+    </objective>
+    <objective id="5">
+      Créer une migration sécurisée sans perte de données
+    </objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification du schéma Prisma Quote</item>
+      <item>Création de la migration Prisma</item>
+      <item>Mise à jour des types Zod générés</item>
+      <item>Mise à jour de l'API de création de devis</item>
+      <item>Tests unitaires pour les nouveaux champs</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modification de l'interface utilisateur (Story 16.2)</item>
+      <item>Modification du pricing engine (Stories 16.6-16.9)</item>
+      <item>Tests E2E (Story 16.10)</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <files-to-modify>
+      <file path="packages/database/prisma/schema.prisma">
+        Ajouter les nouveaux champs au modèle Quote
+      </file>
+      <file path="packages/api/src/routes/vtc/quotes.ts">
+        Mettre à jour le schéma de validation pour les nouveaux champs
+      </file>
+      <file path="apps/web/modules/saas/quotes/types.ts">
+        Mettre à jour CreateQuoteFormData avec les nouveaux champs
+      </file>
+    </files-to-modify>
+    
+    <dependencies>
+      <dependency>Prisma ORM pour la migration</dependency>
+      <dependency>Zod pour la validation des schémas</dependency>
+    </dependencies>
+    
+    <constraints>
+      <constraint>La migration doit être rétrocompatible</constraint>
+      <constraint>Les devis existants doivent conserver leurs données</constraint>
+      <constraint>dropoffAddress doit rester obligatoire pour TRANSFER et EXCURSION</constraint>
+    </constraints>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" type="functional">
+      <title>Transfer Fields</title>
+      <given>a quote with tripType = TRANSFER</given>
+      <when>I create or update the quote</when>
+      <then>I can set isRoundTrip: Boolean to indicate if it's a round-trip transfer</then>
+      <and>if isRoundTrip = true, the pricing engine doubles the base price</and>
+    </criterion>
+    
+    <criterion id="AC2" type="functional">
+      <title>Excursion Fields</title>
+      <given>a quote with tripType = EXCURSION</given>
+      <when>I create or update the quote</when>
+      <then>I can set stops: Json (array of intermediate stops) and returnDate: DateTime</then>
+      <and>the pricing engine calculates based on total distance including all stops</and>
+    </criterion>
+    
+    <criterion id="AC3" type="functional">
+      <title>Dispo Fields</title>
+      <given>a quote with tripType = DISPO</given>
+      <when>I create or update the quote</when>
+      <then>I can set durationHours: Decimal and maxKilometers: Decimal</then>
+      <and>dropoffAddress is optional (can be null)</and>
+      <and>the pricing engine uses hourly rate × duration + overage if applicable</and>
+    </criterion>
+    
+    <criterion id="AC4" type="functional">
+      <title>Off-grid Fields</title>
+      <given>a quote with tripType = OFF_GRID</given>
+      <when>I create or update the quote</when>
+      <then>dropoffAddress is optional</then>
+      <and>notes is required to describe the trip</and>
+    </criterion>
+    
+    <criterion id="AC5" type="migration">
+      <title>Migration Safety</title>
+      <given>existing quotes in the database</given>
+      <when>the migration runs</when>
+      <then>all existing quotes have default values for new fields</then>
+      <and>no data is lost</and>
+    </criterion>
+  </acceptance-criteria>
+
+  <implementation-notes>
+    <note type="schema">
+      <![CDATA[
+// Modifications à apporter au modèle Quote dans schema.prisma
+
+model Quote {
+  // ... existing fields ...
+  
+  // Story 16.1: Trip type specific fields
+  isRoundTrip     Boolean   @default(false)  // For TRANSFER
+  stops           Json?                       // For EXCURSION - array of stops
+  returnDate      DateTime?                   // For EXCURSION
+  durationHours   Decimal?  @db.Decimal(5, 2) // For DISPO
+  maxKilometers   Decimal?  @db.Decimal(8, 2) // For DISPO (calculated)
+  
+  // Make dropoffAddress optional for DISPO and OFF_GRID
+  dropoffAddress   String?  // Changed from String to String?
+}
+
+// Structure du champ stops (Json):
+// [
+//   {
+//     "address": "123 Rue Example, Paris",
+//     "latitude": 48.8566,
+//     "longitude": 2.3522,
+//     "order": 1
+//   },
+//   ...
+// ]
+      ]]>
+    </note>
+    
+    <note type="migration">
+      <![CDATA[
+-- Migration SQL attendue:
+
+-- 1. Ajouter les nouveaux champs
+ALTER TABLE "quote" ADD COLUMN "isRoundTrip" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "quote" ADD COLUMN "stops" JSONB;
+ALTER TABLE "quote" ADD COLUMN "returnDate" TIMESTAMP(3);
+ALTER TABLE "quote" ADD COLUMN "durationHours" DECIMAL(5,2);
+ALTER TABLE "quote" ADD COLUMN "maxKilometers" DECIMAL(8,2);
+
+-- 2. Rendre dropoffAddress nullable
+-- ATTENTION: Vérifier qu'il n'y a pas de contraintes NOT NULL
+ALTER TABLE "quote" ALTER COLUMN "dropoffAddress" DROP NOT NULL;
+
+-- 3. Mettre à jour les devis existants (si nécessaire)
+-- Les valeurs par défaut sont déjà gérées par Prisma
+      ]]>
+    </note>
+    
+    <note type="validation">
+      <![CDATA[
+// Validation conditionnelle dans l'API:
+
+const createQuoteSchema = z.object({
+  tripType: z.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"]),
+  
+  // Champs communs
+  contactId: z.string(),
+  pickupAddress: z.string(),
+  pickupAt: z.string().datetime(),
+  vehicleCategoryId: z.string(),
+  
+  // dropoffAddress: obligatoire sauf pour DISPO et OFF_GRID
+  dropoffAddress: z.string().optional(),
+  
+  // Transfer specific
+  isRoundTrip: z.boolean().optional().default(false),
+  
+  // Excursion specific
+  stops: z.array(z.object({
+    address: z.string(),
+    latitude: z.number(),
+    longitude: z.number(),
+    order: z.number(),
+  })).optional(),
+  returnDate: z.string().datetime().optional(),
+  
+  // Dispo specific
+  durationHours: z.number().positive().optional(),
+  maxKilometers: z.number().positive().optional(),
+  
+  // Notes: obligatoire pour OFF_GRID
+  notes: z.string().optional(),
+}).refine((data) => {
+  // dropoffAddress obligatoire pour TRANSFER et EXCURSION
+  if (data.tripType === "TRANSFER" || data.tripType === "EXCURSION") {
+    return !!data.dropoffAddress;
+  }
+  return true;
+}, {
+  message: "Dropoff address is required for transfers and excursions",
+  path: ["dropoffAddress"],
+}).refine((data) => {
+  // notes obligatoire pour OFF_GRID
+  if (data.tripType === "OFF_GRID") {
+    return !!data.notes && data.notes.trim().length > 0;
+  }
+  return true;
+}, {
+  message: "Notes are required for off-grid trips",
+  path: ["notes"],
+}).refine((data) => {
+  // durationHours obligatoire pour DISPO
+  if (data.tripType === "DISPO") {
+    return data.durationHours != null && data.durationHours > 0;
+  }
+  return true;
+}, {
+  message: "Duration is required for mise à disposition",
+  path: ["durationHours"],
+});
+      ]]>
+    </note>
+  </implementation-notes>
+
+  <testing-strategy>
+    <unit-tests>
+      <test>Création d'un devis TRANSFER avec isRoundTrip = true</test>
+      <test>Création d'un devis TRANSFER avec isRoundTrip = false (défaut)</test>
+      <test>Création d'un devis EXCURSION avec stops et returnDate</test>
+      <test>Création d'un devis DISPO avec durationHours et maxKilometers</test>
+      <test>Création d'un devis DISPO sans dropoffAddress</test>
+      <test>Création d'un devis OFF_GRID sans dropoffAddress</test>
+      <test>Validation: TRANSFER sans dropoffAddress doit échouer</test>
+      <test>Validation: OFF_GRID sans notes doit échouer</test>
+      <test>Validation: DISPO sans durationHours doit échouer</test>
+    </unit-tests>
+    
+    <migration-tests>
+      <test>Les devis existants ont isRoundTrip = false après migration</test>
+      <test>Les devis existants conservent leur dropoffAddress</test>
+      <test>Aucune perte de données après migration</test>
+    </migration-tests>
+  </testing-strategy>
+
+  <risks>
+    <risk severity="medium">
+      <description>La modification de dropoffAddress de String à String? pourrait casser des requêtes existantes</description>
+      <mitigation>Vérifier toutes les requêtes Prisma qui utilisent dropoffAddress et ajouter des vérifications null</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Le champ stops (Json) pourrait avoir des problèmes de validation</description>
+      <mitigation>Utiliser un schéma Zod strict pour valider la structure du JSON</mitigation>
+    </risk>
+  </risks>
+
+  <related-stories>
+    <story id="16.2" dependency="blocked-by">Formulaire Dynamique par Type de Trajet</story>
+    <story id="16.6" dependency="blocked-by">Calcul Prix Aller-Retour pour Transfer</story>
+    <story id="16.7" dependency="blocked-by">Calcul Prix Excursion Multi-Arrêts</story>
+    <story id="16.8" dependency="blocked-by">Calcul Prix Mise à Disposition</story>
+    <story id="16.9" dependency="blocked-by">Support Off-Grid avec Notes Obligatoires</story>
+  </related-stories>
+</story-context>

@@ -2027,9 +2027,607 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 
 ---
 
+## Epic 16: Refactorisation du Système de Devis par Type de Trajet
+
+**Goal:** Refactoriser complètement le système de création de devis pour que chaque type de trajet (Transfer, Excursion, Mise à disposition, Off-grid) ait un formulaire adapté avec les champs spécifiques nécessaires, et que le calcul des prix intègre correctement les zones, les multiplicateurs, et la différenciation partenaire/privé.
+
+**Status:** Pending  
+**Created:** 2025-12-02  
+**Related FRs:** FR7-FR16, FR42-FR46, FR55
+
+### Epic Overview
+
+#### Problem Statement
+
+Le système actuel de création de devis présente plusieurs problèmes critiques :
+
+1. **Formulaire identique pour tous les types de trajets** : Le `QuoteBasicInfoPanel` utilise le même formulaire (pickup, dropoff, date) pour tous les types alors que chaque type a des besoins différents :
+
+   - **Transfer** : Devrait avoir une option aller-retour
+   - **Excursion** : Devrait permettre plusieurs arrêts et des dates aller/retour différentes
+   - **Mise à disposition** : Devrait demander la durée en heures et le km max, pas de dropoff obligatoire
+   - **Off-grid** : Devrait permettre de ne pas avoir de destination obligatoire
+
+2. **Schéma Quote incomplet** : Le modèle Prisma `Quote` n'a pas les champs nécessaires pour stocker les données spécifiques à chaque type de trajet.
+
+3. **Calcul des prix non intégré avec les zones** : Les multiplicateurs de zones (système de cercles concentriques Paris/Bussy) ne sont pas appliqués correctement dans le calcul dynamique.
+
+4. **Prix non bloqués pour les agences** : L'Engagement Rule est implémentée mais les prix ne sont pas visuellement "bloqués" pour les partenaires avec grilles contractuelles.
+
+5. **Doublon potentiel TripTransparency** : L'utilisateur signale un doublon dans l'affichage des coûts.
+
+#### Business Value
+
+- **Expérience utilisateur** : Formulaires adaptés à chaque type de trajet
+- **Précision des prix** : Calcul correct avec zones et multiplicateurs
+- **Conformité contractuelle** : Prix bloqués pour les agences partenaires
+- **Flexibilité** : Support de tous les cas d'usage métier (aller-retour, excursions multi-arrêts, mises à disposition)
+
+### Stories
+
+---
+
+#### Story 16.1 – Étendre le Schéma Quote pour les Types de Trajets
+
+**Status:** Pending  
+**Priority:** High  
+**Estimated Effort:** 3 Story Points
+
+**As a** backend engineer,  
+**I want** the Quote model to have fields specific to each trip type,  
+**So that** the system can store all necessary data for transfers, excursions, dispos, and off-grid trips.
+
+**Related FRs:** FR10 (Excursion and dispo forfaits), FR42 (Quote builder UI).
+
+**Acceptance Criteria:**
+
+**AC1 - Transfer Fields:**  
+**Given** a quote with `tripType = TRANSFER`,  
+**When** I create or update the quote,  
+**Then** I can set `isRoundTrip: Boolean` to indicate if it's a round-trip transfer,  
+**And** if `isRoundTrip = true`, the pricing engine doubles the base price.
+
+**AC2 - Excursion Fields:**  
+**Given** a quote with `tripType = EXCURSION`,  
+**When** I create or update the quote,  
+**Then** I can set:
+
+- `stops: Json` - Array of intermediate stops with addresses and coordinates
+- `returnDate: DateTime` - Optional return date different from pickup date
+  **And** the pricing engine calculates based on total distance including all stops.
+
+**AC3 - Dispo Fields:**  
+**Given** a quote with `tripType = DISPO`,  
+**When** I create or update the quote,  
+**Then** I can set:
+
+- `durationHours: Decimal` - Duration of the mise à disposition
+- `maxKilometers: Decimal` - Maximum kilometers included (calculated dynamically)
+  **And** `dropoffAddress` is optional (can be null),  
+  **And** the pricing engine uses hourly rate × duration + overage if applicable.
+
+**AC4 - Off-grid Fields:**  
+**Given** a quote with `tripType = OFF_GRID`,  
+**When** I create or update the quote,  
+**Then** `dropoffAddress` is optional,  
+**And** `notes` is required to describe the trip.
+
+**AC5 - Migration:**  
+**Given** existing quotes in the database,  
+**When** the migration runs,  
+**Then** all existing quotes have default values for new fields,  
+**And** no data is lost.
+
+**Technical Notes:**
+
+```prisma
+// Add to Quote model in schema.prisma
+model Quote {
+  // ... existing fields ...
+
+  // Story 16.1: Trip type specific fields
+  isRoundTrip     Boolean   @default(false)  // For TRANSFER
+  stops           Json?                       // For EXCURSION - array of stops
+  returnDate      DateTime?                   // For EXCURSION
+  durationHours   Decimal?  @db.Decimal(5, 2) // For DISPO
+  maxKilometers   Decimal?  @db.Decimal(8, 2) // For DISPO (calculated)
+
+  // Make dropoffAddress optional for DISPO and OFF_GRID
+  dropoffAddress   String?  // Changed from String to String?
+}
+```
+
+**Prerequisites:** None (first story in epic).
+
+---
+
+#### Story 16.2 – Formulaire Dynamique par Type de Trajet
+
+**Status:** Pending  
+**Priority:** High  
+**Estimated Effort:** 5 Story Points
+
+**As an** operator,  
+**I want** the quote creation form to adapt based on the selected trip type,  
+**So that** I only see and fill in the fields relevant to that trip type.
+
+**Related FRs:** FR42 (Quote builder UI), FR45 (Helpers for common scenarios).
+
+**Acceptance Criteria:**
+
+**AC1 - Transfer Form:**  
+**Given** I select trip type "Transfer",  
+**When** the form updates,  
+**Then** I see:
+
+- Pickup address (required)
+- Dropoff address (required)
+- Pickup date/time (required)
+- **NEW:** Checkbox "Aller-retour" (Round trip)
+  **And** if I check "Aller-retour", the pricing doubles.
+
+**AC2 - Excursion Form:**  
+**Given** I select trip type "Excursion",  
+**When** the form updates,  
+**Then** I see:
+
+- Pickup address (required)
+- **NEW:** "Add stop" button to add intermediate stops (dynamic list)
+- **NEW:** Return date picker (optional, defaults to same day)
+- Pickup date/time (required)
+  **And** I can add/remove stops dynamically,  
+  **And** each stop has an address autocomplete field.
+
+**AC3 - Mise à Disposition Form:**  
+**Given** I select trip type "Mise à disposition",  
+**When** the form updates,  
+**Then** I see:
+
+- Pickup address (required)
+- **NO** Dropoff address field
+- Pickup date/time (required)
+- **NEW:** Duration in hours (required, number input)
+- **NEW:** Max kilometers (calculated automatically: duration × 50km/h, editable)
+  **And** the pricing uses hourly rate × duration.
+
+**AC4 - Off-grid Form:**  
+**Given** I select trip type "Off-grid",  
+**When** the form updates,  
+**Then** I see:
+
+- Pickup address (required)
+- Dropoff address (optional)
+- Pickup date/time (required)
+- Notes (required, with placeholder "Describe the trip...")
+  **And** the pricing is fully manual (operator sets final price).
+
+**AC5 - Form Validation:**  
+**Given** any trip type,  
+**When** I try to submit without required fields,  
+**Then** validation errors are shown for missing fields specific to that trip type.
+
+**Technical Notes:**
+
+- Create `TripTypeFormFields` component that renders different fields based on `tripType`
+- Update `CreateQuoteFormData` type to include new fields
+- Update `QuoteBasicInfoPanel` to use conditional rendering
+- Add translations for new field labels
+
+**Prerequisites:** Story 16.1 (Schema changes).
+
+---
+
+#### Story 16.3 – Intégration des Zones dans le Calcul Dynamique
+
+**Status:** Pending  
+**Priority:** High  
+**Estimated Effort:** 5 Story Points
+
+**As a** pricing engine,  
+**I want** to apply zone multipliers to dynamic pricing calculations,  
+**So that** trips to/from distant zones are priced appropriately higher.
+
+**Related FRs:** FR8 (Geographic zones), FR15 (Configurable multipliers).
+
+**Acceptance Criteria:**
+
+**AC1 - Zone Detection:**  
+**Given** a trip with pickup and dropoff coordinates,  
+**When** the pricing engine runs,  
+**Then** it detects which zone each point falls into using the concentric circles system (Paris center, Bussy garage, special zones).
+
+**AC2 - Max Zone Multiplier:**  
+**Given** pickup in zone PARIS_20 (1.1×) and dropoff in zone CDG (1.2×),  
+**When** the pricing engine calculates the zone multiplier,  
+**Then** it uses `Math.max(1.1, 1.2) = 1.2×` as the zone multiplier.
+
+**AC3 - Special Zones Priority:**  
+**Given** a point that falls within both a special zone (CDG) and a concentric zone (PARIS_30),  
+**When** the zone is detected,  
+**Then** the special zone takes priority (CDG 1.2× is used, not PARIS_30 1.2×).
+
+**AC4 - Applied Rule Transparency:**  
+**Given** a zone multiplier is applied,  
+**When** the pricing result is returned,  
+**Then** `appliedRules` contains a `ZONE_MULTIPLIER` rule with:
+
+- `pickupZone`: zone name and multiplier
+- `dropoffZone`: zone name and multiplier
+- `appliedMultiplier`: the max of the two
+- `priceBefore` and `priceAfter`
+
+**AC5 - Bussy Discount:**  
+**Given** a trip starting from zone BUSSY_0 (0.8×),  
+**When** the pricing engine calculates,  
+**Then** the zone multiplier is 0.8× (discount for trips from the garage).
+
+**Technical Notes:**
+
+- Use the zone definitions from `seed-vtc-complete.ts`
+- Implement `findZoneForPoint()` with priority: Special zones > Concentric zones
+- Apply zone multiplier AFTER base price and trip type adjustments, BEFORE vehicle category multiplier
+- Add `AppliedZoneMultiplierRule` to pricing engine types
+
+**Prerequisites:** Story 15.3 (Vehicle category multipliers), Zone data seeded.
+
+---
+
+#### Story 16.4 – Prix Bloqués pour Agences Partenaires
+
+**Status:** Pending  
+**Priority:** Medium  
+**Estimated Effort:** 3 Story Points
+
+**As an** operator,  
+**I want** partner contract prices to be visually locked and non-editable,  
+**So that** I cannot accidentally change contractually agreed prices.
+
+**Related FRs:** FR11 (Engagement Rule), FR16 (Operator override).
+
+**Acceptance Criteria:**
+
+**AC1 - Visual Lock Indicator:**  
+**Given** a quote for a partner with a matching grid route,  
+**When** the pricing result shows `pricingMode = FIXED_GRID`,  
+**Then** the final price field displays a lock icon 🔒,  
+**And** a badge "Contract Price" is shown next to the price.
+
+**AC2 - Price Field Disabled:**  
+**Given** a quote with `pricingMode = FIXED_GRID`,  
+**When** I view the pricing panel,  
+**Then** the final price input is disabled (read-only),  
+**And** the "Use Suggested" button is hidden.
+
+**AC3 - Override Warning:**  
+**Given** a quote with `pricingMode = FIXED_GRID`,  
+**When** an admin with override permission tries to change the price,  
+**Then** a confirmation dialog appears: "This is a contractual price. Are you sure you want to override?",  
+**And** the override is logged in `appliedRules` with `isContractPriceOverride: true`.
+
+**AC4 - Profitability Still Visible:**  
+**Given** a quote with `pricingMode = FIXED_GRID` and negative margin,  
+**When** I view the TripTransparencyPanel,  
+**Then** the profitability indicator shows red (loss),  
+**And** a tooltip explains "Contract price - profitability cannot be adjusted".
+
+**Technical Notes:**
+
+- Add `isContractPrice` prop to `QuotePricingPanel`
+- Modify `handleFinalPriceChange` to check for contract price
+- Add lock icon and badge components
+- Implement admin override flow with confirmation dialog
+
+**Prerequisites:** Story 3.4 (Engagement Rule), Story 12.2 (Partner contract prices).
+
+---
+
+#### Story 16.5 – Simplifier l'Affichage TripTransparency
+
+**Status:** Pending  
+**Priority:** Low  
+**Estimated Effort:** 2 Story Points
+
+**As an** operator,  
+**I want** the TripTransparency panel to show cost details with info icons instead of a separate Costs tab,  
+**So that** the interface is cleaner and less redundant.
+
+**Related FRs:** FR44 (Transparent cost breakdown), FR55 (Trip Transparency).
+
+**Acceptance Criteria:**
+
+**AC1 - Info Icons on Overview:**  
+**Given** the TripTransparencyPanel Overview tab,  
+**When** I view the internal cost summary,  
+**Then** each cost component (fuel, tolls, driver, wear) has an info icon (ℹ️),  
+**And** hovering shows a tooltip with the calculation details.
+
+**AC2 - Costs Tab Simplified:**  
+**Given** the Costs tab in TripTransparencyPanel,  
+**When** I open it,  
+**Then** it shows a compact table with just the cost components and amounts,  
+**And** the detailed breakdown (distance × rate) is shown in tooltips, not inline.
+
+**AC3 - No Duplicate Information:**  
+**Given** the Overview and Costs tabs,  
+**When** I compare them,  
+**Then** there is no duplicate display of the same information,  
+**And** each tab has a distinct purpose (Overview = summary, Costs = details).
+
+**Technical Notes:**
+
+- Add `Tooltip` components to cost rows in Overview tab
+- Simplify `EditableCostRow` to show details in tooltip
+- Review and remove any duplicate cost displays
+
+**Prerequisites:** Story 6.7 (TripTransparencyPanel integration).
+
+---
+
+#### Story 16.6 – Calcul Prix Aller-Retour pour Transfer
+
+**Status:** Pending  
+**Priority:** Medium  
+**Estimated Effort:** 2 Story Points
+
+**As a** pricing engine,  
+**I want** to correctly calculate round-trip transfer prices,  
+**So that** aller-retour transfers are priced at 2× the one-way price.
+
+**Related FRs:** FR13 (Dynamic pricing), FR7 (Pricing modes).
+
+**Acceptance Criteria:**
+
+**AC1 - Round Trip Pricing:**  
+**Given** a transfer quote with `isRoundTrip = true`,  
+**When** the pricing engine calculates,  
+**Then** the base price is doubled,  
+**And** an `appliedRule` of type `ROUND_TRIP` is added with `multiplier: 2`.
+
+**AC2 - Internal Cost Doubled:**  
+**Given** a round-trip transfer,  
+**When** the shadow calculation runs,  
+**Then** the internal cost includes both directions (approach + service + return × 2).
+
+**AC3 - Grid Price Doubled:**  
+**Given** a partner with a grid route and `isRoundTrip = true`,  
+**When** the pricing engine matches the route,  
+**Then** the fixed price is doubled (contract price × 2).
+
+**AC4 - UI Display:**  
+**Given** a round-trip quote,  
+**When** I view the TripTransparencyPanel,  
+**Then** the route tab shows "Aller" and "Retour" segments separately.
+
+**Technical Notes:**
+
+- Add `isRoundTrip` check in `buildDynamicResult()` and `buildGridResult()`
+- Create `AppliedRoundTripRule` type
+- Update shadow calculation to compute both directions
+
+**Prerequisites:** Story 16.1 (Schema), Story 16.2 (Form).
+
+---
+
+#### Story 16.7 – Calcul Prix Excursion Multi-Arrêts
+
+**Status:** Pending  
+**Priority:** Medium  
+**Estimated Effort:** 3 Story Points
+
+**As a** pricing engine,  
+**I want** to calculate excursion prices based on total distance including all stops,  
+**So that** multi-stop excursions are priced accurately.
+
+**Related FRs:** FR10 (Excursion forfaits), FR13 (Dynamic pricing).
+
+**Acceptance Criteria:**
+
+**AC1 - Multi-Stop Distance:**  
+**Given** an excursion with stops [A → B → C → D],  
+**When** the pricing engine calculates distance,  
+**Then** it sums: distance(A→B) + distance(B→C) + distance(C→D).
+
+**AC2 - Minimum Duration Applied:**  
+**Given** an excursion with total duration 2 hours,  
+**When** the pricing engine calculates,  
+**Then** it uses the minimum duration (4 hours) per Story 15.5,  
+**And** the `TRIP_TYPE` rule shows `minimumApplied: true`.
+
+**AC3 - Stops in Trip Analysis:**  
+**Given** an excursion with multiple stops,  
+**When** the quote is saved,  
+**Then** `tripAnalysis.segments` includes each leg as a separate segment.
+
+**AC4 - Return Date Handling:**  
+**Given** an excursion with `returnDate` different from `pickupAt`,  
+**When** the pricing engine calculates,  
+**Then** it considers the multi-day nature and may apply overnight surcharges.
+
+**Technical Notes:**
+
+- Modify routing calculation to handle array of waypoints
+- Update `TripAnalysis.segments` to support N segments (not just A/B/C)
+- Call Google Routes API with waypoints for accurate distance
+
+**Prerequisites:** Story 16.1 (Schema), Story 16.2 (Form), Story 15.5 (Trip type pricing).
+
+---
+
+#### Story 16.8 – Calcul Prix Mise à Disposition
+
+**Status:** Pending  
+**Priority:** Medium  
+**Estimated Effort:** 3 Story Points
+
+**As a** pricing engine,  
+**I want** to calculate mise à disposition prices based on duration and included kilometers,  
+**So that** hourly rentals are priced correctly with overage fees.
+
+**Related FRs:** FR10 (Dispo forfaits), FR13 (Dynamic pricing).
+
+**Acceptance Criteria:**
+
+**AC1 - Hourly Pricing:**  
+**Given** a dispo quote with `durationHours = 4`,  
+**When** the pricing engine calculates,  
+**Then** the base price is `4 × ratePerHour`.
+
+**AC2 - Included Kilometers:**  
+**Given** a dispo quote with `durationHours = 4`,  
+**When** the form displays,  
+**Then** `maxKilometers` is automatically calculated as `4 × 50 = 200 km`,  
+**And** the operator can override this value.
+
+**AC3 - Overage Calculation:**  
+**Given** a dispo quote with `durationHours = 4` and actual distance 250 km,  
+**When** the pricing engine calculates,  
+**Then** overage is `(250 - 200) × overageRatePerKm = 50 × 0.50 = 25€`,  
+**And** total price is `basePrice + 25€`.
+
+**AC4 - No Dropoff Required:**  
+**Given** a dispo quote,  
+**When** I create the quote,  
+**Then** `dropoffAddress` is optional and can be left empty,  
+**And** the quote is valid without a dropoff address.
+
+**AC5 - Partner Dispo Packages:**  
+**Given** a partner with a matching DispoPackage,  
+**When** the pricing engine runs,  
+**Then** it uses the package price (Method 1) instead of dynamic calculation.
+
+**Technical Notes:**
+
+- Modify form validation to make `dropoffAddress` optional for DISPO
+- Implement dynamic `maxKilometers` calculation in form
+- Use Story 15.5 `calculateDispoPrice()` function
+
+**Prerequisites:** Story 16.1 (Schema), Story 16.2 (Form), Story 15.5 (Trip type pricing).
+
+---
+
+#### Story 16.9 – Support Off-Grid avec Notes Obligatoires
+
+**Status:** Pending  
+**Priority:** Low  
+**Estimated Effort:** 2 Story Points
+
+**As an** operator,  
+**I want** to create off-grid quotes with just a pickup address and description,  
+**So that** I can handle non-standard trips that don't fit other categories.
+
+**Related FRs:** FR12 (Dynamic pricing fallback), FR42 (Quote builder).
+
+**Acceptance Criteria:**
+
+**AC1 - Minimal Required Fields:**  
+**Given** an off-grid quote,  
+**When** I create the quote,  
+**Then** only these fields are required:
+
+- Contact
+- Pickup address
+- Pickup date/time
+- Vehicle category
+- Notes (description of the trip)
+- Final price (manual entry)
+
+**AC2 - No Automatic Pricing:**  
+**Given** an off-grid quote,  
+**When** I fill in the form,  
+**Then** no automatic pricing calculation is triggered,  
+**And** the suggested price shows "—" (not calculated),  
+**And** I must manually enter the final price.
+
+**AC3 - Notes Validation:**  
+**Given** an off-grid quote with empty notes,  
+**When** I try to submit,  
+**Then** validation fails with "Notes are required for off-grid trips".
+
+**AC4 - Profitability Calculation:**  
+**Given** an off-grid quote with manual price,  
+**When** I enter the final price,  
+**Then** the profitability indicator updates based on estimated internal cost,  
+**And** internal cost is estimated from pickup address only (approach segment).
+
+**Technical Notes:**
+
+- Disable pricing calculation for OFF_GRID trip type
+- Make notes field required only for OFF_GRID
+- Calculate minimal internal cost from approach segment only
+
+**Prerequisites:** Story 16.1 (Schema), Story 16.2 (Form).
+
+---
+
+#### Story 16.10 – Tests E2E pour Tous les Types de Trajets
+
+**Status:** Pending  
+**Priority:** High  
+**Estimated Effort:** 3 Story Points
+
+**As a** QA engineer,  
+**I want** comprehensive E2E tests for all trip types,  
+**So that** the quote creation flow works correctly for each type.
+
+**Related FRs:** All FR7-FR16.
+
+**Acceptance Criteria:**
+
+**AC1 - Transfer Tests:**  
+**Given** the quote creation page,  
+**When** I create a simple transfer and a round-trip transfer,  
+**Then** both are saved correctly with appropriate pricing.
+
+**AC2 - Excursion Tests:**  
+**Given** the quote creation page,  
+**When** I create an excursion with 3 stops,  
+**Then** all stops are saved and the total distance is calculated correctly.
+
+**AC3 - Dispo Tests:**  
+**Given** the quote creation page,  
+**When** I create a 4-hour mise à disposition,  
+**Then** the duration, max km, and pricing are correct.
+
+**AC4 - Off-grid Tests:**  
+**Given** the quote creation page,  
+**When** I create an off-grid quote with notes,  
+**Then** the quote is saved without dropoff address.
+
+**AC5 - Partner Grid Tests:**  
+**Given** a partner with assigned grid routes,  
+**When** I create a quote matching a route,  
+**Then** the contract price is used and locked.
+
+**Technical Notes:**
+
+- Use Playwright MCP for E2E tests
+- Test each trip type with various scenarios
+- Verify pricing calculations match expected values
+- Test form validation for each type
+
+**Prerequisites:** All previous Story 16.x stories.
+
+---
+
+### Summary
+
+Epic 16 addresses the fundamental issues with the quote creation system by:
+
+1. **Extending the data model** (Story 16.1) to support trip-type-specific fields
+2. **Creating dynamic forms** (Story 16.2) that adapt to each trip type
+3. **Integrating zone pricing** (Story 16.3) for accurate geographic multipliers
+4. **Locking partner prices** (Story 16.4) to enforce the Engagement Rule
+5. **Simplifying the UI** (Story 16.5) to remove redundancy
+6. **Implementing type-specific pricing** (Stories 16.6-16.9) for each trip type
+7. **Comprehensive testing** (Story 16.10) to ensure quality
+
+This epic depends on and extends the work done in Epic 15 (Pricing Engine Accuracy) and Epic 14 (Flexible Route Pricing).
+
+---
+
 ## Summary
 
-This document now defines the **15-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **16-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).

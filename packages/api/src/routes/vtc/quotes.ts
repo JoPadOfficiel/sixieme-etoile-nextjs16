@@ -14,6 +14,14 @@ import { organizationMiddleware } from "../../middleware/organization";
 import { QuoteStateMachine } from "../../services/quote-state-machine";
 import type { QuoteStatus } from "@prisma/client";
 
+// Story 16.1: Stop schema for excursion trips
+const stopSchema = z.object({
+	address: z.string().min(1).describe("Stop address"),
+	latitude: z.number().describe("Stop latitude"),
+	longitude: z.number().describe("Stop longitude"),
+	order: z.number().int().nonnegative().describe("Stop order in sequence"),
+});
+
 // Validation schemas with EUR documentation
 const createQuoteSchema = z.object({
 	contactId: z.string().min(1).describe("Contact ID for the quote"),
@@ -35,7 +43,8 @@ const createQuoteSchema = z.object({
 		.optional()
 		.nullable()
 		.describe("Pickup longitude"),
-	dropoffAddress: z.string().min(1).describe("Dropoff address"),
+	// Story 16.1: Made optional for DISPO and OFF_GRID
+	dropoffAddress: z.string().optional().nullable().describe("Dropoff address (optional for DISPO/OFF_GRID)"),
 	dropoffLatitude: z
 		.number()
 		.optional()
@@ -46,6 +55,12 @@ const createQuoteSchema = z.object({
 		.optional()
 		.nullable()
 		.describe("Dropoff longitude"),
+	// Story 16.1: Trip type specific fields
+	isRoundTrip: z.boolean().optional().default(false).describe("Round trip for TRANSFER"),
+	stops: z.array(stopSchema).optional().nullable().describe("Intermediate stops for EXCURSION"),
+	returnDate: z.string().datetime().optional().nullable().describe("Return date for EXCURSION"),
+	durationHours: z.number().positive().optional().nullable().describe("Duration in hours for DISPO"),
+	maxKilometers: z.number().positive().optional().nullable().describe("Max kilometers for DISPO"),
 	passengerCount: z.number().int().positive().describe("Number of passengers"),
 	luggageCount: z
 		.number()
@@ -84,6 +99,35 @@ const createQuoteSchema = z.object({
 		.nullable()
 		.describe("Quote validity date in Europe/Paris business time"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
+}).superRefine((data, ctx) => {
+	// Story 16.1: Conditional validation based on trip type
+	
+	// dropoffAddress required for TRANSFER and EXCURSION
+	if ((data.tripType === "TRANSFER" || data.tripType === "EXCURSION") && !data.dropoffAddress) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Dropoff address is required for transfers and excursions",
+			path: ["dropoffAddress"],
+		});
+	}
+	
+	// notes required for OFF_GRID
+	if (data.tripType === "OFF_GRID" && (!data.notes || data.notes.trim().length === 0)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Notes are required for off-grid trips",
+			path: ["notes"],
+		});
+	}
+	
+	// durationHours required for DISPO
+	if (data.tripType === "DISPO" && (data.durationHours == null || data.durationHours <= 0)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Duration is required for mise à disposition",
+			path: ["durationHours"],
+		});
+	}
 });
 
 const updateQuoteSchema = z.object({
@@ -335,9 +379,16 @@ export const quotesRouter = new Hono()
 						pickupAddress: data.pickupAddress,
 						pickupLatitude: data.pickupLatitude,
 						pickupLongitude: data.pickupLongitude,
-						dropoffAddress: data.dropoffAddress,
+						// Story 16.1: dropoffAddress is now optional
+						dropoffAddress: data.dropoffAddress ?? null,
 						dropoffLatitude: data.dropoffLatitude,
 						dropoffLongitude: data.dropoffLongitude,
+						// Story 16.1: Trip type specific fields
+						isRoundTrip: data.isRoundTrip ?? false,
+						stops: data.stops as Prisma.InputJsonValue | undefined,
+						returnDate: data.returnDate ? new Date(data.returnDate) : null,
+						durationHours: data.durationHours,
+						maxKilometers: data.maxKilometers,
 						passengerCount: data.passengerCount,
 						luggageCount: data.luggageCount,
 						suggestedPrice: data.suggestedPrice,
