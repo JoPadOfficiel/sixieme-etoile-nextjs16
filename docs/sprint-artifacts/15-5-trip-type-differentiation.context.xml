@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.5</story-id>
+    <title>Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)</title>
+    <epic>Epic 15: Pricing Engine Accuracy & Real Cost Integration</epic>
+    <created>2025-12-02</created>
+    <author>BMad Orchestrator</author>
+  </metadata>
+
+  <problem>
+    <current-state>
+      Le pricing engine utilise la même formule MAX(distance×rate, duration×rate) pour tous
+      les types de trajets, sans tenir compte des spécificités métier de chaque type.
+      Les excursions et mises à disposition n'ont pas de logique de tarification adaptée
+      quand aucun forfait ne correspond.
+    </current-state>
+    
+    <impact>
+      <item type="financial">
+        Une excursion de 2h est facturée au même tarif qu'un transfert de 2h,
+        alors qu'une excursion devrait avoir un minimum de 4h.
+      </item>
+      <item type="business">
+        Les mises à disposition sans forfait correspondant sont sous-tarifées
+        car elles n'incluent pas les frais de dépassement kilométrique.
+      </item>
+      <item type="transparency">
+        Aucune visibilité sur le type de tarification appliqué dans appliedRules.
+      </item>
+    </impact>
+
+    <example>
+      <scenario>Excursion de 3h vs Transfer de 3h</scenario>
+      <current>
+        - Transfer 3h: MAX(50km×1.80, 3h×45) = 135€
+        - Excursion 3h: MAX(50km×1.80, 3h×45) = 135€ (WRONG!)
+      </current>
+      <expected>
+        - Transfer 3h: MAX(50km×1.80, 3h×45) = 135€
+        - Excursion 3h: 4h×45 × 1.15 (surcharge) = 207€ (minimum 4h + surcharge)
+      </expected>
+    </example>
+  </problem>
+
+  <objectives>
+    <primary>
+      Appliquer une logique de tarification différente selon le tripType
+      (transfer, excursion, dispo) pour refléter les spécificités métier.
+    </primary>
+    <secondary>
+      <item>Ajouter un minimum de durée pour les excursions (4h par défaut)</item>
+      <item>Ajouter une surcharge pour les excursions (15% par défaut)</item>
+      <item>Calculer les dépassements km pour les mises à disposition</item>
+      <item>Ajouter une règle TripTypeRule aux appliedRules</item>
+    </secondary>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Ajouter excursionMinimumHours et excursionSurchargePercent à OrganizationPricingSettings</item>
+      <item>Ajouter dispoIncludedKmPerHour et dispoOverageRatePerKm à OrganizationPricingSettings</item>
+      <item>Modifier buildDynamicResult() pour brancher par tripType</item>
+      <item>Créer AppliedTripTypeRule pour la transparence</item>
+      <item>Tests unitaires pour chaque type de trajet</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification des forfaits excursion/dispo existants</item>
+      <item>UI pour configurer les paramètres</item>
+      <item>Modification des contrats partenaires</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <technical>
+      <item>La logique tripType doit s'appliquer APRÈS le calcul de base</item>
+      <item>Les forfaits existants (ExcursionPackage, DispoPackage) ont priorité</item>
+      <item>Ne pas modifier le comportement FIXED_GRID</item>
+    </technical>
+    <business>
+      <item>Excursion minimum: 4 heures (configurable)</item>
+      <item>Excursion surcharge: 15% (configurable)</item>
+      <item>Dispo km inclus: 50km/heure (configurable)</item>
+      <item>Dispo dépassement: 0.50€/km (configurable)</item>
+    </business>
+  </constraints>
+
+  <risks>
+    <risk level="medium">
+      <description>Augmentation des prix pour les excursions courtes</description>
+      <mitigation>C'est le comportement attendu - minimum 4h pour couvrir les coûts</mitigation>
+    </risk>
+    <risk level="low">
+      <description>Régression sur les calculs transfer existants</description>
+      <mitigation>Tests de non-régression sur tripType="transfer"</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <relevant-functions>
+          <function name="buildDynamicResult">Construit le résultat dynamique - à modifier</function>
+          <function name="calculateDynamicBasePrice">Calcul de base - inchangé</function>
+        </relevant-functions>
+        <relevant-types>
+          <type name="PricingRequest">Contient tripType: TripType</type>
+          <type name="OrganizationPricingSettings">À étendre avec nouveaux paramètres</type>
+        </relevant-types>
+      </file>
+    </existing-code>
+
+    <data-model>
+      <entity name="OrganizationPricingSettings">
+        <new-fields>
+          <field name="excursionMinimumHours" type="number" default="4"/>
+          <field name="excursionSurchargePercent" type="number" default="15"/>
+          <field name="dispoIncludedKmPerHour" type="number" default="50"/>
+          <field name="dispoOverageRatePerKm" type="number" default="0.50"/>
+        </new-fields>
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="high">
+      <title>Transfer Uses Standard Formula</title>
+      <given>A trip type "transfer"</given>
+      <when>Dynamic pricing is calculated</when>
+      <then>It uses MAX(distance×rate, duration×rate)</then>
+      <and>No TripTypeRule is added (standard behavior)</and>
+    </criterion>
+
+    <criterion id="AC2" priority="high">
+      <title>Excursion Applies Minimum Duration</title>
+      <given>A trip type "excursion" with 2h duration</given>
+      <when>Dynamic pricing is calculated</when>
+      <then>It uses 4h minimum (not 2h)</then>
+      <and>TripTypeRule shows minimumApplied: true</and>
+    </criterion>
+
+    <criterion id="AC3" priority="high">
+      <title>Excursion Applies Surcharge</title>
+      <given>A trip type "excursion" with 5h duration</given>
+      <when>Dynamic pricing is calculated</when>
+      <then>It applies 15% surcharge to the base price</then>
+      <and>TripTypeRule shows surchargePercent: 15</and>
+    </criterion>
+
+    <criterion id="AC4" priority="high">
+      <title>Dispo Calculates Overage</title>
+      <given>A trip type "dispo" for 4h with 300km</given>
+      <when>Dynamic pricing is calculated</when>
+      <then>It calculates: 4h×rate + (300-200)km × overageRate</then>
+      <and>TripTypeRule shows overageKm: 100, overageAmount: 50€</and>
+    </criterion>
+
+    <criterion id="AC5" priority="medium">
+      <title>Transparency in Applied Rules</title>
+      <given>A successful excursion or dispo pricing</given>
+      <when>The result is returned</when>
+      <then>appliedRules contains a TRIP_TYPE rule</then>
+      <and>The rule shows tripType, adjustments, and final calculation</and>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="unit">
+      <name>Transfer uses standard formula</name>
+      <input>tripType: "transfer", distanceKm: 50, durationMinutes: 60</input>
+      <expected>price: MAX(50×1.80, 1×45) = 90€, no tripType rule</expected>
+    </scenario>
+    <scenario id="TS2" type="unit">
+      <name>Excursion applies 4h minimum</name>
+      <input>tripType: "excursion", durationMinutes: 120</input>
+      <expected>price: 4h×45×1.15 = 207€, minimumApplied: true</expected>
+    </scenario>
+    <scenario id="TS3" type="unit">
+      <name>Excursion with 6h (no minimum)</name>
+      <input>tripType: "excursion", durationMinutes: 360</input>
+      <expected>price: 6h×45×1.15 = 310.5€, minimumApplied: false</expected>
+    </scenario>
+    <scenario id="TS4" type="unit">
+      <name>Dispo with overage</name>
+      <input>tripType: "dispo", durationMinutes: 240, distanceKm: 300</input>
+      <expected>price: 4h×45 + 100km×0.50 = 230€, overageKm: 100</expected>
+    </scenario>
+  </test-scenarios>
+</story-context>

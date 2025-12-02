@@ -335,6 +335,11 @@ export interface OrganizationPricingSettings {
 	// Story 4.7: Profitability thresholds (optional, defaults in pricing-engine.ts)
 	greenMarginThreshold?: number;
 	orangeMarginThreshold?: number;
+	// Story 15.5: Trip type specific settings
+	excursionMinimumHours?: number;      // Default: 4
+	excursionSurchargePercent?: number;  // Default: 15
+	dispoIncludedKmPerHour?: number;     // Default: 50
+	dispoOverageRatePerKm?: number;      // Default: 0.50
 }
 
 // ============================================================================
@@ -524,6 +529,42 @@ export interface AppliedVehicleCategoryMultiplierRule extends AppliedRule {
 export interface VehicleCategoryMultiplierResult {
 	adjustedPrice: number;
 	appliedRule: AppliedVehicleCategoryMultiplierRule | null;
+}
+
+// ============================================================================
+// Story 15.5: Trip Type Pricing Types
+// ============================================================================
+
+/**
+ * Story 15.5: Applied trip type rule for transparency
+ */
+export interface AppliedTripTypeRule extends AppliedRule {
+	type: "TRIP_TYPE";
+	tripType: TripType;
+	description: string;
+	// Excursion specific
+	minimumApplied?: boolean;
+	requestedHours?: number;
+	effectiveHours?: number;
+	surchargePercent?: number;
+	surchargeAmount?: number;
+	// Dispo specific
+	includedKm?: number;
+	actualKm?: number;
+	overageKm?: number;
+	overageRatePerKm?: number;
+	overageAmount?: number;
+	// Common
+	basePriceBeforeAdjustment: number;
+	priceAfterAdjustment: number;
+}
+
+/**
+ * Story 15.5: Result of trip type pricing calculation
+ */
+export interface TripTypePricingResult {
+	price: number;
+	rule: AppliedTripTypeRule | null;
 }
 
 // ============================================================================
@@ -1849,6 +1890,141 @@ export function applyVehicleCategoryMultiplier(
 }
 
 // ============================================================================
+// Story 15.5: Trip Type Pricing Functions
+// ============================================================================
+
+/**
+ * Story 15.5: Calculate excursion price with minimum duration and surcharge
+ * 
+ * Excursion pricing logic:
+ * 1. Apply minimum duration (default 4h)
+ * 2. Calculate base price: effectiveDuration × ratePerHour
+ * 3. Apply surcharge percentage (default 15%)
+ * 
+ * @param durationMinutes - Requested duration in minutes
+ * @param ratePerHour - Hourly rate to use
+ * @param settings - Organization pricing settings
+ * @returns Price and applied rule
+ */
+export function calculateExcursionPrice(
+	durationMinutes: number,
+	ratePerHour: number,
+	settings: OrganizationPricingSettings,
+): TripTypePricingResult {
+	const minimumHours = settings.excursionMinimumHours ?? 4;
+	const surchargePercent = settings.excursionSurchargePercent ?? 15;
+
+	const requestedHours = durationMinutes / 60;
+	const effectiveHours = Math.max(requestedHours, minimumHours);
+	const minimumApplied = effectiveHours > requestedHours;
+
+	const basePrice = Math.round(effectiveHours * ratePerHour * 100) / 100;
+	const surchargeAmount = Math.round(basePrice * surchargePercent / 100 * 100) / 100;
+	const price = Math.round((basePrice + surchargeAmount) * 100) / 100;
+
+	const rule: AppliedTripTypeRule = {
+		type: "TRIP_TYPE",
+		tripType: "excursion",
+		description: `Excursion pricing: ${effectiveHours}h × ${ratePerHour}€/h + ${surchargePercent}% surcharge${minimumApplied ? ` (minimum ${minimumHours}h applied)` : ""}`,
+		minimumApplied,
+		requestedHours: Math.round(requestedHours * 100) / 100,
+		effectiveHours,
+		surchargePercent,
+		surchargeAmount,
+		basePriceBeforeAdjustment: basePrice,
+		priceAfterAdjustment: price,
+	};
+
+	return { price, rule };
+}
+
+/**
+ * Story 15.5: Calculate dispo price with overage
+ * 
+ * Dispo pricing logic:
+ * 1. Calculate base price: duration × ratePerHour
+ * 2. Calculate included km: duration × includedKmPerHour
+ * 3. Calculate overage: max(0, actualKm - includedKm) × overageRatePerKm
+ * 4. Total = basePrice + overageAmount
+ * 
+ * @param durationMinutes - Requested duration in minutes
+ * @param distanceKm - Actual distance in km
+ * @param ratePerHour - Hourly rate to use
+ * @param settings - Organization pricing settings
+ * @returns Price and applied rule
+ */
+export function calculateDispoPrice(
+	durationMinutes: number,
+	distanceKm: number,
+	ratePerHour: number,
+	settings: OrganizationPricingSettings,
+): TripTypePricingResult {
+	const includedKmPerHour = settings.dispoIncludedKmPerHour ?? 50;
+	const overageRatePerKm = settings.dispoOverageRatePerKm ?? 0.50;
+
+	const hours = durationMinutes / 60;
+	const basePrice = Math.round(hours * ratePerHour * 100) / 100;
+
+	const includedKm = Math.round(hours * includedKmPerHour * 100) / 100;
+	const overageKm = Math.max(0, Math.round((distanceKm - includedKm) * 100) / 100);
+	const overageAmount = Math.round(overageKm * overageRatePerKm * 100) / 100;
+	const price = Math.round((basePrice + overageAmount) * 100) / 100;
+
+	const rule: AppliedTripTypeRule = {
+		type: "TRIP_TYPE",
+		tripType: "dispo",
+		description: `Dispo pricing: ${hours}h × ${ratePerHour}€/h${overageKm > 0 ? ` + ${overageKm}km overage × ${overageRatePerKm}€/km` : ""}`,
+		includedKm,
+		actualKm: distanceKm,
+		overageKm,
+		overageRatePerKm,
+		overageAmount,
+		basePriceBeforeAdjustment: basePrice,
+		priceAfterAdjustment: price,
+	};
+
+	return { price, rule };
+}
+
+/**
+ * Story 15.5: Apply trip type specific pricing
+ * 
+ * @param tripType - Type of trip (transfer, excursion, dispo)
+ * @param distanceKm - Distance in km
+ * @param durationMinutes - Duration in minutes
+ * @param ratePerHour - Hourly rate to use
+ * @param standardBasePrice - Standard base price (for transfer)
+ * @param settings - Organization pricing settings
+ * @returns Price and optional rule
+ */
+export function applyTripTypePricing(
+	tripType: TripType,
+	distanceKm: number,
+	durationMinutes: number,
+	ratePerHour: number,
+	standardBasePrice: number,
+	settings: OrganizationPricingSettings,
+): TripTypePricingResult {
+	// Transfer uses standard pricing (no adjustment)
+	if (tripType === "transfer") {
+		return { price: standardBasePrice, rule: null };
+	}
+
+	// Excursion: minimum duration + surcharge
+	if (tripType === "excursion") {
+		return calculateExcursionPrice(durationMinutes, ratePerHour, settings);
+	}
+
+	// Dispo: hourly + overage
+	if (tripType === "dispo") {
+		return calculateDispoPrice(durationMinutes, distanceKm, ratePerHour, settings);
+	}
+
+	// Unknown trip type: use standard pricing
+	return { price: standardBasePrice, rule: null };
+}
+
+// ============================================================================
 // Grid Matching Functions
 // ============================================================================
 
@@ -2491,6 +2667,11 @@ export const DEFAULT_PRICING_SETTINGS: OrganizationPricingSettings = {
 	baseRatePerKm: 2.5,
 	baseRatePerHour: 45.0,
 	targetMarginPercent: 20.0,
+	// Story 15.5: Trip type defaults
+	excursionMinimumHours: 4,
+	excursionSurchargePercent: 15,
+	dispoIncludedKmPerHour: 50,
+	dispoOverageRatePerKm: 0.50,
 };
 
 /**
@@ -2633,6 +2814,8 @@ export function calculatePrice(
 			dropoffZone,
 			// Story 15.3: Pass vehicle category for price multiplier
 			vehicleCategory,
+			// Story 15.5: Pass trip type for differentiated pricing
+			request.tripType,
 		);
 	}
 
@@ -2669,6 +2852,8 @@ export function calculatePrice(
 			null,
 			// Story 15.3: Pass vehicle category for price multiplier
 			vehicleCategory,
+			// Story 15.5: Pass trip type for differentiated pricing
+			request.tripType,
 		);
 	}
 
@@ -2929,14 +3114,17 @@ export function calculatePrice(
 		dropoffZone,
 		// Story 15.3: Pass vehicle category for price multiplier
 		vehicleCategory,
+		// Story 15.5: Pass trip type for differentiated pricing
+		request.tripType,
 	);
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3 + 15.5)
  * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
  * Story 11.3: Now applies zone pricing multipliers
+ * Story 15.5: Now applies trip type specific pricing
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -2957,28 +3145,50 @@ function buildDynamicResult(
 	dropoffZone: ZoneData | null = null,
 	// Story 15.3: Vehicle category for price multiplier
 	vehicleCategory: VehicleCategoryInfo | undefined = undefined,
+	// Story 15.5: Trip type for differentiated pricing
+	tripType: TripType = "transfer",
 ): PricingResult {
 	// Story 15.4: Resolve rates with fallback chain (Category → Organization)
 	const resolvedRates = resolveRates(vehicleCategory, settings);
 	
 	// Calculate with full details using resolved rates
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings, resolvedRates);
-	let price = calculation.priceWithMargin;
+	
+	// Story 15.5: Apply trip type specific pricing BEFORE margin
+	const tripTypePricingResult = applyTripTypePricing(
+		tripType,
+		distanceKm,
+		durationMinutes,
+		resolvedRates.ratePerHour,
+		calculation.basePrice,
+		settings,
+	);
+	
+	// Use trip type adjusted price or standard base price
+	const effectiveBasePrice = tripTypePricingResult.price;
+	
+	// Apply margin to the effective base price
+	let price = Math.round(effectiveBasePrice * (1 + settings.targetMarginPercent / 100) * 100) / 100;
 	
 	// Add enhanced calculation rule (Story 4.1 - AC3, Story 15.4 - rate source)
 	appliedRules.push({
 		type: "DYNAMIC_BASE_CALCULATION",
-		description: `Base price calculated using max(distance, duration) formula - ${calculation.selectedMethod} method selected (rates from ${resolvedRates.rateSource})`,
+		description: `Base price calculated using ${tripType === "transfer" ? "max(distance, duration) formula" : tripType + " pricing"} - ${calculation.selectedMethod} method selected (rates from ${resolvedRates.rateSource})`,
 		inputs: calculation.inputs,
 		calculation: {
 			distanceBasedPrice: calculation.distanceBasedPrice,
 			durationBasedPrice: calculation.durationBasedPrice,
 			selectedMethod: calculation.selectedMethod,
-			basePrice: calculation.basePrice,
-			priceWithMargin: calculation.priceWithMargin,
+			basePrice: effectiveBasePrice,
+			priceWithMargin: price,
 		},
 		usingDefaultSettings,
 	});
+
+	// Story 15.5: Add trip type rule if applicable
+	if (tripTypePricingResult.rule) {
+		appliedRules.push(tripTypePricingResult.rule);
+	}
 
 	// Story 15.3: Apply vehicle category multiplier FIRST (after base price, before zone)
 	const categoryMultiplierResult = applyVehicleCategoryMultiplier(price, vehicleCategory);
