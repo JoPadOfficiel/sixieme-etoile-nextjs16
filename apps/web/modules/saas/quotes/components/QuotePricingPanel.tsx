@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Input } from "@ui/components/input";
@@ -11,6 +12,7 @@ import {
   CalendarIcon,
   EuroIcon,
   Loader2Icon,
+  LockIcon,
   PlusIcon,
 } from "lucide-react";
 import {
@@ -24,6 +26,8 @@ import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import { AddQuoteFeeDialog, type AddedFee } from "./AddQuoteFeeDialog";
 import { AddedFeesList } from "./AddedFeesList";
+import { ContractPriceBadge } from "./ContractPriceBadge";
+import { ConfirmOverrideDialog } from "./ConfirmOverrideDialog";
 import type { CreateQuoteFormData, PricingResult } from "../types";
 import { formatPrice } from "../types";
 
@@ -46,6 +50,10 @@ interface QuotePricingPanelProps {
   addedFees?: AddedFee[];
   onAddFee?: (fee: AddedFee) => void;
   onRemoveFee?: (feeId: string) => void;
+  // Story 16.4: Contract price locking
+  partnerName?: string;
+  isAdmin?: boolean;
+  onContractPriceOverride?: (originalPrice: number) => void;
 }
 
 /**
@@ -74,8 +82,20 @@ export function QuotePricingPanel({
   addedFees = [],
   onAddFee,
   onRemoveFee,
+  // Story 16.4: Contract price locking
+  partnerName,
+  isAdmin = false,
+  onContractPriceOverride,
 }: QuotePricingPanelProps) {
   const t = useTranslations();
+  
+  // Story 16.4: State for override dialog
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
+  const [priceOverridden, setPriceOverridden] = useState(false);
+  
+  // Story 16.4: Check if this is a contract price (FIXED_GRID)
+  const isContractPrice = pricingResult?.pricingMode === "FIXED_GRID";
+  const isPriceLocked = isContractPrice && !priceOverridden;
 
   // Calculate margin based on final price and internal cost
   const calculateMargin = (finalPrice: number, internalCost: number): number => {
@@ -125,6 +145,21 @@ export function QuotePricingPanel({
     }
   };
 
+  // Story 16.4: Handle click on locked price field (admin only)
+  const handleLockedPriceClick = () => {
+    if (isPriceLocked && isAdmin) {
+      setShowOverrideDialog(true);
+    }
+  };
+
+  // Story 16.4: Handle override confirmation
+  const handleOverrideConfirm = () => {
+    setPriceOverridden(true);
+    if (onContractPriceOverride) {
+      onContractPriceOverride(suggestedPrice);
+    }
+  };
+
   // Check if form is valid for submission
   const isFormValid =
     formData.contactId &&
@@ -146,7 +181,11 @@ export function QuotePricingPanel({
         <CardContent className="space-y-4">
           {/* Suggested Price */}
           <div className="space-y-2">
-            <Label>{t("quotes.create.suggestedPrice")}</Label>
+            <div className="flex items-center justify-between">
+              <Label>{t("quotes.create.suggestedPrice")}</Label>
+              {/* Story 16.4: Contract Price Badge */}
+              {isContractPrice && <ContractPriceBadge />}
+            </div>
             {isCalculating ? (
               <Skeleton className="h-10 w-full" />
             ) : (
@@ -159,7 +198,8 @@ export function QuotePricingPanel({
                     </span>
                   </div>
                 </div>
-                {suggestedPrice > 0 && formData.finalPrice !== suggestedPrice && (
+                {/* Story 16.4: Hide "Use Suggested" button for contract prices */}
+                {suggestedPrice > 0 && formData.finalPrice !== suggestedPrice && !isPriceLocked && (
                   <Button
                     type="button"
                     variant="outline"
@@ -178,21 +218,65 @@ export function QuotePricingPanel({
             <Label htmlFor="finalPrice">
               {t("quotes.create.finalPrice")} *
             </Label>
-            <div className="relative">
-              <EuroIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                id="finalPrice"
-                type="number"
-                min={0}
-                step={0.01}
-                value={formData.finalPrice || ""}
-                onChange={handleFinalPriceChange}
-                disabled={isSubmitting}
-                className="pl-9 text-lg font-medium"
-                placeholder="0.00"
-              />
-            </div>
+            {/* Story 16.4: Locked price display for contract prices */}
+            {isPriceLocked ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div 
+                      className={cn(
+                        "relative cursor-not-allowed",
+                        isAdmin && "cursor-pointer"
+                      )}
+                      onClick={handleLockedPriceClick}
+                    >
+                      <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-blue-600" />
+                      <Input
+                        id="finalPrice"
+                        type="number"
+                        value={formData.finalPrice || ""}
+                        disabled
+                        className="pl-9 text-lg font-medium bg-muted/50 cursor-not-allowed"
+                        readOnly
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>
+                      {isAdmin 
+                        ? t("quotes.create.pricing.contractPriceTooltipAdmin")
+                        : t("quotes.create.pricing.contractPriceTooltip")
+                      }
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <div className="relative">
+                <EuroIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="finalPrice"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={formData.finalPrice || ""}
+                  onChange={handleFinalPriceChange}
+                  disabled={isSubmitting}
+                  className="pl-9 text-lg font-medium"
+                  placeholder="0.00"
+                />
+              </div>
+            )}
           </div>
+
+          {/* Story 16.4: Override Dialog */}
+          <ConfirmOverrideDialog
+            open={showOverrideDialog}
+            onOpenChange={setShowOverrideDialog}
+            partnerName={partnerName ?? "Partner"}
+            currentPrice={suggestedPrice}
+            onConfirm={handleOverrideConfirm}
+          />
 
           {/* Total with fees/promotions */}
           {addedFeesTotal !== 0 && formData.finalPrice > 0 && (

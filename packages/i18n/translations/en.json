@@ -2150,6 +2150,20 @@
 				"fixedGrid": "Grid Price",
 				"dynamic": "Dynamic"
 			},
+			"pricing": {
+				"contractPrice": "Contract Price",
+				"contractPriceTooltip": "This price is set by the partner contract and cannot be modified",
+				"contractPriceTooltipAdmin": "Click to override this contract price (admin only)",
+				"profitabilityTooltip": "Contract price - profitability cannot be adjusted",
+				"overrideDialog": {
+					"title": "Override Contract Price?",
+					"message": "This is a contractually agreed price with {partnerName}. Modifying it may affect partner relations and requires justification.",
+					"currentPrice": "Current contract price",
+					"checkbox": "I understand the implications of overriding this contract price",
+					"cancel": "Cancel",
+					"confirm": "Override Anyway"
+				}
+			},
 			"addressManualEntry": "Address entered manually (no coordinates)",
 			"validation": {
 				"contactRequired": "Please select a contact",

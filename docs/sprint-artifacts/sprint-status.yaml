@@ -150,3 +150,4 @@ development_status:
   16-1-extend-quote-schema-trip-types: done
   16-2-dynamic-form-trip-types: done
   16-3-zone-integration-dynamic-pricing: done
+  16-4-locked-partner-prices: done

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.4</story-id>
+    <story-key>16-4-locked-partner-prices</story-key>
+    <title>Prix Bloqués pour Agences Partenaires</title>
+    <epic>Epic 16 - Refactorisation du Système de Devis par Type de Trajet</epic>
+    <created>2025-12-02</created>
+    <status>ready-for-dev</status>
+    <priority>medium</priority>
+    <estimated-effort>3 Story Points</estimated-effort>
+  </metadata>
+
+  <problem-statement>
+    <description>
+      Lorsqu'un devis est créé pour un partenaire avec une grille tarifaire contractuelle 
+      (pricingMode = FIXED_GRID), l'opérateur peut actuellement modifier le prix final 
+      librement. Cela pose plusieurs problèmes :
+      
+      1. **Risque d'erreur** : L'opérateur peut accidentellement changer un prix négocié
+      2. **Non-conformité** : Les prix contractuels peuvent être modifiés sans trace
+      3. **Manque de visibilité** : Aucune indication visuelle que le prix est contractuel
+      4. **Pas de contrôle** : Pas de workflow d'approbation pour les overrides
+    </description>
+    <impact>
+      - Litiges commerciaux avec les partenaires sur les prix facturés
+      - Perte de confiance des agences partenaires
+      - Difficultés d'audit sur les modifications de prix
+      - Risque de facturation incorrecte
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Afficher un indicateur visuel (🔒 + badge) pour les prix contractuels</objective>
+    <objective id="2">Désactiver le champ prix final pour pricingMode = FIXED_GRID</objective>
+    <objective id="3">Masquer le bouton "Use Suggested" pour les prix contractuels</objective>
+    <objective id="4">Permettre l'override admin avec confirmation et logging</objective>
+    <objective id="5">Maintenir la visibilité de la profitabilité même si prix bloqué</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Icône de verrouillage (🔒) sur le champ prix final</item>
+      <item>Badge "Contract Price" / "Prix Contractuel"</item>
+      <item>Désactivation du champ prix pour FIXED_GRID</item>
+      <item>Masquage du bouton "Use Suggested"</item>
+      <item>Dialog de confirmation pour override admin</item>
+      <item>Logging de l'override dans appliedRules</item>
+      <item>Tooltip explicatif sur la profitabilité</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Modification du calcul de prix (déjà fait dans stories précédentes)</item>
+      <item>Gestion des permissions admin (existant)</item>
+      <item>Modification des grilles tarifaires (autre epic)</item>
+    </out-of-scope>
+  </scope>
+
+  <technical-context>
+    <existing-files>
+      <file path="apps/web/modules/saas/quotes/components/QuotePricingPanel.tsx">
+        Panel de pricing avec le champ prix final - à modifier pour ajouter le verrouillage
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx">
+        Panel de transparence - à modifier pour tooltip profitabilité
+      </file>
+      <file path="apps/web/modules/saas/quotes/types.ts">
+        Types incluant PricingResult avec pricingMode et isContractPrice
+      </file>
+    </existing-files>
+
+    <pricing-modes>
+      <![CDATA[
+## Modes de Pricing
+
+### FIXED_GRID (Prix Contractuel)
+- Utilisé quand un partenaire a une grille tarifaire avec route correspondante
+- Prix fixe négocié contractuellement
+- NE DOIT PAS être modifiable par l'opérateur standard
+- Override possible uniquement par admin avec confirmation
+
+### DYNAMIC (Prix Dynamique)
+- Utilisé pour clients privés ou partenaires sans grille correspondante
+- Prix calculé dynamiquement (distance × tarif + multiplicateurs)
+- Modifiable librement par l'opérateur
+- Bouton "Use Suggested" disponible
+      ]]>
+    </pricing-modes>
+
+    <ui-components>
+      <![CDATA[
+## Composants UI à Créer/Modifier
+
+### LockIcon + Badge
+- Icône 🔒 (LockIcon de lucide-react)
+- Badge "Contract Price" (variant="default" avec couleur spéciale)
+
+### ConfirmOverrideDialog
+- Dialog modal avec:
+  - Titre: "Override Contract Price?"
+  - Message: "This is a contractually agreed price. Modifying it may affect partner relations."
+  - Boutons: "Cancel" / "Override Anyway"
+  - Checkbox: "I understand the implications"
+
+### Tooltip Profitability
+- Sur l'indicateur de profitabilité pour FIXED_GRID
+- Message: "Contract price - profitability cannot be adjusted"
+      ]]>
+    </ui-components>
+
+    <dependencies>
+      <dependency>Story 3.4 - Engagement Rule (DONE)</dependency>
+      <dependency>Story 12.2 - Partner contract prices (DONE)</dependency>
+      <dependency>Story 16.1-16.3 - Quote refactoring (DONE)</dependency>
+    </dependencies>
+  </technical-context>
+
+  <constraints>
+    <constraint type="ux">Le verrouillage doit être immédiatement visible (pas caché)</constraint>
+    <constraint type="security">Seuls les admins peuvent override les prix contractuels</constraint>
+    <constraint type="audit">Tout override doit être loggé dans appliedRules</constraint>
+    <constraint type="i18n">Tous les textes doivent être traduits (en + fr)</constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Confusion utilisateur sur pourquoi le prix est bloqué</description>
+      <mitigation>Tooltip explicatif clair + badge visible</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Admin oublie de confirmer l'override</description>
+      <mitigation>Dialog modal obligatoire avec checkbox</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria-summary>
+    <criterion id="AC1">Icône 🔒 et badge "Contract Price" visibles pour FIXED_GRID</criterion>
+    <criterion id="AC2">Champ prix final désactivé pour FIXED_GRID</criterion>
+    <criterion id="AC3">Bouton "Use Suggested" masqué pour FIXED_GRID</criterion>
+    <criterion id="AC4">Dialog de confirmation pour override admin</criterion>
+    <criterion id="AC5">Override loggé dans appliedRules</criterion>
+    <criterion id="AC6">Profitabilité visible avec tooltip explicatif</criterion>
+  </acceptance-criteria-summary>
+
+  <test-strategy>
+    <test type="unit">Tests du composant ConfirmOverrideDialog</test>
+    <test type="e2e">Tests Playwright pour vérifier le verrouillage UI</test>
+    <test type="e2e">Tests Playwright pour le flow d'override admin</test>
+    <test type="visual">Vérification du badge et de l'icône</test>
+  </test-strategy>
+</story-context>

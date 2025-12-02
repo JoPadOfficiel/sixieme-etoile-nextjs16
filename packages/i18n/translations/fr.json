@@ -2150,6 +2150,20 @@
 				"fixedGrid": "Prix grille",
 				"dynamic": "Dynamique"
 			},
+			"pricing": {
+				"contractPrice": "Prix Contractuel",
+				"contractPriceTooltip": "Ce prix est défini par le contrat partenaire et ne peut pas être modifié",
+				"contractPriceTooltipAdmin": "Cliquez pour modifier ce prix contractuel (admin uniquement)",
+				"profitabilityTooltip": "Prix contractuel - la rentabilité ne peut pas être ajustée",
+				"overrideDialog": {
+					"title": "Modifier le prix contractuel ?",
+					"message": "Il s'agit d'un prix contractuellement convenu avec {partnerName}. Le modifier peut affecter les relations partenaires et nécessite une justification.",
+					"currentPrice": "Prix contractuel actuel",
+					"checkbox": "Je comprends les implications de la modification de ce prix contractuel",
+					"cancel": "Annuler",
+					"confirm": "Modifier quand même"
+				}
+			},
 			"addressManualEntry": "Adresse saisie manuellement (sans coordonnées)",
 			"validation": {
 				"contactRequired": "Veuillez sélectionner un contact",
