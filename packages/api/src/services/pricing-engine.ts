@@ -119,6 +119,9 @@ export interface PricingRequest {
 	estimatedDistanceKm?: number;
 	// Story 16.6: Round trip flag for transfer pricing
 	isRoundTrip?: boolean;
+	// Story 16.8: DISPO-specific fields
+	durationHours?: number;
+	maxKilometers?: number;
 }
 
 export interface AppliedRule {

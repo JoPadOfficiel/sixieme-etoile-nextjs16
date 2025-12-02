@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>16.8</story-id>
+    <story-name>Calcul Prix Mise à Disposition</story-name>
+    <epic>Epic 16 - Quote Refactoring</epic>
+    <created>2025-12-02</created>
+    <author>Bob (Scrum Master)</author>
+  </metadata>
+
+  <problem-statement>
+    <current-situation>
+      Le moteur de tarification actuel ne gère pas correctement les mises à disposition (DISPO).
+      Le formulaire de devis exige une adresse de destination même pour les DISPO.
+      Les kilomètres inclus ne sont pas calculés automatiquement.
+      Les dépassements kilométriques ne sont pas gérés.
+    </current-situation>
+    
+    <pain-points>
+      <pain-point priority="high">
+        Adresse de destination requise : Le formulaire exige dropoffAddress même pour DISPO
+      </pain-point>
+      <pain-point priority="high">
+        Pas de calcul automatique des km inclus : L'opérateur doit calculer manuellement
+      </pain-point>
+      <pain-point priority="medium">
+        Pas de gestion des dépassements : Les km supplémentaires ne sont pas facturés
+      </pain-point>
+      <pain-point priority="low">
+        Forfaits partenaires non utilisés : Les DispoPackage ne sont pas appliqués
+      </pain-point>
+    </pain-points>
+    
+    <business-impact>
+      Perte de revenus sur les dépassements kilométriques non facturés.
+      Friction utilisateur avec le formulaire qui demande des infos non nécessaires.
+      Incohérence avec les forfaits partenaires négociés.
+    </business-impact>
+  </problem-statement>
+
+  <objectives>
+    <primary-objective>
+      Calculer le prix des mises à disposition basé sur la durée avec gestion des km inclus et dépassements.
+    </primary-objective>
+    
+    <secondary-objectives>
+      <objective>Rendre l'adresse de destination optionnelle pour DISPO</objective>
+      <objective>Calculer automatiquement les km inclus (durée × 50 km/h)</objective>
+      <objective>Permettre à l'opérateur de modifier les km inclus</objective>
+      <objective>Appliquer les forfaits partenaires DispoPackage si disponibles</objective>
+    </secondary-objectives>
+    
+    <success-metrics>
+      <metric>100% des DISPO facturées sur la durée avec km inclus</metric>
+      <metric>Dépassements automatiquement calculés et affichés</metric>
+      <metric>Formulaire simplifié sans dropoff obligatoire</metric>
+    </success-metrics>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Modification du formulaire pour rendre dropoff optionnel si tripType = DISPO</item>
+      <item>Calcul automatique des km inclus dans le formulaire</item>
+      <item>Champ modifiable pour les km inclus (maxKilometers)</item>
+      <item>Calcul des dépassements dans le pricing engine</item>
+      <item>Affichage des km inclus et dépassements dans TripTransparencyPanel</item>
+      <item>Application des DispoPackage pour les partenaires</item>
+    </in-scope>
+    
+    <out-of-scope>
+      <item>Modification du schéma Quote (déjà fait en 16.1)</item>
+      <item>Modification du formulaire dynamique (déjà fait en 16.2)</item>
+      <item>Création de nouveaux DispoPackage (gestion admin existante)</item>
+    </out-of-scope>
+    
+    <dependencies>
+      <dependency status="done">Story 16.1 - Schema Quote étendu (durationHours, maxKilometers)</dependency>
+      <dependency status="done">Story 16.2 - Formulaire dynamique (champs conditionnels)</dependency>
+      <dependency status="done">Story 15.5 - Trip type differentiation (calculateDispoPrice)</dependency>
+    </dependencies>
+  </scope>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        Contient calculateDispoPrice() de Story 15.5.
+        Doit être étendu pour gérer les dépassements.
+      </file>
+      <file path="apps/web/modules/saas/quotes/components/CreateQuoteForm.tsx">
+        Formulaire de création de devis.
+        Doit rendre dropoff optionnel pour DISPO.
+      </file>
+      <file path="apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts">
+        Hook de calcul de prix.
+        Doit passer durationHours et maxKilometers.
+      </file>
+    </existing-code>
+    
+    <data-model>
+      <entity name="Quote">
+        durationHours: number (durée en heures)
+        maxKilometers: number (km inclus, calculé ou saisi)
+      </entity>
+      <entity name="DispoPackage">
+        durationHours: number
+        includedKm: number
+        price: number
+      </entity>
+      <entity name="OrganizationPricingSettings">
+        dispoIncludedKmPerHour: number (default 50)
+        dispoOverageRatePerKm: number (default 0.50)
+      </entity>
+    </data-model>
+  </technical-context>
+
+  <constraints>
+    <technical-constraints>
+      <constraint>Rétrocompatibilité avec les devis existants</constraint>
+      <constraint>Validation conditionnelle du formulaire selon tripType</constraint>
+      <constraint>Performance : calcul en temps réel des km inclus</constraint>
+    </technical-constraints>
+    
+    <business-constraints>
+      <constraint>Km inclus par défaut : 50 km/h (configurable par organisation)</constraint>
+      <constraint>Tarif dépassement par défaut : 0.50 €/km (configurable)</constraint>
+      <constraint>Les forfaits partenaires ont priorité sur le calcul dynamique</constraint>
+    </business-constraints>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Confusion utilisateur si km inclus modifiés manuellement</description>
+      <mitigation>Afficher clairement la source (calculé vs manuel)</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Dépassements négatifs si maxKm > actualKm</description>
+      <mitigation>Clamper le dépassement à 0 minimum</mitigation>
+    </risk>
+  </risks>
+
+  <acceptance-criteria>
+    <criterion id="AC1" priority="must-have">
+      <title>Hourly Pricing</title>
+      <given>A dispo quote with durationHours = 4</given>
+      <when>The pricing engine calculates</when>
+      <then>The base price is 4 × ratePerHour</then>
+    </criterion>
+    
+    <criterion id="AC2" priority="must-have">
+      <title>Included Kilometers</title>
+      <given>A dispo quote with durationHours = 4</given>
+      <when>The form displays</when>
+      <then>maxKilometers is automatically calculated as 4 × 50 = 200 km</then>
+      <and>The operator can override this value</and>
+    </criterion>
+    
+    <criterion id="AC3" priority="must-have">
+      <title>Overage Calculation</title>
+      <given>A dispo quote with durationHours = 4 and actual distance 250 km</given>
+      <when>The pricing engine calculates</when>
+      <then>Overage is (250 - 200) × 0.50 = 25€</then>
+      <and>Total price is basePrice + 25€</and>
+    </criterion>
+    
+    <criterion id="AC4" priority="must-have">
+      <title>No Dropoff Required</title>
+      <given>A dispo quote</given>
+      <when>I create the quote</when>
+      <then>dropoffAddress is optional and can be left empty</then>
+      <and>The quote is valid without a dropoff address</and>
+    </criterion>
+    
+    <criterion id="AC5" priority="should-have">
+      <title>Partner Dispo Packages</title>
+      <given>A partner with a matching DispoPackage</given>
+      <when>The pricing engine runs</when>
+      <then>It uses the package price instead of dynamic calculation</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-strategy>
+    <unit-tests>
+      <test>calculateDispoPrice() with various durations</test>
+      <test>calculateDispoOverage() with km above/below max</test>
+      <test>Form validation with/without dropoff for DISPO</test>
+    </unit-tests>
+    
+    <integration-tests>
+      <test>API pricing/calculate with tripType=dispo returns correct price</test>
+      <test>DispoPackage matching for partner contacts</test>
+    </integration-tests>
+    
+    <e2e-tests>
+      <test>Create DISPO quote without dropoff address</test>
+      <test>Verify km inclus auto-calculation in form</test>
+      <test>Verify overage display in TripTransparency</test>
+    </e2e-tests>
+  </test-strategy>
+</story-context>

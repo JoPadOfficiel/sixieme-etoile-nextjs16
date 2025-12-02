@@ -30,7 +30,8 @@ interface ExcursionStopInput {
 interface PricingCalculationInput {
   contactId: string;
   pickup: { lat: number; lng: number };
-  dropoff: { lat: number; lng: number };
+  // Story 16.8: Dropoff is optional for DISPO trips
+  dropoff?: { lat: number; lng: number };
   vehicleCategoryId: string;
   tripType: "transfer" | "excursion" | "dispo";
   pickupAt?: string;
@@ -43,6 +44,9 @@ interface PricingCalculationInput {
   stops?: ExcursionStopInput[];
   // Story 16.7: Return date for multi-day excursions
   returnDate?: string;
+  // Story 16.8: DISPO-specific fields
+  durationHours?: number;
+  maxKilometers?: number;
 }
 
 /**
@@ -366,10 +370,11 @@ export function usePricingCalculation(
             lat: formData.pickupLatitude!,
             lng: formData.pickupLongitude!,
           },
-          dropoff: {
-            lat: formData.dropoffLatitude!,
-            lng: formData.dropoffLongitude!,
-          },
+          // Story 16.8: Dropoff is optional for DISPO
+          dropoff: formData.dropoffLatitude && formData.dropoffLongitude ? {
+            lat: formData.dropoffLatitude,
+            lng: formData.dropoffLongitude,
+          } : undefined,
           vehicleCategoryId: formData.vehicleCategoryId,
           tripType: mapTripType(formData.tripType),
           pickupAt: formData.pickupAt?.toISOString(),
@@ -388,6 +393,9 @@ export function usePricingCalculation(
           })),
           // Story 16.7: Pass return date for multi-day excursions
           returnDate: formData.returnDate?.toISOString(),
+          // Story 16.8: DISPO-specific fields
+          durationHours: formData.durationHours !== null ? formData.durationHours : undefined,
+          maxKilometers: formData.maxKilometers !== null ? formData.maxKilometers : undefined,
         };
 
         mutation.mutate(input);

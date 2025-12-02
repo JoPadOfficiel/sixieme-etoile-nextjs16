@@ -2230,6 +2230,13 @@
 				"stops": "arrêts",
 				"multiDay": "Multi-jours",
 				"leg": "Étape",
+				"dispo": "Mise à disposition",
+				"dispoDuration": "Location {hours}h",
+				"includedKm": "Km inclus",
+				"actualKm": "Km réels",
+				"overageKm": "Dépassement",
+				"overageRate": "Tarif dépassement",
+				"overageAmount": "Montant dépassement",
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"

@@ -1036,7 +1036,7 @@
 		}
 	},
 	"dispos": {
-		"title": "Mise à Disposition",
+		"title": "Hourly",
 		"description": "Configure hourly disposal packages with base pricing and overage rates.",
 		"addDispo": "Add Dispo Package",
 		"editDispo": "Edit Dispo Package",
@@ -2059,7 +2059,7 @@
 			"tripTypes": {
 				"transfer": "Transfer",
 				"excursion": "Excursion",
-				"dispo": "Mise à disposition",
+				"dispo": "Hourly",
 				"off_grid": "Off-grid"
 			},
 			"tripTypeFields": {
@@ -2230,6 +2230,13 @@
 				"stops": "stops",
 				"multiDay": "Multi-day",
 				"leg": "Leg",
+				"dispo": "Hourly",
+				"dispoDuration": "{hours}h rental",
+				"includedKm": "Included km",
+				"actualKm": "Actual km",
+				"overageKm": "Overage",
+				"overageRate": "Overage rate",
+				"overageAmount": "Overage amount",
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"

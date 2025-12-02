@@ -72,7 +72,8 @@ const excursionStopSchema = z.object({
 const calculatePricingSchema = z.object({
 	contactId: z.string().min(1, "Contact ID is required"),
 	pickup: geoPointSchema,
-	dropoff: geoPointSchema,
+	// Story 16.8: Dropoff is optional for DISPO trips
+	dropoff: geoPointSchema.optional(),
 	vehicleCategoryId: z.string().min(1, "Vehicle category ID is required"),
 	tripType: z.enum(["transfer", "excursion", "dispo"]).default("transfer"),
 	pickupAt: z.string().optional(),
@@ -91,6 +92,9 @@ const calculatePricingSchema = z.object({
 	stops: z.array(excursionStopSchema).optional(),
 	// Story 16.7: Return date for multi-day excursions
 	returnDate: z.string().optional(),
+	// Story 16.8: DISPO-specific fields
+	durationHours: z.coerce.number().positive().optional(),
+	maxKilometers: z.coerce.number().nonnegative().optional(),
 });
 
 // Story 4.4: Price override schema
@@ -525,6 +529,13 @@ export const pricingCalculateRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
+			// Story 16.8: Validate dropoff is required for non-DISPO trips
+			if (data.tripType !== "dispo" && !data.dropoff) {
+				throw new HTTPException(400, {
+					message: "Dropoff address is required for transfer and excursion trips",
+				});
+			}
+
 			// Load contact with contract
 			const contact = await loadContactWithContract(
 				data.contactId,
@@ -575,11 +586,19 @@ export const pricingCalculateRouter = new Hono()
 			let effectiveDistanceKm = data.estimatedDistanceKm;
 			let effectiveDurationMinutes = data.estimatedDurationMinutes;
 
-			if (data.enableVehicleSelection && vehicles.length > 0) {
+			// Story 16.8: For DISPO, use pickup as dropoff if not provided (for vehicle selection)
+			const effectiveDropoff = data.dropoff ?? data.pickup;
+
+			// Story 16.8: For DISPO, calculate duration from durationHours if provided
+			if (data.tripType === "dispo" && data.durationHours) {
+				effectiveDurationMinutes = data.durationHours * 60;
+			}
+
+			if (data.enableVehicleSelection && vehicles.length > 0 && data.dropoff) {
 				const selectionInput: VehicleSelectionInput = {
 					organizationId,
 					pickup: data.pickup,
-					dropoff: data.dropoff,
+					dropoff: effectiveDropoff,
 					passengerCount: data.passengerCount,
 					luggageCount: data.luggageCount,
 					vehicleCategoryId: data.vehicleCategoryId,
@@ -643,10 +662,11 @@ export const pricingCalculateRouter = new Hono()
 			};
 
 			// Build pricing request
+			// Story 16.8: Use effectiveDropoff for DISPO trips without dropoff
 			const pricingRequest: PricingRequest = {
 				contactId: data.contactId,
 				pickup: data.pickup,
-				dropoff: data.dropoff,
+				dropoff: effectiveDropoff,
 				vehicleCategoryId: data.vehicleCategoryId,
 				tripType: data.tripType,
 				pickupAt: data.pickupAt,
@@ -654,6 +674,9 @@ export const pricingCalculateRouter = new Hono()
 				estimatedDistanceKm: effectiveDistanceKm,
 				// Story 16.6: Round trip flag for transfer pricing
 				isRoundTrip: data.isRoundTrip,
+				// Story 16.8: DISPO-specific fields
+				durationHours: data.durationHours,
+				maxKilometers: data.maxKilometers,
 			};
 
 			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category)
@@ -704,7 +727,8 @@ export const pricingCalculateRouter = new Hono()
 			result.tripAnalysis.fuelConsumptionL100km = fuelResolution.consumptionL100km;
 
 			// Story 15.1: Get real toll costs from Google Routes API
-			if (googleMapsApiKey) {
+			// Story 16.8: Only get toll costs if we have a dropoff (not for DISPO without dropoff)
+			if (googleMapsApiKey && data.dropoff) {
 				try {
 					const tollResult = await getTollCost(data.pickup, data.dropoff, {
 						apiKey: googleMapsApiKey,
