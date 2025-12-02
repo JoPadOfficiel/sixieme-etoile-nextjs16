@@ -709,16 +709,16 @@ curl -X POST http://localhost:3000/api/vtc/pricing/calculate \
 
 ## Definition of Done
 
-- [ ] TollCache model added to schema and migrated
-- [ ] toll-service.ts created with Google Routes API integration
-- [ ] Caching implemented with 24h TTL
-- [ ] Fallback to flat rate on API failure
-- [ ] TollCostComponent updated with source field
-- [ ] pricing-calculate.ts passes toll config to engine
-- [ ] Unit tests passing (>90% coverage)
-- [ ] Integration tests passing
-- [ ] No regression in existing pricing tests
-- [ ] Code reviewed and approved
+- [x] TollCache model added to schema and migrated
+- [x] toll-service.ts created with Google Routes API integration
+- [x] Caching implemented with 24h TTL
+- [x] Fallback to flat rate on API failure
+- [x] TollCostComponent updated with source field
+- [x] pricing-calculate.ts passes toll config to engine
+- [x] Unit tests passing (>90% coverage)
+- [x] Integration tests passing
+- [x] No regression in existing pricing tests
+- [x] Code reviewed and approved
 
 ---
 

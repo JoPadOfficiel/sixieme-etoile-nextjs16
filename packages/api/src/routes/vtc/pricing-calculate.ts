@@ -19,10 +19,12 @@ import { organizationMiddleware } from "../../middleware/organization";
 import {
 	calculatePrice,
 	applyPriceOverride,
+	resolveFuelConsumption,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
 	type ExcursionPackageAssignment,
+	type FuelConsumptionResolution,
 	type OrganizationPricingSettings,
 	type PartnerContractData,
 	type PricingRequest,
@@ -515,12 +517,19 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
-			// Validate vehicle category exists
+			// Validate vehicle category exists and load consumption (Story 15.2)
 			const vehicleCategory = await db.vehicleCategory.findFirst({
 				where: withTenantFilter(
 					{ id: data.vehicleCategoryId },
 					organizationId,
 				),
+				select: {
+					id: true,
+					code: true,
+					name: true,
+					priceMultiplier: true,
+					averageConsumptionL100km: true, // Story 15.2
+				},
 			});
 
 			if (!vehicleCategory) {
@@ -591,6 +600,26 @@ export const pricingCalculateRouter = new Hono()
 				}
 			}
 
+			// Story 15.2: Resolve fuel consumption with fallback chain
+			// Priority: Vehicle (if selected) → Category → Organization → Default
+			const vehicleConsumption = vehicleSelectionInfo?.selectedVehicle
+				? null // Vehicle consumption is handled in vehicle-selection.ts
+				: null;
+			const categoryConsumption = vehicleCategory.averageConsumptionL100km
+				? Number(vehicleCategory.averageConsumptionL100km)
+				: null;
+			const fuelResolution = resolveFuelConsumption(
+				vehicleConsumption,
+				categoryConsumption,
+				pricingSettings.fuelConsumptionL100km,
+			);
+
+			// Update pricing settings with resolved consumption
+			const effectivePricingSettings: typeof pricingSettings = {
+				...pricingSettings,
+				fuelConsumptionL100km: fuelResolution.consumptionL100km,
+			};
+
 			// Build pricing request
 			const pricingRequest: PricingRequest = {
 				contactId: data.contactId,
@@ -607,7 +636,7 @@ export const pricingCalculateRouter = new Hono()
 			const result = calculatePrice(pricingRequest, {
 				contact,
 				zones,
-				pricingSettings,
+				pricingSettings: effectivePricingSettings,
 				advancedRates,
 				seasonalMultipliers,
 			});
@@ -629,6 +658,10 @@ export const pricingCalculateRouter = new Hono()
 					countryCode: pricingSettings.fuelPriceSource.countryCode,
 				};
 			}
+
+			// Story 15.2: Add fuel consumption source to tripAnalysis for transparency
+			result.tripAnalysis.fuelConsumptionSource = fuelResolution.source;
+			result.tripAnalysis.fuelConsumptionL100km = fuelResolution.consumptionL100km;
 
 			// Story 15.1: Get real toll costs from Google Routes API
 			if (googleMapsApiKey) {

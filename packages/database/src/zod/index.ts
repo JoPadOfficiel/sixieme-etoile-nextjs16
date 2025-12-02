@@ -112,7 +112,7 @@ export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontracto
 
 export const SubcontractorVehicleCategoryScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','vehicleCategoryId']);
 
-export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','description','isActive','createdAt','updatedAt']);
+export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','description','isActive','createdAt','updatedAt']);
 
 export const OperatingBaseScalarFieldEnumSchema = z.enum(['id','organizationId','name','addressLine1','addressLine2','city','postalCode','countryCode','latitude','longitude','isActive','createdAt','updatedAt']);
 
@@ -597,6 +597,7 @@ export const VehicleCategorySchema = z.object({
   priceMultiplier: z.instanceof(Prisma.Decimal, { message: "Field 'priceMultiplier' must be a Decimal. Location: ['Models', 'VehicleCategory']"}),
   defaultRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'defaultRatePerKm' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   defaultRatePerHour: z.instanceof(Prisma.Decimal, { message: "Field 'defaultRatePerHour' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
+  averageConsumptionL100km: z.instanceof(Prisma.Decimal, { message: "Field 'averageConsumptionL100km' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   description: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),

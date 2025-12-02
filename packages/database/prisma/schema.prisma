@@ -553,6 +553,9 @@ model VehicleCategory {
   defaultRatePerKm   Decimal? @db.Decimal(10, 4)
   defaultRatePerHour Decimal? @db.Decimal(10, 2)
 
+  // Story 15.2: Average fuel consumption for this category (L/100km)
+  averageConsumptionL100km Decimal? @db.Decimal(5, 2)
+
   // Metadata
   description String?
   isActive    Boolean  @default(true)

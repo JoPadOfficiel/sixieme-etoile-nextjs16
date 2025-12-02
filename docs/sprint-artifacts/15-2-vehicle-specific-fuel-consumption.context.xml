@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <metadata>
+    <story-id>15.2</story-id>
+    <story-key>15-2-vehicle-specific-fuel-consumption</story-key>
+    <title>Use Vehicle-Specific Fuel Consumption in All Pricing Paths</title>
+    <epic>Epic 15: Pricing Engine Accuracy &amp; Real Cost Integration</epic>
+    <created-date>2025-12-02</created-date>
+    <status>ready-for-development</status>
+  </metadata>
+
+  <problem-statement>
+    <summary>
+      The pricing engine uses a fixed default fuel consumption (8.0 L/100km) for all vehicles,
+      ignoring the actual consumption rates which vary significantly by vehicle type.
+      A Berline consumes ~5.5L/100km while an Autocar consumes ~18L/100km, leading to
+      inaccurate cost calculations and misleading profitability indicators.
+    </summary>
+    <current-behavior>
+      <code-reference file="packages/api/src/services/pricing-engine.ts" lines="795-797">
+        DEFAULT_COST_PARAMETERS.fuelConsumptionL100km = 8.0 (fixed for all)
+      </code-reference>
+      <code-reference file="packages/api/src/services/vehicle-selection.ts" lines="334-336">
+        Vehicle-specific consumption IS used when enableVehicleSelection=true
+      </code-reference>
+      <code-reference file="packages/api/src/routes/vtc/pricing-calculate.ts" lines="528-535">
+        When enableVehicleSelection=false, no vehicle consumption is loaded
+      </code-reference>
+    </current-behavior>
+    <impact>
+      <example>
+        100km trip with Autocar (18L/100km) at 1.789€/L:
+        - Current: 8.0L × 1.789€ = 14.31€ (WRONG)
+        - Expected: 18L × 1.789€ = 32.20€ (CORRECT)
+        - Error: 125% underestimation of fuel cost
+      </example>
+      <consequence>Profitability indicators show GREEN when trip is actually RED</consequence>
+    </impact>
+  </problem-statement>
+
+  <objectives>
+    <objective id="1">Add averageConsumptionL100km field to VehicleCategory model</objective>
+    <objective id="2">Load vehicle category consumption in pricing-calculate.ts</objective>
+    <objective id="3">Pass consumption to pricing engine for all pricing paths</objective>
+    <objective id="4">Implement fallback chain: Vehicle → Category → Org → Default</objective>
+    <objective id="5">Add transparency about consumption source in tripAnalysis</objective>
+  </objectives>
+
+  <scope>
+    <in-scope>
+      <item>Schema migration: Add averageConsumptionL100km to VehicleCategory</item>
+      <item>Seed data: Set consumption values for existing categories</item>
+      <item>Modify pricing-calculate.ts to load and pass category consumption</item>
+      <item>Update calculateCostBreakdown to accept vehicleCategoryId</item>
+      <item>Add fuelConsumptionSource to tripAnalysis for transparency</item>
+    </in-scope>
+    <out-of-scope>
+      <item>Vehicle category price multipliers (Story 15.3)</item>
+      <item>Vehicle category default rates (Story 15.4)</item>
+      <item>Fuel type differentiation (Story 15.6)</item>
+      <item>UI changes to display consumption source</item>
+    </out-of-scope>
+  </scope>
+
+  <constraints>
+    <constraint type="backward-compatibility">
+      Existing quotes must continue to work with stored tripAnalysis
+    </constraint>
+    <constraint type="fallback-chain">
+      Must implement: Vehicle.consumptionLPer100Km → VehicleCategory.averageConsumptionL100km → OrganizationPricingSettings.fuelConsumptionL100km → DEFAULT_COST_PARAMETERS
+    </constraint>
+    <constraint type="performance">
+      VehicleCategory is already loaded in pricing-calculate.ts, no extra DB query needed
+    </constraint>
+    <constraint type="multi-tenancy">
+      Each organization can have different consumption values per category
+    </constraint>
+  </constraints>
+
+  <risks>
+    <risk severity="low">
+      <description>Existing categories may not have consumption values set</description>
+      <mitigation>Provide sensible defaults in migration based on category code</mitigation>
+    </risk>
+    <risk severity="low">
+      <description>Price changes may surprise users</description>
+      <mitigation>Document in release notes, consumption source visible in tripAnalysis</mitigation>
+    </risk>
+  </risks>
+
+  <technical-context>
+    <existing-code>
+      <file path="packages/api/src/services/pricing-engine.ts">
+        <relevant-functions>
+          - calculateFuelCost(): Uses fuelConsumptionL100km parameter
+          - calculateCostBreakdown(): Aggregates cost components
+          - DEFAULT_COST_PARAMETERS: Contains fallback values
+        </relevant-functions>
+      </file>
+      <file path="packages/api/src/services/vehicle-selection.ts">
+        <relevant-functions>
+          - getRoutingForCandidate(): Already uses vehicle-specific consumption
+          - VehicleCandidate interface: Has consumptionLPer100Km field
+        </relevant-functions>
+      </file>
+      <file path="packages/api/src/routes/vtc/pricing-calculate.ts">
+        <relevant-functions>
+          - loadPricingSettings(): Loads org settings
+          - Main handler: Loads vehicleCategory but doesn't use consumption
+        </relevant-functions>
+      </file>
+    </existing-code>
+
+    <database-schema>
+      <model name="VehicleCategory">
+        <existing-fields>
+          <field name="priceMultiplier" type="Decimal"/>
+          <field name="defaultRatePerKm" type="Decimal?"/>
+          <field name="defaultRatePerHour" type="Decimal?"/>
+        </existing-fields>
+        <new-field name="averageConsumptionL100km" type="Decimal?" description="Average fuel consumption for this category"/>
+      </model>
+      <model name="Vehicle">
+        <field name="consumptionLPer100Km" type="Decimal?" usage="vehicle-specific-override"/>
+      </model>
+      <model name="OrganizationPricingSettings">
+        <field name="fuelConsumptionL100km" type="Decimal?" usage="org-level-fallback"/>
+      </model>
+    </database-schema>
+
+    <consumption-reference>
+      <category code="BERLINE" consumption="5.5" description="Sedan - efficient"/>
+      <category code="VAN_PREMIUM" consumption="8.5" description="Premium van"/>
+      <category code="MINIBUS" consumption="12.0" description="9-seat minibus"/>
+      <category code="AUTOCAR" consumption="18.0" description="Large coach"/>
+      <category code="LUXE" consumption="9.0" description="Luxury sedan - higher consumption"/>
+    </consumption-reference>
+  </technical-context>
+
+  <acceptance-criteria>
+    <criterion id="AC1">
+      <given>A quote for vehicle category "Autocar" with averageConsumptionL100km=18</given>
+      <when>The pricing engine calculates fuel cost for a 100km trip at 1.789€/L</when>
+      <then>It uses 18L × 1.789€ = 32.20€</then>
+      <and>NOT the default 8.0L × 1.789€ = 14.31€</and>
+    </criterion>
+    <criterion id="AC2">
+      <given>A quote with enableVehicleSelection=false</given>
+      <when>The pricing engine calculates fuel cost</when>
+      <then>It looks up averageConsumptionL100km from the selected VehicleCategory</then>
+    </criterion>
+    <criterion id="AC3">
+      <given>A VehicleCategory without averageConsumptionL100km set (null)</given>
+      <when>The pricing engine calculates fuel cost</when>
+      <then>It falls back to OrganizationPricingSettings.fuelConsumptionL100km</then>
+    </criterion>
+    <criterion id="AC4">
+      <given>enableVehicleSelection=true with a selected vehicle</given>
+      <when>The vehicle has consumptionLPer100Km set</when>
+      <then>It uses the vehicle-specific value (existing behavior preserved)</then>
+    </criterion>
+    <criterion id="AC5">
+      <given>A successful pricing calculation</given>
+      <when>The tripAnalysis is generated</when>
+      <then>It includes fuelConsumptionSource: "VEHICLE" | "CATEGORY" | "ORGANIZATION" | "DEFAULT"</then>
+    </criterion>
+  </acceptance-criteria>
+
+  <test-scenarios>
+    <scenario id="TS1" type="unit">
+      <name>Category consumption used when no vehicle selection</name>
+      <input>vehicleCategoryId with averageConsumptionL100km=18, enableVehicleSelection=false</input>
+      <expected>Fuel cost calculated with 18 L/100km</expected>
+    </scenario>
+    <scenario id="TS2" type="unit">
+      <name>Fallback to org settings when category has no consumption</name>
+      <input>vehicleCategoryId with null consumption, org settings has 10 L/100km</input>
+      <expected>Fuel cost calculated with 10 L/100km</expected>
+    </scenario>
+    <scenario id="TS3" type="unit">
+      <name>Vehicle-specific consumption takes priority</name>
+      <input>Vehicle with 7 L/100km, category with 18 L/100km</input>
+      <expected>Fuel cost calculated with 7 L/100km</expected>
+    </scenario>
+    <scenario id="TS4" type="integration">
+      <name>End-to-end pricing with Autocar category</name>
+      <input>Quote request for 100km with AUTOCAR category</input>
+      <expected>Fuel cost ≈ 32€, fuelConsumptionSource = "CATEGORY"</expected>
+    </scenario>
+    <scenario id="TS5" type="integration">
+      <name>Fallback chain verification</name>
+      <input>Category with null consumption, org with null, default 8.0</input>
+      <expected>Fuel cost uses 8.0 L/100km, fuelConsumptionSource = "DEFAULT"</expected>
+    </scenario>
+  </test-scenarios>
+
+  <dependencies>
+    <dependency type="story">Story 15.1 - Google Routes API for tolls (completed)</dependency>
+    <dependency type="story">Story 4.2 - Operational cost components (completed)</dependency>
+    <dependency type="package">None - uses existing Prisma</dependency>
+  </dependencies>
+
+  <implementation-notes>
+    <note priority="high">
+      Add averageConsumptionL100km to VehicleCategory in schema.prisma
+    </note>
+    <note priority="high">
+      Create migration with default values based on category code
+    </note>
+    <note priority="medium">
+      Modify pricing-calculate.ts to pass category consumption to engine
+    </note>
+    <note priority="medium">
+      Add FuelConsumptionSource type and field to TripAnalysis
+    </note>
+    <note priority="low">
+      Update seed-vtc-complete.ts with consumption values
+    </note>
+  </implementation-notes>
+</story-context>

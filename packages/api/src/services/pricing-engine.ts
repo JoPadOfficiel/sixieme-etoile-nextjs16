@@ -35,6 +35,9 @@ export type GridType = "ZoneRoute" | "ExcursionPackage" | "DispoPackage";
 export type TripType = "transfer" | "excursion" | "dispo";
 export type ProfitabilityIndicator = "green" | "orange" | "red";
 
+// Story 15.2: Fuel consumption source for transparency
+export type FuelConsumptionSource = "VEHICLE" | "CATEGORY" | "ORGANIZATION" | "DEFAULT";
+
 // Fallback reason for dynamic pricing
 export type FallbackReason =
 	| "PRIVATE_CLIENT" // Contact is not a partner
@@ -548,6 +551,10 @@ export interface TripAnalysis {
 	
 	// Story 15.1: Toll source for transparency
 	tollSource?: "GOOGLE_API" | "ESTIMATE";
+	
+	// Story 15.2: Fuel consumption source for transparency
+	fuelConsumptionSource?: FuelConsumptionSource;
+	fuelConsumptionL100km?: number;
 }
 
 /**
@@ -798,6 +805,59 @@ export const DEFAULT_COST_PARAMETERS = {
 	wearCostPerKm: 0.10,           // EUR per km (maintenance, tires, depreciation)
 	driverHourlyCost: 25.0,        // EUR per hour (gross + charges)
 };
+
+// ============================================================================
+// Story 15.2: Fuel Consumption Resolution
+// ============================================================================
+
+/**
+ * Story 15.2: Result of fuel consumption resolution
+ */
+export interface FuelConsumptionResolution {
+	consumptionL100km: number;
+	source: FuelConsumptionSource;
+}
+
+/**
+ * Story 15.2: Resolve fuel consumption using fallback chain
+ * 
+ * Priority order:
+ * 1. Vehicle-specific consumption (when vehicle is selected)
+ * 2. Category average consumption
+ * 3. Organization settings
+ * 4. System default (8.0 L/100km)
+ * 
+ * @param vehicleConsumption - Vehicle.consumptionLPer100Km (from selected vehicle)
+ * @param categoryConsumption - VehicleCategory.averageConsumptionL100km
+ * @param orgConsumption - OrganizationPricingSettings.fuelConsumptionL100km
+ * @returns Resolved consumption value and its source
+ */
+export function resolveFuelConsumption(
+	vehicleConsumption: number | null | undefined,
+	categoryConsumption: number | null | undefined,
+	orgConsumption: number | null | undefined,
+): FuelConsumptionResolution {
+	// Priority 1: Vehicle-specific consumption
+	if (vehicleConsumption != null && vehicleConsumption > 0) {
+		return { consumptionL100km: vehicleConsumption, source: "VEHICLE" };
+	}
+	
+	// Priority 2: Category average consumption
+	if (categoryConsumption != null && categoryConsumption > 0) {
+		return { consumptionL100km: categoryConsumption, source: "CATEGORY" };
+	}
+	
+	// Priority 3: Organization settings
+	if (orgConsumption != null && orgConsumption > 0) {
+		return { consumptionL100km: orgConsumption, source: "ORGANIZATION" };
+	}
+	
+	// Priority 4: System default
+	return {
+		consumptionL100km: DEFAULT_COST_PARAMETERS.fuelConsumptionL100km,
+		source: "DEFAULT",
+	};
+}
 
 /**
  * Calculate fuel cost

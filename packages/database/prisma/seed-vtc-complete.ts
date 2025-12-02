@@ -244,12 +244,19 @@ async function createOrganizationLicenseRules() {
 
 async function createVehicleCategories() {
   console.log("\n🚗 Creating Vehicle Categories...");
+  // Story 15.2: Added averageConsumptionL100km for accurate fuel cost calculation
+  // Consumption values based on typical vehicle types:
+  // - Berline: 5.5 L/100km (efficient sedan)
+  // - Van Premium: 8.5 L/100km (larger vehicle)
+  // - Minibus: 12.0 L/100km (9-16 seats)
+  // - Autocar: 18.0 L/100km (large coach)
+  // - Luxe: 9.0 L/100km (luxury sedan, higher consumption)
   const cats = [
-    { name: "Berline", code: "BERLINE", regulatoryCategory: "LIGHT" as const, maxPassengers: 4, priceMultiplier: 1.0, defaultRatePerKm: 1.80, defaultRatePerHour: 45.0 },
-    { name: "Van Premium", code: "VAN_PREMIUM", regulatoryCategory: "LIGHT" as const, maxPassengers: 7, priceMultiplier: 1.3, defaultRatePerKm: 2.20, defaultRatePerHour: 55.0 },
-    { name: "Minibus", code: "MINIBUS", regulatoryCategory: "HEAVY" as const, maxPassengers: 16, priceMultiplier: 1.8, defaultRatePerKm: 3.00, defaultRatePerHour: 75.0 },
-    { name: "Autocar", code: "AUTOCAR", regulatoryCategory: "HEAVY" as const, maxPassengers: 50, priceMultiplier: 2.5, defaultRatePerKm: 4.50, defaultRatePerHour: 120.0 },
-    { name: "Luxe", code: "LUXE", regulatoryCategory: "LIGHT" as const, maxPassengers: 3, priceMultiplier: 2.0, defaultRatePerKm: 3.50, defaultRatePerHour: 90.0 },
+    { name: "Berline", code: "BERLINE", regulatoryCategory: "LIGHT" as const, maxPassengers: 4, priceMultiplier: 1.0, defaultRatePerKm: 1.80, defaultRatePerHour: 45.0, averageConsumptionL100km: 5.5 },
+    { name: "Van Premium", code: "VAN_PREMIUM", regulatoryCategory: "LIGHT" as const, maxPassengers: 7, priceMultiplier: 1.3, defaultRatePerKm: 2.20, defaultRatePerHour: 55.0, averageConsumptionL100km: 8.5 },
+    { name: "Minibus", code: "MINIBUS", regulatoryCategory: "HEAVY" as const, maxPassengers: 16, priceMultiplier: 1.8, defaultRatePerKm: 3.00, defaultRatePerHour: 75.0, averageConsumptionL100km: 12.0 },
+    { name: "Autocar", code: "AUTOCAR", regulatoryCategory: "HEAVY" as const, maxPassengers: 50, priceMultiplier: 2.5, defaultRatePerKm: 4.50, defaultRatePerHour: 120.0, averageConsumptionL100km: 18.0 },
+    { name: "Luxe", code: "LUXE", regulatoryCategory: "LIGHT" as const, maxPassengers: 3, priceMultiplier: 2.0, defaultRatePerKm: 3.50, defaultRatePerHour: 90.0, averageConsumptionL100km: 9.0 },
   ];
   for (const c of cats) {
     const created = await prisma.vehicleCategory.create({
