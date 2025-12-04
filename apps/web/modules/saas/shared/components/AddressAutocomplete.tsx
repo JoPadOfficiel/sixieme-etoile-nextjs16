@@ -58,7 +58,8 @@ export function AddressAutocomplete({
 }: AddressAutocompleteProps) {
   const t = useTranslations();
   const { isLoaded: isGoogleLoaded } = useGoogleMaps();
-  const [inputValue, setInputValue] = useState(value);
+  // Ensure inputValue is never null to avoid React warning
+  const [inputValue, setInputValue] = useState(value ?? "");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -74,9 +75,9 @@ export function AddressAutocomplete({
     }
   }, [isGoogleLoaded]);
 
-  // Update input value when prop changes
+  // Update input value when prop changes (ensure never null)
   useEffect(() => {
-    setInputValue(value);
+    setInputValue(value ?? "");
   }, [value]);
 
   // Close suggestions on click outside
