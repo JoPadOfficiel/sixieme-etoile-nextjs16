@@ -374,21 +374,36 @@ async function loadZones(organizationId: string): Promise<ZoneData[]> {
 }
 
 /**
+ * Route coordinates for fuel price calculation
+ */
+interface RouteCoordinates {
+	pickup: { lat: number; lng: number };
+	dropoff?: { lat: number; lng: number };
+	stops?: Array<{ lat: number; lng: number }>;
+}
+
+/**
  * Load or create default pricing settings for the organization
  * Story 4.2: Now includes cost parameters for operational cost calculation
- * Story 4.8: Fuel price is resolved from cache (no real-time API calls)
+ * Story 17.1: Fuel price is now fetched in real-time based on route coordinates
  */
 async function loadPricingSettings(
 	organizationId: string,
+	routeCoordinates?: RouteCoordinates,
 ): Promise<OrganizationPricingSettings & { fuelPriceSource?: FuelPriceResult }> {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const settings = await db.organizationPricingSettings.findFirst({
 		where: { organizationId },
 	}) as any;
 
-	// Story 4.8: Get fuel price from cache
-	// This never calls external APIs - reads from FuelPriceCache table
-	const fuelPriceResult = await getFuelPrice();
+	// Story 17.1: Get fuel price in real-time based on route coordinates
+	// Falls back to cache, then defaults if API fails
+	const fuelPriceResult = await getFuelPrice({
+		organizationId,
+		pickup: routeCoordinates?.pickup,
+		dropoff: routeCoordinates?.dropoff,
+		stops: routeCoordinates?.stops,
+	});
 
 	if (settings) {
 		return {
@@ -397,7 +412,7 @@ async function loadPricingSettings(
 			targetMarginPercent: Number(settings.defaultMarginPercent),
 			// Story 4.2: Cost parameters (optional, will use defaults if not set)
 			fuelConsumptionL100km: settings.fuelConsumptionL100km ? Number(settings.fuelConsumptionL100km) : undefined,
-			// Story 4.8: Use cached fuel price, fallback to org settings, then defaults
+			// Story 17.1: Use real-time fuel price, fallback to org settings, then defaults
 			fuelPricePerLiter: fuelPriceResult.pricePerLitre ?? (settings.fuelPricePerLiter ? Number(settings.fuelPricePerLiter) : undefined),
 			tollCostPerKm: settings.tollCostPerKm ? Number(settings.tollCostPerKm) : undefined,
 			wearCostPerKm: settings.wearCostPerKm ? Number(settings.wearCostPerKm) : undefined,
@@ -405,7 +420,7 @@ async function loadPricingSettings(
 			// Story 4.7: Profitability thresholds (optional, will use defaults if not set)
 			greenMarginThreshold: settings.greenMarginThreshold ? Number(settings.greenMarginThreshold) : undefined,
 			orangeMarginThreshold: settings.orangeMarginThreshold ? Number(settings.orangeMarginThreshold) : undefined,
-			// Story 4.8: Include fuel price source for transparency
+			// Story 17.1: Include fuel price source for transparency
 			fuelPriceSource: fuelPriceResult,
 		};
 	}
@@ -415,7 +430,7 @@ async function loadPricingSettings(
 		baseRatePerKm: 2.5,
 		baseRatePerHour: 45.0,
 		targetMarginPercent: 20.0,
-		// Story 4.8: Use cached fuel price even for default settings
+		// Story 17.1: Use real-time fuel price even for default settings
 		fuelPricePerLiter: fuelPriceResult.pricePerLitre,
 		fuelPriceSource: fuelPriceResult,
 		// Other cost parameters and profitability thresholds will use defaults from pricing-engine.ts
@@ -588,10 +603,17 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
+			// Story 17.1: Build route coordinates for real-time fuel pricing
+			const routeCoordinates: RouteCoordinates = {
+				pickup: data.pickup,
+				dropoff: data.dropoff,
+				stops: data.stops?.map(s => ({ lat: s.latitude, lng: s.longitude })),
+			};
+
 			// Load zones, pricing settings, multipliers, and vehicles (Story 4.3 + 4.5)
 			const [zones, pricingSettings, advancedRates, seasonalMultipliers, vehicles, googleMapsApiKey] = await Promise.all([
 				loadZones(organizationId),
-				loadPricingSettings(organizationId),
+				loadPricingSettings(organizationId, routeCoordinates),
 				loadAdvancedRates(organizationId),
 				loadSeasonalMultipliers(organizationId),
 				data.enableVehicleSelection ? loadVehiclesForSelection(organizationId) : Promise.resolve([]),
@@ -726,16 +748,20 @@ export const pricingCalculateRouter = new Hono()
 				result.tripAnalysis.vehicleSelection = vehicleSelectionInfo;
 			}
 
-			// Story 4.8: Add fuel price source to tripAnalysis for transparency
+			// Story 17.1: Add fuel price source to tripAnalysis for transparency
+			// Now includes real-time pricing info and countries traversed
 			if (pricingSettings.fuelPriceSource) {
 				result.tripAnalysis.fuelPriceSource = {
 					pricePerLitre: pricingSettings.fuelPriceSource.pricePerLitre,
 					currency: pricingSettings.fuelPriceSource.currency,
-					source: pricingSettings.fuelPriceSource.source,
+					source: pricingSettings.fuelPriceSource.source as "REALTIME" | "CACHE" | "DEFAULT",
 					fetchedAt: pricingSettings.fuelPriceSource.fetchedAt?.toISOString() ?? null,
 					isStale: pricingSettings.fuelPriceSource.isStale,
 					fuelType: pricingSettings.fuelPriceSource.fuelType,
 					countryCode: pricingSettings.fuelPriceSource.countryCode,
+					// Story 17.1: Include international route info
+					countriesOnRoute: pricingSettings.fuelPriceSource.countriesOnRoute,
+					routePrices: pricingSettings.fuelPriceSource.routePrices,
 				};
 			}
 

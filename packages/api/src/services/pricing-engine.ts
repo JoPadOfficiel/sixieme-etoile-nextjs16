@@ -746,16 +746,24 @@ export interface SegmentAnalysis {
 }
 
 /**
- * Story 4.8: Fuel price source information for transparency
+ * Story 17.1: Fuel price source information for transparency
+ * Now includes real-time pricing and international route info
  */
 export interface FuelPriceSourceInfo {
 	pricePerLitre: number;
 	currency: "EUR";
-	source: "CACHE" | "DEFAULT";
+	source: "REALTIME" | "CACHE" | "DEFAULT";
 	fetchedAt: string | null; // ISO timestamp or null if default
 	isStale: boolean;
 	fuelType: string;
 	countryCode: string;
+	// Story 17.1: International route info
+	countriesOnRoute?: string[];
+	routePrices?: Array<{
+		point: "pickup" | "dropoff" | "stop";
+		country: string;
+		pricePerLitre: number;
+	}>;
 }
 
 /**

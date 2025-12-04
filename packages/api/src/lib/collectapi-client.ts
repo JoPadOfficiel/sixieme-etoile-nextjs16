@@ -148,8 +148,13 @@ export class TimeoutError extends CollectAPIError {
 
 /**
  * Create authorization header for CollectAPI
+ * Handles cases where the API key already includes the "apikey " prefix
  */
 function createAuthHeader(apiKey: string): string {
+	// If the key already starts with "apikey ", don't add it again
+	if (apiKey.toLowerCase().startsWith("apikey ")) {
+		return apiKey;
+	}
 	return `apikey ${apiKey}`;
 }
 
