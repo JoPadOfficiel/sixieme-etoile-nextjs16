@@ -2,13 +2,6 @@
 
 import { Card, CardContent } from "@ui/components/card";
 import { Skeleton } from "@ui/components/skeleton";
-import {
-	Table,
-	TableBody,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@ui/components/table";
 import { MapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
@@ -21,6 +14,7 @@ import type { MissionListItem } from "../types";
  * Story 8.1: Implement Dispatch Screen Layout
  *
  * Left panel of the Dispatch screen showing the list of missions.
+ * Uses compact card layout to avoid horizontal scrolling.
  * Supports selection, loading states, and empty states.
  *
  * @see AC2: Missions List Display
@@ -43,8 +37,6 @@ export function MissionsList({
 	isLoading,
 	className,
 }: MissionsListProps) {
-	const t = useTranslations("dispatch.missions");
-
 	if (isLoading) {
 		return <MissionsListSkeleton className={className} />;
 	}
@@ -56,28 +48,17 @@ export function MissionsList({
 	return (
 		<Card className={cn("overflow-hidden", className)} data-testid="missions-list">
 			<CardContent className="p-0">
-				{/* No internal scroll - page scrolls instead */}
-				<Table>
-					<TableHeader className="bg-background">
-						<TableRow>
-							<TableHead className="w-[100px]">{t("columns.timeWindow")}</TableHead>
-							<TableHead>{t("columns.route")}</TableHead>
-							<TableHead>{t("columns.client")}</TableHead>
-							<TableHead>{t("columns.vehicleDriver")}</TableHead>
-							<TableHead className="w-[100px]">{t("columns.badges")}</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{missions.map((mission) => (
-							<MissionRow
-								key={mission.id}
-								mission={mission}
-								isSelected={mission.id === selectedMissionId}
-								onSelect={onSelectMission}
-							/>
-						))}
-					</TableBody>
-				</Table>
+				{/* Compact card layout - no horizontal scroll */}
+				<div className="divide-y">
+					{missions.map((mission) => (
+						<MissionRow
+							key={mission.id}
+							mission={mission}
+							isSelected={mission.id === selectedMissionId}
+							onSelect={onSelectMission}
+						/>
+					))}
+				</div>
 			</CardContent>
 		</Card>
 	);

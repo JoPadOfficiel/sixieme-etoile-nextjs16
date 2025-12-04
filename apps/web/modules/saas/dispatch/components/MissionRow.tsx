@@ -1,8 +1,7 @@
 "use client";
 
 import { Badge } from "@ui/components/badge";
-import { TableCell, TableRow } from "@ui/components/table";
-import { MapPin, ArrowRight, Clock } from "lucide-react";
+import { MapPin, ArrowRight, Clock, Car, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
@@ -14,7 +13,8 @@ import type { MissionListItem } from "../types";
  *
  * Story 8.1: Implement Dispatch Screen Layout
  *
- * Individual mission row in the missions list table.
+ * Individual mission card in the missions list.
+ * Compact vertical layout to avoid horizontal scrolling.
  * Shows time, route, client, vehicle/driver, and dispatch badges.
  *
  * @see AC2: Missions List Display
@@ -32,91 +32,86 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 	const pickupDate = new Date(mission.pickupAt);
 
 	// Truncate address for display
-	const truncateAddress = (address: string, maxLength = 30) => {
+	const truncateAddress = (address: string, maxLength = 35) => {
 		if (address.length <= maxLength) return address;
 		return `${address.substring(0, maxLength)}...`;
 	};
 
 	return (
-		<TableRow
+		<div
 			className={cn(
-				"cursor-pointer transition-colors",
+				"p-3 border-b cursor-pointer transition-colors hover:bg-muted/50",
 				isSelected && "bg-primary/5 border-l-2 border-l-primary"
 			)}
 			onClick={() => onSelect(mission.id)}
 			data-testid="mission-row"
 			data-selected={isSelected}
 		>
-			{/* Time Window */}
-			<TableCell className="whitespace-nowrap">
-				<div className="flex items-center gap-2">
-					<Clock className="size-4 text-muted-foreground" />
-					<div>
-						<div className="font-medium">{format(pickupDate, "HH:mm")}</div>
+			{/* Row 1: Time + Client + Badges */}
+			<div className="flex items-center justify-between gap-2 mb-2">
+				<div className="flex items-center gap-3">
+					{/* Time */}
+					<div className="flex items-center gap-1.5">
+						<Clock className="size-4 text-muted-foreground" />
+						<div className="font-semibold">{format(pickupDate, "HH:mm")}</div>
 						<div className="text-xs text-muted-foreground">
 							{format(pickupDate, "dd/MM/yyyy")}
 						</div>
 					</div>
-				</div>
-			</TableCell>
-
-			{/* Route */}
-			<TableCell>
-				<div className="flex items-center gap-1 text-sm">
-					<MapPin className="size-3.5 text-green-600 flex-shrink-0" />
-					<span className="truncate max-w-[120px]" title={mission.pickupAddress}>
-						{truncateAddress(mission.pickupAddress, 25)}
-					</span>
-					<ArrowRight className="size-3 text-muted-foreground flex-shrink-0" />
-					<MapPin className="size-3.5 text-red-600 flex-shrink-0" />
-					<span className="truncate max-w-[120px]" title={mission.dropoffAddress}>
-						{truncateAddress(mission.dropoffAddress, 25)}
-					</span>
-				</div>
-			</TableCell>
-
-			{/* Client */}
-			<TableCell>
-				<div className="flex items-center gap-2">
-					<span className="font-medium truncate max-w-[120px]">
-						{mission.contact.displayName}
-					</span>
-					<Badge
-						variant={mission.contact.isPartner ? "default" : "secondary"}
-						className="text-xs"
-					>
-						{mission.contact.isPartner ? t("partner") : t("private")}
-					</Badge>
-				</div>
-			</TableCell>
-
-			{/* Vehicle / Driver */}
-			<TableCell>
-				{mission.assignment?.vehicleName ? (
-					<div className="text-sm">
-						<div className="font-medium">{mission.assignment.vehicleName}</div>
-						{mission.assignment.driverName && (
-							<div className="text-xs text-muted-foreground">
-								{mission.assignment.driverName}
-							</div>
-						)}
+					{/* Client */}
+					<div className="flex items-center gap-1.5">
+						<span className="font-medium truncate max-w-[140px]">
+							{mission.contact.displayName}
+						</span>
+						<Badge
+							variant={mission.contact.isPartner ? "default" : "secondary"}
+							className="text-xs px-1.5 py-0"
+						>
+							{mission.contact.isPartner ? t("partner") : t("private")}
+						</Badge>
 					</div>
-				) : (
-					<span className="text-sm text-muted-foreground italic">
-						{t("unassigned")}
-					</span>
-				)}
-			</TableCell>
-
-			{/* Dispatch Badges */}
-			<TableCell>
+				</div>
+				{/* Badges */}
 				<DispatchBadges
 					profitability={mission.profitability}
 					compliance={mission.compliance}
 					assignment={mission.assignment}
 				/>
-			</TableCell>
-		</TableRow>
+			</div>
+
+			{/* Row 2: Route (pickup → dropoff) */}
+			<div className="flex items-center gap-1.5 text-sm mb-2">
+				<MapPin className="size-3.5 text-green-600 flex-shrink-0" />
+				<span className="truncate" title={mission.pickupAddress}>
+					{truncateAddress(mission.pickupAddress)}
+				</span>
+				<ArrowRight className="size-3 text-muted-foreground flex-shrink-0 mx-1" />
+				<MapPin className="size-3.5 text-red-600 flex-shrink-0" />
+				<span className="truncate" title={mission.dropoffAddress}>
+					{truncateAddress(mission.dropoffAddress)}
+				</span>
+			</div>
+
+			{/* Row 3: Vehicle + Driver */}
+			<div className="flex items-center gap-4 text-sm text-muted-foreground">
+				{mission.assignment?.vehicleName ? (
+					<>
+						<div className="flex items-center gap-1.5">
+							<Car className="size-3.5" />
+							<span className="font-medium text-foreground">{mission.assignment.vehicleName}</span>
+						</div>
+						{mission.assignment.driverName && (
+							<div className="flex items-center gap-1.5">
+								<User className="size-3.5" />
+								<span>{mission.assignment.driverName}</span>
+							</div>
+						)}
+					</>
+				) : (
+					<span className="italic">{t("unassigned")}</span>
+				)}
+			</div>
+		</div>
 	);
 }
 
