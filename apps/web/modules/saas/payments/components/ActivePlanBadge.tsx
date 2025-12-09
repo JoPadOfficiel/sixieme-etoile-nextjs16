@@ -20,7 +20,7 @@ export function ActivePlanBadge({
 
 	return (
 		<Badge
-			status="info"
+			variant="secondary"
 			className="flex items-center gap-1 px-1.5 text-xs normal-case"
 		>
 			{activePlanData.title}

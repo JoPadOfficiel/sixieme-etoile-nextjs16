@@ -289,7 +289,7 @@ export default function SettingsPricingExtrasPage() {
 	// =========================================================================
 	// Combined Stats for Summary Cards
 	// =========================================================================
-	const totalFeesActive = feeStatsData?.active ?? 0;
+	const totalFeesActive = feeStatsData?.totalActive ?? 0;
 	const totalPromosActive = promoStatsData?.active ?? 0;
 	const totalActive = totalFeesActive + totalPromosActive;
 	const totalPromoUses = promoStatsData?.totalUses ?? 0;

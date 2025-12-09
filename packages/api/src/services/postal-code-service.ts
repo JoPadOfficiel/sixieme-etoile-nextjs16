@@ -151,7 +151,7 @@ export async function fetchPostalCodeBoundary(
 			return await fetchPostalCodeBoundaryFromOSM(postalCode, countryCode);
 		}
 
-		const geometry = result.geojson as Polygon | MultiPolygon;
+		const geometry = result.geojson as { type: string; coordinates: unknown };
 
 		// Ensure it's a valid polygon type
 		if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") {
@@ -178,7 +178,7 @@ export async function fetchPostalCodeBoundary(
 		return {
 			postalCode,
 			name: result.display_name || postalCode,
-			geometry,
+			geometry: geometry as Polygon | MultiPolygon,
 			center: {
 				latitude: parseFloat(result.lat),
 				longitude: parseFloat(result.lon),

@@ -96,7 +96,7 @@ interface MissionListItem {
 	quoteId: string;
 	pickupAt: string;
 	pickupAddress: string;
-	dropoffAddress: string;
+	dropoffAddress: string | null;
 	pickupLatitude: number | null;
 	pickupLongitude: number | null;
 	dropoffLatitude: number | null;
@@ -1155,7 +1155,7 @@ function quoteToMissionForChaining(quote: {
 	pickupAddress: string;
 	pickupLatitude: unknown;
 	pickupLongitude: unknown;
-	dropoffAddress: string;
+	dropoffAddress: string | null;
 	dropoffLatitude: unknown;
 	dropoffLongitude: unknown;
 	vehicleCategoryId: string;

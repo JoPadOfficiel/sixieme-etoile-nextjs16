@@ -339,8 +339,13 @@ export const routesCoverageRouter = new Hono()
 				}
 			}
 
-			// Fill in routes
+			// Fill in routes (skip routes without zones)
 			for (const route of routes) {
+				// Skip routes with null zones (legacy data)
+				if (!route.fromZone || !route.toZone || !route.fromZoneId || !route.toZoneId) {
+					continue;
+				}
+				
 				const scenarioType = detectScenarioType(
 					route.fromZone.code,
 					route.toZone.code,

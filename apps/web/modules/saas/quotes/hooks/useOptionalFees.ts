@@ -38,7 +38,7 @@ function transformFee(fee: OptionalFeeAPIResponse): OptionalFeeWithRules {
   return {
     id: fee.id,
     name: fee.name,
-    description: fee.description || undefined,
+    description: fee.description ?? null,
     amountType: fee.amountType,
     amount: fee.amount,
     isTaxable: fee.isTaxable,

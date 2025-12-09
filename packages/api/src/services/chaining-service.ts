@@ -60,7 +60,7 @@ export type ChainOrder = "BEFORE" | "AFTER";
 export interface TransitionDetails {
 	distanceKm: number;
 	durationMinutes: number;
-	fromAddress: string;
+	fromAddress: string | null;
 	toAddress: string;
 }
 
@@ -92,7 +92,7 @@ export interface MissionForChaining {
 	pickupAddress: string;
 	pickupLatitude: number | null;
 	pickupLongitude: number | null;
-	dropoffAddress: string;
+	dropoffAddress: string | null;
 	dropoffLatitude: number | null;
 	dropoffLongitude: number | null;
 	vehicleCategoryId: string;
@@ -120,7 +120,7 @@ export interface ChainingSuggestion {
 		id: string;
 		pickupAt: string;
 		pickupAddress: string;
-		dropoffAddress: string;
+		dropoffAddress: string | null;
 		contact: { displayName: string };
 	};
 	chainOrder: ChainOrder;
@@ -452,7 +452,7 @@ function createChainingSuggestion(
 	targetMission: MissionForChaining,
 	chainOrder: ChainOrder,
 	transitionDistanceKm: number,
-	fromAddress: string,
+	fromAddress: string | null,
 	toAddress: string,
 	config: ChainingConfig,
 ): ChainingSuggestion | null {
@@ -485,7 +485,7 @@ function createChainingSuggestion(
 			id: targetMission.id,
 			pickupAt: targetMission.pickupAt.toISOString(),
 			pickupAddress: targetMission.pickupAddress,
-			dropoffAddress: targetMission.dropoffAddress,
+			dropoffAddress: targetMission.dropoffAddress ?? null,
 			contact: {
 				displayName: targetMission.contact?.displayName || "Unknown",
 			},

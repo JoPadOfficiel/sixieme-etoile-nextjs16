@@ -120,7 +120,7 @@ export interface VehicleCategory {
   // Story 6.6: Capacity fields for upsell helpers
   maxPassengers: number;
   maxLuggageVolume: number | null; // in liters
-  priceMultiplier: number;
+  priceMultiplier: number | string;
 }
 
 export interface Contact {

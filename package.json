@@ -2,14 +2,15 @@
 	"name": "supastarter-nextjs",
 	"private": true,
 	"scripts": {
-    "dev": "dotenv -c -- turbo dev --concurrency 15",
-    "build": "dotenv -c -- turbo build",
-    "lint": "biome lint .",
-    "clean": "turbo clean",
-    "format": "biome format . --write",
-    "e2e": "pnpm --filter web e2e",
-    "seed:vtc": "pnpm --filter @repo/database db:seed:vtc"
-  },
+		"dev": "pnpm --filter @repo/web dev",
+		"start": "pnpm --filter @repo/web start",
+		"build": "pnpm --filter @repo/web build",
+		"lint": "biome lint .",
+		"clean": "turbo clean",
+		"format": "biome format . --write",
+		"e2e": "pnpm --filter web e2e",
+		"seed:vtc": "pnpm --filter @repo/database db:seed:vtc"
+	},
 	"engines": {
 		"node": ">=20"
 	},
@@ -26,7 +27,7 @@
 		"overrides": {
 			"@types/react": "19.2.7",
 			"@types/react-dom": "19.2.3",
-			"next": "16.0.2-canary.33"
+			"next": "16.0.8"
 		}
 	}
 }

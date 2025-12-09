@@ -214,7 +214,7 @@ function setInRequestCache(key: string, price: FuelPrices): void {
 	// Clean up old entries periodically
 	if (requestCache.size > 100) {
 		const now = Date.now();
-		for (const [k, v] of requestCache.entries()) {
+		for (const [k, v] of Array.from(requestCache.entries())) {
 			if (now - v.timestamp > REQUEST_CACHE_TTL_MS) {
 				requestCache.delete(k);
 			}

@@ -197,7 +197,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
           <QuoteCommercialSummary quote={data} />
           {/* Story 15.7: Display cost breakdown for audit */}
           <CostBreakdownDisplay 
-            breakdown={data.costBreakdown || data.tripAnalysis?.costBreakdown} 
+            breakdown={(data.tripAnalysis as TripAnalysis | null)?.costBreakdown ?? null} 
             compact 
           />
         </div>
@@ -219,7 +219,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
                 ? { 
                     lat: parseFloat(data.dropoffLatitude), 
                     lng: parseFloat(data.dropoffLongitude), 
-                    address: data.dropoffAddress 
+                    address: data.dropoffAddress ?? "" 
                   }
                 : undefined,
             }}

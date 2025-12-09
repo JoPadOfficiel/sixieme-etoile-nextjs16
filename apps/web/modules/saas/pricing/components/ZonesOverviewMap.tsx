@@ -35,7 +35,7 @@ export function ZonesOverviewMap({
 	const overlaysRef = useRef<Record<string, Overlay>>({});
 	const [isReady, setIsReady] = useState(false);
 	const createFromMapCallbackRef =
-		useRef<ZonesOverviewMapProps["onCreateFromMap"]>();
+		useRef<ZonesOverviewMapProps["onCreateFromMap"]>(undefined);
 	const suppressNextMapClickRef = useRef(false);
 
 	// Keep latest callback in a ref so map listeners stay up to date

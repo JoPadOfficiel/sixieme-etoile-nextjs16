@@ -68,7 +68,7 @@ export function DeleteOrganizationForm() {
 				description={t("organizations.settings.deleteOrganization.description")}
 			>
 				<div className="mt-4 flex justify-end">
-					<Button variant="error" onClick={() => setShowConfirmation(true)}>
+					<Button variant="destructive" onClick={() => setShowConfirmation(true)}>
 						{t("organizations.settings.deleteOrganization.submit")}
 					</Button>
 				</div>
@@ -92,7 +92,7 @@ export function DeleteOrganizationForm() {
 							{t("common.confirmation.cancel")}
 						</AlertDialogCancel>
 						<Button
-							variant="error"
+							variant="destructive"
 							loading={submitting}
 							onClick={() => onSubmit()}
 						>

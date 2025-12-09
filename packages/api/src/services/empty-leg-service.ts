@@ -97,7 +97,7 @@ export interface EmptyLegData {
  */
 export interface MissionForEmptyLeg {
 	id: string;
-	dropoffAddress: string;
+	dropoffAddress: string | null;
 	dropoffLatitude: number | null;
 	dropoffLongitude: number | null;
 	pickupAt: Date;
@@ -310,7 +310,7 @@ export function calculateEmptyLegData(
 	return {
 		id: "", // Will be set by database
 		vehicleId: vehicle.id,
-		fromAddress: mission.dropoffAddress,
+		fromAddress: mission.dropoffAddress ?? "",
 		fromLatitude: fromLat,
 		fromLongitude: fromLng,
 		toAddress,

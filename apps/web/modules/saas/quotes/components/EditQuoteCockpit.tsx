@@ -64,7 +64,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
         pickupAddress: quote.pickupAddress,
         pickupLatitude: quote.pickupLatitude ? parseFloat(quote.pickupLatitude) : null,
         pickupLongitude: quote.pickupLongitude ? parseFloat(quote.pickupLongitude) : null,
-        dropoffAddress: quote.dropoffAddress,
+        dropoffAddress: quote.dropoffAddress ?? "",
         dropoffLatitude: quote.dropoffLatitude ? parseFloat(quote.dropoffLatitude) : null,
         dropoffLongitude: quote.dropoffLongitude ? parseFloat(quote.dropoffLongitude) : null,
         pickupAt: quote.pickupAt ? new Date(quote.pickupAt) : null,
@@ -80,6 +80,12 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
         waitingTimeMinutes: 0,
         // Restore selected optional fees from appliedRules
         selectedOptionalFeeIds: (quote.appliedRules as { selectedOptionalFeeIds?: string[] } | null)?.selectedOptionalFeeIds ?? [],
+        // Story 16.1: Trip type specific fields
+        isRoundTrip: quote.isRoundTrip ?? false,
+        stops: (quote.stops as { id: string; address: string; latitude: number | null; longitude: number | null; order: number }[] | null) ?? [],
+        returnDate: quote.returnDate ? new Date(quote.returnDate) : null,
+        durationHours: quote.durationHours ? parseFloat(quote.durationHours) : null,
+        maxKilometers: quote.maxKilometers ? parseFloat(quote.maxKilometers) : null,
       });
       
       // Restore added fees from appliedRules

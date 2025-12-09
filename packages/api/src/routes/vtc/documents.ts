@@ -104,7 +104,7 @@ function transformContactToPdfData(contact: {
 function transformQuoteToPdfData(quote: {
 	id: string;
 	pickupAddress: string;
-	dropoffAddress: string;
+	dropoffAddress: string | null;
 	pickupAt: Date;
 	passengerCount: number;
 	luggageCount: number;
@@ -133,7 +133,7 @@ function transformQuoteToPdfData(quote: {
 	return {
 		id: quote.id,
 		pickupAddress: quote.pickupAddress,
-		dropoffAddress: quote.dropoffAddress,
+		dropoffAddress: quote.dropoffAddress ?? "",
 		pickupAt: quote.pickupAt,
 		passengerCount: quote.passengerCount,
 		luggageCount: quote.luggageCount,

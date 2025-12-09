@@ -42,7 +42,7 @@ export function DeleteAccountForm() {
 						title: t("settings.account.deleteAccount.notifications.error"),
 					});
 				},
-				onResponse: (response) => {
+				onResponse: () => {
 					setDeleting(false);
 				},
 			},
@@ -57,7 +57,7 @@ export function DeleteAccountForm() {
 				description={t("settings.account.deleteAccount.description")}
 			>
 				<div className="mt-4 flex justify-end">
-					<Button variant="error" onClick={() => setShowConfirmation(true)}>
+					<Button variant="destructive" onClick={() => setShowConfirmation(true)}>
 						{t("settings.account.deleteAccount.submit")}
 					</Button>
 				</div>
@@ -81,7 +81,7 @@ export function DeleteAccountForm() {
 							{t("common.confirmation.cancel")}
 						</AlertDialogCancel>
 						<Button
-							variant="error"
+							variant="destructive"
 							loading={deleting}
 							onClick={async () => {
 								await onDelete();

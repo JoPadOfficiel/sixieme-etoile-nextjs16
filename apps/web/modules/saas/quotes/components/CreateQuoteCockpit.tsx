@@ -178,7 +178,12 @@ export function CreateQuoteCockpit() {
           dropoffLongitude: formData.dropoffLongitude,
           // Story 16.1: Trip type specific fields
           isRoundTrip: formData.isRoundTrip,
-          stops: formData.stops.length > 0 ? formData.stops : null,
+          stops: formData.stops.length > 0 
+            ? formData.stops
+                .filter((s): s is typeof s & { latitude: number; longitude: number } => 
+                  s.latitude !== null && s.longitude !== null)
+                .map(s => ({ latitude: s.latitude, longitude: s.longitude, address: s.address, order: s.order }))
+            : null,
           returnDate: formData.returnDate?.toISOString() ?? null,
           durationHours: formData.durationHours,
           maxKilometers: formData.maxKilometers,

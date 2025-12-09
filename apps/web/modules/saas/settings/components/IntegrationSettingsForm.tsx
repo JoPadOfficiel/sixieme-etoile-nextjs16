@@ -71,14 +71,14 @@ function StatusBadge({ status }: { status: string | null }) {
 	switch (status) {
 		case "connected":
 			return (
-				<Badge variant="success" className="gap-1">
+				<Badge variant="default" className="gap-1 bg-green-100 text-green-800">
 					<CheckCircle2Icon className="size-3" />
 					Connected
 				</Badge>
 			);
 		case "invalid":
 			return (
-				<Badge variant="error" className="gap-1">
+				<Badge variant="destructive" className="gap-1">
 					<XCircleIcon className="size-3" />
 					Invalid
 				</Badge>
@@ -118,7 +118,7 @@ export function IntegrationSettingsForm() {
 	});
 
 	const updateMutation = useMutation({
-		mutationFn: async (data: { googleMapsApiKey?: string | null; collectApiKey?: string | null; preferredFuelType?: string }) => {
+		mutationFn: async (data: { googleMapsApiKey?: string | null; collectApiKey?: string | null; preferredFuelType?: "GASOLINE" | "DIESEL" | "LPG" }) => {
 			const response = await apiClient.vtc.settings.integrations.$put({
 				json: data,
 			});
@@ -419,9 +419,9 @@ export function IntegrationSettingsForm() {
 										{t("organizations.settings.integrations.collectApi.fuelType")}:
 									</span>
 									<Select
-										value={settings.preferredFuelType || "DIESEL"}
+										value={(settings.preferredFuelType as "GASOLINE" | "DIESEL" | "LPG") || "DIESEL"}
 										onValueChange={(value) => {
-											updateMutation.mutate({ preferredFuelType: value });
+											updateMutation.mutate({ preferredFuelType: value as "GASOLINE" | "DIESEL" | "LPG" });
 										}}
 									>
 										<SelectTrigger className="w-32">

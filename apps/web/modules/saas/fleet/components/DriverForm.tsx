@@ -136,8 +136,8 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
 				json: {
 					licenseCategoryId: data.licenseCategoryId,
 					licenseNumber: data.licenseNumber,
-					validFrom: data.validFrom.toISOString(),
-					validTo: data.validTo?.toISOString() || null,
+					validFrom: data.validFrom,
+					validTo: data.validTo ?? null,
 				},
 			});
 			if (!response.ok) {

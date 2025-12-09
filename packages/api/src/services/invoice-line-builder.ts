@@ -211,7 +211,7 @@ function calculateVat(amountExclVat: number, vatRate: number): number {
 export function buildInvoiceLines(
 	transportAmount: number,
 	pickupAddress: string,
-	dropoffAddress: string,
+	dropoffAddress: string | null,
 	parsedRules: ParsedAppliedRules,
 ): InvoiceLineInput[] {
 	const lines: InvoiceLineInput[] = [];
@@ -223,7 +223,7 @@ export function buildInvoiceLines(
 
 	lines.push({
 		lineType: "SERVICE",
-		description: `Transport: ${pickupAddress} → ${dropoffAddress}`,
+		description: `Transport: ${pickupAddress} → ${dropoffAddress ?? "N/A"}`,
 		quantity: 1,
 		unitPriceExclVat: transportExclVat,
 		vatRate: TRANSPORT_VAT_RATE,

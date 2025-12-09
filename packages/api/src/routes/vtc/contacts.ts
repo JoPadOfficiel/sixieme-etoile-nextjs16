@@ -558,8 +558,8 @@ export const contactsRouter = new Hono()
 				typicalGrids = {
 					zoneRoutes: contact.partnerContract.zoneRoutes.map((zr) => ({
 						id: zr.zoneRoute.id,
-						fromZone: zr.zoneRoute.fromZone.name,
-						toZone: zr.zoneRoute.toZone.name,
+						fromZone: zr.zoneRoute.fromZone?.name ?? "N/A",
+						toZone: zr.zoneRoute.toZone?.name ?? "N/A",
 					})),
 					excursionPackages: contact.partnerContract.excursionPackages.map((ep) => ({
 						id: ep.excursionPackage.id,

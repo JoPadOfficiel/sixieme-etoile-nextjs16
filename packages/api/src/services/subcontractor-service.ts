@@ -582,17 +582,10 @@ export async function subcontractMission(
 		data: {
 			organizationId,
 			quoteId: missionId,
-			fromStatus: mission.status,
-			toStatus: mission.status, // Status doesn't change, just subcontracting flag
-			changedBy: operatorId,
+			previousStatus: mission.status,
+			newStatus: mission.status, // Status doesn't change, just subcontracting flag
+			userId: operatorId,
 			reason: `Subcontracted to ${subcontractor.id} for €${agreedPrice}`,
-			metadata: {
-				action: "SUBCONTRACT",
-				subcontractorId,
-				agreedPrice,
-				notes,
-				previousInternalCost: mission.internalCost ? Number(mission.internalCost) : null,
-			},
 		},
 	});
 

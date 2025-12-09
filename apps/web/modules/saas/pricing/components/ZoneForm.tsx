@@ -85,7 +85,9 @@ export function ZoneForm({
 	});
 
 	// Geometry is now managed by the map component
-	const [geometry, setGeometry] = useState<unknown>(effectiveGeometry);
+	const [geometry, setGeometry] = useState<{ type: string; coordinates: number[][][] } | null>(
+		effectiveGeometry as { type: string; coordinates: number[][][] } | null
+	);
 
 	// Creation method tab (only for new zones)
 	const [creationTab, setCreationTab] = useState<CreationTab>(

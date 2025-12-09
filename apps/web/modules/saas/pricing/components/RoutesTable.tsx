@@ -223,17 +223,17 @@ export function RoutesTable({
 								<TableRow key={route.id}>
 									<TableCell>
 										<div className="flex flex-col">
-											<span className="font-medium">{route.fromZone.name}</span>
+											<span className="font-medium">{route.fromZone?.name ?? '-'}</span>
 											<span className="text-muted-foreground text-xs">
-												{route.fromZone.code}
+												{route.fromZone?.code ?? '-'}
 											</span>
 										</div>
 									</TableCell>
 									<TableCell>
 										<div className="flex flex-col">
-											<span className="font-medium">{route.toZone.name}</span>
+											<span className="font-medium">{route.toZone?.name ?? '-'}</span>
 											<span className="text-muted-foreground text-xs">
-												{route.toZone.code}
+												{route.toZone?.code ?? '-'}
 											</span>
 										</div>
 									</TableCell>

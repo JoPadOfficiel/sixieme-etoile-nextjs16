@@ -199,7 +199,7 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
                     id="dueDate"
                     type="date"
                     value={formData.dueDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => setFormData(prev => prev ? { ...prev, dueDate: e.target.value } : null)}
                     disabled={updateMutation.isPending}
                     className="pl-9"
                   />
@@ -212,7 +212,7 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setFormData(prev => prev ? { ...prev, notes: e.target.value } : null)}
                   disabled={updateMutation.isPending}
                   rows={4}
                   placeholder={t("invoices.detail.notes")}

@@ -401,7 +401,6 @@ export function usePricingCalculation(
             latitude: stop.latitude ?? 0,
             longitude: stop.longitude ?? 0,
             order: stop.order ?? index,
-            notes: stop.notes,
           })),
           // Story 16.7: Pass return date for multi-day excursions
           returnDate: formData.returnDate?.toISOString(),

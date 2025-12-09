@@ -211,7 +211,7 @@ export function PartnerAssignmentDialog({
       onSuccess?.();
     },
     onError: (error) => {
-      toast({ title: t("saveError"), description: error.message, variant: "destructive" });
+      toast({ title: t("saveError"), description: error.message, variant: "error" });
     },
   });
 
