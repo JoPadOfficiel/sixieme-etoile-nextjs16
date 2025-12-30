@@ -2951,6 +2951,17 @@
 			"empty": {
 				"title": "Aucun candidat disponible",
 				"description": "Aucun véhicule ou chauffeur ne correspond aux exigences de cette mission"
+			},
+			"availability": {
+				"available": "Disponible",
+				"unavailable": "Indisponible",
+				"missionConflict": "Conflit de mission",
+				"calendarEvent": "Événement calendrier",
+				"missionConflictDescription": "Le chauffeur a une mission en cours de {start} à {end}",
+				"calendarEventDescription": "Le chauffeur a un événement {type} : {title}",
+				"showUnavailable": "Afficher les chauffeurs indisponibles",
+				"hideUnavailable": "Masquer les chauffeurs indisponibles",
+				"unavailableCount": "{count} indisponible(s)"
 			}
 		},
 		"map": {

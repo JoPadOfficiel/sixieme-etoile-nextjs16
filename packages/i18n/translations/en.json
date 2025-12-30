@@ -2951,6 +2951,17 @@
 			"empty": {
 				"title": "No available candidates",
 				"description": "No vehicles or drivers match the requirements for this mission"
+			},
+			"availability": {
+				"available": "Available",
+				"unavailable": "Unavailable",
+				"missionConflict": "Mission conflict",
+				"calendarEvent": "Calendar event",
+				"missionConflictDescription": "Driver has an overlapping mission from {start} to {end}",
+				"calendarEventDescription": "Driver has a {type} event: {title}",
+				"showUnavailable": "Show unavailable drivers",
+				"hideUnavailable": "Hide unavailable drivers",
+				"unavailableCount": "{count} unavailable"
 			}
 		},
 		"map": {

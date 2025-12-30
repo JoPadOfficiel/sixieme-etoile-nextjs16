@@ -1,12 +1,14 @@
 /**
  * Vehicle Selection Service
  * Story 4.5: Multi-Base Candidate Selection & Pre-Filter
+ * Story 17.7: Driver Availability Overlap Detection
  * 
  * Implements the multi-base vehicle selection algorithm:
  * 1. Filter by capacity and status
- * 2. Haversine pre-filter to eliminate distant bases
- * 3. Google Distance Matrix for precise routing (top N candidates)
- * 4. Select optimal vehicle/base by minimal internal cost
+ * 2. Filter by driver availability (Story 17.7)
+ * 3. Haversine pre-filter to eliminate distant bases
+ * 4. Google Distance Matrix for precise routing (top N candidates)
+ * 5. Select optimal vehicle/base by minimal internal cost
  * 
  * Designed to be reusable by Epic 8 (Dispatch)
  */
@@ -36,6 +38,9 @@ export interface VehicleCandidate {
 	costPerKm: number | null;
 	averageSpeedKmh: number | null;
 	status: "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+	// Story 17.7: Driver availability
+	driverId?: string | null;
+	driverName?: string | null;
 }
 
 /**
@@ -76,21 +81,44 @@ export type SelectionCriterion = "MINIMAL_COST" | "BEST_MARGIN";
 /**
  * Result of vehicle selection
  */
+/**
+ * Unavailable candidate with reason (Story 17.7)
+ */
+export interface UnavailableCandidateInfo {
+	vehicleId: string;
+	vehicleName: string;
+	driverId: string;
+	driverName?: string;
+	reason: "MISSION_OVERLAP" | "CALENDAR_EVENT";
+	conflictDescription?: string;
+}
+
 export interface VehicleSelectionResult {
 	selectedCandidate: CandidateWithRouting | null;
 	candidatesConsidered: number;
 	candidatesAfterCapacityFilter: number;
+	candidatesAfterAvailabilityFilter?: number; // Story 17.7
 	candidatesAfterHaversineFilter: number;
 	candidatesWithRouting: number;
 	selectionCriterion: SelectionCriterion;
 	fallbackUsed: boolean;
 	fallbackReason?: string;
 	allCandidates?: CandidateWithRouting[];
+	// Story 17.7: Unavailable candidates
+	unavailableCandidates?: UnavailableCandidateInfo[];
 }
 
 /**
  * Input for vehicle selection
  */
+/**
+ * Mission window for availability check (Story 17.7)
+ */
+export interface MissionWindow {
+	start: Date;
+	end: Date;
+}
+
 export interface VehicleSelectionInput {
 	organizationId: string;
 	pickup: GeoPoint;
@@ -102,6 +130,10 @@ export interface VehicleSelectionInput {
 	maxCandidatesForRouting?: number;
 	selectionCriterion?: SelectionCriterion;
 	includeAllCandidates?: boolean;
+	// Story 17.7: Driver availability
+	missionWindow?: MissionWindow;
+	includeUnavailableDrivers?: boolean;
+	excludeQuoteId?: string; // For updates - exclude current quote from overlap check
 }
 
 // ============================================================================
@@ -162,6 +194,36 @@ export function filterByCapacity(
  */
 export function filterByStatus(vehicles: VehicleCandidate[]): VehicleCandidate[] {
 	return vehicles.filter((vehicle) => vehicle.status === "ACTIVE");
+}
+
+/**
+ * Filter vehicles by driver availability (Story 17.7)
+ * Separates available and unavailable candidates based on driver IDs
+ */
+export function filterByDriverAvailability(
+	vehicles: VehicleCandidate[],
+	availableDriverIds: string[],
+): {
+	available: VehicleCandidate[];
+	unavailable: VehicleCandidate[];
+} {
+	const availableSet = new Set(availableDriverIds);
+	
+	const available: VehicleCandidate[] = [];
+	const unavailable: VehicleCandidate[] = [];
+	
+	for (const vehicle of vehicles) {
+		// If vehicle has no driver assigned, consider it available
+		if (!vehicle.driverId) {
+			available.push(vehicle);
+		} else if (availableSet.has(vehicle.driverId)) {
+			available.push(vehicle);
+		} else {
+			unavailable.push(vehicle);
+		}
+	}
+	
+	return { available, unavailable };
 }
 
 /**
@@ -560,6 +622,13 @@ export function transformVehicleToCandidate(
 		costPerKm: number | { toNumber(): number } | null;
 		averageSpeedKmh: number | null;
 		status: "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+		// Story 17.7: Driver info for availability check
+		defaultDriverId?: string | null;
+		defaultDriver?: {
+			id: string;
+			firstName: string;
+			lastName: string;
+		} | null;
 	},
 ): VehicleCandidate {
 	// Handle Prisma Decimal type
@@ -590,5 +659,10 @@ export function transformVehicleToCandidate(
 		costPerKm: toNumber(vehicle.costPerKm),
 		averageSpeedKmh: vehicle.averageSpeedKmh,
 		status: vehicle.status,
+		// Story 17.7: Driver info
+		driverId: vehicle.defaultDriverId ?? null,
+		driverName: vehicle.defaultDriver 
+			? `${vehicle.defaultDriver.firstName} ${vehicle.defaultDriver.lastName}`
+			: null,
 	};
 }
