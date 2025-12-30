@@ -104,6 +104,16 @@ export function isPointInPolygon(
 export type ZoneType = "POLYGON" | "RADIUS" | "POINT";
 
 /**
+ * Story 17.1: Zone conflict resolution strategy
+ * Determines how to resolve conflicts when a point falls within multiple overlapping zones
+ */
+export type ZoneConflictStrategy =
+	| "PRIORITY" // Select zone with highest priority field value
+	| "MOST_EXPENSIVE" // Select zone with highest priceMultiplier
+	| "CLOSEST" // Select zone whose center is closest to the point
+	| "COMBINED"; // Filter by priority first, then by multiplier among equal-priority zones
+
+/**
  * Zone data structure for matching
  */
 export interface ZoneData {
@@ -118,6 +128,8 @@ export interface ZoneData {
 	isActive: boolean;
 	// Story 11.3: Zone pricing multiplier
 	priceMultiplier?: number;
+	// Story 17.1: Zone priority for conflict resolution
+	priority?: number;
 }
 
 /**
@@ -196,15 +208,131 @@ export function findZonesForPoint(point: GeoPoint, zones: ZoneData[]): ZoneData[
 }
 
 /**
+ * Story 17.1: Resolve zone conflict using the specified strategy
+ * @param point The point being matched
+ * @param zones Array of matching zones (already filtered to contain the point)
+ * @param strategy The conflict resolution strategy to use
+ * @returns The selected zone based on the strategy, or null if no zones
+ */
+export function resolveZoneConflict(
+	point: GeoPoint,
+	zones: ZoneData[],
+	strategy: ZoneConflictStrategy | null,
+): ZoneData | null {
+	if (zones.length === 0) return null;
+	if (zones.length === 1) return zones[0];
+
+	// Default: use existing specificity logic (POINT > RADIUS > POLYGON)
+	if (!strategy) {
+		return sortBySpecificity(zones)[0];
+	}
+
+	switch (strategy) {
+		case "PRIORITY":
+			// Select zone with highest priority field value
+			return [...zones].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0];
+
+		case "MOST_EXPENSIVE":
+			// Select zone with highest priceMultiplier
+			return [...zones].sort(
+				(a, b) => (b.priceMultiplier ?? 1) - (a.priceMultiplier ?? 1),
+			)[0];
+
+		case "CLOSEST": {
+			// Select zone whose center is closest to the point
+			return [...zones].sort((a, b) => {
+				const centerA = getZoneCenter(a);
+				const centerB = getZoneCenter(b);
+				if (!centerA && !centerB) return 0;
+				if (!centerA) return 1;
+				if (!centerB) return -1;
+				const distA = haversineDistance(point, centerA);
+				const distB = haversineDistance(point, centerB);
+				return distA - distB;
+			})[0];
+		}
+
+		case "COMBINED": {
+			// Filter by priority first, then by multiplier among equal-priority zones
+			const maxPriority = Math.max(...zones.map((z) => z.priority ?? 0));
+			const highPriorityZones = zones.filter(
+				(z) => (z.priority ?? 0) === maxPriority,
+			);
+			return [...highPriorityZones].sort(
+				(a, b) => (b.priceMultiplier ?? 1) - (a.priceMultiplier ?? 1),
+			)[0];
+		}
+
+		default:
+			return sortBySpecificity(zones)[0];
+	}
+}
+
+/**
+ * Get the center point of a zone
+ * For POLYGON zones, uses centerLatitude/centerLongitude if available, otherwise calculates centroid
+ * @param zone The zone to get the center of
+ * @returns The center point, or null if not determinable
+ */
+export function getZoneCenter(zone: ZoneData): GeoPoint | null {
+	// Use explicit center if available
+	if (zone.centerLatitude !== null && zone.centerLongitude !== null) {
+		return { lat: zone.centerLatitude, lng: zone.centerLongitude };
+	}
+
+	// For POLYGON zones, calculate centroid from geometry
+	if (zone.zoneType === "POLYGON" && zone.geometry?.coordinates?.[0]) {
+		const ring = zone.geometry.coordinates[0];
+		if (ring.length < 3) return null;
+
+		let sumLat = 0;
+		let sumLng = 0;
+		// Exclude the closing point (last point = first point)
+		const pointCount = ring.length - 1;
+		for (let i = 0; i < pointCount; i++) {
+			sumLng += ring[i][0];
+			sumLat += ring[i][1];
+		}
+		return { lat: sumLat / pointCount, lng: sumLng / pointCount };
+	}
+
+	return null;
+}
+
+/**
+ * Sort zones by specificity (POINT > RADIUS > POLYGON)
+ * This is the default sorting used when no conflict strategy is specified
+ */
+function sortBySpecificity(zones: ZoneData[]): ZoneData[] {
+	return [...zones].sort((a, b) => {
+		// POINT zones are most specific
+		if (a.zoneType === "POINT" && b.zoneType !== "POINT") return -1;
+		if (b.zoneType === "POINT" && a.zoneType !== "POINT") return 1;
+
+		// Then RADIUS zones, sorted by radius (smaller = more specific)
+		if (a.zoneType === "RADIUS" && b.zoneType === "RADIUS") {
+			return (a.radiusKm ?? 0) - (b.radiusKm ?? 0);
+		}
+		if (a.zoneType === "RADIUS" && b.zoneType !== "RADIUS") return -1;
+		if (b.zoneType === "RADIUS" && a.zoneType !== "RADIUS") return 1;
+
+		// POLYGON zones are least specific
+		return 0;
+	});
+}
+
+/**
  * Find the most specific zone for a point
  * @param point The point to check
  * @param zones Array of zones to search
+ * @param strategy Optional conflict resolution strategy (Story 17.1)
  * @returns The most specific zone containing the point, or null if none
  */
 export function findZoneForPoint(
 	point: GeoPoint,
 	zones: ZoneData[],
+	strategy?: ZoneConflictStrategy | null,
 ): ZoneData | null {
 	const matchingZones = findZonesForPoint(point, zones);
-	return matchingZones.length > 0 ? matchingZones[0] : null;
+	return resolveZoneConflict(point, matchingZones, strategy ?? null);
 }

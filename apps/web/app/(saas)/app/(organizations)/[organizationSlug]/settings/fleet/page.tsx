@@ -1300,6 +1300,8 @@ function CostParametersSection() {
 		tollCostPerKm: data?.tollCostPerKm ?? null,
 		wearCostPerKm: data?.wearCostPerKm ?? null,
 		driverHourlyCost: data?.driverHourlyCost ?? null,
+		// Story 17.1: Zone conflict resolution strategy
+		zoneConflictStrategy: data?.zoneConflictStrategy ?? null,
 	};
 
 	const [formData, setFormData] = useState<PricingSettingsFormData>(defaultFormData);
@@ -1592,6 +1594,36 @@ function CostParametersSection() {
 										}))
 									}
 								/>
+							</div>
+						</div>
+					</div>
+
+					{/* Story 17.1: Zone Conflict Resolution Strategy Section */}
+					<div className="space-y-4">
+						<h3 className="text-lg font-medium">{t("fleet.settings.costParameters.sections.zoneConflict")}</h3>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="zoneConflictStrategy">{t("fleet.settings.costParameters.fields.zoneConflictStrategy")}</Label>
+								<Select
+									value={formData.zoneConflictStrategy || "default"}
+									onValueChange={(value) =>
+										setFormData((prev) => ({ ...prev, zoneConflictStrategy: value === "default" ? null : value as "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED" }))
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="default">{t("fleet.settings.costParameters.zoneConflictStrategies.default")}</SelectItem>
+										<SelectItem value="PRIORITY">{t("fleet.settings.costParameters.zoneConflictStrategies.PRIORITY")}</SelectItem>
+										<SelectItem value="MOST_EXPENSIVE">{t("fleet.settings.costParameters.zoneConflictStrategies.MOST_EXPENSIVE")}</SelectItem>
+										<SelectItem value="CLOSEST">{t("fleet.settings.costParameters.zoneConflictStrategies.CLOSEST")}</SelectItem>
+										<SelectItem value="COMBINED">{t("fleet.settings.costParameters.zoneConflictStrategies.COMBINED")}</SelectItem>
+									</SelectContent>
+								</Select>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.zoneConflictStrategyHelp")}
+								</p>
 							</div>
 						</div>
 					</div>

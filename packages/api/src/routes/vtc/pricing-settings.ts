@@ -5,6 +5,9 @@ import { validator } from "hono-openapi/zod";
 import { z } from "zod";
 import { organizationMiddleware } from "../../middleware/organization";
 
+// Story 17.1: Zone conflict resolution strategy enum
+const zoneConflictStrategyEnum = z.enum(["PRIORITY", "MOST_EXPENSIVE", "CLOSEST", "COMBINED"]);
+
 // Validation schema for updating pricing settings
 const updatePricingSettingsSchema = z.object({
 	baseRatePerKm: z.number().positive().optional(),
@@ -19,6 +22,8 @@ const updatePricingSettingsSchema = z.object({
 	tollCostPerKm: z.number().min(0).nullable().optional(),
 	wearCostPerKm: z.number().min(0).nullable().optional(),
 	driverHourlyCost: z.number().positive().nullable().optional(),
+	// Story 17.1: Zone conflict resolution strategy
+	zoneConflictStrategy: zoneConflictStrategyEnum.nullable().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -37,6 +42,8 @@ function serializePricingSettings(settings: {
 	tollCostPerKm: unknown;
 	wearCostPerKm: unknown;
 	driverHourlyCost: unknown;
+	// Story 17.1: Zone conflict resolution strategy
+	zoneConflictStrategy?: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -65,6 +72,8 @@ function serializePricingSettings(settings: {
 		driverHourlyCost: settings.driverHourlyCost
 			? Number(settings.driverHourlyCost)
 			: null,
+		// Story 17.1: Zone conflict resolution strategy
+		zoneConflictStrategy: settings.zoneConflictStrategy,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

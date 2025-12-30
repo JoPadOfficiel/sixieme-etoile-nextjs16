@@ -54,6 +54,8 @@ const createZoneSchema = z.object({
 	// Story 11.3: Zone pricing multiplier
 	priceMultiplier: z.coerce.number().min(0.5).max(3.0).optional().default(1.0),
 	multiplierDescription: z.string().max(500).optional().nullable(),
+	// Story 17.1: Zone priority for conflict resolution
+	priority: z.coerce.number().int().min(0).max(100).optional().default(0),
 });
 
 const updateZoneSchema = z.object({
@@ -77,6 +79,8 @@ const updateZoneSchema = z.object({
 	// Story 11.3: Zone pricing multiplier
 	priceMultiplier: z.coerce.number().min(0.5).max(3.0).optional(),
 	multiplierDescription: z.string().max(500).optional().nullable(),
+	// Story 17.1: Zone priority for conflict resolution
+	priority: z.coerce.number().int().min(0).max(100).optional(),
 });
 
 const listZonesSchema = z.object({
@@ -297,6 +301,8 @@ export const pricingZonesRouter = new Hono()
 							// Story 11.3: Zone pricing multiplier
 							priceMultiplier: data.priceMultiplier ?? 1.0,
 							multiplierDescription: data.multiplierDescription ?? undefined,
+							// Story 17.1: Zone priority for conflict resolution
+							priority: data.priority ?? 0,
 						},
 						organizationId,
 					),
@@ -406,6 +412,8 @@ export const pricingZonesRouter = new Hono()
 					// Story 11.3: Update zone pricing multiplier
 					...(data.priceMultiplier !== undefined && { priceMultiplier: data.priceMultiplier }),
 					...(data.multiplierDescription !== undefined && { multiplierDescription: data.multiplierDescription }),
+					// Story 17.1: Update zone priority
+					...(data.priority !== undefined && { priority: data.priority }),
 				},
 				include: {
 					parentZone: {

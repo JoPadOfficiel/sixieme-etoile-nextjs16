@@ -431,6 +431,9 @@ export interface CumulativeComplianceResult {
 // Organization Pricing Settings (Story 9.5)
 // ============================================================================
 
+// Story 17.1: Zone conflict resolution strategy
+export type ZoneConflictStrategy = "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED";
+
 export interface OrganizationPricingSettings {
 	id: string;
 	organizationId: string;
@@ -446,6 +449,8 @@ export interface OrganizationPricingSettings {
 	tollCostPerKm: number | null;
 	wearCostPerKm: number | null;
 	driverHourlyCost: number | null;
+	// Story 17.1: Zone conflict resolution strategy
+	zoneConflictStrategy: ZoneConflictStrategy | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -463,6 +468,8 @@ export interface PricingSettingsFormData {
 	tollCostPerKm: number | null;
 	wearCostPerKm: number | null;
 	driverHourlyCost: number | null;
+	// Story 17.1: Zone conflict resolution strategy
+	zoneConflictStrategy: ZoneConflictStrategy | null;
 }
 
 export type ConfigHealthStatus = "ok" | "warning" | "error";

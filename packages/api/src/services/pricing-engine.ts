@@ -6,7 +6,7 @@
  * Story 7.4: Adds commission integration for partner profitability
  */
 
-import type { GeoPoint, ZoneData } from "../lib/geo-utils";
+import type { GeoPoint, ZoneData, ZoneConflictStrategy } from "../lib/geo-utils";
 import { findZoneForPoint } from "../lib/geo-utils";
 import {
 	calculateCommission,
@@ -359,6 +359,8 @@ export interface OrganizationPricingSettings {
 	excursionSurchargePercent?: number;  // Default: 15
 	dispoIncludedKmPerHour?: number;     // Default: 50
 	dispoOverageRatePerKm?: number;      // Default: 0.50
+	// Story 17.1: Zone conflict resolution strategy
+	zoneConflictStrategy?: ZoneConflictStrategy | null;
 }
 
 // ============================================================================
@@ -3174,8 +3176,10 @@ export function calculatePrice(
 
 	// Map pickup/dropoff to zones early for multiplier context (Story 4.3)
 	// This is needed even for private clients to support ZONE_SCENARIO rates
-	const pickupZone = findZoneForPoint(request.pickup, zones);
-	const dropoffZone = findZoneForPoint(request.dropoff, zones);
+	// Story 17.1: Pass zone conflict resolution strategy from settings
+	const zoneConflictStrategy = pricingSettings.zoneConflictStrategy ?? null;
+	const pickupZone = findZoneForPoint(request.pickup, zones, zoneConflictStrategy);
+	const dropoffZone = findZoneForPoint(request.dropoff, zones, zoneConflictStrategy);
 
 	// -------------------------------------------------------------------------
 	// Step 1: Check if contact is a partner

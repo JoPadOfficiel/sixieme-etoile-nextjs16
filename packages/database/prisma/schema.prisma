@@ -274,6 +274,15 @@ enum ZoneType {
   POINT
 }
 
+/// Story 17.1: Zone conflict resolution strategy
+/// Determines how the system resolves conflicts when a point falls within multiple overlapping zones
+enum ZoneConflictStrategy {
+  PRIORITY // Select zone with highest priority field value
+  MOST_EXPENSIVE // Select zone with highest priceMultiplier
+  CLOSEST // Select zone whose center is closest to the point
+  COMBINED // Filter by priority first, then by multiplier among equal-priority zones
+}
+
 /// Route direction for zone-to-zone pricing
 enum RouteDirection {
   BIDIRECTIONAL
@@ -804,6 +813,9 @@ model PricingZone {
   priceMultiplier       Decimal @default(1.0) @db.Decimal(4, 2) // 0.50 to 3.00
   multiplierDescription String? // Optional description for the multiplier
 
+  // Story 17.1: Zone priority for conflict resolution
+  priority Int @default(0) // Higher priority zones are selected first when using PRIORITY or COMBINED strategy
+
   // Metadata
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -1022,6 +1034,11 @@ model OrganizationPricingSettings {
   tollCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.15)
   wearCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.10)
   driverHourlyCost      Decimal? @db.Decimal(8, 2) // EUR per hour (e.g., 25.00)
+
+  // Story 17.1: Zone conflict resolution strategy
+  // Determines how to resolve conflicts when a point falls within multiple overlapping zones
+  // null = use default specificity logic (POINT > RADIUS > POLYGON)
+  zoneConflictStrategy ZoneConflictStrategy?
 
   // Metadata
   createdAt DateTime @default(now())

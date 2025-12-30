@@ -2708,7 +2708,8 @@
 					"baseRates": "Tarifs de base",
 					"margins": "Paramètres de marge",
 					"minimumFare": "Tarif minimum",
-					"operationalCosts": "Coûts opérationnels"
+					"operationalCosts": "Coûts opérationnels",
+					"zoneConflict": "Résolution des conflits de zones"
 				},
 				"fields": {
 					"baseRatePerKm": "Tarif de base au Km (€)",
@@ -2729,7 +2730,9 @@
 					"fuelPricePerLiter": "Prix carburant (€/L)",
 					"tollCostPerKm": "Coût péage (€/km)",
 					"wearCostPerKm": "Coût usure (€/km)",
-					"driverHourlyCost": "Coût horaire chauffeur (€/h)"
+					"driverHourlyCost": "Coût horaire chauffeur (€/h)",
+					"zoneConflictStrategy": "Stratégie de résolution",
+					"zoneConflictStrategyHelp": "Détermine quelle zone est sélectionnée quand un point se trouve dans plusieurs zones qui se chevauchent"
 				},
 				"roundingRules": {
 					"none": "Pas d'arrondi",
@@ -2737,6 +2740,13 @@
 					"NEAREST_10": "Au 10€ le plus proche",
 					"CEIL_5": "Arrondi supérieur à 5€",
 					"CEIL_10": "Arrondi supérieur à 10€"
+				},
+				"zoneConflictStrategies": {
+					"default": "Par défaut (spécificité)",
+					"PRIORITY": "Priorité (zone avec priorité la plus haute)",
+					"MOST_EXPENSIVE": "Plus cher (multiplicateur le plus élevé)",
+					"CLOSEST": "Plus proche (centre de zone le plus proche)",
+					"COMBINED": "Combiné (priorité puis multiplicateur)"
 				},
 				"save": "Enregistrer",
 				"saveSuccess": "Paramètres enregistrés avec succès",

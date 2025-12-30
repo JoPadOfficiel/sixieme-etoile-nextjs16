@@ -126,7 +126,7 @@ export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstN
 
 export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licenseCategoryId','licenseNumber','validFrom','validTo','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -138,7 +138,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -233,6 +233,10 @@ export type AdjustmentTypeType = `${z.infer<typeof AdjustmentTypeSchema>}`
 export const ZoneTypeSchema = z.enum(['POLYGON','RADIUS','POINT']);
 
 export type ZoneTypeType = `${z.infer<typeof ZoneTypeSchema>}`
+
+export const ZoneConflictStrategySchema = z.enum(['PRIORITY','MOST_EXPENSIVE','CLOSEST','COMBINED']);
+
+export type ZoneConflictStrategyType = `${z.infer<typeof ZoneConflictStrategySchema>}`
 
 export const RouteDirectionSchema = z.enum(['BIDIRECTIONAL','A_TO_B','B_TO_A']);
 
@@ -768,6 +772,7 @@ export const PricingZoneSchema = z.object({
   creationMethod: z.string().nullable(),
   priceMultiplier: z.instanceof(Prisma.Decimal, { message: "Field 'priceMultiplier' must be a Decimal. Location: ['Models', 'PricingZone']"}),
   multiplierDescription: z.string().nullable(),
+  priority: z.number().int(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -898,6 +903,7 @@ export type DispoPackage = z.infer<typeof DispoPackageSchema>
  * OrganizationPricingSettings - Base commercial parameters per organisation
  */
 export const OrganizationPricingSettingsSchema = z.object({
+  zoneConflictStrategy: ZoneConflictStrategySchema.nullable(),
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),

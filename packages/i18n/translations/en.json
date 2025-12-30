@@ -2708,7 +2708,8 @@
 					"baseRates": "Base Rates",
 					"margins": "Margin Settings",
 					"minimumFare": "Minimum Fare",
-					"operationalCosts": "Operational Costs"
+					"operationalCosts": "Operational Costs",
+					"zoneConflict": "Zone Conflict Resolution"
 				},
 				"fields": {
 					"baseRatePerKm": "Base Rate per Km (€)",
@@ -2729,7 +2730,9 @@
 					"fuelPricePerLiter": "Fuel Price (€/L)",
 					"tollCostPerKm": "Toll Cost (€/km)",
 					"wearCostPerKm": "Wear Cost (€/km)",
-					"driverHourlyCost": "Driver Hourly Cost (€/h)"
+					"driverHourlyCost": "Driver Hourly Cost (€/h)",
+					"zoneConflictStrategy": "Resolution Strategy",
+					"zoneConflictStrategyHelp": "Determines which zone is selected when a point falls within multiple overlapping zones"
 				},
 				"roundingRules": {
 					"none": "No rounding",
@@ -2737,6 +2740,13 @@
 					"NEAREST_10": "Nearest 10€",
 					"CEIL_5": "Round up to 5€",
 					"CEIL_10": "Round up to 10€"
+				},
+				"zoneConflictStrategies": {
+					"default": "Default (specificity)",
+					"PRIORITY": "Priority (highest priority zone)",
+					"MOST_EXPENSIVE": "Most Expensive (highest multiplier)",
+					"CLOSEST": "Closest (nearest zone center)",
+					"COMBINED": "Combined (priority then multiplier)"
 				},
 				"save": "Save Settings",
 				"saveSuccess": "Settings saved successfully",
