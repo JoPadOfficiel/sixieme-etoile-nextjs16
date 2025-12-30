@@ -40,8 +40,26 @@ This document decomposes the VTC ERP PRD into **9 functional epics**, aligned wi
 - **Epic 9 – Advanced Pricing Configuration & Reporting**  
   Implement admin configuration for pricing (zones, grids, modifiers, seasonal multipliers, optional fees, promotions, fuel cache) and profitability reporting.
 
+- **Epic 10 – Google Maps Integration Fixes**  
+  Fix critical Google Maps integration issues in quotes and dispatch screens.
+
+- **Epic 11 – Zone Management Refactoring & UI Improvements**  
+  Unified zone management with interactive maps, postal code creation, and responsive design.
+
+- **Epic 12 – Partner-Specific Pricing & Contract Enhancements**  
+  Implement partner-specific pricing schemas, override support, and contract management UI.
+
+- **Epic 13 – Pricing UI Improvements & Partner Filtering**  
+  Fix pricing UI translations and add partner filtering to pricing pages.
+
 - **Epic 14 – Flexible Route Pricing System**  
   Extend the zone-to-zone pricing model to support multi-zone origins/destinations and specific address-based pricing with interactive map selection.
+
+- **Epic 15 – Pricing Engine Accuracy & Real Cost Integration**  
+  Fix pricing inconsistencies by integrating real toll costs, vehicle-specific fuel consumption, vehicle category multipliers, and trip-type differentiation.
+
+- **Epic 16 – Quote System Refactoring by Trip Type**  
+  Refactor the quote creation system to support different forms and pricing logic for each trip type (Transfer, Excursion, Dispo, Off-grid).
 
 ---
 
@@ -1550,39 +1568,438 @@ So that I can see which clients, grids and vehicle categories perform best.
 
 ---
 
-## Epic 14 – Flexible Route Pricing System
+## Epic 10: Google Maps Integration Fixes
 
-**Status:** In Progress  
-**Created:** 2025-12-01  
-**Related FRs:** FR8, FR9, FR37
+**Goal:** Fix critical Google Maps integration issues in quotes and dispatch screens to ensure proper map functionality and user experience.
 
-### Epic Overview
+### Story 10.1: Fix Google Maps Integration in Quotes & Dispatch
 
-#### Problem Statement
+As a **developer**,  
+I want Google Maps to load and function correctly in quotes and dispatch screens,  
+So that operators can see routes and use map-based features without errors.
 
-Le système actuel de tarification par routes (`/settings/pricing/routes`) présente plusieurs limitations critiques :
+**Related FRs:** Technical integration requirements.
 
-1. **Rigidité Zone → Zone** : Chaque route ne peut avoir qu'une seule zone d'origine et une seule zone de destination
-2. **Impossibilité de regrouper** : Pas de moyen de définir un prix unique pour "toutes les zones Paris" → CDG
-3. **Pas d'adresses spécifiques** : Impossible de définir un prix pour un hôtel ou lieu précis
-4. **Bug Vehicle Category** : Le dropdown de sélection des catégories de véhicules ne fonctionne pas
+**Acceptance Criteria:**
 
-#### Business Value
+**Given** I open the Create Quote page,  
+**When** the page loads,  
+**Then** Google Maps loads without JavaScript errors and shows the route.
 
-- **Flexibilité tarifaire** : Permet de créer des grilles de prix plus adaptées aux besoins métier
-- **Gain de temps** : Évite de créer N routes pour N zones avec le même prix
-- **Précision** : Permet des tarifs spécifiques pour des lieux stratégiques (hôtels partenaires, etc.)
-- **Expérience utilisateur** : Interface plus intuitive avec carte interactive
+**Given** I open the Dispatch screen,  
+**When** I view a mission,  
+**Then** the map displays the route correctly with vehicle positions.
 
-### Stories
+**Prerequisites:** Stories 1.1–1.2 (data model + tenancy), Story 1.5 (Maps integration settings).
 
-#### Story 14.1 – Fix Vehicle Category Dropdown Bug
+**Technical Notes:**
 
-**Status:** Done
+- Fixed Google Maps API key configuration and loading sequence
+- Resolved map initialization timing issues
+- Ensured proper cleanup of map instances
+- Created GoogleMapsProvider component for consistent API loading
+- Updated AddressAutocomplete to use Places API library
+- Added coordinate capture and storage in quote creation flow
+- Updated seed data with realistic Paris coordinates
 
-**As a** pricing administrator,  
-**I want** the vehicle category dropdown to work correctly,  
-**So that** I can create and edit routes with the proper vehicle category.
+---
+
+## Epic 11: Zone Management Refactoring & UI Improvements
+
+**Goal:** Unified zone management with interactive maps, postal code creation, pricing multipliers integration, and responsive design improvements.
+
+### Story 11.1: Implement Unified Zone Management with Interactive Map
+
+As an **operator**,  
+I want a unified zone management interface with interactive map capabilities,  
+So that I can create and manage zones visually and efficiently.
+
+**Related FRs:** FR8 (Geographic zones), FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I access `/dashboard/settings/zones`,  
+**When** the page loads,  
+**Then** I see a two-panel layout with zone list sidebar and interactive map showing all zones.
+
+**Given** I click "Add Zone" or select a drawing tool,  
+**When** I draw a polygon or circle on the map,  
+**Then** the zone creation form opens with pre-filled geometry.
+
+**Prerequisites:** Stories 1.1–1.2 (data model + tenancy), Story 1.5 (Maps integration settings), Story 10.1 (Google Maps fixes).
+
+**Technical Notes:**
+
+- Created ZoneManagementLayout with two-panel design
+- Implemented ZonesInteractiveMap with Google Maps Drawing Tools
+- Added ZoneSidebarList with search and filtering capabilities
+- Created ZoneMapToolbar with Pan, Circle, and Polygon tools
+- Added zone color coding and selection functionality
+- Implemented responsive design for mobile devices
+
+---
+
+### Story 11.2: Implement Postal Code Zone Creation
+
+As a **pricing administrator**,  
+I want to create zones from postal codes,  
+So that I can quickly define zones covering specific postal code areas.
+
+**Related FRs:** FR8 (Geographic zones).
+
+**Acceptance Criteria:**
+
+**Given** I am creating a new zone,  
+**When** I select "Postal Code" as zone type,  
+**Then** I can enter one or multiple postal codes and the system creates the zone with appropriate boundaries.
+
+**Prerequisites:** Story 11.1 (Zone management interface).
+
+**Technical Notes:**
+
+- Added postal code lookup functionality
+- Integrated with postal code boundary APIs
+- Auto-generated zone geometry from postal codes
+- Added postal code validation and formatting
+
+---
+
+### Story 11.3: Integrate Zone Pricing Multipliers
+
+As a **pricing engine**,  
+I want zone multipliers to be integrated into the pricing calculation,  
+So that geographic pricing variations are applied automatically.
+
+**Related FRs:** FR15 (Configurable multipliers), FR8 (Geographic zones).
+
+**Acceptance Criteria:**
+
+**Given** a zone with multiplier 1.2×,  
+**When** a trip starts or ends in this zone,  
+**Then** the pricing engine applies the 1.2× multiplier.
+
+**Given** pickup in zone PARIS_20 (1.1×) and dropoff in zone CDG (1.2×),  
+**When** the pricing engine calculates,  
+**Then** it uses Math.max(1.1, 1.2) = 1.2× as the zone multiplier.
+
+**Prerequisites:** Stories 4.1–4.3 (Dynamic pricing), Story 11.1 (Zone management).
+
+**Technical Notes:**
+
+- Integrated zone multipliers into pricing engine
+- Added priority handling for overlapping zones (special zones > concentric zones)
+- Implemented multiplier caching for performance
+- Added zone detection logic for pickup/dropoff coordinates
+
+---
+
+### Story 11.4: Merge Seasonal Multipliers & Advanced Rates UI
+
+As a **pricing administrator**,  
+I want seasonal multipliers and advanced rates to be managed in a unified interface,  
+So that pricing rules are easier to configure and understand.
+
+**Related FRs:** FR15 (Configurable multipliers), FR58 (Advanced rate modifiers).
+
+**Acceptance Criteria:**
+
+**Given** I access pricing settings,  
+**When** I view the multipliers section,  
+**Then** I see both seasonal multipliers and advanced rates in a unified table.
+
+**Given** I create a new pricing rule,  
+**When** I configure conditions and adjustments,  
+**Then** the interface validates rule conflicts and priority order.
+
+**Prerequisites:** Stories 9.1–9.2 (Pricing configuration), Story 11.1 (Zone management).
+
+**Technical Notes:**
+
+- Merged two separate UI components into one unified interface
+- Unified data models for better maintainability
+- Added bulk import/export functionality
+- Implemented rule conflict detection and resolution
+
+---
+
+### Story 11.5: Merge Optional Fees & Promotions UI
+
+As a **pricing administrator**,  
+I want optional fees and promotions to be managed together,  
+So that pricing adjustments are easier to configure and track.
+
+**Related FRs:** FR56 (Optional fees), FR57 (Promotions).
+
+**Acceptance Criteria:**
+
+**Given** I access pricing settings,  
+**When** I view the fees section,  
+**Then** I see both optional fees and promotions in a unified interface.
+
+**Given** I configure a new optional fee or promotion,  
+**When** I set the conditions and amounts,  
+**Then** the system shows the impact on pricing calculations.
+
+**Prerequisites:** Stories 9.3–9.4 (Fees and promotions configuration).
+
+**Technical Notes:**
+
+- Combined fee management interfaces
+- Unified validation rules and tax handling
+- Added fee impact analysis and preview
+- Implemented usage tracking for promotions
+
+---
+
+### Story 11.6: Implement Collapsible Main Sidebar
+
+As a **user**,  
+I want the main sidebar to be collapsible,  
+So that I have more screen space for content.
+
+**Related FRs:** UX improvement requirements.
+
+**Acceptance Criteria:**
+
+**Given** I am using the application,  
+**When** I click the collapse button,  
+**Then** the sidebar collapses and content expands to use the full width.
+
+**Given** I refresh the page or navigate,  
+**When** the page loads,  
+**Then** the sidebar state persists from my previous choice.
+
+**Prerequisites:** Core layout components.
+
+**Technical Notes:**
+
+- Added collapsible sidebar component with smooth animations
+- Implemented persistent sidebar state using localStorage
+- Added keyboard shortcuts for sidebar toggle
+- Ensured responsive behavior on mobile devices
+
+---
+
+### Story 11.7: Remove Deprecated Advanced Rate Types
+
+As a **system maintainer**,  
+I want deprecated advanced rate types removed from the system,  
+So that the codebase is cleaner and easier to maintain.
+
+**Related FRs:** Code maintenance.
+
+**Acceptance Criteria:**
+
+**Given** deprecated rate types exist in the database,  
+**When** the migration runs,  
+**Then** all deprecated types are removed or converted to supported types.
+
+**Given** I view advanced rate configuration,  
+**When** I create or edit rates,  
+**Then** only current, supported rate types are available.
+
+**Prerequisites:** Stories 9.2 (Advanced rates), database migration framework.
+
+**Technical Notes:**
+
+- Identified and removed deprecated rate types from codebase
+- Created migration scripts to handle existing data
+- Updated documentation and UI components
+- Added validation to prevent creation of deprecated types
+
+---
+
+### Story 11.8: Implement Full Responsive Design Mobile Sidebar
+
+As a **mobile user**,  
+I want the application to be fully responsive with a mobile-optimized sidebar,  
+So that I can use the application effectively on mobile devices.
+
+**Related FRs:** Mobile UX requirements.
+
+**Acceptance Criteria:**
+
+**Given** I access the application on a mobile device,  
+**When** the page loads,  
+**Then** the sidebar is optimized for mobile use with touch-friendly controls.
+
+**Given** I navigate between pages on mobile,  
+**When** I interact with the sidebar,  
+**Then** all interactions work smoothly with touch gestures.
+
+**Prerequisites:** Story 11.6 (Collapsible sidebar), responsive design framework.
+
+**Technical Notes:**
+
+- Implemented mobile-first responsive design
+- Added touch gesture support for sidebar interactions
+- Optimized sidebar for mobile screens with appropriate sizing
+- Tested across various mobile device sizes
+
+---
+
+## Epic 12: Partner-Specific Pricing & Contract Enhancements
+
+**Goal:** Implement partner-specific pricing schemas, override support, and contract management UI to handle complex B2B pricing arrangements.
+
+### Story 12.1: Implement Partner-Specific Pricing Schema
+
+As a **pricing manager**,  
+I want to define specific pricing schemas for each partner,  
+So that B2B contracts can be accommodated with custom pricing rules.
+
+**Related FRs:** FR2 (Partner contracts), FR11 (Engagement Rule).
+
+**Acceptance Criteria:**
+
+**Given** I am editing a partner contact,  
+**When** I access the pricing section,  
+**Then** I can define custom pricing rules and overrides for this partner.
+
+**Given** I create a quote for this partner,  
+**When** the pricing engine runs,  
+**Then** it applies the partner-specific rules before global rules.
+
+**Prerequisites:** Stories 2.1–2.2 (Partner contacts and contracts), Stories 3.1–3.2 (Zone routes and grids).
+
+**Technical Notes:**
+
+- Extended Contact model with partner pricing schema
+- Added validation for partner-specific rules
+- Implemented priority handling between partner and global rules
+- Created partner contract configuration data structures
+
+---
+
+### Story 12.2: Implement Pricing Engine Override Support
+
+As a **pricing engine**,  
+I want to support partner-specific pricing overrides,  
+So that B2B pricing rules are applied correctly.
+
+**Related FRs:** FR11 (Engagement Rule), FR16 (Operator override).
+
+**Acceptance Criteria:**
+
+**Given** a partner with specific pricing overrides,  
+**When** a quote is created for this partner,  
+**Then** the pricing engine applies the partner-specific rules.
+
+**Given** conflicting rules exist,  
+**When** the engine processes pricing,  
+**Then** partner rules take priority over global organization rules.
+
+**Prerequisites:** Stories 4.1–4.3 (Dynamic pricing), Story 12.1 (Partner schema).
+
+**Technical Notes:**
+
+- Modified pricing engine to check for partner overrides
+- Added override priority logic and conflict resolution
+- Implemented override tracking in appliedRules
+- Created override validation and audit trail
+
+---
+
+### Story 12.3: Implement Partner Contract Override UI
+
+As a **pricing administrator**,  
+I want a user interface to manage partner contract overrides,  
+So that I can easily configure and maintain B2B pricing agreements.
+
+**Related FRs:** FR2 (Partner contracts), FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I access a partner's contract settings,  
+**When** I configure pricing overrides,  
+**Then** I can set custom prices, multipliers, and rules for this partner.
+
+**Given** I assign rate grids to a partner,  
+**When** I save the configuration,  
+**Then** the assignments are visible in both CRM and pricing interfaces.
+
+**Prerequisites:** Stories 12.1–12.2 (Partner schema and engine support), Stories 3.1–3.3 (Zone and grid management).
+
+**Technical Notes:**
+
+- Created partner contract configuration UI
+- Added override validation and conflict detection
+- Implemented bulk override operations
+- Added bidirectional sync between CRM and pricing interfaces
+
+---
+
+## Epic 13: Pricing UI Improvements & Partner Filtering
+
+**Goal:** Fix pricing UI translations and add partner filtering to pricing pages for better user experience and data management.
+
+### Story 13.1: Fix Pricing UI Translations
+
+As a **user**,  
+I want all pricing UI elements to be properly translated,  
+So that I can understand and use the pricing interface in my preferred language.
+
+**Related FRs:** Localization requirements.
+
+**Acceptance Criteria:**
+
+**Given** I access any pricing page,  
+**When** the page loads,  
+**Then** all text elements are properly translated.
+
+**Given** I switch between languages,  
+**When** the page updates,  
+**Then** all pricing-specific translations update correctly.
+
+**Prerequisites:** Translation framework and internationalization setup.
+
+**Technical Notes:**
+
+- Fixed missing translation keys for pricing components
+- Updated translation files with comprehensive pricing terminology
+- Added translation validation for pricing forms and labels
+- Implemented context-aware translations for pricing rules
+
+---
+
+### Story 13.2: Implement Pricing Pages Partner Filter
+
+As a **pricing administrator**,  
+I want to filter pricing configurations by partner,  
+So that I can easily manage partner-specific pricing rules.
+
+**Related FRs:** FR2 (Partner contracts), FR37 (Admin configuration).
+
+**Acceptance Criteria:**
+
+**Given** I access pricing configuration pages,  
+**When** I apply a partner filter,  
+**Then** only configurations for the selected partner are shown.
+
+**Given** I view zone routes or pricing grids,  
+**When** I select a partner,  
+**Then** the display shows only routes/grids assigned to that partner.
+
+**Prerequisites:** Stories 12.1–12.3 (Partner pricing and contracts), Stories 9.1–9.4 (Pricing configuration pages).
+
+**Technical Notes:**
+
+- Added partner filter components to pricing pages
+- Implemented filter state management and persistence
+- Added partner-specific configuration search functionality
+- Created partner assignment indicators on pricing items
+
+---
+
+## Epic 14: Flexible Route Pricing System
+
+**Goal:** Extend the zone-to-zone pricing model to support multi-zone origins/destinations and specific address-based pricing with interactive map selection.
+
+### Story 14.1: Fix Vehicle Category Dropdown Bug
+
+As a **pricing administrator**,  
+I want the vehicle category dropdown to work correctly,  
+So that I can create and edit routes with the proper vehicle category.
 
 **Related FRs:** FR37 (Admin configuration).
 
@@ -1592,22 +2009,25 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 **When** I open the route creation/edit drawer,  
 **Then** the vehicle category dropdown displays all available categories.
 
-**And** I can select any category and save the route successfully.
+**Given** I select any category and save the route,  
+**When** I view the route list,  
+**Then** the route is saved with the correct vehicle category.
+
+**Prerequisites:** Stories 1.1 (VehicleCategory model), 3.1 (Zone routes).
 
 **Technical Notes:**
 
 - Root cause: Frontend called `/api/vtc/vehicles/categories` but API is mounted at `/api/vtc/vehicle-categories`
 - Fix applied to 4 files: routes page, settings/pricing/routes, dispos, excursions
+- Updated API endpoint references in all pricing components
 
 ---
 
-#### Story 14.2 – Extend ZoneRoute Schema for Multi-Zone & Address Support
+### Story 14.2: Extend ZoneRoute Schema for Multi-Zone & Address Support
 
-**Status:** Done
-
-**As a** system architect,  
-**I want** the ZoneRoute schema to support multiple zones and specific addresses,  
-**So that** the pricing engine can handle flexible route definitions.
+As a **system architect**,  
+I want the ZoneRoute schema to support multiple zones and specific addresses,  
+So that the pricing engine can handle flexible route definitions.
 
 **Related FRs:** FR8 (Geographic zones), FR9 (Route matrix).
 
@@ -1617,10 +2037,15 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 **When** I create a route with multiple origin zones,  
 **Then** the zones are stored in `ZoneRouteOriginZone` junction table.
 
-**And** when I create a route with a specific address origin,  
+**Given** I create a route with a specific address origin,  
+**When** I save the route,  
 **Then** `originType = ADDRESS` and address fields are populated.
 
-**And** existing routes are migrated to the new schema with backward compatibility.
+**Given** existing routes in the database,  
+**When** the migration runs,  
+**Then** all existing routes are migrated to the new schema with backward compatibility.
+
+**Prerequisites:** Stories 1.1 (Prisma models), 3.1 (ZoneRoute model), database migration framework.
 
 **Technical Notes:**
 
@@ -1628,16 +2053,15 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 - Created `ZoneRouteOriginZone` and `ZoneRouteDestinationZone` junction tables
 - Made `fromZoneId`/`toZoneId` nullable for backward compatibility
 - Data migration script migrated 40 existing routes
+- Added new address fields: `originPlaceId`, `originAddress`, `originLat`, `originLng`
 
 ---
 
-#### Story 14.3 – Update Pricing UI for Flexible Routes
+### Story 14.3: Update Pricing UI for Flexible Routes
 
-**Status:** Pending
-
-**As a** pricing administrator,  
-**I want** the route creation UI to support multi-zone and address selection,  
-**So that** I can configure flexible pricing routes.
+As a **pricing administrator**,  
+I want the route creation UI to support multi-zone and address selection,  
+So that I can configure flexible pricing routes.
 
 **Related FRs:** FR37 (Admin configuration).
 
@@ -1647,61 +2071,64 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 **When** I select "Zones" as origin type,  
 **Then** I can select multiple zones from a multi-select dropdown.
 
-**And** when I select "Address" as origin type,  
+**Given** I select "Address" as origin type,  
+**When** I configure the route,  
 **Then** I can search and select a specific address via Google Places autocomplete.
 
-**Prerequisites:** Story 14.2.
+**Given** I configure both origin and destination,  
+**When** I save the route,  
+**Then** the route is created with the correct type and data structure.
+
+**Prerequisites:** Stories 14.2 (Schema changes), 10.1 (Google Maps integration), 11.1 (Zone management).
+
+**Technical Notes:**
+
+- Created dynamic form components for origin/destination type selection
+- Integrated Google Places Autocomplete for address selection
+- Added multi-select zone dropdown with search functionality
+- Implemented form validation for different route types
 
 ---
 
-#### Story 14.4 – Interactive Map for Zone Selection
+### Story 14.4: Implement Interactive Map for Zone Selection
 
-**Status:** In Progress
-
-**As a** pricing administrator,  
-**I want** to select zones visually on an interactive map,  
-**So that** I can easily identify and configure route pricing without memorizing zone names.
+As a **pricing administrator**,  
+I want to select zones visually on an interactive map,  
+So that I can easily identify and configure route pricing without memorizing zone names.
 
 **Related FRs:** FR8 (Geographic zones).
 
 **Acceptance Criteria:**
 
-**AC1 - Visual Zone Selection:**  
 **Given** I am configuring a route origin or destination,  
 **When** I click on "Select zones on map" button,  
 **Then** a map dialog opens showing all existing zones with their boundaries.
 
-**AC2 - Multi-Zone Selection:**  
 **Given** the zone map dialog is open,  
 **When** I click on zone polygons/areas on the map,  
 **Then** I can select/deselect multiple zones visually (toggle selection).
 
-**AC3 - Zone Highlighting:**  
-**Given** zones are displayed on the map,  
-**When** I hover over a zone,  
-**Then** the zone name is displayed and the zone is highlighted.
-
-**AC4 - Selection Confirmation:**  
-**Given** I have selected one or more zones on the map,  
+**Given** I have selected zones on the map,  
 **When** I click "Confirm",  
 **Then** the selected zones are applied to the origin/destination field.
 
-**AC5 - Quick Zone Creation (Optional):**  
-**Given** I need a specific zone that doesn't exist,  
-**When** I click "Create zone" in the map dialog,  
-**Then** I can draw a new zone polygon and save it directly.
+**Prerequisites:** Stories 11.1 (Interactive zone map), 14.3 (Route form UI), 10.1 (Google Maps integration).
 
-**Prerequisites:** Story 14.3, Story 11.1 (Zone management with interactive map).
+**Technical Notes:**
+
+- Created zone selection map dialog component
+- Implemented visual zone highlighting and selection states
+- Added zone boundary rendering from geometry data
+- Integrated with existing zone management components
+- Added zone information tooltips on hover
 
 ---
 
-#### Story 14.5 – Update Pricing Engine for Multi-Zone Routes
+### Story 14.5: Update Pricing Engine for Multi-Zone Routes
 
-**Status:** Pending
-
-**As a** system,  
-**I want** the pricing engine to match trips against multi-zone routes,  
-**So that** flexible pricing configurations are applied correctly.
+As a **system**,  
+I want the pricing engine to match trips against multi-zone routes,  
+So that flexible pricing configurations are applied correctly.
 
 **Related FRs:** FR9 (Route matrix), FR24 (Profitability calculation).
 
@@ -1711,20 +2138,31 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 **When** there exists a route with origin zones [A, C, D] and destination zone [B],  
 **Then** the route matches and the fixed price is applied.
 
-**And** when the origin is a specific address within a zone,  
+**Given** a trip from a specific address within Zone A to Zone B,  
+**When** both an address-based route and a zone-based route exist,  
 **Then** the address-based route takes priority over zone-based routes.
 
-**Prerequisites:** Stories 14.2, 14.3.
+**Given** a bidirectional route with multi-zones,  
+**When** a trip goes in reverse direction,  
+**Then** the route matches correctly in both directions.
+
+**Prerequisites:** Stories 14.2 (Schema), 14.3 (UI), 4.1–4.3 (Dynamic pricing engine).
+
+**Technical Notes:**
+
+- Extended `ZoneRouteAssignment` interface with multi-zone and address fields
+- Updated `matchZoneRouteWithDetails` function for multi-zone matching
+- Implemented priority order: ADDRESS > ZONES > Legacy
+- Added address proximity matching with 100m threshold
+- Maintained backward compatibility with legacy `fromZoneId`/`toZoneId` routes
 
 ---
 
-#### Story 14.6 – Assign Rate Grids to Partners from Pricing UI
+### Story 14.6: Assign Rate Grids to Partners from Pricing UI
 
-**Status:** In Progress
-
-**As a** pricing administrator,  
-**I want** to assign zone routes, excursion packages, and dispo packages to partners directly from the pricing configuration pages,  
-**So that** I can efficiently manage which partners have access to which rate grids without navigating to each contact individually.
+As a **pricing administrator**,  
+I want to assign zone routes, excursion packages, and dispo packages to partners directly from the pricing configuration pages,  
+So that I can efficiently manage which partners have access to which rate grids without navigating to each contact individually.
 
 **Related FRs:** FR2 (Partner contracts), FR37 (Admin configuration).
 
@@ -1734,17 +2172,23 @@ Le système actuel de tarification par routes (`/settings/pricing/routes`) prés
 **When** I click the "Assign Partners" button on a route row,  
 **Then** a dialog opens showing all available partners with checkboxes and optional override price inputs.
 
-**And** when I save the assignments, they are persisted and visible both in the pricing UI and in the partner's contact page.
+**Given** I save the assignments,  
+**When** I view the pricing UI,  
+**Then** the assignments are persisted and visible both in the pricing UI and in the partner's contact page.
 
-**And** the same functionality applies to excursion packages and dispo packages.
+**Given** I view excursion packages or dispo packages,  
+**When** I access the assignment features,  
+**Then** the same partner assignment functionality is available.
 
-**Prerequisites:** Stories 12.1, 12.3, 14.2.
+**Prerequisites:** Stories 12.1–12.3 (Partner pricing), 14.2–14.5 (Flexible routes), 3.3 (Excursion/Dispo packages).
 
 **Technical Notes:**
 
-- New API endpoints for partner assignments by route/package ID
-- Bidirectional consistency with existing PartnerContractForm
-- Partner count badge on each pricing list item
+- Created partner assignment dialog component for pricing items
+- Added API endpoints for partner assignments by route/package ID
+- Implemented bidirectional sync with existing PartnerContractForm
+- Added partner count badges on pricing list items
+- Created bulk assignment and removal operations
 
 ---
 
@@ -2633,5 +3077,13 @@ This document now defines the **16-epic structure**, summarises the **FR invento
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
+
+The 16 epics cover the complete VTC ERP system:
+
+**Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
+**Pricing Engine (Epics 3-4, 14-16):** Zone management, dynamic pricing, flexible routes, engine accuracy, and quote system refactoring  
+**Fleet & Operations (Epics 5-8):** Vehicle management, compliance, quotes lifecycle, and dispatch optimization
+**Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
+**Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
 
 It is intended as the canonical epic and story breakdown for implementation and sprint planning, following the BMad `create-epics-and-stories` workflow.
