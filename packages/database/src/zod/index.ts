@@ -140,7 +140,9 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','createdAt','updatedAt']);
+
+export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -271,6 +273,10 @@ export type PaymentTermsType = `${z.infer<typeof PaymentTermsSchema>}`
 export const CalendarEventTypeSchema = z.enum(['HOLIDAY','SICK','PERSONAL','TRAINING','OTHER']);
 
 export type CalendarEventTypeType = `${z.infer<typeof CalendarEventTypeSchema>}`
+
+export const TimeBucketInterpolationStrategySchema = z.enum(['ROUND_UP','ROUND_DOWN','PROPORTIONAL']);
+
+export type TimeBucketInterpolationStrategyType = `${z.infer<typeof TimeBucketInterpolationStrategySchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -942,6 +948,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   zoneConflictStrategy: ZoneConflictStrategySchema.nullable(),
   zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategySchema.nullable(),
   staffingSelectionPolicy: StaffingSelectionPolicySchema.nullable(),
+  timeBucketInterpolationStrategy: TimeBucketInterpolationStrategySchema.nullable(),
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
@@ -966,6 +973,28 @@ export const OrganizationPricingSettingsSchema = z.object({
 })
 
 export type OrganizationPricingSettings = z.infer<typeof OrganizationPricingSettingsSchema>
+
+/////////////////////////////////////////
+// MAD TIME BUCKET SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Story 17.9: MadTimeBucket - Time buckets for mise-à-disposition pricing
+ * Allows defining fixed prices for specific duration ranges (e.g., 3h=150€, 4h=180€)
+ */
+export const MadTimeBucketSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  pricingSettingsId: z.string(),
+  durationHours: z.number().int(),
+  vehicleCategoryId: z.string(),
+  price: z.instanceof(Prisma.Decimal, { message: "Field 'price' must be a Decimal. Location: ['Models', 'MadTimeBucket']"}),
+  isActive: z.boolean(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type MadTimeBucket = z.infer<typeof MadTimeBucketSchema>
 
 /////////////////////////////////////////
 // ADVANCED RATE SCHEMA

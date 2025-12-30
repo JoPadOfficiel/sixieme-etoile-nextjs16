@@ -1381,6 +1381,85 @@
 					"description": "Create your first seasonal multiplier to adjust prices for specific periods."
 				}
 			},
+			"timeBuckets": {
+				"title": "MAD Time Buckets",
+				"description": "Configure fixed prices per duration tier for mise-à-disposition",
+				"addButton": "Add Bucket",
+				"stats": {
+					"active": "Active Buckets",
+					"total": "Total Configured",
+					"byCategory": "By Category"
+				},
+				"table": {
+					"duration": "Duration",
+					"vehicleCategory": "Category",
+					"price": "Price",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"status": {
+					"active": "Active",
+					"inactive": "Inactive"
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
+				},
+				"form": {
+					"createTitle": "Create Time Bucket",
+					"createDescription": "Add a fixed price for a mise-à-disposition duration.",
+					"editTitle": "Edit Time Bucket",
+					"editDescription": "Modify the time bucket settings.",
+					"durationHours": "Duration (hours)",
+					"durationPlaceholder": "e.g., 4",
+					"vehicleCategory": "Vehicle Category",
+					"vehicleCategoryPlaceholder": "Select a category",
+					"price": "Price (€)",
+					"pricePlaceholder": "e.g., 180",
+					"isActive": "Active",
+					"isActiveHelp": "Only active buckets are used for pricing",
+					"create": "Create",
+					"save": "Save",
+					"saving": "Saving...",
+					"cancel": "Cancel",
+					"errors": {
+						"durationRequired": "Duration is required",
+						"durationRange": "Duration must be between 1 and 24 hours",
+						"vehicleCategoryRequired": "Vehicle category is required",
+						"priceRequired": "Price is required",
+						"priceRange": "Price must be positive",
+						"duplicateBucket": "A bucket for this duration and category already exists"
+					}
+				},
+				"delete": {
+					"title": "Delete Bucket",
+					"message": "Are you sure you want to delete this {duration}h bucket? This action cannot be undone.",
+					"confirm": "Delete",
+					"cancel": "Cancel"
+				},
+				"toast": {
+					"createSuccess": "Bucket created successfully",
+					"updateSuccess": "Bucket updated successfully",
+					"deleteSuccess": "Bucket deleted successfully",
+					"error": "An error occurred"
+				},
+				"empty": {
+					"title": "No buckets configured",
+					"description": "Create your first time bucket to define fixed prices per mise-à-disposition duration."
+				},
+				"interpolation": {
+					"title": "Interpolation Strategy",
+					"description": "Defines how to calculate price for durations between buckets",
+					"strategy": {
+						"ROUND_UP": "Round Up",
+						"ROUND_UP_desc": "Uses the higher bucket price (e.g., 5h → 6h price)",
+						"ROUND_DOWN": "Round Down",
+						"ROUND_DOWN_desc": "Uses the lower bucket price (e.g., 5h → 4h price)",
+						"PROPORTIONAL": "Proportional",
+						"PROPORTIONAL_desc": "Linearly interpolates between the two buckets"
+					}
+				}
+			},
 			"adjustments": {
 				"title": "Pricing Adjustments",
 				"description": "Manage seasonal multipliers and time-based rate modifiers",

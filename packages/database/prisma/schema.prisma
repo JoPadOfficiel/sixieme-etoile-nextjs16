@@ -349,6 +349,14 @@ enum CalendarEventType {
   OTHER // Autre
 }
 
+/// Story 17.9: Time bucket interpolation strategy for MAD pricing
+/// Determines how to calculate price when requested duration falls between defined buckets
+enum TimeBucketInterpolationStrategy {
+  ROUND_UP // Use next higher bucket price
+  ROUND_DOWN // Use previous lower bucket price
+  PROPORTIONAL // Interpolate linearly between bucket prices
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -605,6 +613,7 @@ model VehicleCategory {
   dispoPackages                  DispoPackage[]
   quotes                         Quote[]
   subcontractorVehicleCategories SubcontractorVehicleCategory[]
+  madTimeBuckets                 MadTimeBucket[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1113,11 +1122,47 @@ model OrganizationPricingSettings {
   secondDriverHourlyRate Decimal? @db.Decimal(8, 2) // EUR per hour for 2nd driver (default: 25)
   relayDriverFixedFee    Decimal? @db.Decimal(8, 2) // EUR fixed fee for relay (default: 150)
 
+  // Story 17.9: Time bucket interpolation strategy for MAD pricing
+  // null = use hourly rate calculation (backward compatible)
+  timeBucketInterpolationStrategy TimeBucketInterpolationStrategy?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Story 17.9: Time buckets for MAD pricing
+  madTimeBuckets MadTimeBucket[]
+
   @@map("organization_pricing_settings")
+}
+
+/// Story 17.9: MadTimeBucket - Time buckets for mise-à-disposition pricing
+/// Allows defining fixed prices for specific duration ranges (e.g., 3h=150€, 4h=180€)
+model MadTimeBucket {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Link to pricing settings (for cascade delete)
+  pricingSettingsId String
+  pricingSettings   OrganizationPricingSettings @relation(fields: [pricingSettingsId], references: [id], onDelete: Cascade)
+
+  // Bucket configuration
+  durationHours     Int // Duration in hours (e.g., 3, 4, 6, 8, 10)
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  price             Decimal         @db.Decimal(10, 2) // Fixed price in EUR for this bucket
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pricingSettingsId, durationHours, vehicleCategoryId])
+  @@index([pricingSettingsId])
+  @@index([vehicleCategoryId])
+  @@map("mad_time_bucket")
 }
 
 /// AdvancedRate - Advanced modifiers (night, weekend, long-distance, zone-based)

@@ -30,6 +30,7 @@ import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
 import { quoteCostsRouter } from "./quote-costs";
 import { seasonalMultipliersRouter } from "./seasonal-multipliers";
+import { timeBucketsRouter } from "./time-buckets";
 import { routesCoverageRouter } from "./routes-coverage";
 import { subcontractorsRouter, missionSubcontractingRoutes } from "./subcontractors";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
@@ -71,6 +72,7 @@ export const vtcRouter = new Hono()
 	.route("/", subcontractorsRouter)
 	.route("/", missionSubcontractingRoutes)
 	.route("/", seasonalMultipliersRouter)
+	.route("/", timeBucketsRouter)
 	.route("/", advancedRatesRouter)
 	.route("/", optionalFeesRouter)
 	.route("/", promotionsRouter)

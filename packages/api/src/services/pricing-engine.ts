@@ -357,6 +357,18 @@ export interface DispoPackageAssignment {
 	overridePrice?: number | null;
 }
 
+// Story 17.9: Time bucket interpolation strategy for MAD pricing
+export type TimeBucketInterpolationStrategy = "ROUND_UP" | "ROUND_DOWN" | "PROPORTIONAL";
+
+// Story 17.9: Time bucket data for MAD pricing
+export interface MadTimeBucketData {
+	id: string;
+	durationHours: number;
+	vehicleCategoryId: string;
+	price: number;
+	isActive: boolean;
+}
+
 export interface OrganizationPricingSettings {
 	baseRatePerKm: number;
 	baseRatePerHour: number;
@@ -381,6 +393,9 @@ export interface OrganizationPricingSettings {
 	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy | null;
 	// Story 17.3: Staffing selection policy
 	staffingSelectionPolicy?: StaffingSelectionPolicy | null;
+	// Story 17.9: Time bucket configuration for MAD pricing
+	timeBucketInterpolationStrategy?: TimeBucketInterpolationStrategy | null;
+	madTimeBuckets?: MadTimeBucketData[];
 }
 
 // ============================================================================
@@ -691,9 +706,10 @@ export interface VehicleCategoryMultiplierResult {
 
 /**
  * Story 15.5: Applied trip type rule for transparency
+ * Story 17.9: Extended for time bucket pricing
  */
 export interface AppliedTripTypeRule extends AppliedRule {
-	type: "TRIP_TYPE";
+	type: "TRIP_TYPE" | "TIME_BUCKET";
 	tripType: TripType;
 	description: string;
 	// Excursion specific
@@ -708,6 +724,17 @@ export interface AppliedTripTypeRule extends AppliedRule {
 	overageKm?: number;
 	overageRatePerKm?: number;
 	overageAmount?: number;
+	// Story 17.9: Time bucket specific
+	timeBucketUsed?: {
+		durationHours: number;
+		price: number;
+	};
+	interpolationStrategy?: TimeBucketInterpolationStrategy;
+	lowerBucket?: { durationHours: number; price: number };
+	upperBucket?: { durationHours: number; price: number };
+	bucketPrice?: number;  // Price from bucket before overage
+	extraHoursCharged?: number;  // Hours beyond max bucket
+	extraHoursAmount?: number;   // Amount for extra hours
 	// Common
 	basePriceBeforeAdjustment: number;
 	priceAfterAdjustment: number;
@@ -2995,7 +3022,201 @@ export function calculateDispoPrice(
 }
 
 /**
+ * Story 17.9: Calculate dispo price using time buckets with interpolation
+ * 
+ * Time bucket pricing logic:
+ * 1. Find applicable buckets for the vehicle category
+ * 2. If duration is below minimum bucket, fallback to hourly rate
+ * 3. If duration is above maximum bucket, use max bucket + hourly for extra
+ * 4. If duration matches a bucket exactly, use that bucket price
+ * 5. If duration is between buckets, apply interpolation strategy
+ * 6. Add overage for km exceeding included distance
+ * 
+ * @param durationMinutes - Requested duration in minutes
+ * @param distanceKm - Actual distance in km
+ * @param vehicleCategoryId - Vehicle category for bucket lookup
+ * @param ratePerHour - Hourly rate (fallback and extra hours)
+ * @param settings - Organization pricing settings with buckets
+ * @returns Price and applied rule
+ */
+export function calculateDispoPriceWithBuckets(
+	durationMinutes: number,
+	distanceKm: number,
+	vehicleCategoryId: string,
+	ratePerHour: number,
+	settings: OrganizationPricingSettings,
+): TripTypePricingResult {
+	const buckets = settings.madTimeBuckets ?? [];
+	const strategy = settings.timeBucketInterpolationStrategy ?? "ROUND_UP";
+	const includedKmPerHour = settings.dispoIncludedKmPerHour ?? 50;
+	const overageRatePerKm = settings.dispoOverageRatePerKm ?? 0.50;
+
+	// Filter active buckets for this vehicle category, sorted by duration
+	const applicableBuckets = buckets
+		.filter(b => b.isActive && b.vehicleCategoryId === vehicleCategoryId)
+		.sort((a, b) => a.durationHours - b.durationHours);
+
+	const hours = durationMinutes / 60;
+
+	// If no buckets configured, fallback to standard hourly calculation
+	if (applicableBuckets.length === 0) {
+		return calculateDispoPrice(durationMinutes, distanceKm, ratePerHour, settings);
+	}
+
+	const minBucket = applicableBuckets[0];
+	const maxBucket = applicableBuckets[applicableBuckets.length - 1];
+
+	let bucketPrice: number;
+	let description: string;
+	let timeBucketUsed: { durationHours: number; price: number } | undefined;
+	let lowerBucket: { durationHours: number; price: number } | undefined;
+	let upperBucket: { durationHours: number; price: number } | undefined;
+	let extraHoursCharged = 0;
+	let extraHoursAmount = 0;
+
+	// Case 1: Duration below minimum bucket - fallback to hourly rate
+	if (hours < minBucket.durationHours) {
+		return calculateDispoPrice(durationMinutes, distanceKm, ratePerHour, settings);
+	}
+
+	// Case 2: Duration above maximum bucket - use max bucket + hourly for extra
+	if (hours > maxBucket.durationHours) {
+		bucketPrice = maxBucket.price;
+		extraHoursCharged = Math.round((hours - maxBucket.durationHours) * 100) / 100;
+		extraHoursAmount = Math.round(extraHoursCharged * ratePerHour * 100) / 100;
+		timeBucketUsed = { durationHours: maxBucket.durationHours, price: maxBucket.price };
+		description = `Time bucket: ${maxBucket.durationHours}h bucket (${maxBucket.price}€) + ${extraHoursCharged}h extra × ${ratePerHour}€/h`;
+	}
+	// Case 3: Duration matches a bucket exactly
+	else {
+		const exactMatch = applicableBuckets.find(b => b.durationHours === Math.floor(hours) || b.durationHours === Math.ceil(hours));
+		
+		if (exactMatch && Math.abs(exactMatch.durationHours - hours) < 0.01) {
+			bucketPrice = exactMatch.price;
+			timeBucketUsed = { durationHours: exactMatch.durationHours, price: exactMatch.price };
+			description = `Time bucket: ${exactMatch.durationHours}h bucket (${exactMatch.price}€)`;
+		}
+		// Case 4: Duration between buckets - apply interpolation
+		else {
+			// Find surrounding buckets
+			let lower: MadTimeBucketData | undefined;
+			let upper: MadTimeBucketData | undefined;
+
+			for (let i = 0; i < applicableBuckets.length - 1; i++) {
+				if (applicableBuckets[i].durationHours <= hours && applicableBuckets[i + 1].durationHours >= hours) {
+					lower = applicableBuckets[i];
+					upper = applicableBuckets[i + 1];
+					break;
+				}
+			}
+
+			if (!lower || !upper) {
+				// Edge case: use closest bucket
+				const closest = applicableBuckets.reduce((prev, curr) =>
+					Math.abs(curr.durationHours - hours) < Math.abs(prev.durationHours - hours) ? curr : prev
+				);
+				bucketPrice = closest.price;
+				timeBucketUsed = { durationHours: closest.durationHours, price: closest.price };
+				description = `Time bucket: ${closest.durationHours}h bucket (${closest.price}€) [closest match]`;
+			} else {
+				lowerBucket = { durationHours: lower.durationHours, price: lower.price };
+				upperBucket = { durationHours: upper.durationHours, price: upper.price };
+
+				switch (strategy) {
+					case "ROUND_UP":
+						bucketPrice = upper.price;
+						timeBucketUsed = { durationHours: upper.durationHours, price: upper.price };
+						description = `Time bucket: ${hours}h → ${upper.durationHours}h bucket (${upper.price}€) [ROUND_UP]`;
+						break;
+
+					case "ROUND_DOWN":
+						bucketPrice = lower.price;
+						timeBucketUsed = { durationHours: lower.durationHours, price: lower.price };
+						description = `Time bucket: ${hours}h → ${lower.durationHours}h bucket (${lower.price}€) [ROUND_DOWN]`;
+						break;
+
+					case "PROPORTIONAL":
+					default:
+						// Linear interpolation: price = lower + ((hours - lowerDuration) / (upperDuration - lowerDuration)) * (upperPrice - lowerPrice)
+						const ratio = (hours - lower.durationHours) / (upper.durationHours - lower.durationHours);
+						bucketPrice = Math.round((lower.price + ratio * (upper.price - lower.price)) * 100) / 100;
+						description = `Time bucket: ${hours}h interpolated between ${lower.durationHours}h (${lower.price}€) and ${upper.durationHours}h (${upper.price}€) = ${bucketPrice}€ [PROPORTIONAL]`;
+						break;
+				}
+			}
+		}
+	}
+
+	// Calculate overage (same logic as standard dispo)
+	const includedKm = Math.round(hours * includedKmPerHour * 100) / 100;
+	const overageKm = Math.max(0, Math.round((distanceKm - includedKm) * 100) / 100);
+	const overageAmount = Math.round(overageKm * overageRatePerKm * 100) / 100;
+
+	// Total price = bucket price + extra hours + overage
+	const totalPrice = Math.round((bucketPrice + extraHoursAmount + overageAmount) * 100) / 100;
+
+	if (overageKm > 0) {
+		description += ` + ${overageKm}km overage × ${overageRatePerKm}€/km`;
+	}
+
+	const rule: AppliedTripTypeRule = {
+		type: "TIME_BUCKET",
+		tripType: "dispo",
+		description,
+		// Standard dispo fields
+		includedKm,
+		actualKm: distanceKm,
+		overageKm,
+		overageRatePerKm,
+		overageAmount,
+		// Time bucket specific fields
+		timeBucketUsed,
+		interpolationStrategy: strategy,
+		lowerBucket,
+		upperBucket,
+		bucketPrice,
+		extraHoursCharged: extraHoursCharged > 0 ? extraHoursCharged : undefined,
+		extraHoursAmount: extraHoursAmount > 0 ? extraHoursAmount : undefined,
+		basePriceBeforeAdjustment: bucketPrice + extraHoursAmount,
+		priceAfterAdjustment: totalPrice,
+	};
+
+	return { price: totalPrice, rule };
+}
+
+/**
+ * Story 17.9: Smart dispo pricing - uses buckets if configured, otherwise hourly
+ */
+export function calculateSmartDispoPrice(
+	durationMinutes: number,
+	distanceKm: number,
+	vehicleCategoryId: string,
+	ratePerHour: number,
+	settings: OrganizationPricingSettings,
+): TripTypePricingResult {
+	// Check if time buckets are configured for this vehicle category
+	const buckets = settings.madTimeBuckets ?? [];
+	const hasBucketsForCategory = buckets.some(
+		b => b.isActive && b.vehicleCategoryId === vehicleCategoryId
+	);
+
+	if (hasBucketsForCategory && settings.timeBucketInterpolationStrategy) {
+		return calculateDispoPriceWithBuckets(
+			durationMinutes,
+			distanceKm,
+			vehicleCategoryId,
+			ratePerHour,
+			settings,
+		);
+	}
+
+	// Fallback to standard hourly calculation
+	return calculateDispoPrice(durationMinutes, distanceKm, ratePerHour, settings);
+}
+
+/**
  * Story 15.5: Apply trip type specific pricing
+ * Story 17.9: Updated to use smart dispo pricing with bucket support
  * 
  * @param tripType - Type of trip (transfer, excursion, dispo)
  * @param distanceKm - Distance in km
@@ -3003,6 +3224,7 @@ export function calculateDispoPrice(
  * @param ratePerHour - Hourly rate to use
  * @param standardBasePrice - Standard base price (for transfer)
  * @param settings - Organization pricing settings
+ * @param vehicleCategoryId - Vehicle category for bucket lookup (optional, required for bucket pricing)
  * @returns Price and optional rule
  */
 export function applyTripTypePricing(

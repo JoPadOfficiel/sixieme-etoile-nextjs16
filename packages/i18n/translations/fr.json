@@ -1381,6 +1381,85 @@
 					"description": "Créez votre premier multiplicateur saisonnier pour ajuster les prix sur des périodes spécifiques."
 				}
 			},
+			"timeBuckets": {
+				"title": "Tranches Horaires MAD",
+				"description": "Configurez les prix fixes par tranche de durée pour les mises à disposition",
+				"addButton": "Ajouter une tranche",
+				"stats": {
+					"active": "Tranches actives",
+					"total": "Total configuré",
+					"byCategory": "Par catégorie"
+				},
+				"table": {
+					"duration": "Durée",
+					"vehicleCategory": "Catégorie",
+					"price": "Prix",
+					"status": "Statut",
+					"actions": "Actions"
+				},
+				"status": {
+					"active": "Actif",
+					"inactive": "Inactif"
+				},
+				"actions": {
+					"edit": "Modifier",
+					"delete": "Supprimer"
+				},
+				"form": {
+					"createTitle": "Créer une tranche horaire",
+					"createDescription": "Ajoutez un prix fixe pour une durée de mise à disposition.",
+					"editTitle": "Modifier la tranche horaire",
+					"editDescription": "Modifiez les paramètres de la tranche horaire.",
+					"durationHours": "Durée (heures)",
+					"durationPlaceholder": "ex: 4",
+					"vehicleCategory": "Catégorie de véhicule",
+					"vehicleCategoryPlaceholder": "Sélectionnez une catégorie",
+					"price": "Prix (€)",
+					"pricePlaceholder": "ex: 180",
+					"isActive": "Actif",
+					"isActiveHelp": "Seules les tranches actives sont utilisées pour la tarification",
+					"create": "Créer",
+					"save": "Enregistrer",
+					"saving": "Enregistrement...",
+					"cancel": "Annuler",
+					"errors": {
+						"durationRequired": "La durée est requise",
+						"durationRange": "La durée doit être entre 1 et 24 heures",
+						"vehicleCategoryRequired": "La catégorie de véhicule est requise",
+						"priceRequired": "Le prix est requis",
+						"priceRange": "Le prix doit être positif",
+						"duplicateBucket": "Une tranche pour cette durée et catégorie existe déjà"
+					}
+				},
+				"delete": {
+					"title": "Supprimer la tranche",
+					"message": "Êtes-vous sûr de vouloir supprimer cette tranche de {duration}h ? Cette action est irréversible.",
+					"confirm": "Supprimer",
+					"cancel": "Annuler"
+				},
+				"toast": {
+					"createSuccess": "Tranche créée avec succès",
+					"updateSuccess": "Tranche mise à jour avec succès",
+					"deleteSuccess": "Tranche supprimée avec succès",
+					"error": "Une erreur est survenue"
+				},
+				"empty": {
+					"title": "Aucune tranche configurée",
+					"description": "Créez votre première tranche horaire pour définir des prix fixes par durée de mise à disposition."
+				},
+				"interpolation": {
+					"title": "Stratégie d'interpolation",
+					"description": "Définit comment calculer le prix pour les durées entre deux tranches",
+					"strategy": {
+						"ROUND_UP": "Arrondir au supérieur",
+						"ROUND_UP_desc": "Utilise le prix de la tranche supérieure (ex: 5h → prix de 6h)",
+						"ROUND_DOWN": "Arrondir à l'inférieur",
+						"ROUND_DOWN_desc": "Utilise le prix de la tranche inférieure (ex: 5h → prix de 4h)",
+						"PROPORTIONAL": "Proportionnel",
+						"PROPORTIONAL_desc": "Interpole linéairement entre les deux tranches"
+					}
+				}
+			},
 			"adjustments": {
 				"title": "Ajustements de Prix",
 				"description": "Gérez les multiplicateurs saisonniers et les modificateurs de tarifs horaires",
