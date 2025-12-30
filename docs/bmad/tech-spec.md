@@ -15,6 +15,11 @@
 - `docs/bmad/prd.md` – VTC ERP Product Requirements Document (canonical functional spec)
 - `docs/VTC-Analyse-approfondie-Systeme-Pricing-Complexe.md` – deep-dive pricing analysis
 - Existing SaaS core schema – `packages/database/prisma/schema.prisma` (auth, organizations, purchases)
+- Existing pricing & cost implementation:
+  - `packages/api/src/services/pricing-engine.ts`
+  - `packages/api/src/services/fuel-price-service.ts`
+  - `packages/api/src/services/toll-service.ts`
+  - `packages/api/src/services/compliance-validator.ts`
 
 ### Project Stack
 
@@ -67,10 +72,17 @@ We need to implement a **VTC ERP system for the French market (EUR only)**, focu
 - Fleet management (vehicles, categories, bases) and driver/RSE compliance
 - CRM and lifecycle from quote to invoice
 - Real-time operational cockpit with map and profitability view
+- Pricing refinement requirements:
+  - Configurable **zone conflict resolution** strategy (priority / closest / most expensive)
+  - Configurable **pickup+dropoff zone multiplier aggregation** strategy
+  - Automatic compliance-driven staffing selection (double crew / relay / multi-day) with costs included in pricing
+  - Persisted `estimatedEndAt` to support dispatch availability overlap checks
+  - Toll and fuel cost computation integrated as first-class internal cost components
 
 Constraints:
 
 - **France only**, **EUR only**
+- **No AI agents involved in the pricing system** (deterministic rules only)
 - **No multi-currency**, no FX conversion logic
 - **No multi-country timezone model**
 - **No marketing/automation stack** (campaigns, audiences, email templates, workflows) for this ERP
@@ -90,7 +102,8 @@ Implement a set of VTC-specific bounded contexts on top of the existing SaaS cor
   - Dual pricing method: partner fixed grids vs dynamic pricing
   - Zone model, route types, exceptions (e.g. Versailles)
   - Shadow calculation engine: approach / service / return segments
-  - Integration with fuel prices and distance/time from external APIs
+  - Integration with fuel prices, tolls, and distance/time from external APIs
+  - Deterministic compliance-driven staffing selection integrated into pricing
 
 - **Commercial & CRM Context**
 
@@ -104,10 +117,9 @@ Implement a set of VTC-specific bounded contexts on top of the existing SaaS cor
   - Document types (quote PDF, invoice PDF, mission order, etc.)
 
 - **Configuration & Settings Context**
-  - Regulatory settings (licence types, RSE limits)
-  - Financial & fleet global params (margins, minimum fare)
-  - Zones & routes editor
-  - **Integrations parameters** (Google Maps API key, CollectAPI key) managed from a settings UI, **not only from env vars**
+  - Settings models used by all other contexts
+  - API keys stored and managed from UI (with env-var fallback)
+  - Pricing refinement settings (zone conflict strategy, zone multiplier aggregation, staffing selection policy)
 
 ### Scope
 
@@ -189,7 +201,7 @@ High-level structure (to be refined as we implement):
   - Invoices derived from quotes (deep copy semantics)
   - Document generation mapping (quote => PDF, invoice => PDF, etc.)
 
-- **Configuration & Integrations**
+- **Configuration & Settings**
   - Settings models used by all other contexts
   - API keys stored and managed from UI (with env-var fallback)
 
@@ -336,7 +348,12 @@ This makes the behaviour predictable: **the time seen by the dispatcher in the U
 
 ## Technical Details
 
-This section defines the target data model as a **plan** for future Prisma models and relationships. Names are indicative; actual implementation may adjust naming to match existing conventions.
+This section documents the target data model and runtime behaviour.
+
+The codebase already contains a significant portion of the VTC domain in `schema.prisma` and `packages/api/src/services/pricing-engine.ts`. This Tech Spec focuses on:
+
+- Clarifying the authoritative runtime behaviour (pricing, costs, transparency)
+- Defining additions required by the pricing refinement (zone conflict strategies, compliance-driven staffing, driver availability, `estimatedEndAt`)
 
 ### 1. Domain Overview
 
@@ -462,7 +479,8 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
     - `name`, `code`.
     - `zoneType` enum: `POLYGON | RADIUS | POINT`.
     - `geometry` (JSON – polygon or circle definition; potential future PostGIS).
-    - `centerLatitude`, `centerLongitude` (for fast lookups).
+    - `centerLatitude`, `centerLongitude` (for fast lookups and distance-to-zone evaluation).
+    - `priority` (int, default 0) for conflict resolution (higher wins).
     - Optional `parentZoneId` for hierarchy (e.g. satellite zones).
 
 - **ZoneRoute** (new)
@@ -507,6 +525,14 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
     - `defaultMarginPercent`.
     - `minimumFare`.
     - Optional `roundingRule` (e.g. to nearest 5€).
+    - Operational cost parameters:
+      - `fuelConsumptionL100km`, `fuelPricePerLiter`
+      - `tollCostPerKm`, `wearCostPerKm`, `driverHourlyCost`
+    - Pricing refinement settings:
+      - `zoneConflictStrategy` (enum)
+      - `zoneMultiplierAggregationStrategy` (enum)
+      - `staffingSelectionPolicy` (enum)
+      - Staffing cost parameters (hotel/meals/driver premiums)
 
 - **AdvancedRate** (new)
 
@@ -571,6 +597,7 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
     - `pricingMode` enum: `FIXED_GRID | DYNAMIC` (maps to Method 1/2).
     - `tripType` enum: `TRANSFER | EXCURSION | DISPO | OFF_GRID`.
     - `pickupAt` (DateTime Europe/Paris business time).
+    - `estimatedEndAt` (DateTime Europe/Paris business time) computed from pricing analysis to enable availability checks (Option 1).
     - `pickupAddress`, `dropoffAddress` (+ lat/lng).
     - `passengerCount`, `luggageCount`.
     - `vehicleCategoryId` (chosen category).
@@ -583,6 +610,170 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
   - Relationships:
     - `contact` → `Contact`.
     - `invoice` → `Invoice?`.
+
+---
+
+## Pricing Engine – Zone Resolution & Conflict Strategy
+
+### Goals
+
+- Resolve _a single_ pickup zone and dropoff zone from potentially overlapping `PricingZone`s.
+- Make conflict resolution deterministic and **configurable by organization**.
+- Provide transparency (debug information) so operators can understand why a zone was selected.
+
+### Data prerequisites
+
+- For `CLOSEST` strategy to work across all zone types (including `POLYGON`), each `PricingZone` must have a reference point:
+  - `POINT`/`RADIUS`: use `centerLatitude/centerLongitude`.
+  - `POLYGON`: `centerLatitude/centerLongitude` must be populated (UI should require it or compute it at creation time).
+
+### Proposed settings
+
+- `OrganizationPricingSettings.zoneConflictStrategy`:
+  - `SPECIFICITY` (current behaviour: `POINT > RADIUS (smallest radius) > POLYGON`)
+  - `PRIORITY`
+  - `MOST_EXPENSIVE` (highest `priceMultiplier` wins)
+  - `CLOSEST` (smallest distance between point and zone reference point wins)
+  - `PRIORITY_THEN_MOST_EXPENSIVE`
+  - `PRIORITY_THEN_CLOSEST`
+
+### Resolution algorithm (high-level)
+
+- Collect all zones that match the point.
+- Apply the organization-selected strategy to choose the winner.
+- Return both:
+  - `selectedZone`
+  - `candidates[]` with scoring fields (for audit/UI transparency)
+
+## Pricing Engine – Pickup/Dropoff Zone Multiplier Aggregation
+
+### Goal
+
+Convert pickup/dropoff zone multipliers into a single multiplier applied to the base price.
+
+### Current behaviour
+
+The dynamic engine applies a zone multiplier after vehicle category multiplier.
+
+### Proposed setting
+
+- `OrganizationPricingSettings.zoneMultiplierAggregationStrategy`:
+  - `MAX` (current behaviour)
+  - `PICKUP_ONLY`
+  - `DROPOFF_ONLY`
+  - `AVERAGE`
+
+## Trip Analysis, `estimatedEndAt`, and Dispatch Availability (Option 1)
+
+### Why
+
+Dispatch needs an explicit window `[pickupAt, estimatedEndAt]` to:
+
+- compute driver availability
+- detect overlaps against missions and unavailability events
+
+### Storage
+
+- Add `Quote.estimatedEndAt`.
+- It is set when:
+  - a quote is created / re-priced
+  - mission legs are recalculated (vehicle selection impacts durations)
+
+### Computation (deterministic)
+
+- Default: `estimatedEndAt = pickupAt + tripAnalysis.totalDurationMinutes`.
+- When compliance-driven staffing is enabled, use the _amplitude-aware_ duration (includes mandatory breaks and rest planning) as the authoritative duration for `estimatedEndAt`.
+
+## Toll (péage) & Fuel (essence/carburant) During Route
+
+### Fuel price resolution
+
+Fuel is integrated as an internal cost component.
+
+- The API uses `packages/api/src/services/fuel-price-service.ts` to resolve **real-time** fuel prices from CollectAPI using route coordinates.
+- Fallback chain:
+  - real-time CollectAPI (if key is available)
+  - DB cache (`FuelPriceCache`)
+  - default price from `pricing-engine.ts`.
+
+### Fuel consumption resolution
+
+Fuel consumption uses a deterministic fallback chain:
+
+- Vehicle (if selected) → Category → Organization settings → Defaults.
+
+### Toll cost resolution
+
+Tolls are integrated as an internal cost component.
+
+- Baseline: the pricing engine computes `tolls` using `tollCostPerKm`.
+- Enhancement: the API route `POST /api/vtc/pricing/calculate` calls `packages/api/src/services/toll-service.ts` to fetch **real** toll costs from Google Routes API and adjusts the `tripAnalysis.costBreakdown.tolls` accordingly.
+- Fallback: if Google Routes is unavailable, mark `tollSource = ESTIMATE` and keep the baseline estimate.
+
+### Transparency
+
+The pricing response must include:
+
+- `tripAnalysis.costBreakdown` (fuel/tolls/wear/driver/parking)
+- `tripAnalysis.fuelPriceSource` and `tripAnalysis.tollSource`
+- Optional manual overrides are supported via `/quotes/:quoteId/costs`.
+
+## Compliance-Driven Automatic Staffing (RSE) Integrated Into Pricing
+
+### Goal
+
+When a mission would violate RSE constraints, pricing must _automatically_ pick a feasible staffing/scheduling plan and include its incremental costs.
+
+### Core rule
+
+- This is deterministic, rule-based (no AI).
+- The engine always returns a single selected plan for pricing (plus a list of rejected alternatives for transparency/audit).
+
+### Runtime integration
+
+- Use `packages/api/src/services/compliance-validator.ts` to:
+  - validate feasibility
+  - generate alternatives (`DOUBLE_CREW`, `RELAY_DRIVER`, `MULTI_DAY`)
+- The pricing engine must:
+  - select the best plan via an organization-configured policy
+  - add staffing costs to internal cost (and therefore impact margin)
+  - persist selected plan in `tripAnalysis` for dispatch.
+
+### Proposed settings
+
+- `OrganizationPricingSettings.staffingSelectionPolicy`:
+  - `PREFER_SAME_DAY_IF_POSSIBLE_THEN_MIN_EXTRA_COST`
+  - `MIN_EXTRA_COST`
+
+### Cost parameters
+
+All staffing-related amounts must be configurable (no hardcoding), e.g.:
+
+- hotel per night
+- meal allowance per day
+- second driver hourly rate / premium
+
+## Driver Availability / Calendar (Minimal Integration)
+
+### Goal
+
+Compute _real_ driver availability by combining:
+
+- assigned missions (quotes)
+- explicit calendar blocks (vacation/off/other)
+
+### Proposed model (to add)
+
+- `DriverCalendarEvent`:
+  - `organizationId`, `driverId`
+  - `startAt`, `endAt`
+  - `type` (enum)
+  - `notes`
+
+### Availability check
+
+- A driver is unavailable if any `DriverCalendarEvent` overlaps `[pickupAt, estimatedEndAt]`.
+- A driver is also unavailable if any assigned mission overlaps the same window.
 
 - **Invoice** (new)
 

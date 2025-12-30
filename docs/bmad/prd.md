@@ -288,6 +288,40 @@ Functional requirements are grouped by capability area and numbered sequentially
 - **FR59:** The pricing engine shall support seasonal multipliers that adjust prices for configured date ranges and optionally handle multi-day trips proportionally when they span multiple seasons.
 - **FR60:** The system shall model vehicle categories using configurable price multipliers relative to a reference category so that once a base price is computed for a standard category, prices for economy, premium or luxury variants are derived automatically.
 
+### FR Group 9 Advanced Zone Resolution, Compliance Integration & Driver Availability
+
+- **FR61:** The system shall support configurable zone conflict resolution strategies (PRIORITY, MOST_EXPENSIVE, CLOSEST, COMBINED) at the organisation level, allowing operators to define how overlapping zones are resolved when a point falls within multiple zones.
+- **FR62:** Each pricing zone shall have an optional priority field that is used when the zone conflict resolution strategy is set to PRIORITY or COMBINED.
+- **FR63:** The system shall support configurable zone multiplier aggregation strategies (MAX, PICKUP_ONLY, DROPOFF_ONLY, AVERAGE) at the organisation level, determining how pickup and dropoff zone multipliers are combined.
+- **FR64:** The pricing engine shall automatically integrate compliance validation for heavy vehicles and, when violations are detected, shall automatically select the best compliant staffing plan (double crew, relay driver, or multi-day) according to a configurable staffing selection policy (CHEAPEST, FASTEST, PREFER_INTERNAL).
+- **FR65:** The selected staffing plan and its associated costs (second driver, hotel, meals, driver premiums) shall be included in the quote price and stored in the tripAnalysis for transparency.
+- **FR66:** All staffing-related cost parameters (hotel cost per night, meal cost per day, driver overnight premium, second driver hourly rate) shall be configurable at the organisation level with no hardcoded business values.
+- **FR67:** The system shall store an estimatedEndAt timestamp on each quote, calculated from pickupAt plus total trip duration, to enable accurate driver availability overlap detection.
+- **FR68:** The system shall model driver calendar events (unavailability periods, scheduled absences) and use them in conjunction with mission windows to determine real driver availability.
+- **FR69:** The dispatch and vehicle selection modules shall exclude drivers whose existing missions or calendar events overlap with the proposed mission window.
+- **FR70:** The pricing engine shall support weighted day/night rate application for trips that span multiple time periods, calculating the proportion of the trip in each period based on pickupAt and estimatedEndAt.
+- **FR71:** The system shall support configurable time buckets for mise-à-disposition pricing with interpolation strategies (ROUND_UP, ROUND_DOWN, PROPORTIONAL) for durations that fall between defined buckets.
+- **FR72:** Each pricing zone shall support optional fixed surcharges (parking fees, access fees, friction costs) that are automatically added to the operational cost when the zone is involved in a trip.
+- **FR73:** The system shall provide zone topology validation tools that detect overlaps, gaps, and coverage issues in the zone configuration and surface warnings to administrators.
+- **FR74:** The system shall support optional driver home location coordinates that can be used as an alternative to vehicle base location for deadhead calculations when configured.
+- **FR75:** The system shall support route segmentation for multi-zone trips, calculating the distance and duration spent in each zone along the route polyline and applying zone-specific pricing rules proportionally.
+- **FR76:** The system shall model vehicle TCO (Total Cost of Ownership) including depreciation, maintenance schedules, and energy costs, and use this data to enrich shadow cost calculations beyond the current fuel/tolls/wear/driver model.
+- **FR77:** The system shall support configurable client difficulty scores in the CRM that can trigger automatic price multipliers (patience tax) according to organisation policy.
+
+### FR Group 10 Advanced Geospatial, Route Optimization & Yield Management
+
+- **FR78:** The system shall support CORRIDOR zone types defined as buffer zones around route polylines (e.g., highways A1, A13), enabling differentiated pricing for trips using specific road corridors versus alternative routes.
+- **FR79:** The pricing engine shall implement automatic trip type detection that suggests switching from transfer to mise-à-disposition (MAD) pricing when the trip is within a dense zone (Z_0) where commercial speed is too low for distance-based pricing to be profitable.
+- **FR80:** For round-trip requests, the system shall automatically detect when the waiting time on-site is too short for the driver to return or perform another job, and shall suggest or automatically switch to MAD pricing instead of two separate transfers.
+- **FR81:** The system shall calculate and include loss of exploitation (opportunity cost) for multi-day missions where the vehicle is immobilized at a remote location, applying a configurable seasonality coefficient (e.g., 80% in high season, 50% in low season) to the daily reference revenue.
+- **FR82:** The system shall support comparison of "stay on-site" versus "return empty" scenarios for multi-day missions, calculating the total cost of each option (hotel + meals + opportunity cost vs. empty return trips) and recommending the most economical choice.
+- **FR83:** The pricing engine shall support route optimization with three parallel simulation scenarios: min(Time) using pessimistic traffic, min(Distance) for shortest path, and min(TCO) that arbitrates between time savings and additional costs (tolls, fuel).
+- **FR84:** The system shall support automatic decomposition of transversal trips crossing multiple zones (e.g., Versailles → Disney via Paris), segmenting the route and applying the hierarchical pricing algorithm to each segment with optional transit discounts.
+- **FR85:** The system shall support fixed temporal vectors for classic destinations (e.g., Normandy = 12h, Mont-Saint-Michel = 14h, Loire Valley = 12h), encoding these as configurable excursion packages with guaranteed minimum durations.
+- **FR86:** The system shall support integration of external subcontractor partners (Shadow Fleet) as temporary nodes in the dispatch graph, with their availability, zones, and indicative pricing, enabling elastic capacity during peak demand.
+- **FR87:** The system shall implement a hierarchical pricing algorithm that evaluates each trip request in strict priority order: (1) intra-central-zone flat rate, (2) defined inter-zone forfait, (3) same-ring dynamic with zone multiplier, (4) fallback horokilometric calculation.
+- **FR88:** The system shall support configurable thresholds for the automatic transfer-to-MAD switch, including minimum waiting time, maximum return distance, and zone density classification.
+
 ---
 
 ## Non-Functional Requirements

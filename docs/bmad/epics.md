@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document decomposes the VTC ERP PRD into **9 functional epics**, aligned with the Tech Spec and UX Design Specification. Each epic delivers recognisable business value and is traceable back to Functional Requirements (FR1–FR60).
+This document decomposes the VTC ERP PRD into **18 functional epics**, aligned with the Tech Spec and UX Design Specification. Each epic delivers recognisable business value and is traceable back to Functional Requirements (FR1–FR88).
 
 ### Epic List (High Level)
 
@@ -60,6 +60,12 @@ This document decomposes the VTC ERP PRD into **9 functional epics**, aligned wi
 
 - **Epic 16 – Quote System Refactoring by Trip Type**  
   Refactor the quote creation system to support different forms and pricing logic for each trip type (Transfer, Excursion, Dispo, Off-grid).
+
+- **Epic 17 – Advanced Zone Resolution, Compliance Integration & Driver Availability**  
+  Implement configurable zone conflict resolution, automatic compliance-driven staffing integration into pricing, driver calendar/availability model, weighted day/night rates, time buckets, zone surcharges, route segmentation, and TCO enrichment.
+
+- **Epic 18 – Advanced Geospatial, Route Optimization & Yield Management**  
+  Implement corridor zones, automatic transfer-to-MAD switching, loss of exploitation calculation, multi-scenario route optimization, transversal trip decomposition, shadow fleet integration, fixed temporal vectors, and hierarchical pricing algorithm.
 
 ---
 
@@ -131,8 +137,18 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
   - Secondary epics: **Epic 8 – Dispatch & Strategic Optimisation**, **Epic 4 – Dynamic Pricing & Shadow Calculation** (Trip Transparency data)
 
 - **FR Group 8 (FR47–FR60) – Strategic Optimisation, Yield & Advanced Pricing**
+
   - Primary epics: **Epic 5 – Fleet & RSE Compliance Engine** (FR47–FR49), **Epic 8 – Dispatch & Strategic Optimisation** (FR50–FR54), **Epic 9 – Advanced Pricing Configuration & Reporting** (FR55–FR60)
   - Secondary epics: **Epic 6 – Quotes & Operator Cockpit**, **Epic 4 – Dynamic Pricing & Shadow Calculation**
+
+- **FR Group 9 (FR61–FR77) – Advanced Zone Resolution, Compliance Integration & Driver Availability**
+
+  - Primary epic: **Epic 17 – Advanced Zone Resolution, Compliance Integration & Driver Availability**
+  - Secondary epics: **Epic 3 – Zone Engine & Fixed Grids**, **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 5 – Fleet & RSE Compliance Engine**, **Epic 8 – Dispatch & Strategic Optimisation**
+
+- **FR Group 10 (FR78–FR88) – Advanced Geospatial, Route Optimization & Yield Management**
+  - Primary epic: **Epic 18 – Advanced Geospatial, Route Optimization & Yield Management**
+  - Secondary epics: **Epic 3 – Zone Engine & Fixed Grids**, **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 8 – Dispatch & Strategic Optimisation**, **Epic 14 – Flexible Route Pricing**, **Epic 17 – Advanced Zone Resolution**
 
 ---
 
@@ -3069,19 +3085,943 @@ This epic depends on and extends the work done in Epic 15 (Pricing Engine Accura
 
 ---
 
+## Epic 17: Advanced Zone Resolution, Compliance Integration & Driver Availability
+
+**Goal:** Implement the advanced pricing and operational features identified in the gap analysis: configurable zone conflict resolution strategies, automatic compliance-driven staffing integration into pricing, driver calendar/availability model, weighted day/night rates, time buckets for MAD pricing, zone surcharges, route segmentation, and TCO enrichment.
+
+**Related FRs:** FR61–FR77.
+
+**Dependencies:** Epic 3 (Zone Engine), Epic 4 (Dynamic Pricing), Epic 5 (Fleet & RSE Compliance), Epic 8 (Dispatch), Epic 15 (Pricing Engine Accuracy), Epic 16 (Quote System Refactoring).
+
+---
+
+### Story 17.1: Configurable Zone Conflict Resolution Strategy
+
+As an **administrator**,  
+I want to configure how the system resolves conflicts when a point falls within multiple overlapping zones,  
+So that pricing behaviour is predictable and aligned with our business strategy.
+
+**Related FRs:** FR61, FR62.
+
+**Acceptance Criteria:**
+
+**Given** an organisation with overlapping pricing zones (e.g., PARIS_20 and CDG zones overlap near Roissy),  
+**When** an admin navigates to Organisation Pricing Settings,  
+**Then** they shall see a "Zone Conflict Resolution Strategy" dropdown with options: PRIORITY, MOST_EXPENSIVE, CLOSEST, COMBINED.
+
+**And** when PRIORITY is selected, the system shall resolve conflicts by selecting the zone with the highest `priority` field value.
+
+**And** when MOST_EXPENSIVE is selected, the system shall resolve conflicts by selecting the zone with the highest `priceMultiplier`.
+
+**And** when CLOSEST is selected, the system shall resolve conflicts by selecting the zone whose center/centroid is closest to the point.
+
+**And** when COMBINED is selected, the system shall first filter by priority, then by multiplier among equal-priority zones.
+
+**Technical Notes:**
+
+- Add `zoneConflictStrategy` enum field to `OrganizationPricingSettings` in schema.prisma.
+- Add optional `priority` Int field to `PricingZone`.
+- Update `geo-utils.ts` zone resolution logic to respect the configured strategy.
+- Add UI controls in pricing settings page.
+
+**Prerequisites:** Epic 3 (Zone Engine), Epic 11 (Zone Management UI).
+
+---
+
+### Story 17.2: Configurable Zone Multiplier Aggregation Strategy
+
+As an **administrator**,  
+I want to configure how pickup and dropoff zone multipliers are combined,  
+So that I can choose whether to use the maximum, average, or single-zone multiplier for pricing.
+
+**Related FRs:** FR63.
+
+**Acceptance Criteria:**
+
+**Given** an organisation with pricing zones configured,  
+**When** an admin navigates to Organisation Pricing Settings,  
+**Then** they shall see a "Zone Multiplier Aggregation" dropdown with options: MAX, PICKUP_ONLY, DROPOFF_ONLY, AVERAGE.
+
+**And** when MAX is selected (default), the system shall use `Math.max(pickupMultiplier, dropoffMultiplier)`.
+
+**And** when PICKUP_ONLY is selected, the system shall use only the pickup zone multiplier.
+
+**And** when DROPOFF_ONLY is selected, the system shall use only the dropoff zone multiplier.
+
+**And** when AVERAGE is selected, the system shall use `(pickupMultiplier + dropoffMultiplier) / 2`.
+
+**Technical Notes:**
+
+- Add `zoneMultiplierAggregationStrategy` enum field to `OrganizationPricingSettings`.
+- Update `applyZoneMultiplier` function in `pricing-engine.ts` to respect the configured strategy.
+- Add UI controls in pricing settings page.
+
+**Prerequisites:** Story 17.1.
+
+---
+
+### Story 17.3: Automatic Compliance-Driven Staffing Integration
+
+As an **operator**,  
+I want the system to automatically select the best compliant staffing plan when RSE violations are detected,  
+So that I see the final price including all necessary staffing costs without manual intervention.
+
+**Related FRs:** FR64, FR65.
+
+**Acceptance Criteria:**
+
+**Given** a quote request for a heavy vehicle trip that would violate RSE regulations (e.g., >10h driving),  
+**When** the pricing engine calculates the quote,  
+**Then** it shall automatically call the compliance validator to detect violations.
+
+**And** when violations are detected, the system shall generate alternative staffing plans (double crew, relay driver, multi-day).
+
+**And** the system shall automatically select the best plan according to the configured `staffingSelectionPolicy` (CHEAPEST, FASTEST, PREFER_INTERNAL).
+
+**And** the selected plan's additional costs (second driver, hotel, meals, premiums) shall be added to the quote price.
+
+**And** the selected staffing plan details shall be stored in `tripAnalysis.compliancePlan` for transparency.
+
+**And** the quote UI shall display the staffing plan summary (e.g., "Double crew required: +€300").
+
+**Technical Notes:**
+
+- Add `staffingSelectionPolicy` enum field to `OrganizationPricingSettings`.
+- Integrate `compliance-validator.ts` into `pricing-calculate.ts` flow.
+- Add `compliancePlan` field to `TripAnalysis` interface.
+- Update quote UI to display staffing plan when applicable.
+
+**Prerequisites:** Epic 5 (Fleet & RSE Compliance Engine).
+
+---
+
+### Story 17.4: Configurable Staffing Cost Parameters
+
+As an **administrator**,  
+I want to configure all staffing-related cost parameters at the organisation level,  
+So that pricing reflects our actual operational costs without hardcoded values.
+
+**Related FRs:** FR66.
+
+**Acceptance Criteria:**
+
+**Given** an admin navigating to Organisation Pricing Settings,  
+**When** they access the "Staffing Costs" section,  
+**Then** they shall see editable fields for:
+
+- Hotel cost per night (EUR)
+- Meal cost per day (EUR)
+- Driver overnight premium (EUR)
+- Second driver hourly rate (EUR)
+- Relay driver fixed fee (EUR)
+
+**And** all fields shall have sensible defaults but no hardcoded business values in the code.
+
+**And** the compliance validator shall read these values from settings when calculating staffing plan costs.
+
+**Technical Notes:**
+
+- Add staffing cost fields to `OrganizationPricingSettings` in schema.prisma.
+- Update `compliance-validator.ts` to use settings instead of constants.
+- Add UI section in pricing settings page.
+
+**Prerequisites:** Story 17.3.
+
+---
+
+### Story 17.5: Quote Estimated End Time (estimatedEndAt)
+
+As a **dispatcher**,  
+I want each quote to store an estimated end time,  
+So that driver availability can be accurately calculated based on mission windows.
+
+**Related FRs:** FR67.
+
+**Acceptance Criteria:**
+
+**Given** a quote with `pickupAt` and calculated `totalDurationMinutes` from tripAnalysis,  
+**When** the quote is created or updated,  
+**Then** the system shall calculate and store `estimatedEndAt = pickupAt + totalDurationMinutes`.
+
+**And** the `estimatedEndAt` field shall be visible in the quote detail view.
+
+**And** the field shall be recalculated whenever the trip duration changes (route change, trip type change).
+
+**Technical Notes:**
+
+- Add `estimatedEndAt DateTime?` field to `Quote` model in schema.prisma.
+- Update quote creation/update logic to calculate and persist this value.
+- Update quote UI to display the estimated end time.
+
+**Prerequisites:** Epic 16 (Quote System Refactoring).
+
+---
+
+### Story 17.6: Driver Calendar Events Model
+
+As a **dispatcher**,  
+I want to record driver unavailability periods (holidays, sick leave, personal time),  
+So that the system knows when drivers are not available for missions.
+
+**Related FRs:** FR68.
+
+**Acceptance Criteria:**
+
+**Given** a driver in the system,  
+**When** a dispatcher or admin creates a calendar event for that driver,  
+**Then** the event shall be stored with: driverId, startAt, endAt, eventType (HOLIDAY, SICK, PERSONAL, OTHER), and optional notes.
+
+**And** the driver's profile or dispatch view shall display upcoming unavailability periods.
+
+**And** calendar events shall be editable and deletable by authorised users.
+
+**Technical Notes:**
+
+- Add `DriverCalendarEvent` model to schema.prisma with fields: id, driverId, organizationId, startAt, endAt, eventType, notes, createdAt, updatedAt.
+- Add API routes for CRUD operations on calendar events.
+- Add UI for managing driver calendar events (can be integrated into driver detail page or dispatch).
+
+**Prerequisites:** Epic 5 (Fleet & RSE Compliance Engine).
+
+---
+
+### Story 17.7: Driver Availability Overlap Detection
+
+As a **dispatcher**,  
+I want the system to automatically exclude unavailable drivers from vehicle selection,  
+So that I only see drivers who are actually available for the proposed mission.
+
+**Related FRs:** FR69.
+
+**Acceptance Criteria:**
+
+**Given** a quote with `pickupAt` and `estimatedEndAt` defining the mission window,  
+**When** the vehicle selection algorithm runs,  
+**Then** it shall exclude drivers who have:
+
+- Existing missions whose `[pickupAt, estimatedEndAt]` overlaps with the proposed mission window.
+- Calendar events whose `[startAt, endAt]` overlaps with the proposed mission window.
+
+**And** the dispatch UI shall indicate why certain drivers are unavailable (mission conflict or calendar event).
+
+**Technical Notes:**
+
+- Update `vehicle-selection.ts` to query and filter by driver availability.
+- Add overlap detection logic using `estimatedEndAt` from quotes and calendar events.
+- Update dispatch UI to show availability status.
+
+**Prerequisites:** Story 17.5, Story 17.6.
+
+---
+
+### Story 17.8: Weighted Day/Night Rate Application
+
+As an **operator**,  
+I want night rates to be applied proportionally for trips that span day and night periods,  
+So that pricing is fair for trips that start during the day and end at night (or vice versa).
+
+**Related FRs:** FR70.
+
+**Acceptance Criteria:**
+
+**Given** an organisation with night rate configured (e.g., 22:00-06:00, +20%),  
+**When** a trip starts at 20:00 and ends at 23:00 (3 hours total, 1 hour in night period),  
+**Then** the night rate shall be applied proportionally: 1/3 of the trip at night rate.
+
+**And** the applied rules shall show the weighted calculation: "Night rate applied to 33% of trip duration".
+
+**And** the calculation shall use `pickupAt` and `estimatedEndAt` to determine the overlap with night period.
+
+**Technical Notes:**
+
+- Update `isNightTime` logic in `pricing-engine.ts` to calculate overlap percentage.
+- Add weighted multiplier calculation based on time overlap.
+- Update `appliedRules` to show weighted calculation details.
+
+**Prerequisites:** Story 17.5.
+
+---
+
+### Story 17.9: Configurable Time Buckets for MAD Pricing
+
+As an **administrator**,  
+I want to configure time buckets for mise-à-disposition pricing with interpolation strategies,  
+So that pricing is predictable for any requested duration.
+
+**Related FRs:** FR71.
+
+**Acceptance Criteria:**
+
+**Given** an admin navigating to Organisation Pricing Settings,  
+**When** they access the "Time Buckets" section,  
+**Then** they shall see a configurable list of time buckets (e.g., 3h, 4h, 6h, 8h, 10h) with prices per bucket.
+
+**And** they shall see an "Interpolation Strategy" dropdown with options: ROUND_UP, ROUND_DOWN, PROPORTIONAL.
+
+**And** when ROUND_UP is selected, a 5h request shall use the 6h bucket price.
+
+**And** when ROUND_DOWN is selected, a 5h request shall use the 4h bucket price.
+
+**And** when PROPORTIONAL is selected, a 5h request shall interpolate between 4h and 6h bucket prices.
+
+**Technical Notes:**
+
+- Add `TimeBucket` model or JSON field to `OrganizationPricingSettings`.
+- Add `timeBucketInterpolationStrategy` enum field.
+- Update MAD pricing logic in `pricing-engine.ts` to use buckets and interpolation.
+- Add UI for managing time buckets.
+
+**Prerequisites:** Epic 16 (Quote System Refactoring - Story 16.8 Dispo pricing).
+
+---
+
+### Story 17.10: Zone Fixed Surcharges (Friction Costs)
+
+As an **administrator**,  
+I want to configure fixed surcharges per zone (parking fees, access fees),  
+So that operational costs are automatically included when trips involve zones with known friction costs.
+
+**Related FRs:** FR72.
+
+**Acceptance Criteria:**
+
+**Given** a pricing zone (e.g., VERSAILLES),  
+**When** an admin edits the zone configuration,  
+**Then** they shall see optional fields for:
+
+- Fixed parking surcharge (EUR)
+- Fixed access fee (EUR)
+- Surcharge description (text)
+
+**And** when a trip involves this zone (pickup or dropoff), the surcharges shall be automatically added to the operational cost.
+
+**And** the cost breakdown shall show the zone surcharges as separate line items.
+
+**Technical Notes:**
+
+- Add `fixedParkingSurcharge`, `fixedAccessFee`, `surchargeDescription` fields to `PricingZone`.
+- Update `calculateCostBreakdown` in `pricing-engine.ts` to include zone surcharges.
+- Update zone editor UI to include surcharge fields.
+
+**Prerequisites:** Epic 11 (Zone Management UI).
+
+---
+
+### Story 17.11: Zone Topology Validation Tools
+
+As an **administrator**,  
+I want the system to detect and warn about zone configuration issues,  
+So that I can ensure complete and consistent zone coverage.
+
+**Related FRs:** FR73.
+
+**Acceptance Criteria:**
+
+**Given** an admin viewing the zone management page,  
+**When** they click "Validate Zone Topology",  
+**Then** the system shall analyse all zones and report:
+
+- Overlapping zones (with details of which zones overlap)
+- Coverage gaps (areas not covered by any zone)
+- Zones with missing required fields (no multiplier, no priority when using PRIORITY strategy)
+
+**And** warnings shall be displayed in a clear list with zone names and suggested actions.
+
+**And** the validation shall be non-blocking (zones can still be saved with warnings).
+
+**Technical Notes:**
+
+- Add API endpoint for zone topology validation.
+- Implement overlap detection using GeoJSON intersection.
+- Add UI component for displaying validation results.
+
+**Prerequisites:** Epic 11 (Zone Management UI).
+
+---
+
+### Story 17.12: Driver Home Location for Deadhead Calculations
+
+As an **administrator**,  
+I want to optionally configure driver home locations,  
+So that deadhead calculations can use driver home instead of vehicle base when appropriate.
+
+**Related FRs:** FR74.
+
+**Acceptance Criteria:**
+
+**Given** a driver profile,  
+**When** an admin edits the driver,  
+**Then** they shall see optional fields for home location (latitude, longitude, address).
+
+**And** when configured, the vehicle selection algorithm shall offer an option to use driver home as the approach origin.
+
+**And** the organisation settings shall include a toggle: "Use driver home for deadhead when available".
+
+**Technical Notes:**
+
+- Add `homeLat`, `homeLng`, `homeAddress` optional fields to `Driver` model.
+- Update `vehicle-selection.ts` to optionally use driver home location.
+- Add organisation setting for this behaviour.
+- Update driver edit UI.
+
+**Prerequisites:** Epic 5 (Fleet & RSE Compliance Engine).
+
+---
+
+### Story 17.13: Route Segmentation for Multi-Zone Trips
+
+As an **operator**,  
+I want the system to calculate pricing based on the actual distance spent in each zone along the route,  
+So that pricing accurately reflects the geographic complexity of multi-zone trips.
+
+**Related FRs:** FR75.
+
+**Acceptance Criteria:**
+
+**Given** a trip that crosses multiple pricing zones (e.g., PARIS_0 → PARIS_20 → CDG),  
+**When** the pricing engine calculates the quote,  
+**Then** it shall decode the route polyline and calculate the distance/duration spent in each zone.
+
+**And** zone-specific multipliers and surcharges shall be applied proportionally based on segment lengths.
+
+**And** the tripAnalysis shall include a `zoneSegments` array showing each zone crossed with distance and duration.
+
+**And** the applied rules shall show the segmented calculation for transparency.
+
+**Technical Notes:**
+
+- Add polyline decoding utility (Google Polyline format).
+- Implement route segmentation logic that intersects polyline with zone geometries.
+- Update pricing calculation to apply zone rules per segment.
+- Add `zoneSegments` field to `TripAnalysis` interface.
+
+**Prerequisites:** Story 17.1, Story 17.2.
+
+---
+
+### Story 17.14: Vehicle TCO Model Enrichment
+
+As an **administrator**,  
+I want to configure detailed vehicle cost parameters (depreciation, maintenance, energy),  
+So that shadow cost calculations reflect true total cost of ownership.
+
+**Related FRs:** FR76.
+
+**Acceptance Criteria:**
+
+**Given** a vehicle in the fleet,  
+**When** an admin edits the vehicle,  
+**Then** they shall see optional TCO fields:
+
+- Purchase price (EUR)
+- Expected lifespan (km or years)
+- Annual maintenance budget (EUR)
+- Insurance cost per year (EUR)
+- Depreciation method (LINEAR, DECLINING_BALANCE)
+
+**And** the shadow cost calculation shall include a TCO component based on distance driven.
+
+**And** the cost breakdown shall show TCO as a separate line item when configured.
+
+**Technical Notes:**
+
+- Add TCO fields to `Vehicle` or `VehicleCategory` model.
+- Add TCO calculation logic to `pricing-engine.ts`.
+- Update vehicle edit UI.
+- This is an enrichment of the existing `wear` cost component.
+
+**Prerequisites:** Epic 5 (Fleet & RSE Compliance Engine).
+
+---
+
+### Story 17.15: Client Difficulty Score (Patience Tax)
+
+As an **administrator**,  
+I want to configure difficulty scores for clients that trigger automatic price adjustments,  
+So that pricing reflects the additional operational burden of difficult clients.
+
+**Related FRs:** FR77.
+
+**Acceptance Criteria:**
+
+**Given** a contact in the CRM,  
+**When** an admin edits the contact,  
+**Then** they shall see an optional "Difficulty Score" field (1-5 scale or similar).
+
+**And** the organisation settings shall include a "Difficulty Multiplier Table" mapping scores to price multipliers (e.g., score 5 = +10%).
+
+**And** when a quote is created for a client with a difficulty score, the multiplier shall be applied automatically.
+
+**And** the applied rules shall show "Client difficulty adjustment: +X%".
+
+**Technical Notes:**
+
+- Add `difficultyScore` optional Int field to `Contact` model.
+- Add difficulty multiplier configuration to `OrganizationPricingSettings`.
+- Update pricing engine to apply difficulty multiplier.
+- Update contact edit UI.
+
+**Prerequisites:** Epic 2 (CRM & Partner Contracts).
+
+---
+
+### Story 17.16: FR Group 9 Settings UI Integration
+
+As an **administrator**,  
+I want all Epic 17 configuration options to be accessible from a unified settings interface,  
+So that I can manage advanced pricing and operational settings in one place.
+
+**Related FRs:** FR61–FR77 (all).
+
+**Acceptance Criteria:**
+
+**Given** an admin navigating to Organisation Settings,  
+**When** they access the "Advanced Pricing & Operations" section,  
+**Then** they shall see organised subsections for:
+
+- Zone Resolution (conflict strategy, multiplier aggregation)
+- Compliance & Staffing (staffing policy, cost parameters)
+- Time-Based Pricing (day/night weighting, time buckets)
+- Zone Surcharges (link to zone editor)
+- TCO & Costs (link to vehicle settings)
+- Client Scoring (difficulty multipliers)
+
+**And** all settings shall have clear labels, help text, and validation.
+
+**And** changes shall be saved and applied immediately to new quotes.
+
+**Prerequisites:** All previous Story 17.x stories.
+
+---
+
+### Summary
+
+Epic 17 addresses the gaps identified in the pricing gap analysis by:
+
+1. **Zone conflict resolution** (Stories 17.1-17.2): Configurable strategies for handling overlapping zones and combining multipliers.
+2. **Compliance integration** (Stories 17.3-17.4): Automatic staffing plan selection with configurable costs.
+3. **Driver availability** (Stories 17.5-17.7): Mission windows and calendar events for accurate availability.
+4. **Advanced pricing rules** (Stories 17.8-17.9): Weighted day/night rates and time bucket interpolation.
+5. **Zone enrichment** (Stories 17.10-17.11, 17.13): Surcharges, topology validation, and route segmentation.
+6. **Operational cost enrichment** (Stories 17.12, 17.14): Driver home location and vehicle TCO.
+7. **CRM enrichment** (Story 17.15): Client difficulty scoring.
+8. **Settings integration** (Story 17.16): Unified configuration UI.
+
+This epic depends on and extends the work done in Epics 3, 4, 5, 8, 11, 15, and 16.
+
+---
+
+## Epic 18: Advanced Geospatial, Route Optimization & Yield Management
+
+**Goal:** Implement the advanced geospatial and yield management features from the Neural-Fleet architecture: corridor zones, automatic transfer-to-MAD switching, loss of exploitation calculation, multi-scenario route optimization, transversal trip decomposition, shadow fleet integration, and fixed temporal vectors.
+
+**Related FRs:** FR78–FR88.
+
+**Dependencies:** Epic 3 (Zone Engine), Epic 4 (Dynamic Pricing), Epic 8 (Dispatch), Epic 14 (Flexible Routes), Epic 17 (Advanced Zone Resolution).
+
+---
+
+### Story 18.1: Corridor Zone Type (Highway Buffers)
+
+As an **administrator**,  
+I want to define corridor zones as buffer areas around specific road polylines (highways, ring roads),  
+So that trips using these corridors can be priced differently from trips on alternative routes.
+
+**Related FRs:** FR78.
+
+**Acceptance Criteria:**
+
+**Given** an admin in the zone management interface,  
+**When** they create a new zone and select type "CORRIDOR",  
+**Then** they shall be able to draw or import a polyline representing the road axis.
+
+**And** they shall specify a buffer distance (in meters) to create the corridor zone geometry.
+
+**And** the system shall generate the zone geometry using ST_Buffer on the polyline.
+
+**And** trips whose route polyline intersects the corridor zone shall have the corridor's pricing rules applied to the intersecting segment.
+
+**Technical Notes:**
+
+- Add `CORRIDOR` to PricingZone.type enum in schema.prisma.
+- Store the source polyline and buffer distance alongside the generated geometry.
+- Update geo-utils.ts to handle corridor intersection detection.
+- Update zone editor UI to support polyline drawing for corridors.
+
+**Prerequisites:** Epic 11 (Zone Management UI), Story 17.13 (Route Segmentation).
+
+---
+
+### Story 18.2: Automatic Transfer-to-MAD Detection (Dense Zone)
+
+As an **operator**,  
+I want the system to automatically suggest switching to MAD pricing when a trip is within a dense zone,  
+So that I don't lose money on distance-based pricing when commercial speed is too low.
+
+**Related FRs:** FR79.
+
+**Acceptance Criteria:**
+
+**Given** a quote request for a transfer within the central dense zone (Z_0),  
+**When** the pricing engine calculates the quote,  
+**Then** it shall estimate the commercial speed based on distance and duration.
+
+**And** if the commercial speed is below a configurable threshold (e.g., 15 km/h),  
+**Then** the system shall flag the quote with a suggestion: "Consider MAD pricing for better profitability".
+
+**And** the operator shall see a comparison: transfer price vs. equivalent MAD price.
+
+**And** the organisation settings shall include a toggle to enable automatic switching (vs. suggestion only).
+
+**Technical Notes:**
+
+- Add `denseZoneSpeedThreshold` and `autoSwitchToMAD` fields to OrganizationPricingSettings.
+- Update pricing-calculate.ts to detect dense zone trips and calculate commercial speed.
+- Add UI alert/suggestion component in quote creation.
+
+**Prerequisites:** Epic 16 (Quote System Refactoring).
+
+---
+
+### Story 18.3: Round-Trip to MAD Automatic Detection
+
+As an **operator**,  
+I want the system to automatically detect when a round-trip should be priced as MAD instead of two transfers,  
+So that I don't undercharge for trips where the driver is effectively blocked on-site.
+
+**Related FRs:** FR80, FR88.
+
+**Acceptance Criteria:**
+
+**Given** a quote request for a round-trip (outbound and return on the same day),  
+**When** the pricing engine calculates the quote,  
+**Then** it shall calculate the waiting time on-site between outbound arrival and return departure.
+
+**And** it shall calculate the time required for the driver to return to base and come back.
+
+**And** if `waitingTime < returnTime + configuredBuffer`, the system shall flag: "Driver blocked on-site, recommend MAD pricing".
+
+**And** the system shall show a comparison: 2x transfer price vs. MAD price for the total duration.
+
+**And** the organisation settings shall include configurable thresholds: minimum waiting time, maximum return distance.
+
+**Technical Notes:**
+
+- Add `minWaitingTimeForSeparateTransfers` and `maxReturnDistanceKm` to OrganizationPricingSettings.
+- Update quote creation logic to detect round-trip patterns.
+- Add comparison UI showing both pricing options.
+
+**Prerequisites:** Story 18.2.
+
+---
+
+### Story 18.4: Loss of Exploitation (Opportunity Cost) Calculation
+
+As an **operator**,  
+I want the system to calculate and include loss of exploitation for multi-day missions,  
+So that the quote reflects the true cost of immobilizing a vehicle at a remote location.
+
+**Related FRs:** FR81.
+
+**Acceptance Criteria:**
+
+**Given** a multi-day mission where the vehicle is immobilized at a remote location for one or more days,  
+**When** the pricing engine calculates the quote,  
+**Then** it shall identify the "idle days" (days where the vehicle is on-site but not working).
+
+**And** it shall calculate the daily reference revenue for the vehicle category (e.g., 8h MAD price).
+
+**And** it shall apply a seasonality coefficient: high season (configurable, e.g., 80%), low season (e.g., 50%).
+
+**And** the loss of exploitation shall be added to the quote: `idleDays × dailyRevenue × seasonalityCoefficient`.
+
+**And** the tripAnalysis shall show the loss of exploitation as a separate cost component.
+
+**Technical Notes:**
+
+- Add `dailyReferenceRevenue` per vehicle category and `seasonalityCoefficients` (by date range) to settings.
+- Update compliance-validator.ts or pricing-engine.ts to detect idle days in multi-day missions.
+- Add loss of exploitation to cost breakdown.
+
+**Prerequisites:** Story 17.3 (Compliance Integration).
+
+---
+
+### Story 18.5: Stay vs. Return Empty Scenario Comparison
+
+As an **operator**,  
+I want the system to compare "stay on-site" vs. "return empty" scenarios for multi-day missions,  
+So that I can choose the most economical option for the client and the company.
+
+**Related FRs:** FR82.
+
+**Acceptance Criteria:**
+
+**Given** a multi-day mission with idle days at a remote location,  
+**When** the pricing engine calculates the quote,  
+**Then** it shall calculate two scenarios:
+
+**Scenario A (Stay on-site):**
+
+- Hotel cost × nights
+- Meal cost × days
+- Driver overnight premium × nights
+- Loss of exploitation × idle days
+
+**Scenario B (Return empty):**
+
+- Empty return trip cost (fuel, tolls, driver time)
+- Empty outbound trip cost for pickup day
+- No hotel/meal/premium costs
+
+**And** the system shall recommend the cheaper option with a clear cost comparison.
+
+**And** the operator shall be able to override and select either option.
+
+**Technical Notes:**
+
+- Implement scenario comparison logic in pricing-engine.ts.
+- Add UI component showing both scenarios with costs.
+- Store selected scenario in quote for transparency.
+
+**Prerequisites:** Story 18.4.
+
+---
+
+### Story 18.6: Multi-Scenario Route Optimization (min(T), min(D), min(TCO))
+
+As an **operator**,  
+I want the system to simulate three route scenarios and recommend the optimal one,  
+So that I can balance speed, distance, and total cost for each trip.
+
+**Related FRs:** FR83.
+
+**Acceptance Criteria:**
+
+**Given** a quote request with pickup and dropoff locations,  
+**When** the pricing engine calculates the quote,  
+**Then** it shall request three route scenarios from the routing API:
+
+**Scenario min(T):** Fastest route (pessimistic traffic model).
+**Scenario min(D):** Shortest distance route.
+**Scenario min(TCO):** Route optimizing total cost (time × driver rate + distance × km rate + tolls + fuel).
+
+**And** the system shall display all three scenarios with their respective: duration, distance, toll cost, fuel cost, total internal cost.
+
+**And** the system shall recommend the min(TCO) scenario by default but allow operator selection.
+
+**And** the selected scenario shall be used for the quote price calculation.
+
+**Technical Notes:**
+
+- Update toll-service.ts to support multiple route requests.
+- Add route scenario comparison logic to pricing-engine.ts.
+- Add UI component for scenario selection.
+- Cache route scenarios to avoid repeated API calls.
+
+**Prerequisites:** Epic 15 (Pricing Engine Accuracy).
+
+---
+
+### Story 18.7: Transversal Trip Decomposition
+
+As an **operator**,  
+I want the system to automatically decompose transversal trips crossing multiple zones,  
+So that pricing accurately reflects the complexity of multi-zone journeys.
+
+**Related FRs:** FR84.
+
+**Acceptance Criteria:**
+
+**Given** a trip that crosses multiple zones (e.g., Versailles → Disney via Paris),  
+**When** the pricing engine calculates the quote,  
+**Then** it shall detect zone transitions along the route polyline.
+
+**And** it shall decompose the trip into logical segments (e.g., Versailles→Paris, Paris→Disney).
+
+**And** it shall apply the hierarchical pricing algorithm to each segment.
+
+**And** it shall optionally apply a transit discount for the intermediate zone (configurable).
+
+**And** the final price shall be the sum of segment prices minus any transit discounts.
+
+**And** the tripAnalysis shall show the decomposition with segment-by-segment pricing.
+
+**Technical Notes:**
+
+- Extend route segmentation logic from Story 17.13.
+- Add transit discount configuration to OrganizationPricingSettings.
+- Update pricing-engine.ts to apply hierarchical algorithm per segment.
+
+**Prerequisites:** Story 17.13 (Route Segmentation).
+
+---
+
+### Story 18.8: Fixed Temporal Vectors (Classic Destinations)
+
+As an **administrator**,  
+I want to configure fixed temporal vectors for classic destinations,  
+So that excursions to well-known destinations have guaranteed minimum durations and predictable pricing.
+
+**Related FRs:** FR85.
+
+**Acceptance Criteria:**
+
+**Given** an admin in the excursion package configuration,  
+**When** they create a "Temporal Vector" package,  
+**Then** they shall specify:
+
+- Destination name (e.g., "Normandy D-Day Beaches")
+- Fixed duration (e.g., 12h)
+- Minimum price
+- Included kilometers
+- Allowed origin zones
+
+**And** when a quote request matches a temporal vector (destination within the vector's zone),  
+**Then** the system shall automatically apply the fixed duration and minimum price.
+
+**And** the quote shall show: "Temporal Vector: Normandy (12h minimum)".
+
+**Technical Notes:**
+
+- Extend ExcursionPackage model to support temporal vector type.
+- Add destination zone matching logic.
+- Update pricing-engine.ts to detect and apply temporal vectors.
+
+**Prerequisites:** Epic 3 (Zone Engine), Epic 16 (Quote System - Excursion pricing).
+
+---
+
+### Story 18.9: Shadow Fleet Integration (Subcontractors)
+
+As a **dispatcher**,  
+I want to see available subcontractor vehicles alongside internal fleet,  
+So that I can handle peak demand by leveraging external capacity.
+
+**Related FRs:** FR86.
+
+**Acceptance Criteria:**
+
+**Given** a configured list of subcontractor partners with their zones and indicative pricing,  
+**When** a dispatcher views available vehicles for a mission,  
+**Then** they shall see subcontractor vehicles as "Shadow Fleet" entries (visually distinct).
+
+**And** each shadow vehicle shall show: partner name, vehicle category, indicative price, availability status.
+
+**And** when a shadow vehicle is selected, the system shall calculate the margin comparison: internal cost vs. subcontractor price.
+
+**And** the dispatcher shall be able to assign the mission to a subcontractor with explicit margin visibility.
+
+**Technical Notes:**
+
+- Add SubcontractorPartner and SubcontractorVehicle models to schema.prisma.
+- Add API for subcontractor availability (manual entry or API integration).
+- Update dispatch UI to show shadow fleet.
+- Add margin comparison logic.
+
+**Prerequisites:** Epic 8 (Dispatch & Strategic Optimisation).
+
+---
+
+### Story 18.10: Hierarchical Pricing Algorithm Implementation
+
+As a **backend engineer**,  
+I want the pricing engine to implement a strict hierarchical pricing algorithm,  
+So that pricing decisions follow a predictable priority order.
+
+**Related FRs:** FR87.
+
+**Acceptance Criteria:**
+
+**Given** a quote request with pickup and dropoff locations,  
+**When** the pricing engine calculates the quote,  
+**Then** it shall evaluate pricing methods in strict priority order:
+
+**Priority 1:** If both points are in the central zone (Z_0) and a flat rate exists, apply the flat rate.
+**Priority 2:** If a defined inter-zone forfait exists between the zones, apply the forfait.
+**Priority 3:** If both points are in the same outer ring, apply dynamic pricing with the ring's multiplier.
+**Priority 4:** Fallback to horokilometric calculation.
+
+**And** the appliedRules shall clearly indicate which priority level was used.
+
+**And** the algorithm shall be configurable to skip certain priority levels if needed.
+
+**Technical Notes:**
+
+- Refactor pricing-engine.ts to implement explicit priority chain.
+- Add priority level to appliedRules for transparency.
+- Add configuration to enable/disable priority levels.
+
+**Prerequisites:** Epic 4 (Dynamic Pricing), Epic 14 (Flexible Routes).
+
+---
+
+### Story 18.11: Configurable Transfer-to-MAD Thresholds
+
+As an **administrator**,  
+I want to configure the thresholds that trigger automatic transfer-to-MAD suggestions,  
+So that the system's behavior matches our operational reality.
+
+**Related FRs:** FR88.
+
+**Acceptance Criteria:**
+
+**Given** an admin in Organisation Pricing Settings,  
+**When** they access the "Transfer/MAD Thresholds" section,  
+**Then** they shall see configurable fields for:
+
+- Minimum waiting time for separate transfers (hours)
+- Maximum return distance for separate transfers (km)
+- Dense zone speed threshold (km/h)
+- Enable automatic switching (toggle)
+
+**And** changes shall be applied immediately to new quotes.
+
+**And** the system shall use these thresholds in Stories 18.2 and 18.3.
+
+**Technical Notes:**
+
+- Add threshold fields to OrganizationPricingSettings.
+- Add UI section in pricing settings page.
+- Ensure Stories 18.2 and 18.3 read from these settings.
+
+**Prerequisites:** Stories 18.2, 18.3.
+
+---
+
+### Summary
+
+Epic 18 implements the advanced Neural-Fleet architecture features:
+
+1. **Corridor zones** (Story 18.1): Highway buffer zones for differentiated pricing.
+2. **Dense zone detection** (Story 18.2): Automatic MAD suggestion when commercial speed is low.
+3. **Round-trip detection** (Story 18.3): Automatic MAD suggestion when driver is blocked.
+4. **Loss of exploitation** (Story 18.4): Opportunity cost for idle days.
+5. **Stay vs. return comparison** (Story 18.5): Scenario optimization for multi-day missions.
+6. **Multi-scenario routing** (Story 18.6): min(T), min(D), min(TCO) comparison.
+7. **Transversal decomposition** (Story 18.7): Multi-zone trip segmentation with transit discounts.
+8. **Temporal vectors** (Story 18.8): Fixed duration packages for classic destinations.
+9. **Shadow fleet** (Story 18.9): Subcontractor integration for elastic capacity.
+10. **Hierarchical algorithm** (Story 18.10): Strict priority pricing chain.
+11. **Configurable thresholds** (Story 18.11): Admin control over MAD switching behavior.
+
+This epic depends on and extends the work done in Epics 3, 4, 8, 11, 14, 15, 16, and 17.
+
+---
+
 ## Summary
 
-This document now defines the **16-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **18-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
 
-The 16 epics cover the complete VTC ERP system:
+The 18 epics cover the complete VTC ERP system:
 
 **Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
-**Pricing Engine (Epics 3-4, 14-16):** Zone management, dynamic pricing, flexible routes, engine accuracy, and quote system refactoring  
+**Pricing Engine (Epics 3-4, 14-18):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, and advanced geospatial/yield management  
 **Fleet & Operations (Epics 5-8):** Vehicle management, compliance, quotes lifecycle, and dispatch optimization
 **Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
 **Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
