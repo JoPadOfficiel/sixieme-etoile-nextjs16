@@ -1,6 +1,6 @@
 # Story 17.9: Configurable Time Buckets for MAD Pricing
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

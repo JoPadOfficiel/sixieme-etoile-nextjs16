@@ -1,7 +1,7 @@
 # Story 17.3: Automatic Compliance-Driven Staffing Integration
 
 **Epic:** Epic 17 – Advanced Zone Resolution, Compliance Integration & Driver Availability  
-**Status:** Ready for Development  
+**Status:** done  
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Sprint:** Current  
@@ -310,11 +310,11 @@ None
 
 ## Definition of Done
 
-- [ ] Schema migration created and applied
-- [ ] Pricing engine integrates compliance validation
-- [ ] Staffing plan selection logic implemented
-- [ ] Staffing costs added to quote price
-- [ ] compliancePlan stored in tripAnalysis
+- [x] Schema migration created and applied
+- [x] Pricing engine integrates compliance validation
+- [x] Staffing plan selection logic implemented
+- [x] Staffing costs added to quote price
+- [x] compliancePlan stored in tripAnalysis
 - [ ] UI displays staffing plan badge and costs
 - [ ] Settings UI includes staffing policy dropdown
 - [ ] All unit tests pass (Vitest)
