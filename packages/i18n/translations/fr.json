@@ -2290,6 +2290,8 @@
 				"marginPercent": "Marge %",
 				"appliedRules": "Règles appliquées",
 				"moreRules": "règles supplémentaires",
+				"weightedNightRate": "Tarif nuit appliqué à {percentage}% de la durée du trajet",
+				"nightRateDetails": "Période de nuit : {start} - {end}",
 				"addedFeesTitle": "Frais & Promotions",
 				"tripDetails": "Détails du trajet",
 				"pickup": "Prise en charge",

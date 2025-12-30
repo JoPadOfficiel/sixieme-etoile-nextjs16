@@ -140,7 +140,7 @@ development_status:
   17-5-quote-estimated-end-time-estimatedendat: done
   17-6-driver-calendar-events-model: done
   17-7-driver-availability-overlap-detection: done
-  17-8-weighted-day-night-rate-application: backlog
+  17-8-weighted-day-night-rate-application: done
   17-9-configurable-time-buckets-for-mad-pricing: backlog
   17-10-zone-fixed-surcharges-friction-costs: backlog
   17-11-zone-topology-validation-tools: backlog

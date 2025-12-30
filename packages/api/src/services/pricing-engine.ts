@@ -427,16 +427,34 @@ export interface SeasonalMultiplierData {
 
 /**
  * Context for evaluating multipliers
+ * Story 17.8: Added estimatedEndAt for weighted day/night rate calculation
  */
 export interface MultiplierContext {
 	pickupAt: Date | null;  // Trip pickup time (Europe/Paris business time)
+	estimatedEndAt: Date | null;  // Story 17.8: Estimated end time for weighted rate calculation
 	distanceKm: number;
 	pickupZoneId: string | null;
 	dropoffZoneId: string | null;
 }
 
 /**
+ * Story 17.8: Weighted night rate details for transparency
+ */
+export interface WeightedNightRateDetails {
+	nightPeriodStart: string;  // "22:00"
+	nightPeriodEnd: string;    // "06:00"
+	tripStart: string;         // ISO timestamp
+	tripEnd: string;           // ISO timestamp
+	nightMinutes: number;      // Minutes of trip in night period
+	totalMinutes: number;      // Total trip duration
+	nightPercentage: number;   // Percentage of trip in night period (0-100)
+	baseAdjustment: number;    // Original rate adjustment (e.g., 20 for +20%)
+	effectiveAdjustment: number; // Weighted adjustment applied
+}
+
+/**
  * Applied multiplier rule for transparency
+ * Story 17.8: Added optional weightedDetails for weighted night rate
  */
 export interface AppliedMultiplierRule extends AppliedRule {
 	type: "ADVANCED_RATE" | "SEASONAL_MULTIPLIER";
@@ -446,6 +464,8 @@ export interface AppliedMultiplierRule extends AppliedRule {
 	adjustmentValue: number;
 	priceBefore: number;
 	priceAfter: number;
+	// Story 17.8: Weighted night rate details (only for NIGHT rates with estimatedEndAt)
+	weightedDetails?: WeightedNightRateDetails;
 }
 
 /**
@@ -2218,6 +2238,216 @@ export function isWithinDateRange(pickupAt: Date, startDate: Date, endDate: Date
 	return pickup >= start && pickup < end;
 }
 
+// ============================================================================
+// Story 17.8: Weighted Day/Night Rate Calculation
+// ============================================================================
+
+/**
+ * Convert time string "HH:MM" to minutes since midnight
+ */
+function parseTimeToMinutes(timeStr: string): number {
+	const { hours, minutes } = parseTimeString(timeStr);
+	return hours * 60 + minutes;
+}
+
+/**
+ * Get minutes since midnight for a Date
+ */
+function getMinutesSinceMidnight(date: Date): number {
+	return date.getHours() * 60 + date.getMinutes();
+}
+
+/**
+ * Calculate the overlap in minutes between a time range and a night period segment
+ * @param rangeStart - Start of range in minutes since midnight
+ * @param rangeEnd - End of range in minutes since midnight
+ * @param segmentStart - Start of night segment in minutes since midnight
+ * @param segmentEnd - End of night segment in minutes since midnight
+ */
+function calculateSegmentOverlap(
+	rangeStart: number,
+	rangeEnd: number,
+	segmentStart: number,
+	segmentEnd: number,
+): number {
+	const overlapStart = Math.max(rangeStart, segmentStart);
+	const overlapEnd = Math.min(rangeEnd, segmentEnd);
+	return Math.max(0, overlapEnd - overlapStart);
+}
+
+/**
+ * Story 17.8: Calculate minutes of trip that fall within night period
+ * Handles overnight ranges like 22:00-06:00 and trips crossing midnight
+ * 
+ * @param pickupAt - Trip start time
+ * @param estimatedEndAt - Trip end time
+ * @param nightStart - Night period start time in "HH:MM" format (e.g., "22:00")
+ * @param nightEnd - Night period end time in "HH:MM" format (e.g., "06:00")
+ * @returns Number of minutes of the trip that fall within the night period
+ */
+export function calculateNightOverlapMinutes(
+	pickupAt: Date,
+	estimatedEndAt: Date,
+	nightStart: string,
+	nightEnd: string,
+): number {
+	const tripDurationMs = estimatedEndAt.getTime() - pickupAt.getTime();
+	if (tripDurationMs <= 0) {
+		return 0;
+	}
+	
+	const tripDurationMinutes = Math.round(tripDurationMs / 60000);
+	const nightStartMinutes = parseTimeToMinutes(nightStart);
+	const nightEndMinutes = parseTimeToMinutes(nightEnd);
+	
+	// Check if this is an overnight range (e.g., 22:00-06:00)
+	const isOvernightRange = nightStartMinutes > nightEndMinutes;
+	
+	// For trips that span multiple days, we need to iterate day by day
+	// Most trips are same-day or overnight, so we optimize for that case
+	
+	// Get the start of the day for pickupAt
+	const startOfPickupDay = new Date(pickupAt);
+	startOfPickupDay.setHours(0, 0, 0, 0);
+	
+	// Get the start of the day for estimatedEndAt
+	const startOfEndDay = new Date(estimatedEndAt);
+	startOfEndDay.setHours(0, 0, 0, 0);
+	
+	// Calculate number of days the trip spans
+	const daysDiff = Math.round((startOfEndDay.getTime() - startOfPickupDay.getTime()) / (24 * 60 * 60 * 1000));
+	
+	let totalNightMinutes = 0;
+	
+	// Process each day the trip spans
+	for (let dayOffset = 0; dayOffset <= daysDiff; dayOffset++) {
+		const currentDayStart = new Date(startOfPickupDay);
+		currentDayStart.setDate(currentDayStart.getDate() + dayOffset);
+		
+		const currentDayEnd = new Date(currentDayStart);
+		currentDayEnd.setDate(currentDayEnd.getDate() + 1);
+		
+		// Calculate the portion of the trip that falls on this day
+		const tripStartOnDay = Math.max(pickupAt.getTime(), currentDayStart.getTime());
+		const tripEndOnDay = Math.min(estimatedEndAt.getTime(), currentDayEnd.getTime());
+		
+		if (tripStartOnDay >= tripEndOnDay) {
+			continue; // No trip time on this day
+		}
+		
+		// Convert to minutes since midnight for this day
+		const tripStartMinutes = Math.round((tripStartOnDay - currentDayStart.getTime()) / 60000);
+		const tripEndMinutes = Math.round((tripEndOnDay - currentDayStart.getTime()) / 60000);
+		
+		if (isOvernightRange) {
+			// Night period spans midnight: 22:00-24:00 and 00:00-06:00
+			// Segment 1: nightStartMinutes to 1440 (midnight)
+			totalNightMinutes += calculateSegmentOverlap(
+				tripStartMinutes, tripEndMinutes,
+				nightStartMinutes, 1440
+			);
+			// Segment 2: 0 to nightEndMinutes
+			totalNightMinutes += calculateSegmentOverlap(
+				tripStartMinutes, tripEndMinutes,
+				0, nightEndMinutes
+			);
+		} else {
+			// Normal range (e.g., 09:00-18:00)
+			totalNightMinutes += calculateSegmentOverlap(
+				tripStartMinutes, tripEndMinutes,
+				nightStartMinutes, nightEndMinutes
+			);
+		}
+	}
+	
+	// Ensure we don't exceed total trip duration (rounding errors)
+	return Math.min(totalNightMinutes, tripDurationMinutes);
+}
+
+/**
+ * Story 17.8: Result of weighted night rate calculation
+ */
+export interface WeightedNightRateResult {
+	adjustedPrice: number;
+	nightMinutes: number;
+	totalMinutes: number;
+	nightPercentage: number;
+	baseAdjustment: number;
+	effectiveAdjustment: number;
+}
+
+/**
+ * Story 17.8: Calculate weighted night rate for a trip
+ * Returns null if weighted calculation is not possible (fallback to binary)
+ * 
+ * @param basePrice - Price before night rate adjustment
+ * @param pickupAt - Trip start time
+ * @param estimatedEndAt - Trip end time (null = fallback to binary)
+ * @param rate - The night rate configuration
+ * @returns Weighted rate result, or null if binary fallback should be used
+ */
+export function calculateWeightedNightRate(
+	basePrice: number,
+	pickupAt: Date,
+	estimatedEndAt: Date | null,
+	rate: AdvancedRateData,
+): WeightedNightRateResult | null {
+	// Fallback to binary if no estimatedEndAt or missing time config
+	if (!estimatedEndAt || !rate.startTime || !rate.endTime) {
+		return null;
+	}
+	
+	const totalMinutes = Math.round(
+		(estimatedEndAt.getTime() - pickupAt.getTime()) / 60000
+	);
+	
+	if (totalMinutes <= 0) {
+		return null;
+	}
+	
+	const nightMinutes = calculateNightOverlapMinutes(
+		pickupAt, estimatedEndAt, rate.startTime, rate.endTime
+	);
+	
+	// If no night overlap, no adjustment needed
+	if (nightMinutes === 0) {
+		return {
+			adjustedPrice: basePrice,
+			nightMinutes: 0,
+			totalMinutes,
+			nightPercentage: 0,
+			baseAdjustment: rate.value,
+			effectiveAdjustment: 0,
+		};
+	}
+	
+	const nightPercentage = (nightMinutes / totalMinutes) * 100;
+	const nightFraction = nightMinutes / totalMinutes;
+	
+	// Calculate effective adjustment based on rate type
+	let adjustedPrice: number;
+	let effectiveAdjustment: number;
+	
+	if (rate.adjustmentType === "PERCENTAGE") {
+		// Weighted percentage: apply rate.value% to nightFraction of the price
+		effectiveAdjustment = rate.value * nightFraction;
+		adjustedPrice = Math.round(basePrice * (1 + effectiveAdjustment / 100) * 100) / 100;
+	} else {
+		// Fixed amount: apply nightFraction of the fixed amount
+		effectiveAdjustment = rate.value * nightFraction;
+		adjustedPrice = Math.round((basePrice + effectiveAdjustment) * 100) / 100;
+	}
+	
+	return {
+		adjustedPrice,
+		nightMinutes,
+		totalMinutes,
+		nightPercentage: Math.round(nightPercentage * 100) / 100,
+		baseAdjustment: rate.value,
+		effectiveAdjustment: Math.round(effectiveAdjustment * 100) / 100,
+	};
+}
+
 /**
  * Evaluate if an advanced rate applies to the given context
  * Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
@@ -2271,6 +2501,7 @@ export function applyAdvancedRateAdjustment(
 /**
  * Evaluate and apply all applicable advanced rates
  * Rates are applied in priority order (higher priority first)
+ * Story 17.8: NIGHT rates use weighted calculation when estimatedEndAt is available
  */
 export function evaluateAdvancedRates(
 	basePrice: number,
@@ -2284,6 +2515,51 @@ export function evaluateAdvancedRates(
 	const sortedRates = [...rates].sort((a, b) => b.priority - a.priority);
 
 	for (const rate of sortedRates) {
+		// Story 17.8: For NIGHT rates, try weighted calculation first
+		if (rate.appliesTo === "NIGHT" && rate.isActive && context.pickupAt) {
+			const weightedResult = calculateWeightedNightRate(
+				currentPrice,
+				context.pickupAt,
+				context.estimatedEndAt,
+				rate,
+			);
+			
+			if (weightedResult) {
+				// Weighted calculation succeeded
+				if (weightedResult.nightMinutes > 0) {
+					const priceBefore = currentPrice;
+					currentPrice = weightedResult.adjustedPrice;
+					
+					const nightPercentageRounded = Math.round(weightedResult.nightPercentage);
+					appliedRules.push({
+						type: "ADVANCED_RATE",
+						description: `Applied NIGHT rate: ${rate.name} (${nightPercentageRounded}% of trip)`,
+						ruleId: rate.id,
+						ruleName: rate.name,
+						adjustmentType: rate.adjustmentType,
+						adjustmentValue: weightedResult.effectiveAdjustment,
+						priceBefore,
+						priceAfter: currentPrice,
+						weightedDetails: {
+							nightPeriodStart: rate.startTime!,
+							nightPeriodEnd: rate.endTime!,
+							tripStart: context.pickupAt.toISOString(),
+							tripEnd: context.estimatedEndAt!.toISOString(),
+							nightMinutes: weightedResult.nightMinutes,
+							totalMinutes: weightedResult.totalMinutes,
+							nightPercentage: weightedResult.nightPercentage,
+							baseAdjustment: weightedResult.baseAdjustment,
+							effectiveAdjustment: weightedResult.effectiveAdjustment,
+						},
+					});
+				}
+				// If nightMinutes is 0, no rate applies - skip to next rate
+				continue;
+			}
+			// Weighted calculation failed (no estimatedEndAt), fall through to binary
+		}
+		
+		// Binary evaluation for WEEKEND rates and fallback for NIGHT
 		if (evaluateAdvancedRate(rate, context)) {
 			const priceBefore = currentPrice;
 			currentPrice = applyAdvancedRateAdjustment(currentPrice, rate);
@@ -3508,6 +3784,11 @@ export function calculatePrice(
 
 	// Build multiplier context (Story 4.3)
 	const pickupAt = request.pickupAt ? new Date(request.pickupAt) : null;
+	
+	// Story 17.8: Calculate estimatedEndAt for weighted day/night rate
+	const estimatedEndAt = pickupAt 
+		? new Date(pickupAt.getTime() + estimatedDurationMinutes * 60000)
+		: null;
 
 	// Map pickup/dropoff to zones early for multiplier context (Story 4.3)
 	// This is needed even for private clients to support ZONE_SCENARIO rates
@@ -3534,8 +3815,10 @@ export function calculatePrice(
 			null,
 			false,
 			// Story 4.3: Pass multiplier context with zone IDs
+			// Story 17.8: Added estimatedEndAt for weighted day/night rate
 			{
 				pickupAt,
+				estimatedEndAt,
 				distanceKm: estimatedDistanceKm,
 				pickupZoneId: pickupZone?.id ?? null,
 				dropoffZoneId: dropoffZone?.id ?? null,
@@ -3574,8 +3857,10 @@ export function calculatePrice(
 			null,
 			false,
 			// Story 4.3: Pass multiplier context
+			// Story 17.8: Added estimatedEndAt for weighted day/night rate
 			{
 				pickupAt,
+				estimatedEndAt,
 				distanceKm: estimatedDistanceKm,
 				pickupZoneId: null,
 				dropoffZoneId: null,
@@ -3847,8 +4132,10 @@ export function calculatePrice(
 		gridSearchDetails,
 		false,
 		// Story 4.3: Pass multiplier context
+		// Story 17.8: Added estimatedEndAt for weighted day/night rate
 		{
 			pickupAt,
+			estimatedEndAt,
 			distanceKm: estimatedDistanceKm,
 			pickupZoneId: pickupZone?.id ?? null,
 			dropoffZoneId: dropoffZone?.id ?? null,

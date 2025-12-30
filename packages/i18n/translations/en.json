@@ -2290,6 +2290,8 @@
 				"marginPercent": "Margin %",
 				"appliedRules": "Applied Rules",
 				"moreRules": "more rules",
+				"weightedNightRate": "Night rate applied to {percentage}% of trip duration",
+				"nightRateDetails": "Night period: {start} - {end}",
 				"addedFeesTitle": "Fees & Promotions",
 				"tripDetails": "Trip Details",
 				"pickup": "Pickup",
