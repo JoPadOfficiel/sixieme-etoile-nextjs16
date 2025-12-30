@@ -456,9 +456,20 @@ export interface OrganizationPricingSettings {
 	zoneConflictStrategy: ZoneConflictStrategy | null;
 	// Story 17.2: Zone multiplier aggregation strategy
 	zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategy | null;
+	// Story 17.3: Staffing selection policy
+	staffingSelectionPolicy: "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL" | null;
+	// Story 17.4: Staffing cost parameters
+	hotelCostPerNight: number | null;
+	mealCostPerDay: number | null;
+	driverOvernightPremium: number | null;
+	secondDriverHourlyRate: number | null;
+	relayDriverFixedFee: number | null;
 	createdAt: string;
 	updatedAt: string;
 }
+
+// Story 17.3: Staffing selection policy
+export type StaffingSelectionPolicy = "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL";
 
 export interface PricingSettingsFormData {
 	baseRatePerKm: number;
@@ -477,6 +488,14 @@ export interface PricingSettingsFormData {
 	zoneConflictStrategy: ZoneConflictStrategy | null;
 	// Story 17.2: Zone multiplier aggregation strategy
 	zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategy | null;
+	// Story 17.3: Staffing selection policy
+	staffingSelectionPolicy: StaffingSelectionPolicy | null;
+	// Story 17.4: Staffing cost parameters
+	hotelCostPerNight: number | null;
+	mealCostPerDay: number | null;
+	driverOvernightPremium: number | null;
+	secondDriverHourlyRate: number | null;
+	relayDriverFixedFee: number | null;
 }
 
 export type ConfigHealthStatus = "ok" | "warning" | "error";

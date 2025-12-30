@@ -1067,6 +1067,14 @@ model OrganizationPricingSettings {
   // null = use CHEAPEST (default)
   staffingSelectionPolicy StaffingSelectionPolicy?
 
+  // Story 17.4: Staffing cost parameters (configurable, no hardcoding per FR66)
+  // All fields are optional - defaults are applied in application layer
+  hotelCostPerNight      Decimal? @db.Decimal(8, 2) // EUR per night (default: 100)
+  mealCostPerDay         Decimal? @db.Decimal(8, 2) // EUR per day (default: 30)
+  driverOvernightPremium Decimal? @db.Decimal(8, 2) // EUR premium for overnight (default: 50)
+  secondDriverHourlyRate Decimal? @db.Decimal(8, 2) // EUR per hour for 2nd driver (default: 25)
+  relayDriverFixedFee    Decimal? @db.Decimal(8, 2) // EUR fixed fee for relay (default: 150)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

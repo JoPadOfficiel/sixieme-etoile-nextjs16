@@ -2709,7 +2709,8 @@
 					"margins": "Paramètres de marge",
 					"minimumFare": "Tarif minimum",
 					"operationalCosts": "Coûts opérationnels",
-					"zoneConflict": "Résolution des conflits de zones"
+					"zoneConflict": "Résolution des conflits de zones",
+					"staffingCosts": "Coûts de staffing RSE"
 				},
 				"fields": {
 					"baseRatePerKm": "Tarif de base au Km (€)",
@@ -2734,7 +2735,19 @@
 					"zoneConflictStrategy": "Stratégie de résolution",
 					"zoneConflictStrategyHelp": "Détermine quelle zone est sélectionnée quand un point se trouve dans plusieurs zones qui se chevauchent",
 					"zoneMultiplierAggregationStrategy": "Agrégation des multiplicateurs",
-					"zoneMultiplierAggregationStrategyHelp": "Détermine comment les multiplicateurs des zones de prise en charge et de dépose sont combinés"
+					"zoneMultiplierAggregationStrategyHelp": "Détermine comment les multiplicateurs des zones de prise en charge et de dépose sont combinés",
+					"staffingSelectionPolicy": "Politique de sélection du staffing",
+					"staffingSelectionPolicyHelp": "Détermine comment le système choisit le meilleur plan de staffing en cas de violation RSE",
+					"hotelCostPerNight": "Coût hôtel par nuit (€)",
+					"hotelCostPerNightHelp": "Coût d'une nuit d'hôtel pour le chauffeur (défaut: 100€)",
+					"mealCostPerDay": "Coût repas par jour (€)",
+					"mealCostPerDayHelp": "Indemnité repas journalière du chauffeur (défaut: 30€)",
+					"driverOvernightPremium": "Prime de nuit chauffeur (€)",
+					"driverOvernightPremiumHelp": "Prime versée au chauffeur pour les missions avec nuitée (défaut: 50€)",
+					"secondDriverHourlyRate": "Tarif horaire 2ème chauffeur (€/h)",
+					"secondDriverHourlyRateHelp": "Coût horaire du second chauffeur (double équipage/relais) (défaut: 25€)",
+					"relayDriverFixedFee": "Frais fixes chauffeur relais (€)",
+					"relayDriverFixedFeeHelp": "Frais fixes pour l'organisation d'un chauffeur relais (défaut: 150€)"
 				},
 				"roundingRules": {
 					"none": "Pas d'arrondi",
@@ -2756,6 +2769,12 @@
 					"PICKUP_ONLY": "Prise en charge uniquement",
 					"DROPOFF_ONLY": "Dépose uniquement",
 					"AVERAGE": "Moyenne (prise en charge + dépose / 2)"
+				},
+				"staffingSelectionPolicies": {
+					"default": "Par défaut (moins cher)",
+					"CHEAPEST": "Moins cher (coût additionnel le plus bas)",
+					"FASTEST": "Plus rapide (durée totale minimale)",
+					"PREFER_INTERNAL": "Interne préféré (double équipage avant relais)"
 				},
 				"save": "Enregistrer",
 				"saveSuccess": "Paramètres enregistrés avec succès",

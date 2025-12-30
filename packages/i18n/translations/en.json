@@ -2709,7 +2709,8 @@
 					"margins": "Margin Settings",
 					"minimumFare": "Minimum Fare",
 					"operationalCosts": "Operational Costs",
-					"zoneConflict": "Zone Conflict Resolution"
+					"zoneConflict": "Zone Conflict Resolution",
+					"staffingCosts": "RSE Staffing Costs"
 				},
 				"fields": {
 					"baseRatePerKm": "Base Rate per Km (€)",
@@ -2734,7 +2735,19 @@
 					"zoneConflictStrategy": "Resolution Strategy",
 					"zoneConflictStrategyHelp": "Determines which zone is selected when a point falls within multiple overlapping zones",
 					"zoneMultiplierAggregationStrategy": "Multiplier Aggregation",
-					"zoneMultiplierAggregationStrategyHelp": "Determines how pickup and dropoff zone multipliers are combined"
+					"zoneMultiplierAggregationStrategyHelp": "Determines how pickup and dropoff zone multipliers are combined",
+					"staffingSelectionPolicy": "Staffing Selection Policy",
+					"staffingSelectionPolicyHelp": "Determines how the system selects the best staffing plan when RSE violations are detected",
+					"hotelCostPerNight": "Hotel Cost per Night (€)",
+					"hotelCostPerNightHelp": "Cost of one hotel night for the driver (default: 100€)",
+					"mealCostPerDay": "Meal Cost per Day (€)",
+					"mealCostPerDayHelp": "Daily meal allowance for the driver (default: 30€)",
+					"driverOvernightPremium": "Driver Overnight Premium (€)",
+					"driverOvernightPremiumHelp": "Premium paid to driver for overnight missions (default: 50€)",
+					"secondDriverHourlyRate": "Second Driver Hourly Rate (€/h)",
+					"secondDriverHourlyRateHelp": "Hourly cost for second driver (double crew/relay) (default: 25€)",
+					"relayDriverFixedFee": "Relay Driver Fixed Fee (€)",
+					"relayDriverFixedFeeHelp": "Fixed fee for arranging a relay driver (default: 150€)"
 				},
 				"roundingRules": {
 					"none": "No rounding",
@@ -2756,6 +2769,12 @@
 					"PICKUP_ONLY": "Pickup Only",
 					"DROPOFF_ONLY": "Dropoff Only",
 					"AVERAGE": "Average (pickup + dropoff / 2)"
+				},
+				"staffingSelectionPolicies": {
+					"default": "Default (cheapest)",
+					"CHEAPEST": "Cheapest (lowest additional cost)",
+					"FASTEST": "Fastest (minimum total duration)",
+					"PREFER_INTERNAL": "Prefer Internal (double crew before relay)"
 				},
 				"save": "Save Settings",
 				"saveSuccess": "Settings saved successfully",

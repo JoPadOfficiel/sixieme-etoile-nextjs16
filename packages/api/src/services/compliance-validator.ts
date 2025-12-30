@@ -635,6 +635,84 @@ export const DEFAULT_ALTERNATIVE_COST_PARAMETERS: AlternativeCostParameters = {
 };
 
 /**
+ * Extended staffing cost parameters including additional fees
+ * Story 17.4: All parameters configurable per FR66
+ */
+export interface ExtendedStaffingCostParameters extends AlternativeCostParameters {
+	driverOvernightPremium: number;  // EUR premium for overnight missions (default: 50)
+	relayDriverFixedFee: number;     // EUR fixed fee for relay driver arrangement (default: 150)
+}
+
+/**
+ * Default extended staffing costs
+ */
+export const DEFAULT_EXTENDED_STAFFING_COSTS: ExtendedStaffingCostParameters = {
+	...DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+	driverOvernightPremium: 50,
+	relayDriverFixedFee: 150,
+};
+
+/**
+ * Organization pricing settings type for staffing costs
+ * Matches the Prisma OrganizationPricingSettings model fields
+ */
+export interface OrganizationStaffingCostSettings {
+	hotelCostPerNight: { toNumber: () => number } | null;
+	mealCostPerDay: { toNumber: () => number } | null;
+	driverOvernightPremium: { toNumber: () => number } | null;
+	secondDriverHourlyRate: { toNumber: () => number } | null;
+	relayDriverFixedFee: { toNumber: () => number } | null;
+}
+
+/**
+ * Build AlternativeCostParameters from organization settings
+ * Falls back to defaults for any null values
+ * Story 17.4: Configurable staffing cost parameters
+ */
+export function buildCostParametersFromSettings(
+	settings: OrganizationStaffingCostSettings | null | undefined
+): AlternativeCostParameters {
+	if (!settings) {
+		return DEFAULT_ALTERNATIVE_COST_PARAMETERS;
+	}
+
+	return {
+		driverHourlyCost: settings.secondDriverHourlyRate?.toNumber() 
+			?? DEFAULT_ALTERNATIVE_COST_PARAMETERS.driverHourlyCost,
+		hotelCostPerNight: settings.hotelCostPerNight?.toNumber() 
+			?? DEFAULT_ALTERNATIVE_COST_PARAMETERS.hotelCostPerNight,
+		mealAllowancePerDay: settings.mealCostPerDay?.toNumber() 
+			?? DEFAULT_ALTERNATIVE_COST_PARAMETERS.mealAllowancePerDay,
+	};
+}
+
+/**
+ * Build extended staffing cost parameters from organization settings
+ * Includes all staffing-related costs for comprehensive calculations
+ * Story 17.4: Configurable staffing cost parameters
+ */
+export function buildExtendedCostParametersFromSettings(
+	settings: OrganizationStaffingCostSettings | null | undefined
+): ExtendedStaffingCostParameters {
+	if (!settings) {
+		return DEFAULT_EXTENDED_STAFFING_COSTS;
+	}
+
+	return {
+		driverHourlyCost: settings.secondDriverHourlyRate?.toNumber() 
+			?? DEFAULT_EXTENDED_STAFFING_COSTS.driverHourlyCost,
+		hotelCostPerNight: settings.hotelCostPerNight?.toNumber() 
+			?? DEFAULT_EXTENDED_STAFFING_COSTS.hotelCostPerNight,
+		mealAllowancePerDay: settings.mealCostPerDay?.toNumber() 
+			?? DEFAULT_EXTENDED_STAFFING_COSTS.mealAllowancePerDay,
+		driverOvernightPremium: settings.driverOvernightPremium?.toNumber() 
+			?? DEFAULT_EXTENDED_STAFFING_COSTS.driverOvernightPremium,
+		relayDriverFixedFee: settings.relayDriverFixedFee?.toNumber() 
+			?? DEFAULT_EXTENDED_STAFFING_COSTS.relayDriverFixedFee,
+	};
+}
+
+/**
  * RSE limits for alternative calculations
  */
 export const ALTERNATIVE_RSE_LIMITS = {

@@ -1304,6 +1304,14 @@ function CostParametersSection() {
 		zoneConflictStrategy: data?.zoneConflictStrategy ?? null,
 		// Story 17.2: Zone multiplier aggregation strategy
 		zoneMultiplierAggregationStrategy: data?.zoneMultiplierAggregationStrategy ?? null,
+		// Story 17.3: Staffing selection policy
+		staffingSelectionPolicy: data?.staffingSelectionPolicy ?? null,
+		// Story 17.4: Staffing cost parameters
+		hotelCostPerNight: data?.hotelCostPerNight ?? null,
+		mealCostPerDay: data?.mealCostPerDay ?? null,
+		driverOvernightPremium: data?.driverOvernightPremium ?? null,
+		secondDriverHourlyRate: data?.secondDriverHourlyRate ?? null,
+		relayDriverFixedFee: data?.relayDriverFixedFee ?? null,
 	};
 
 	const [formData, setFormData] = useState<PricingSettingsFormData>(defaultFormData);
@@ -1653,6 +1661,147 @@ function CostParametersSection() {
 						<p className="text-xs text-muted-foreground">
 							{t("fleet.settings.costParameters.fields.zoneMultiplierAggregationStrategyHelp")}
 						</p>
+					</div>
+
+					{/* Story 17.4: RSE Staffing Costs Section */}
+					<div className="space-y-4">
+						<h3 className="text-lg font-medium flex items-center gap-2">
+							<ShieldCheckIcon className="size-5" />
+							{t("fleet.settings.costParameters.sections.staffingCosts")}
+						</h3>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="staffingSelectionPolicy">{t("fleet.settings.costParameters.fields.staffingSelectionPolicy")}</Label>
+								<Select
+									value={formData.staffingSelectionPolicy || "default"}
+									onValueChange={(value) =>
+										setFormData((prev) => ({ ...prev, staffingSelectionPolicy: value === "default" ? null : value as "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL" }))
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="default">{t("fleet.settings.costParameters.staffingSelectionPolicies.default")}</SelectItem>
+										<SelectItem value="CHEAPEST">{t("fleet.settings.costParameters.staffingSelectionPolicies.CHEAPEST")}</SelectItem>
+										<SelectItem value="FASTEST">{t("fleet.settings.costParameters.staffingSelectionPolicies.FASTEST")}</SelectItem>
+										<SelectItem value="PREFER_INTERNAL">{t("fleet.settings.costParameters.staffingSelectionPolicies.PREFER_INTERNAL")}</SelectItem>
+									</SelectContent>
+								</Select>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.staffingSelectionPolicyHelp")}
+								</p>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="secondDriverHourlyRate">{t("fleet.settings.costParameters.fields.secondDriverHourlyRate")}</Label>
+								<Input
+									id="secondDriverHourlyRate"
+									type="number"
+									step="0.01"
+									min={0}
+									max={1000}
+									placeholder="25"
+									value={formData.secondDriverHourlyRate ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											secondDriverHourlyRate: e.target.value ? Number.parseFloat(e.target.value) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.secondDriverHourlyRateHelp")}
+								</p>
+							</div>
+						</div>
+						<div className="grid grid-cols-3 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="hotelCostPerNight">{t("fleet.settings.costParameters.fields.hotelCostPerNight")}</Label>
+								<Input
+									id="hotelCostPerNight"
+									type="number"
+									step="0.01"
+									min={0}
+									max={10000}
+									placeholder="100"
+									value={formData.hotelCostPerNight ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											hotelCostPerNight: e.target.value ? Number.parseFloat(e.target.value) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.hotelCostPerNightHelp")}
+								</p>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="mealCostPerDay">{t("fleet.settings.costParameters.fields.mealCostPerDay")}</Label>
+								<Input
+									id="mealCostPerDay"
+									type="number"
+									step="0.01"
+									min={0}
+									max={10000}
+									placeholder="30"
+									value={formData.mealCostPerDay ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											mealCostPerDay: e.target.value ? Number.parseFloat(e.target.value) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.mealCostPerDayHelp")}
+								</p>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="driverOvernightPremium">{t("fleet.settings.costParameters.fields.driverOvernightPremium")}</Label>
+								<Input
+									id="driverOvernightPremium"
+									type="number"
+									step="0.01"
+									min={0}
+									max={10000}
+									placeholder="50"
+									value={formData.driverOvernightPremium ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											driverOvernightPremium: e.target.value ? Number.parseFloat(e.target.value) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.driverOvernightPremiumHelp")}
+								</p>
+							</div>
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="relayDriverFixedFee">{t("fleet.settings.costParameters.fields.relayDriverFixedFee")}</Label>
+								<Input
+									id="relayDriverFixedFee"
+									type="number"
+									step="0.01"
+									min={0}
+									max={10000}
+									placeholder="150"
+									value={formData.relayDriverFixedFee ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											relayDriverFixedFee: e.target.value ? Number.parseFloat(e.target.value) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.relayDriverFixedFeeHelp")}
+								</p>
+							</div>
+						</div>
 					</div>
 
 					<div className="flex justify-end">

@@ -138,7 +138,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -928,6 +928,11 @@ export const OrganizationPricingSettingsSchema = z.object({
   tollCostPerKm: z.instanceof(Prisma.Decimal, { message: "Field 'tollCostPerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   wearCostPerKm: z.instanceof(Prisma.Decimal, { message: "Field 'wearCostPerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   driverHourlyCost: z.instanceof(Prisma.Decimal, { message: "Field 'driverHourlyCost' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  hotelCostPerNight: z.instanceof(Prisma.Decimal, { message: "Field 'hotelCostPerNight' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  mealCostPerDay: z.instanceof(Prisma.Decimal, { message: "Field 'mealCostPerDay' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  driverOvernightPremium: z.instanceof(Prisma.Decimal, { message: "Field 'driverOvernightPremium' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  secondDriverHourlyRate: z.instanceof(Prisma.Decimal, { message: "Field 'secondDriverHourlyRate' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  relayDriverFixedFee: z.instanceof(Prisma.Decimal, { message: "Field 'relayDriverFixedFee' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

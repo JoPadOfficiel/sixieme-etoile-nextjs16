@@ -11,6 +11,9 @@ const zoneConflictStrategyEnum = z.enum(["PRIORITY", "MOST_EXPENSIVE", "CLOSEST"
 // Story 17.2: Zone multiplier aggregation strategy enum
 const zoneMultiplierAggregationStrategyEnum = z.enum(["MAX", "PICKUP_ONLY", "DROPOFF_ONLY", "AVERAGE"]);
 
+// Story 17.3: Staffing selection policy enum
+const staffingSelectionPolicyEnum = z.enum(["CHEAPEST", "FASTEST", "PREFER_INTERNAL"]);
+
 // Validation schema for updating pricing settings
 const updatePricingSettingsSchema = z.object({
 	baseRatePerKm: z.number().positive().optional(),
@@ -29,6 +32,14 @@ const updatePricingSettingsSchema = z.object({
 	zoneConflictStrategy: zoneConflictStrategyEnum.nullable().optional(),
 	// Story 17.2: Zone multiplier aggregation strategy
 	zoneMultiplierAggregationStrategy: zoneMultiplierAggregationStrategyEnum.nullable().optional(),
+	// Story 17.3: Staffing selection policy
+	staffingSelectionPolicy: staffingSelectionPolicyEnum.nullable().optional(),
+	// Story 17.4: Staffing cost parameters (configurable per FR66)
+	hotelCostPerNight: z.number().min(0).max(10000).nullable().optional(),
+	mealCostPerDay: z.number().min(0).max(10000).nullable().optional(),
+	driverOvernightPremium: z.number().min(0).max(10000).nullable().optional(),
+	secondDriverHourlyRate: z.number().min(0).max(1000).nullable().optional(),
+	relayDriverFixedFee: z.number().min(0).max(10000).nullable().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -51,6 +62,14 @@ function serializePricingSettings(settings: {
 	zoneConflictStrategy?: string | null;
 	// Story 17.2: Zone multiplier aggregation strategy
 	zoneMultiplierAggregationStrategy?: string | null;
+	// Story 17.3: Staffing selection policy
+	staffingSelectionPolicy?: string | null;
+	// Story 17.4: Staffing cost parameters
+	hotelCostPerNight?: unknown;
+	mealCostPerDay?: unknown;
+	driverOvernightPremium?: unknown;
+	secondDriverHourlyRate?: unknown;
+	relayDriverFixedFee?: unknown;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -83,6 +102,24 @@ function serializePricingSettings(settings: {
 		zoneConflictStrategy: settings.zoneConflictStrategy,
 		// Story 17.2: Zone multiplier aggregation strategy
 		zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy,
+		// Story 17.3: Staffing selection policy
+		staffingSelectionPolicy: settings.staffingSelectionPolicy,
+		// Story 17.4: Staffing cost parameters
+		hotelCostPerNight: settings.hotelCostPerNight
+			? Number(settings.hotelCostPerNight)
+			: null,
+		mealCostPerDay: settings.mealCostPerDay
+			? Number(settings.mealCostPerDay)
+			: null,
+		driverOvernightPremium: settings.driverOvernightPremium
+			? Number(settings.driverOvernightPremium)
+			: null,
+		secondDriverHourlyRate: settings.secondDriverHourlyRate
+			? Number(settings.secondDriverHourlyRate)
+			: null,
+		relayDriverFixedFee: settings.relayDriverFixedFee
+			? Number(settings.relayDriverFixedFee)
+			: null,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};
