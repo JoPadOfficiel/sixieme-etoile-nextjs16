@@ -186,6 +186,7 @@
 		"moveUp": "Monter",
 		"moveDown": "Descendre",
 		"max": "max",
+		"create": "Créer",
 		"map": {
 			"noApiKey": "Clé API Google Maps non configurée",
 			"configureInSettings": "Configurez-la dans Paramètres de l'organisation > Intégrations",
@@ -2605,6 +2606,38 @@
 				"approved": "Approuvé",
 				"blocked": "Bloqué",
 				"warning": "Avertissement"
+			}
+		},
+		"calendar": {
+			"title": "Calendrier",
+			"description": "Gérez les périodes d'indisponibilité des chauffeurs.",
+			"addEvent": "Ajouter un événement",
+			"editEvent": "Modifier l'événement",
+			"noEvents": "Aucun événement à venir",
+			"noEventsHint": "Ajoutez des périodes d'indisponibilité pour suivre la disponibilité des chauffeurs.",
+			"eventDeleted": "Événement supprimé avec succès.",
+			"deleteError": "Échec de la suppression de l'événement.",
+			"eventCreated": "Événement créé avec succès.",
+			"eventUpdated": "Événement mis à jour avec succès.",
+			"saveError": "Échec de l'enregistrement de l'événement.",
+			"deleteConfirmTitle": "Supprimer l'événement",
+			"deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.",
+			"formDescription": "Ajouter ou modifier une période d'indisponibilité pour {name}.",
+			"eventType": "Type d'événement",
+			"selectType": "Sélectionner le type",
+			"eventTitle": "Titre (optionnel)",
+			"titlePlaceholder": "ex: Vacances d'été",
+			"startDate": "Date de début",
+			"endDate": "Date de fin",
+			"pickDate": "Choisir une date",
+			"notes": "Notes",
+			"notesPlaceholder": "Informations complémentaires...",
+			"types": {
+				"holiday": "Congés",
+				"sick": "Maladie",
+				"personal": "Personnel",
+				"training": "Formation",
+				"other": "Autre"
 			}
 		},
 		"settings": {

@@ -10,10 +10,11 @@ import {
 } from "@ui/components/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useTranslations } from "next-intl";
-import { User, ShieldCheck } from "lucide-react";
+import { User, ShieldCheck, Calendar } from "lucide-react";
 import { DriverForm } from "./DriverForm";
 import { ComplianceSnapshot } from "./ComplianceSnapshot";
 import { ComplianceAuditLogList } from "./ComplianceAuditLogList";
+import { CalendarEventsList } from "./CalendarEventsList";
 import type {
 	DriverWithLicenses,
 	ComplianceSnapshot as ComplianceSnapshotType,
@@ -101,10 +102,14 @@ export function DriverDrawer({ open, onOpenChange, driver }: DriverDrawerProps) 
 
 				{driver ? (
 					<Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-						<TabsList className="grid w-full grid-cols-2">
+						<TabsList className="grid w-full grid-cols-3">
 							<TabsTrigger value="details" className="flex items-center gap-2">
 								<User className="h-4 w-4" />
 								{t("fleet.drivers.form.personalInfo")}
+							</TabsTrigger>
+							<TabsTrigger value="calendar" className="flex items-center gap-2">
+								<Calendar className="h-4 w-4" />
+								{t("fleet.calendar.title")}
 							</TabsTrigger>
 							<TabsTrigger value="compliance" className="flex items-center gap-2">
 								<ShieldCheck className="h-4 w-4" />
@@ -117,6 +122,13 @@ export function DriverDrawer({ open, onOpenChange, driver }: DriverDrawerProps) 
 								driver={driver}
 								onSuccess={handleSuccess}
 								onCancel={handleCancel}
+							/>
+						</TabsContent>
+
+						<TabsContent value="calendar" className="mt-4">
+							<CalendarEventsList
+								driverId={driver.id}
+								driverName={`${driver.firstName} ${driver.lastName}`}
 							/>
 						</TabsContent>
 

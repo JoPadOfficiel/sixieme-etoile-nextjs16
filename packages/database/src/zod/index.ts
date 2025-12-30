@@ -126,6 +126,8 @@ export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstN
 
 export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licenseCategoryId','licenseNumber','validFrom','validTo','createdAt','updatedAt']);
 
+export const DriverCalendarEventScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','eventType','title','notes','startAt','endAt','createdAt','updatedAt']);
+
 export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
@@ -265,6 +267,10 @@ export type InvoiceLineTypeType = `${z.infer<typeof InvoiceLineTypeSchema>}`
 export const PaymentTermsSchema = z.enum(['IMMEDIATE','DAYS_15','DAYS_30','DAYS_45','DAYS_60']);
 
 export type PaymentTermsType = `${z.infer<typeof PaymentTermsSchema>}`
+
+export const CalendarEventTypeSchema = z.enum(['HOLIDAY','SICK','PERSONAL','TRAINING','OTHER']);
+
+export type CalendarEventTypeType = `${z.infer<typeof CalendarEventTypeSchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -756,6 +762,28 @@ export const DriverLicenseSchema = z.object({
 })
 
 export type DriverLicense = z.infer<typeof DriverLicenseSchema>
+
+/////////////////////////////////////////
+// DRIVER CALENDAR EVENT SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Story 17.6: DriverCalendarEvent - Tracks driver unavailability periods
+ */
+export const DriverCalendarEventSchema = z.object({
+  eventType: CalendarEventTypeSchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  driverId: z.string(),
+  title: z.string().nullable(),
+  notes: z.string().nullable(),
+  startAt: z.coerce.date(),
+  endAt: z.coerce.date(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type DriverCalendarEvent = z.infer<typeof DriverCalendarEventSchema>
 
 /////////////////////////////////////////
 // PRICING ZONE SCHEMA

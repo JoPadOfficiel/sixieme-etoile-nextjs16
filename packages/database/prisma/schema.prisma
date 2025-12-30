@@ -147,6 +147,7 @@ model Organization {
   partnerContracts            PartnerContract[]
   subcontractorProfiles       SubcontractorProfile[]
   driverRSECounters           DriverRSECounter[]
+  driverCalendarEvents        DriverCalendarEvent[]
   complianceAuditLogs         ComplianceAuditLog[]
   quoteStatusAuditLogs        QuoteStatusAuditLog[]
 
@@ -337,6 +338,15 @@ enum PaymentTerms {
   DAYS_30
   DAYS_45
   DAYS_60
+}
+
+/// Story 17.6: Calendar event types for driver unavailability
+enum CalendarEventType {
+  HOLIDAY // Congés payés
+  SICK // Arrêt maladie
+  PERSONAL // Absence personnelle
+  TRAINING // Formation
+  OTHER // Autre
 }
 
 model Purchase {
@@ -759,11 +769,12 @@ model Driver {
   updatedAt DateTime @updatedAt
 
   // Relations
-  driverLicenses      DriverLicense[]
-  driverRSECounters   DriverRSECounter[]
-  complianceAuditLogs ComplianceAuditLog[]
-  assignedQuotes      Quote[]              @relation("AssignedDriver")
-  quotes              Quote[]
+  driverLicenses       DriverLicense[]
+  driverRSECounters    DriverRSECounter[]
+  driverCalendarEvents DriverCalendarEvent[]
+  complianceAuditLogs  ComplianceAuditLog[]
+  assignedQuotes       Quote[]               @relation("AssignedDriver")
+  quotes               Quote[]
 
   @@index([organizationId])
   @@index([isActive])
@@ -791,6 +802,33 @@ model DriverLicense {
   @@index([driverId])
   @@index([licenseCategoryId])
   @@map("driver_license")
+}
+
+/// Story 17.6: DriverCalendarEvent - Tracks driver unavailability periods
+model DriverCalendarEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Event details
+  eventType CalendarEventType
+  title     String?
+  notes     String?
+
+  // Time range
+  startAt DateTime
+  endAt   DateTime
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([startAt, endAt])
+  @@map("driver_calendar_event")
 }
 
 // ----------------------------------------------------------------------------

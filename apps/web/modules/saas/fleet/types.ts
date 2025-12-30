@@ -509,3 +509,38 @@ export interface ConfigHealthResponse {
 		vehicleCategoriesCount: number;
 	};
 }
+
+// ============================================================================
+// Driver Calendar Events (Story 17.6)
+// ============================================================================
+
+export type CalendarEventType = "HOLIDAY" | "SICK" | "PERSONAL" | "TRAINING" | "OTHER";
+
+export interface DriverCalendarEvent {
+	id: string;
+	organizationId: string;
+	driverId: string;
+	eventType: CalendarEventType;
+	title: string | null;
+	notes: string | null;
+	startAt: string;
+	endAt: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CalendarEventsResponse {
+	data: DriverCalendarEvent[];
+	meta: {
+		count: number;
+		limit: number;
+	};
+}
+
+export interface CalendarEventFormData {
+	eventType: CalendarEventType;
+	title: string | null;
+	notes: string | null;
+	startAt: Date;
+	endAt: Date;
+}

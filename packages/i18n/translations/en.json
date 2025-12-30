@@ -186,6 +186,7 @@
 		"moveUp": "Move up",
 		"moveDown": "Move down",
 		"max": "max",
+		"create": "Create",
 		"map": {
 			"noApiKey": "Google Maps API key not configured",
 			"configureInSettings": "Configure it in Organization Settings > Integrations",
@@ -2605,6 +2606,38 @@
 				"approved": "Approved",
 				"blocked": "Blocked",
 				"warning": "Warning"
+			}
+		},
+		"calendar": {
+			"title": "Calendar",
+			"description": "Manage driver unavailability periods.",
+			"addEvent": "Add Event",
+			"editEvent": "Edit Event",
+			"noEvents": "No upcoming events",
+			"noEventsHint": "Add unavailability periods to track driver availability.",
+			"eventDeleted": "Event deleted successfully.",
+			"deleteError": "Failed to delete event.",
+			"eventCreated": "Event created successfully.",
+			"eventUpdated": "Event updated successfully.",
+			"saveError": "Failed to save event.",
+			"deleteConfirmTitle": "Delete Event",
+			"deleteConfirmDescription": "Are you sure you want to delete this event? This action cannot be undone.",
+			"formDescription": "Add or edit an unavailability period for {name}.",
+			"eventType": "Event Type",
+			"selectType": "Select event type",
+			"eventTitle": "Title (optional)",
+			"titlePlaceholder": "e.g., Summer vacation",
+			"startDate": "Start Date",
+			"endDate": "End Date",
+			"pickDate": "Pick a date",
+			"notes": "Notes",
+			"notesPlaceholder": "Additional information...",
+			"types": {
+				"holiday": "Holiday",
+				"sick": "Sick Leave",
+				"personal": "Personal",
+				"training": "Training",
+				"other": "Other"
 			}
 		},
 		"settings": {

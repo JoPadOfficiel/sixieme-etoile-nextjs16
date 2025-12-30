@@ -695,4 +695,288 @@ export const driversRouter = new Hono()
 				},
 			});
 		}
+	)
+
+	// ============================================================================
+	// Calendar Events Endpoints (Story 17.6)
+	// ============================================================================
+
+	// List calendar events for a driver
+	.get(
+		"/:id/calendar-events",
+		validator(
+			"query",
+			z.object({
+				startDate: z.string().optional(),
+				endDate: z.string().optional(),
+				eventType: z
+					.enum(["HOLIDAY", "SICK", "PERSONAL", "TRAINING", "OTHER"])
+					.optional(),
+				limit: z.coerce.number().int().positive().max(100).default(50),
+			})
+		),
+		describeRoute({
+			summary: "List driver calendar events",
+			description:
+				"Get calendar events (unavailability periods) for a driver with optional date range and type filters",
+			tags: ["VTC - Fleet", "VTC - Calendar"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const { startDate, endDate, eventType, limit } = c.req.valid("query");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			// Build where clause
+			const where: Record<string, unknown> = {
+				organizationId,
+				driverId,
+			};
+
+			if (eventType) {
+				where.eventType = eventType;
+			}
+
+			// Date range filter
+			if (startDate || endDate) {
+				const dateFilters: Record<string, unknown>[] = [];
+				const start = startDate ? new Date(startDate) : undefined;
+				const end = endDate ? new Date(endDate) : undefined;
+
+				if (start && end) {
+					// Events that overlap with the date range
+					dateFilters.push(
+						// Event starts within range
+						{ startAt: { gte: start, lte: end } },
+						// Event ends within range
+						{ endAt: { gte: start, lte: end } },
+						// Event spans entire range
+						{ AND: [{ startAt: { lte: start } }, { endAt: { gte: end } }] }
+					);
+					where.OR = dateFilters;
+				} else if (start) {
+					// Events that end after start date
+					where.endAt = { gte: start };
+				} else if (end) {
+					// Events that start before end date
+					where.startAt = { lte: end };
+				}
+			}
+
+			const events = await db.driverCalendarEvent.findMany({
+				where,
+				take: limit,
+				orderBy: { startAt: "asc" },
+			});
+
+			return c.json({
+				data: events,
+				meta: {
+					count: events.length,
+					limit,
+				},
+			});
+		}
+	)
+
+	// Create calendar event
+	.post(
+		"/:id/calendar-events",
+		validator(
+			"json",
+			z
+				.object({
+					eventType: z.enum(["HOLIDAY", "SICK", "PERSONAL", "TRAINING", "OTHER"]),
+					title: z.string().max(200).optional().nullable(),
+					notes: z.string().max(1000).optional().nullable(),
+					startAt: z.coerce.date(),
+					endAt: z.coerce.date(),
+				})
+				.refine((data) => data.startAt < data.endAt, {
+					message: "startAt must be before endAt",
+					path: ["startAt"],
+				})
+		),
+		describeRoute({
+			summary: "Create driver calendar event",
+			description:
+				"Create a new calendar event (unavailability period) for a driver",
+			tags: ["VTC - Fleet", "VTC - Calendar"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const data = c.req.valid("json");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			const event = await db.driverCalendarEvent.create({
+				data: {
+					organizationId,
+					driverId,
+					eventType: data.eventType,
+					title: data.title,
+					notes: data.notes,
+					startAt: data.startAt,
+					endAt: data.endAt,
+				},
+			});
+
+			return c.json(event, 201);
+		}
+	)
+
+	// Update calendar event
+	.patch(
+		"/:id/calendar-events/:eventId",
+		validator(
+			"json",
+			z
+				.object({
+					eventType: z
+						.enum(["HOLIDAY", "SICK", "PERSONAL", "TRAINING", "OTHER"])
+						.optional(),
+					title: z.string().max(200).optional().nullable(),
+					notes: z.string().max(1000).optional().nullable(),
+					startAt: z.coerce.date().optional(),
+					endAt: z.coerce.date().optional(),
+				})
+				.refine(
+					(data) => {
+						if (data.startAt && data.endAt) {
+							return data.startAt < data.endAt;
+						}
+						return true;
+					},
+					{
+						message: "startAt must be before endAt",
+						path: ["startAt"],
+					}
+				)
+		),
+		describeRoute({
+			summary: "Update driver calendar event",
+			description: "Update an existing calendar event for a driver",
+			tags: ["VTC - Fleet", "VTC - Calendar"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const eventId = c.req.param("eventId");
+			const data = c.req.valid("json");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			// Verify event exists and belongs to this driver
+			const existingEvent = await db.driverCalendarEvent.findFirst({
+				where: {
+					id: eventId,
+					driverId,
+					organizationId,
+				},
+			});
+
+			if (!existingEvent) {
+				throw new HTTPException(404, {
+					message: "Calendar event not found",
+				});
+			}
+
+			// Validate dates if only one is provided
+			const newStartAt = data.startAt ?? existingEvent.startAt;
+			const newEndAt = data.endAt ?? existingEvent.endAt;
+			if (newStartAt >= newEndAt) {
+				throw new HTTPException(400, {
+					message: "startAt must be before endAt",
+				});
+			}
+
+			const event = await db.driverCalendarEvent.update({
+				where: { id: eventId },
+				data: {
+					eventType: data.eventType,
+					title: data.title,
+					notes: data.notes,
+					startAt: data.startAt,
+					endAt: data.endAt,
+				},
+			});
+
+			return c.json(event);
+		}
+	)
+
+	// Delete calendar event
+	.delete(
+		"/:id/calendar-events/:eventId",
+		describeRoute({
+			summary: "Delete driver calendar event",
+			description: "Delete a calendar event for a driver",
+			tags: ["VTC - Fleet", "VTC - Calendar"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const eventId = c.req.param("eventId");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			// Verify event exists and belongs to this driver
+			const existingEvent = await db.driverCalendarEvent.findFirst({
+				where: {
+					id: eventId,
+					driverId,
+					organizationId,
+				},
+			});
+
+			if (!existingEvent) {
+				throw new HTTPException(404, {
+					message: "Calendar event not found",
+				});
+			}
+
+			await db.driverCalendarEvent.delete({
+				where: { id: eventId },
+			});
+
+			return c.json({ success: true });
+		}
 	);
