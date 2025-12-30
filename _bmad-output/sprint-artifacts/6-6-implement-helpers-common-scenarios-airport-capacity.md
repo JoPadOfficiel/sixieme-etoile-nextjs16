@@ -1,7 +1,7 @@
 # Story 6.6: Implement Helpers for Common Scenarios (Airport & Capacity)
 
 **Epic:** 6 - Quotes & Operator Cockpit  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** Medium  
 **Estimated Points:** 5
 

@@ -1,7 +1,7 @@
 # Story 15.4 – Use Vehicle Category Default Rates for Dynamic Pricing
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** ✅ Done  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 2 Story Points  
 **Created:** 2025-12-02  

@@ -1,7 +1,7 @@
 # Story 9.3: Settings → Pricing – Optional Fees Catalogue
 
 **Epic:** Epic 9 – Advanced Pricing Configuration & Reporting  
-**Status:** drafted  
+**Status:** done
 **Created:** 2025-11-27  
 **Updated:** 2025-11-27  
 **Priority:** High  

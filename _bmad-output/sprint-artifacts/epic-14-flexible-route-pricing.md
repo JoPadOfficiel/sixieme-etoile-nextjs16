@@ -1,6 +1,6 @@
 # Epic 14 - Flexible Route Pricing System
 
-**Status:** contexted  
+**Status:** contexted
 **Created:** 2025-12-01  
 **Author:** BMAD Orchestrator
 

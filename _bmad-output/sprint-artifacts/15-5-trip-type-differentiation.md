@@ -1,7 +1,7 @@
 # Story 15.5 – Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** ✅ Done  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2025-12-02  

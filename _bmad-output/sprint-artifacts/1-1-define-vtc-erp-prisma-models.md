@@ -1,6 +1,6 @@
 # Story 1.1: Define VTC ERP Prisma Models
 
-Status: review
+Status: done
 
 ## Story
 

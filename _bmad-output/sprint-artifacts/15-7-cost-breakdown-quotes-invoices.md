@@ -1,7 +1,7 @@
 # Story 15.7 – Propagate Cost Breakdown to Quotes and Invoices
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** ✅ Done  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2025-12-02  

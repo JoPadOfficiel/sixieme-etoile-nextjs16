@@ -1,7 +1,7 @@
 # Story 16.3 – Intégration des Zones dans le Calcul Dynamique
 
 **Epic:** Epic 16 - Refactorisation du Système de Devis par Type de Trajet  
-**Status:** Ready for Dev  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2025-12-02  

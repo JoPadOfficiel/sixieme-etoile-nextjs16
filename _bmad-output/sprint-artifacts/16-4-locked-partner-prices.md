@@ -1,7 +1,7 @@
 # Story 16.4 – Prix Bloqués pour Agences Partenaires
 
 **Epic:** Epic 16 - Refactorisation du Système de Devis par Type de Trajet  
-**Status:** Ready for Dev  
+**Status:** done
 **Priority:** Medium  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2025-12-02  

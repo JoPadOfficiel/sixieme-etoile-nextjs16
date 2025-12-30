@@ -1,7 +1,7 @@
 # Story 15.1 – Integrate Google Routes API for Real Toll Costs
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** Ready for Development  
+**Status:** done
 **Priority:** Critical  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2025-12-02

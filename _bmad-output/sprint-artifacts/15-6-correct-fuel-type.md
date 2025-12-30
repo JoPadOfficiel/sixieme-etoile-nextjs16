@@ -1,7 +1,7 @@
 # Story 15.6 – Use Correct Fuel Type from Vehicle/Category
 
 **Epic:** Epic 15: Pricing Engine Accuracy & Real Cost Integration  
-**Status:** ✅ Done  
+**Status:** done
 **Priority:** High  
 **Estimated Effort:** 2 Story Points  
 **Created:** 2025-12-02  

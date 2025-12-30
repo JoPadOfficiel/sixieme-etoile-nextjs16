@@ -1,7 +1,7 @@
 # Story 9.2: Settings → Pricing – Advanced Rate Modifiers
 
 **Epic:** Epic 9 – Advanced Pricing Configuration & Reporting  
-**Status:** ready-for-dev  
+**Status:** done
 **Created:** 2025-11-27  
 **Updated:** 2025-11-27  
 **Priority:** High  

@@ -1,6 +1,6 @@
 # Story 3.4: Apply Engagement Rule for Partner Grid Trips
 
-Status: **done** ✅
+Status: done
 
 Completed: 2025-01-26
 Branch: `feature/3-4-engagement-rule-partner-grid-pricing`
