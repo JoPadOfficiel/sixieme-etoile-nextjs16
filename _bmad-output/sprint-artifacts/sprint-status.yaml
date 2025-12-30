@@ -2,11 +2,11 @@
 # This file tracks implementation progress (epics & stories) for Phase 3.
 # It will normally be (re)généré par le workflow BMad `sprint-planning`.
 
-# generated: 2025-11-25T18:24:00+01:00
+# generated: 2025-12-30T12:48:00Z
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
-# story_location: docs/sprint-artifacts
+# story_location: _bmad-output/sprint-artifacts
 
 # STATUS DEFINITIONS:
 # ==================
@@ -33,11 +33,11 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM/Dev review, then move to 'done'
 
-generated: "2025-11-25T18:24:00+01:00"
+generated: "2025-12-30T12:48:00Z"
 project: "sixieme-etoile-nextjs16"
 project_key: "file-system-local"
 tracking_system: "file-system"
-story_location: "docs/sprint-artifacts"
+story_location: "_bmad-output/sprint-artifacts"
 
 development_status:
   epic-1: contexted
