@@ -292,6 +292,14 @@ enum ZoneMultiplierAggregationStrategy {
   AVERAGE // (pickup + dropoff) / 2 - average of both
 }
 
+/// Story 17.3: Staffing selection policy
+/// Determines how the system selects the best staffing plan when RSE violations are detected
+enum StaffingSelectionPolicy {
+  CHEAPEST // Select plan with lowest additional cost
+  FASTEST // Select plan that minimizes total duration
+  PREFER_INTERNAL // Prefer internal options (double crew over relay driver)
+}
+
 /// Route direction for zone-to-zone pricing
 enum RouteDirection {
   BIDIRECTIONAL
@@ -1053,6 +1061,11 @@ model OrganizationPricingSettings {
   // Determines how pickup and dropoff zone multipliers are combined
   // null = use MAX (current behaviour for backward compatibility)
   zoneMultiplierAggregationStrategy ZoneMultiplierAggregationStrategy?
+
+  // Story 17.3: Staffing selection policy
+  // Determines how the system selects the best staffing plan when RSE violations are detected
+  // null = use CHEAPEST (default)
+  staffingSelectionPolicy StaffingSelectionPolicy?
 
   // Metadata
   createdAt DateTime @default(now())

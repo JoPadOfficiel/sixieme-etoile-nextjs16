@@ -29,6 +29,15 @@ import {
 	type TollResult,
 	type TollSource,
 } from "./toll-service";
+import {
+	integrateComplianceInPricing,
+	type ComplianceValidationInput,
+	type RSERules,
+	type AlternativeCostParameters,
+	type RegulatoryCategory,
+	DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+	type StaffingSelectionPolicy as ComplianceStaffingPolicy,
+} from "./compliance-validator";
 
 // Europe/Paris timezone constant
 const PARIS_TZ = "Europe/Paris";
@@ -370,6 +379,8 @@ export interface OrganizationPricingSettings {
 	zoneConflictStrategy?: ZoneConflictStrategy | null;
 	// Story 17.2: Zone multiplier aggregation strategy
 	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy | null;
+	// Story 17.3: Staffing selection policy
+	staffingSelectionPolicy?: StaffingSelectionPolicy | null;
 }
 
 // ============================================================================
@@ -803,6 +814,216 @@ export interface ExcursionLeg {
 	};
 }
 
+// ============================================================================
+// Story 17.3: Compliance Plan Types
+// ============================================================================
+
+/**
+ * Story 17.3: Staffing plan type
+ */
+export type StaffingPlanType = 'DOUBLE_CREW' | 'RELAY_DRIVER' | 'MULTI_DAY' | 'NONE';
+
+/**
+ * Story 17.3: Staffing selection policy
+ */
+export type StaffingSelectionPolicy = 'CHEAPEST' | 'FASTEST' | 'PREFER_INTERNAL';
+
+/**
+ * Story 17.3: Compliance-driven staffing plan
+ * Automatically selected when RSE violations are detected for heavy vehicles
+ */
+export interface CompliancePlan {
+	/** Type of staffing plan applied */
+	planType: StaffingPlanType;
+	/** Whether a staffing plan was required due to violations */
+	isRequired: boolean;
+	/** Total additional cost in EUR */
+	additionalCost: number;
+	/** Breakdown of additional costs */
+	costBreakdown: {
+		extraDriverCost: number;
+		hotelCost: number;
+		mealAllowance: number;
+		otherCosts: number;
+	};
+	/** Adjusted schedule with staffing plan */
+	adjustedSchedule: {
+		daysRequired: number;
+		driversRequired: number;
+		hotelNightsRequired: number;
+	};
+	/** Original violations that triggered the plan */
+	originalViolations: Array<{
+		type: string;
+		message: string;
+		actual: number;
+		limit: number;
+	}>;
+	/** Reason for selecting this plan */
+	selectedReason: string;
+}
+
+/**
+ * Story 17.3: Input for compliance integration in pricing
+ */
+export interface ComplianceIntegrationInput {
+	/** Organization ID for loading RSE rules */
+	organizationId: string;
+	/** Vehicle category ID */
+	vehicleCategoryId: string;
+	/** Regulatory category (LIGHT or HEAVY) */
+	regulatoryCategory: RegulatoryCategory;
+	/** License category ID (optional) */
+	licenseCategoryId?: string;
+	/** Trip analysis with segment data */
+	tripAnalysis: TripAnalysis;
+	/** Pickup time */
+	pickupAt: Date;
+	/** Estimated dropoff time (optional) */
+	estimatedDropoffAt?: Date;
+	/** RSE rules (optional, will use defaults if not provided) */
+	rules?: RSERules | null;
+	/** Cost parameters for alternatives (optional, will use defaults) */
+	costParameters?: AlternativeCostParameters;
+	/** Staffing selection policy (optional, defaults to CHEAPEST) */
+	staffingSelectionPolicy?: StaffingSelectionPolicy;
+}
+
+/**
+ * Story 17.3: Result of compliance integration
+ */
+export interface ComplianceIntegrationResult {
+	/** Updated trip analysis with compliancePlan */
+	tripAnalysis: TripAnalysis;
+	/** Additional cost from staffing plan (0 if no plan needed) */
+	additionalStaffingCost: number;
+	/** Applied rule for transparency */
+	appliedRule: AppliedRule | null;
+}
+
+/**
+ * Story 17.3: Integrate compliance validation into pricing
+ * Checks for RSE violations and automatically selects the best staffing plan
+ * 
+ * @param input - Compliance integration input
+ * @returns Updated trip analysis with compliance plan and additional costs
+ */
+export function integrateComplianceIntoPricing(
+	input: ComplianceIntegrationInput,
+): ComplianceIntegrationResult {
+	// Skip compliance for light vehicles
+	if (input.regulatoryCategory !== "HEAVY") {
+		return {
+			tripAnalysis: {
+				...input.tripAnalysis,
+				compliancePlan: null,
+			},
+			additionalStaffingCost: 0,
+			appliedRule: null,
+		};
+	}
+
+	// Build compliance validation input
+	const complianceInput: ComplianceValidationInput = {
+		organizationId: input.organizationId,
+		vehicleCategoryId: input.vehicleCategoryId,
+		regulatoryCategory: input.regulatoryCategory,
+		licenseCategoryId: input.licenseCategoryId,
+		tripAnalysis: input.tripAnalysis,
+		pickupAt: input.pickupAt,
+		estimatedDropoffAt: input.estimatedDropoffAt,
+	};
+
+	// Get staffing policy (default to CHEAPEST)
+	const policy: ComplianceStaffingPolicy = input.staffingSelectionPolicy ?? "CHEAPEST";
+
+	// Run compliance integration
+	const { complianceResult, staffingSelection } = integrateComplianceInPricing(
+		complianceInput,
+		input.rules ?? null,
+		input.costParameters ?? DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+		policy,
+	);
+
+	// If no staffing plan needed (compliant trip)
+	if (!staffingSelection.isRequired || !staffingSelection.selectedPlan) {
+		const compliancePlan: CompliancePlan = {
+			planType: "NONE",
+			isRequired: false,
+			additionalCost: 0,
+			costBreakdown: {
+				extraDriverCost: 0,
+				hotelCost: 0,
+				mealAllowance: 0,
+				otherCosts: 0,
+			},
+			adjustedSchedule: {
+				daysRequired: 1,
+				driversRequired: 1,
+				hotelNightsRequired: 0,
+			},
+			originalViolations: [],
+			selectedReason: staffingSelection.selectionReason,
+		};
+
+		return {
+			tripAnalysis: {
+				...input.tripAnalysis,
+				compliancePlan,
+			},
+			additionalStaffingCost: 0,
+			appliedRule: null,
+		};
+	}
+
+	// Build compliance plan from selected alternative
+	const selectedPlan = staffingSelection.selectedPlan;
+	const compliancePlan: CompliancePlan = {
+		planType: selectedPlan.type as StaffingPlanType,
+		isRequired: true,
+		additionalCost: selectedPlan.additionalCost.total,
+		costBreakdown: {
+			extraDriverCost: selectedPlan.additionalCost.breakdown.extraDriverCost,
+			hotelCost: selectedPlan.additionalCost.breakdown.hotelCost,
+			mealAllowance: selectedPlan.additionalCost.breakdown.mealAllowance,
+			otherCosts: selectedPlan.additionalCost.breakdown.otherCosts,
+		},
+		adjustedSchedule: {
+			daysRequired: selectedPlan.adjustedSchedule.daysRequired,
+			driversRequired: selectedPlan.adjustedSchedule.driversRequired,
+			hotelNightsRequired: selectedPlan.adjustedSchedule.hotelNightsRequired,
+		},
+		originalViolations: staffingSelection.originalViolations.map(v => ({
+			type: v.type,
+			message: v.message,
+			actual: v.actual,
+			limit: v.limit,
+		})),
+		selectedReason: staffingSelection.selectionReason,
+	};
+
+	// Build applied rule for transparency
+	const appliedRule: AppliedRule = {
+		type: "COMPLIANCE_STAFFING",
+		description: `RSE compliance: ${selectedPlan.title} - ${staffingSelection.selectionReason}`,
+		planType: selectedPlan.type,
+		additionalCost: selectedPlan.additionalCost.total,
+		costBreakdown: selectedPlan.additionalCost.breakdown,
+		adjustedSchedule: selectedPlan.adjustedSchedule,
+		violationsResolved: staffingSelection.originalViolations.length,
+		policy: policy,
+	};
+
+	return {
+		tripAnalysis: {
+			...input.tripAnalysis,
+			compliancePlan,
+		},
+		additionalStaffingCost: selectedPlan.additionalCost.total,
+		appliedRule,
+	};
+}
+
 /**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
@@ -844,6 +1065,9 @@ export interface TripAnalysis {
 	// Story 15.2: Fuel consumption source for transparency
 	fuelConsumptionSource?: FuelConsumptionSource;
 	fuelConsumptionL100km?: number;
+	
+	// Story 17.3: Compliance-driven staffing plan
+	compliancePlan?: CompliancePlan | null;
 }
 
 /**

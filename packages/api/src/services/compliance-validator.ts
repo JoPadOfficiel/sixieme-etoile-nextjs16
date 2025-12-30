@@ -1073,3 +1073,171 @@ export function generateAlternatives(
 			: "No alternatives available for this violation pattern",
 	};
 }
+
+// ============================================================================
+// Story 17.3: Staffing Selection Policy
+// ============================================================================
+
+/**
+ * Story 17.3: Staffing selection policy type
+ */
+export type StaffingSelectionPolicy = "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL";
+
+/**
+ * Story 17.3: Result of automatic staffing selection
+ */
+export interface AutomaticStaffingSelectionResult {
+	/** The selected staffing plan, or null if no plan needed/available */
+	selectedPlan: AlternativeOption | null;
+	/** Whether a staffing plan was required due to violations */
+	isRequired: boolean;
+	/** Reason for the selection */
+	selectionReason: string;
+	/** All alternatives that were considered */
+	alternativesConsidered: AlternativeOption[];
+	/** Original violations that triggered the selection */
+	originalViolations: ComplianceViolation[];
+}
+
+/**
+ * Story 17.3: Select the best staffing plan according to the configured policy
+ * 
+ * @param alternativesResult - Result from generateAlternatives()
+ * @param policy - The staffing selection policy (CHEAPEST, FASTEST, PREFER_INTERNAL)
+ * @returns The selected plan with selection reason
+ */
+export function selectBestStaffingPlan(
+	alternativesResult: AlternativesGenerationResult,
+	policy: StaffingSelectionPolicy = "CHEAPEST",
+): AutomaticStaffingSelectionResult {
+	// If no alternatives needed (compliant trip)
+	if (!alternativesResult.hasAlternatives || alternativesResult.alternatives.length === 0) {
+		return {
+			selectedPlan: null,
+			isRequired: false,
+			selectionReason: "No staffing plan required - trip is compliant",
+			alternativesConsidered: [],
+			originalViolations: alternativesResult.originalViolations,
+		};
+	}
+
+	// Filter to only feasible and compliant alternatives
+	const feasibleAlternatives = alternativesResult.alternatives.filter(
+		a => a.isFeasible && a.wouldBeCompliant
+	);
+
+	if (feasibleAlternatives.length === 0) {
+		// No feasible alternatives - return the best non-feasible one for information
+		const bestNonFeasible = alternativesResult.alternatives[0];
+		return {
+			selectedPlan: bestNonFeasible || null,
+			isRequired: true,
+			selectionReason: "No feasible staffing plan available - manual intervention required",
+			alternativesConsidered: alternativesResult.alternatives,
+			originalViolations: alternativesResult.originalViolations,
+		};
+	}
+
+	let selectedPlan: AlternativeOption;
+	let selectionReason: string;
+
+	switch (policy) {
+		case "CHEAPEST":
+			// Sort by cost ascending
+			feasibleAlternatives.sort((a, b) => a.additionalCost.total - b.additionalCost.total);
+			selectedPlan = feasibleAlternatives[0];
+			selectionReason = `Selected ${selectedPlan.type} as lowest cost option (€${selectedPlan.additionalCost.total})`;
+			break;
+
+		case "FASTEST":
+			// Sort by days required, then by drivers required (fewer = faster)
+			feasibleAlternatives.sort((a, b) => {
+				const daysDiff = a.adjustedSchedule.daysRequired - b.adjustedSchedule.daysRequired;
+				if (daysDiff !== 0) return daysDiff;
+				return a.adjustedSchedule.driversRequired - b.adjustedSchedule.driversRequired;
+			});
+			selectedPlan = feasibleAlternatives[0];
+			selectionReason = `Selected ${selectedPlan.type} as fastest option (${selectedPlan.adjustedSchedule.daysRequired} day(s))`;
+			break;
+
+		case "PREFER_INTERNAL":
+			// Prefer DOUBLE_CREW over RELAY_DRIVER over MULTI_DAY
+			const priorityOrder: AlternativeType[] = ["DOUBLE_CREW", "MULTI_DAY", "RELAY_DRIVER"];
+			feasibleAlternatives.sort((a, b) => {
+				const aPriority = priorityOrder.indexOf(a.type);
+				const bPriority = priorityOrder.indexOf(b.type);
+				if (aPriority !== bPriority) return aPriority - bPriority;
+				// If same type, prefer cheaper
+				return a.additionalCost.total - b.additionalCost.total;
+			});
+			selectedPlan = feasibleAlternatives[0];
+			selectionReason = `Selected ${selectedPlan.type} as preferred internal option`;
+			break;
+
+		default:
+			// Default to cheapest
+			feasibleAlternatives.sort((a, b) => a.additionalCost.total - b.additionalCost.total);
+			selectedPlan = feasibleAlternatives[0];
+			selectionReason = `Selected ${selectedPlan.type} as default (lowest cost)`;
+	}
+
+	return {
+		selectedPlan,
+		isRequired: true,
+		selectionReason,
+		alternativesConsidered: alternativesResult.alternatives,
+		originalViolations: alternativesResult.originalViolations,
+	};
+}
+
+/**
+ * Story 17.3: Complete compliance integration for pricing
+ * Validates compliance, generates alternatives, and selects the best plan
+ * 
+ * @param input - Compliance validation input
+ * @param rules - RSE rules to validate against
+ * @param costParameters - Cost parameters for alternative calculations
+ * @param policy - Staffing selection policy
+ * @returns Complete result with selected staffing plan
+ */
+export function integrateComplianceInPricing(
+	input: ComplianceValidationInput,
+	rules: RSERules | null,
+	costParameters: AlternativeCostParameters = DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+	policy: StaffingSelectionPolicy = "CHEAPEST",
+): {
+	complianceResult: ComplianceValidationResult;
+	staffingSelection: AutomaticStaffingSelectionResult;
+} {
+	// Step 1: Validate compliance
+	const complianceResult = validateHeavyVehicleCompliance(input, rules);
+
+	// Step 2: If compliant, no staffing needed
+	if (complianceResult.isCompliant) {
+		return {
+			complianceResult,
+			staffingSelection: {
+				selectedPlan: null,
+				isRequired: false,
+				selectionReason: "No staffing plan required - trip is compliant",
+				alternativesConsidered: [],
+				originalViolations: [],
+			},
+		};
+	}
+
+	// Step 3: Generate alternatives
+	const alternativesResult = generateAlternatives({
+		complianceResult,
+		costParameters,
+		rules,
+	});
+
+	// Step 4: Select best plan according to policy
+	const staffingSelection = selectBestStaffingPlan(alternativesResult, policy);
+
+	return {
+		complianceResult,
+		staffingSelection,
+	};
+}
