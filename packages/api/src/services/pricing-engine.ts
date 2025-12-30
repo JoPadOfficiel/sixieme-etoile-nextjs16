@@ -1071,6 +1071,44 @@ export interface TripAnalysis {
 }
 
 /**
+ * Story 17.5: Calculate estimated end time for a quote
+ * Used for driver availability detection and weighted day/night rate calculation
+ * 
+ * @param pickupAt - The pickup time as a Date object
+ * @param tripAnalysis - The trip analysis containing duration information
+ * @returns The estimated end time, or null if duration is not available
+ */
+export function calculateEstimatedEndAt(
+	pickupAt: Date,
+	tripAnalysis: TripAnalysis | null | undefined
+): Date | null {
+	if (!tripAnalysis) {
+		return null;
+	}
+
+	// Get base duration from tripAnalysis
+	let totalMinutes = tripAnalysis.totalDurationMinutes;
+
+	// If compliance plan requires multi-day, adjust duration
+	// Multi-day missions: estimate end as daysRequired * 24 hours from pickup
+	if (tripAnalysis.compliancePlan?.planType === "MULTI_DAY") {
+		const daysRequired = tripAnalysis.compliancePlan.adjustedSchedule?.daysRequired;
+		if (daysRequired && daysRequired > 0) {
+			totalMinutes = daysRequired * 24 * 60;
+		}
+	}
+
+	if (!totalMinutes || totalMinutes <= 0) {
+		return null;
+	}
+
+	// Add duration to pickupAt
+	const endAt = new Date(pickupAt);
+	endAt.setMinutes(endAt.getMinutes() + totalMinutes);
+	return endAt;
+}
+
+/**
  * Story 4.5: Vehicle selection information for transparency
  */
 export interface VehicleSelectionInfo {

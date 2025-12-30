@@ -137,7 +137,7 @@ development_status:
   17-2-configurable-zone-multiplier-aggregation-strategy: done
   17-3-automatic-compliance-driven-staffing-integration: done
   17-4-configurable-staffing-cost-parameters: done
-  17-5-quote-estimated-end-time-estimatedendat: backlog
+  17-5-quote-estimated-end-time-estimatedendat: done
   17-6-driver-calendar-events-model: backlog
   17-7-driver-availability-overlap-detection: backlog
   17-8-weighted-day-night-rate-application: backlog

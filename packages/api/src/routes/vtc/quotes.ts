@@ -99,6 +99,13 @@ const createQuoteSchema = z.object({
 		.nullable()
 		.describe("Quote validity date in Europe/Paris business time"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
+	// Story 17.5: Estimated end time for driver availability detection
+	estimatedEndAt: z
+		.string()
+		.datetime()
+		.optional()
+		.nullable()
+		.describe("Estimated end time calculated from pickupAt + totalDurationMinutes"),
 }).superRefine((data, ctx) => {
 	// Story 16.1: Conditional validation based on trip type
 	
@@ -170,6 +177,13 @@ const updateQuoteSchema = z.object({
 		.optional()
 		.nullable()
 		.describe("Quote validity date in Europe/Paris business time"),
+	// Story 17.5: Estimated end time for driver availability detection
+	estimatedEndAt: z
+		.string()
+		.datetime()
+		.optional()
+		.nullable()
+		.describe("Estimated end time calculated from pickupAt + totalDurationMinutes"),
 });
 
 const listQuotesSchema = z.object({
@@ -407,6 +421,8 @@ export const quotesRouter = new Hono()
 							| undefined,
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
 						notes: data.notes,
+						// Story 17.5: Estimated end time for driver availability detection
+						estimatedEndAt: data.estimatedEndAt ? new Date(data.estimatedEndAt) : null,
 						status: "DRAFT",
 					},
 					organizationId,
@@ -585,6 +601,10 @@ export const quotesRouter = new Hono()
 					...(data.notes !== undefined && { notes: data.notes }),
 					...(data.validUntil !== undefined && {
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
+					}),
+					// Story 17.5: Estimated end time for driver availability detection
+					...(data.estimatedEndAt !== undefined && {
+						estimatedEndAt: data.estimatedEndAt ? new Date(data.estimatedEndAt) : null,
 					}),
 				},
 				include: {

@@ -22,6 +22,7 @@ import {
 	resolveFuelConsumption,
 	calculateExcursionLegs,
 	buildExcursionTripAnalysis,
+	calculateEstimatedEndAt,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
@@ -845,7 +846,20 @@ export const pricingCalculateRouter = new Hono()
 				);
 			}
 
-			return c.json(result);
+			// Story 17.5: Calculate estimated end time for driver availability detection
+			let estimatedEndAt: string | null = null;
+			if (data.pickupAt && result.tripAnalysis) {
+				const pickupDate = new Date(data.pickupAt);
+				const endAt = calculateEstimatedEndAt(pickupDate, result.tripAnalysis);
+				if (endAt) {
+					estimatedEndAt = endAt.toISOString();
+				}
+			}
+
+			return c.json({
+				...result,
+				estimatedEndAt,
+			});
 		},
 	)
 

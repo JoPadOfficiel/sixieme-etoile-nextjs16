@@ -1339,6 +1339,9 @@ model Quote {
   // Validity
   validUntil DateTime?
 
+  // Story 17.5: Estimated end time for driver availability detection
+  estimatedEndAt DateTime?
+
   // Notes
   notes String?
 
