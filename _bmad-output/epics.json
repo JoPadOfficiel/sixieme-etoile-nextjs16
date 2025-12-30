@@ -1,0 +1,602 @@
+[
+  {
+    "epic": "1",
+    "title": "VTC ERP Foundation & Data Model Setup",
+    "stories": [
+      {
+        "id": "1.1",
+        "title": "Define VTC ERP Prisma Models"
+      },
+      {
+        "id": "1.2",
+        "title": "Enforce Organization-Level Multi-Tenancy"
+      },
+      {
+        "id": "1.3",
+        "title": "Implement EUR-Only Monetary Representation"
+      },
+      {
+        "id": "1.4",
+        "title": "Implement Europe/Paris Business Time Strategy"
+      },
+      {
+        "id": "1.5",
+        "title": "Integration Settings Storage for Google Maps & CollectAPI"
+      }
+    ]
+  },
+  {
+    "epic": "2",
+    "title": "CRM & Partner Contracts",
+    "stories": [
+      {
+        "id": "2.1",
+        "title": "Implement Contact Model & Basic CRM UI"
+      },
+      {
+        "id": "2.2",
+        "title": "Store Partner Contract Data & Rate Grid Links"
+      },
+      {
+        "id": "2.3",
+        "title": "Allow Safe Reclassification Between Partner and Private"
+      },
+      {
+        "id": "2.4",
+        "title": "Link Quotes and Invoices to Contacts & Partner Agencies"
+      },
+      {
+        "id": "2.5",
+        "title": "Expose Commercial Context in CRM Views"
+      }
+    ]
+  },
+  {
+    "epic": "3",
+    "title": "Zone Engine & Partner Fixed Grids (Method 1)",
+    "stories": [
+      {
+        "id": "3.1",
+        "title": "Implement PricingZone Model & Zones Editor UI"
+      },
+      {
+        "id": "3.2",
+        "title": "Implement ZoneRoute Model & Grid Routes Editor"
+      },
+      {
+        "id": "3.3",
+        "title": "Implement Excursion & Dispo Forfait Configuration"
+      },
+      {
+        "id": "3.4",
+        "title": "Apply Engagement Rule for Partner Grid Trips"
+      },
+      {
+        "id": "3.5",
+        "title": "Fallback to Dynamic Pricing When No Grid Match Exists"
+      },
+      {
+        "id": "3.6",
+        "title": "Visualise Grid Coverage and Gaps"
+      }
+    ]
+  },
+  {
+    "epic": "4",
+    "title": "Dynamic Pricing & Shadow Calculation (Method 2)",
+    "stories": [
+      {
+        "id": "4.1",
+        "title": "Implement Base Dynamic Price Calculation"
+      },
+      {
+        "id": "4.2",
+        "title": "Add Operational Cost Components to Internal Cost"
+      },
+      {
+        "id": "4.3",
+        "title": "Apply Multipliers and Target Margins"
+      },
+      {
+        "id": "4.4",
+        "title": "Allow Operator Override with Live Profitability Feedback"
+      },
+      {
+        "id": "4.5",
+        "title": "Implement Multi-Base Candidate Selection & Pre-Filter"
+      },
+      {
+        "id": "4.6",
+        "title": "Implement Shadow Calculation Segments A/B/C & tripAnalysis Storage"
+      },
+      {
+        "id": "4.7",
+        "title": "Compute & Expose Profitability Indicator"
+      },
+      {
+        "id": "4.8",
+        "title": "Use Fuel Price Cache in Pricing Engine"
+      }
+    ]
+  },
+  {
+    "epic": "5",
+    "title": "Fleet & RSE Compliance Engine",
+    "stories": [
+      {
+        "id": "5.1",
+        "title": "Implement Fleet Models & Fleet/Bases UI"
+      },
+      {
+        "id": "5.2",
+        "title": "Implement Drivers, Licence Categories & RSE Rules"
+      },
+      {
+        "id": "5.3",
+        "title": "Implement Heavy-Vehicle Compliance Validator"
+      },
+      {
+        "id": "5.4",
+        "title": "Suggest Alternative Staffing & Scheduling Options"
+      },
+      {
+        "id": "5.5",
+        "title": "Track RSE Counters Per Driver & Licence Regime"
+      },
+      {
+        "id": "5.6",
+        "title": "Surface Compliance Statuses & Logs in UI"
+      }
+    ]
+  },
+  {
+    "epic": "6",
+    "title": "Quotes & Operator Cockpit",
+    "stories": [
+      {
+        "id": "6.1",
+        "title": "Implement Quotes List with Status & Profitability"
+      },
+      {
+        "id": "6.2",
+        "title": "Implement Create Quote 3-Column Cockpit"
+      },
+      {
+        "id": "6.3",
+        "title": "Implement Quote Detail with Stored tripAnalysis"
+      },
+      {
+        "id": "6.4",
+        "title": "Implement Quote Lifecycle & Status Transitions"
+      },
+      {
+        "id": "6.5",
+        "title": "Implement Blocking & Non-Blocking Alerts for Impossible or Risky Trips"
+      },
+      {
+        "id": "6.6",
+        "title": "Implement Helpers for Common Scenarios (Airport & Capacity)"
+      },
+      {
+        "id": "6.7",
+        "title": "Integrate TripTransparencyPanel & Profitability Indicator Across Screens"
+      },
+      {
+        "id": "6.8",
+        "title": "Manual Editing of Cost Components in Trip Transparency"
+      }
+    ]
+  },
+  {
+    "epic": "7",
+    "title": "Invoicing & Documents",
+    "stories": [
+      {
+        "id": "7.1",
+        "title": "Implement Invoice & InvoiceLine Models and Invoices UI"
+      },
+      {
+        "id": "7.2",
+        "title": "Convert Accepted Quote to Invoice with Deep-Copy Semantics"
+      },
+      {
+        "id": "7.3",
+        "title": "Implement VAT Breakdown for Transport & Ancillary Services"
+      },
+      {
+        "id": "7.4",
+        "title": "Integrate Commission Calculation into Invoices"
+      },
+      {
+        "id": "7.5",
+        "title": "Implement Document Generation & Storage for Quotes, Invoices & Mission Orders"
+      }
+    ]
+  },
+  {
+    "epic": "8",
+    "title": "Dispatch & Strategic Optimisation",
+    "stories": [
+      {
+        "id": "8.1",
+        "title": "Implement Dispatch Screen Layout (Missions List + Map + Transparency)"
+      },
+      {
+        "id": "8.2",
+        "title": "Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score"
+      },
+      {
+        "id": "8.3",
+        "title": "Implement Multi-Base Optimisation & Visualisation"
+      },
+      {
+        "id": "8.4",
+        "title": "Detect & Suggest Trip Chaining Opportunities"
+      },
+      {
+        "id": "8.5",
+        "title": "Model & Surface Empty-Leg Opportunities"
+      },
+      {
+        "id": "8.6",
+        "title": "Integrate Subcontractor Directory & Subcontracting Suggestions"
+      },
+      {
+        "id": "8.7",
+        "title": "Surface Profitability & Compliance Badges for Missions"
+      }
+    ]
+  },
+  {
+    "epic": "9",
+    "title": "Advanced Pricing Configuration & Reporting",
+    "stories": [
+      {
+        "id": "9.1",
+        "title": "Implement Settings → Pricing – Seasonal Multipliers"
+      },
+      {
+        "id": "9.2",
+        "title": "Implement Settings → Pricing – Advanced Rate Modifiers"
+      },
+      {
+        "id": "9.3",
+        "title": "Implement Settings → Pricing – Optional Fees Catalogue"
+      },
+      {
+        "id": "9.4",
+        "title": "Implement Settings → Pricing – Promotions & Promo Codes"
+      },
+      {
+        "id": "9.5",
+        "title": "Implement Settings → Fleet & Regulatory Configuration"
+      },
+      {
+        "id": "9.6",
+        "title": "Implement Settings → Integrations (Google Maps & CollectAPI)"
+      },
+      {
+        "id": "9.7",
+        "title": "Implement Fuel Price Cache Refresh & Staleness Rules"
+      },
+      {
+        "id": "9.8",
+        "title": "Implement Basic Profitability & Yield Reporting"
+      }
+    ]
+  },
+  {
+    "epic": "10",
+    "title": "Google Maps Integration Fixes",
+    "stories": [
+      {
+        "id": "10.1",
+        "title": "Fix Google Maps Integration in Quotes & Dispatch"
+      }
+    ]
+  },
+  {
+    "epic": "11",
+    "title": "Zone Management Refactoring & UI Improvements",
+    "stories": [
+      {
+        "id": "11.1",
+        "title": "Implement Unified Zone Management with Interactive Map"
+      },
+      {
+        "id": "11.2",
+        "title": "Implement Postal Code Zone Creation"
+      },
+      {
+        "id": "11.3",
+        "title": "Integrate Zone Pricing Multipliers"
+      },
+      {
+        "id": "11.4",
+        "title": "Merge Seasonal Multipliers & Advanced Rates UI"
+      },
+      {
+        "id": "11.5",
+        "title": "Merge Optional Fees & Promotions UI"
+      },
+      {
+        "id": "11.6",
+        "title": "Implement Collapsible Main Sidebar"
+      },
+      {
+        "id": "11.7",
+        "title": "Remove Deprecated Advanced Rate Types"
+      },
+      {
+        "id": "11.8",
+        "title": "Implement Full Responsive Design Mobile Sidebar"
+      }
+    ]
+  },
+  {
+    "epic": "12",
+    "title": "Partner-Specific Pricing & Contract Enhancements",
+    "stories": [
+      {
+        "id": "12.1",
+        "title": "Implement Partner-Specific Pricing Schema"
+      },
+      {
+        "id": "12.2",
+        "title": "Implement Pricing Engine Override Support"
+      },
+      {
+        "id": "12.3",
+        "title": "Implement Partner Contract Override UI"
+      }
+    ]
+  },
+  {
+    "epic": "13",
+    "title": "Pricing UI Improvements & Partner Filtering",
+    "stories": [
+      {
+        "id": "13.1",
+        "title": "Fix Pricing UI Translations"
+      },
+      {
+        "id": "13.2",
+        "title": "Implement Pricing Pages Partner Filter"
+      }
+    ]
+  },
+  {
+    "epic": "14",
+    "title": "Flexible Route Pricing System",
+    "stories": [
+      {
+        "id": "14.1",
+        "title": "Fix Vehicle Category Dropdown Bug"
+      },
+      {
+        "id": "14.2",
+        "title": "Extend ZoneRoute Schema for Multi-Zone & Address Support"
+      },
+      {
+        "id": "14.3",
+        "title": "Update Pricing UI for Flexible Routes"
+      },
+      {
+        "id": "14.4",
+        "title": "Implement Interactive Map for Zone Selection"
+      },
+      {
+        "id": "14.5",
+        "title": "Update Pricing Engine for Multi-Zone Routes"
+      },
+      {
+        "id": "14.6",
+        "title": "Assign Rate Grids to Partners from Pricing UI"
+      }
+    ]
+  },
+  {
+    "epic": "15",
+    "title": "Pricing Engine Accuracy & Real Cost Integration",
+    "stories": [
+      {
+        "id": "15.1",
+        "title": "Integrate Google Routes API for Real Toll Costs"
+      },
+      {
+        "id": "15.2",
+        "title": "Use Vehicle-Specific Fuel Consumption in All Pricing Paths"
+      },
+      {
+        "id": "15.3",
+        "title": "Apply Vehicle Category Price Multipliers in Dynamic Pricing"
+      },
+      {
+        "id": "15.4",
+        "title": "Use Vehicle Category Default Rates for Dynamic Pricing"
+      },
+      {
+        "id": "15.5",
+        "title": "Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)"
+      },
+      {
+        "id": "15.6",
+        "title": "Use Correct Fuel Type from Vehicle/Category"
+      },
+      {
+        "id": "15.7",
+        "title": "Propagate Cost Breakdown to Quotes and Invoices"
+      },
+      {
+        "id": "15.8",
+        "title": "Validate Pricing Consistency Across Application"
+      }
+    ]
+  },
+  {
+    "epic": "16",
+    "title": "Refactorisation du Système de Devis par Type de Trajet",
+    "stories": [
+      {
+        "id": "16.1",
+        "title": "Étendre le Schéma Quote pour les Types de Trajets"
+      },
+      {
+        "id": "16.2",
+        "title": "Formulaire Dynamique par Type de Trajet"
+      },
+      {
+        "id": "16.3",
+        "title": "Intégration des Zones dans le Calcul Dynamique"
+      },
+      {
+        "id": "16.4",
+        "title": "Prix Bloqués pour Agences Partenaires"
+      },
+      {
+        "id": "16.5",
+        "title": "Simplifier l'Affichage TripTransparency"
+      },
+      {
+        "id": "16.6",
+        "title": "Calcul Prix Aller-Retour pour Transfer"
+      },
+      {
+        "id": "16.7",
+        "title": "Calcul Prix Excursion Multi-Arrêts"
+      },
+      {
+        "id": "16.8",
+        "title": "Calcul Prix Mise à Disposition"
+      },
+      {
+        "id": "16.9",
+        "title": "Support Off-Grid avec Notes Obligatoires"
+      },
+      {
+        "id": "16.10",
+        "title": "Tests E2E pour Tous les Types de Trajets"
+      }
+    ]
+  },
+  {
+    "epic": "17",
+    "title": "Advanced Zone Resolution, Compliance Integration & Driver Availability",
+    "stories": [
+      {
+        "id": "17.1",
+        "title": "Configurable Zone Conflict Resolution Strategy"
+      },
+      {
+        "id": "17.2",
+        "title": "Configurable Zone Multiplier Aggregation Strategy"
+      },
+      {
+        "id": "17.3",
+        "title": "Automatic Compliance-Driven Staffing Integration"
+      },
+      {
+        "id": "17.4",
+        "title": "Configurable Staffing Cost Parameters"
+      },
+      {
+        "id": "17.5",
+        "title": "Quote Estimated End Time (estimatedEndAt)"
+      },
+      {
+        "id": "17.6",
+        "title": "Driver Calendar Events Model"
+      },
+      {
+        "id": "17.7",
+        "title": "Driver Availability Overlap Detection"
+      },
+      {
+        "id": "17.8",
+        "title": "Weighted Day/Night Rate Application"
+      },
+      {
+        "id": "17.9",
+        "title": "Configurable Time Buckets for MAD Pricing"
+      },
+      {
+        "id": "17.10",
+        "title": "Zone Fixed Surcharges (Friction Costs)"
+      },
+      {
+        "id": "17.11",
+        "title": "Zone Topology Validation Tools"
+      },
+      {
+        "id": "17.12",
+        "title": "Driver Home Location for Deadhead Calculations"
+      },
+      {
+        "id": "17.13",
+        "title": "Route Segmentation for Multi-Zone Trips"
+      },
+      {
+        "id": "17.14",
+        "title": "Vehicle TCO Model Enrichment"
+      },
+      {
+        "id": "17.15",
+        "title": "Client Difficulty Score (Patience Tax)"
+      },
+      {
+        "id": "17.16",
+        "title": "FR Group 9 Settings UI Integration"
+      }
+    ]
+  },
+  {
+    "epic": "18",
+    "title": "Advanced Geospatial, Route Optimization & Yield Management",
+    "stories": [
+      {
+        "id": "18.1",
+        "title": "Corridor Zone Type (Highway Buffers)"
+      },
+      {
+        "id": "18.2",
+        "title": "Automatic Transfer-to-MAD Detection (Dense Zone)"
+      },
+      {
+        "id": "18.3",
+        "title": "Round-Trip to MAD Automatic Detection"
+      },
+      {
+        "id": "18.4",
+        "title": "Loss of Exploitation (Opportunity Cost) Calculation"
+      },
+      {
+        "id": "18.5",
+        "title": "Stay vs. Return Empty Scenario Comparison"
+      },
+      {
+        "id": "18.6",
+        "title": "Multi-Scenario Route Optimization (min(T), min(D), min(TCO))"
+      },
+      {
+        "id": "18.7",
+        "title": "Transversal Trip Decomposition"
+      },
+      {
+        "id": "18.8",
+        "title": "Fixed Temporal Vectors (Classic Destinations)"
+      },
+      {
+        "id": "18.9",
+        "title": "Shadow Fleet Integration (Subcontractors)"
+      },
+      {
+        "id": "18.10",
+        "title": "Hierarchical Pricing Algorithm Implementation"
+      },
+      {
+        "id": "18.11",
+        "title": "Configurable Transfer-to-MAD Thresholds"
+      }
+    ]
+  }
+]
