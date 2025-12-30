@@ -134,7 +134,7 @@ development_status:
   epic-16-retrospective: optional
   epic-17: in-progress
   17-1-configurable-zone-conflict-resolution-strategy: done
-  17-2-configurable-zone-multiplier-aggregation-strategy: backlog
+  17-2-configurable-zone-multiplier-aggregation-strategy: done
   17-3-automatic-compliance-driven-staffing-integration: backlog
   17-4-configurable-staffing-cost-parameters: backlog
   17-5-quote-estimated-end-time-estimatedendat: backlog

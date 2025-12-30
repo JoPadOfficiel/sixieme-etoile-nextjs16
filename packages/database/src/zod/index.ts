@@ -138,7 +138,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -237,6 +237,10 @@ export type ZoneTypeType = `${z.infer<typeof ZoneTypeSchema>}`
 export const ZoneConflictStrategySchema = z.enum(['PRIORITY','MOST_EXPENSIVE','CLOSEST','COMBINED']);
 
 export type ZoneConflictStrategyType = `${z.infer<typeof ZoneConflictStrategySchema>}`
+
+export const ZoneMultiplierAggregationStrategySchema = z.enum(['MAX','PICKUP_ONLY','DROPOFF_ONLY','AVERAGE']);
+
+export type ZoneMultiplierAggregationStrategyType = `${z.infer<typeof ZoneMultiplierAggregationStrategySchema>}`
 
 export const RouteDirectionSchema = z.enum(['BIDIRECTIONAL','A_TO_B','B_TO_A']);
 
@@ -904,6 +908,7 @@ export type DispoPackage = z.infer<typeof DispoPackageSchema>
  */
 export const OrganizationPricingSettingsSchema = z.object({
   zoneConflictStrategy: ZoneConflictStrategySchema.nullable(),
+  zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategySchema.nullable(),
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),

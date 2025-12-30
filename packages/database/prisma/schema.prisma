@@ -283,6 +283,15 @@ enum ZoneConflictStrategy {
   COMBINED // Filter by priority first, then by multiplier among equal-priority zones
 }
 
+/// Story 17.2: Zone multiplier aggregation strategy
+/// Determines how pickup and dropoff zone multipliers are combined
+enum ZoneMultiplierAggregationStrategy {
+  MAX // Math.max(pickup, dropoff) - use highest multiplier
+  PICKUP_ONLY // Use pickup zone multiplier only
+  DROPOFF_ONLY // Use dropoff zone multiplier only
+  AVERAGE // (pickup + dropoff) / 2 - average of both
+}
+
 /// Route direction for zone-to-zone pricing
 enum RouteDirection {
   BIDIRECTIONAL
@@ -1039,6 +1048,11 @@ model OrganizationPricingSettings {
   // Determines how to resolve conflicts when a point falls within multiple overlapping zones
   // null = use default specificity logic (POINT > RADIUS > POLYGON)
   zoneConflictStrategy ZoneConflictStrategy?
+
+  // Story 17.2: Zone multiplier aggregation strategy
+  // Determines how pickup and dropoff zone multipliers are combined
+  // null = use MAX (current behaviour for backward compatibility)
+  zoneMultiplierAggregationStrategy ZoneMultiplierAggregationStrategy?
 
   // Metadata
   createdAt DateTime @default(now())

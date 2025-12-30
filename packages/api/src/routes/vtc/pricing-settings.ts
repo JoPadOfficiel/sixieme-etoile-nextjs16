@@ -8,6 +8,9 @@ import { organizationMiddleware } from "../../middleware/organization";
 // Story 17.1: Zone conflict resolution strategy enum
 const zoneConflictStrategyEnum = z.enum(["PRIORITY", "MOST_EXPENSIVE", "CLOSEST", "COMBINED"]);
 
+// Story 17.2: Zone multiplier aggregation strategy enum
+const zoneMultiplierAggregationStrategyEnum = z.enum(["MAX", "PICKUP_ONLY", "DROPOFF_ONLY", "AVERAGE"]);
+
 // Validation schema for updating pricing settings
 const updatePricingSettingsSchema = z.object({
 	baseRatePerKm: z.number().positive().optional(),
@@ -24,6 +27,8 @@ const updatePricingSettingsSchema = z.object({
 	driverHourlyCost: z.number().positive().nullable().optional(),
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy: zoneConflictStrategyEnum.nullable().optional(),
+	// Story 17.2: Zone multiplier aggregation strategy
+	zoneMultiplierAggregationStrategy: zoneMultiplierAggregationStrategyEnum.nullable().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -44,6 +49,8 @@ function serializePricingSettings(settings: {
 	driverHourlyCost: unknown;
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy?: string | null;
+	// Story 17.2: Zone multiplier aggregation strategy
+	zoneMultiplierAggregationStrategy?: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -74,6 +81,8 @@ function serializePricingSettings(settings: {
 			: null,
 		// Story 17.1: Zone conflict resolution strategy
 		zoneConflictStrategy: settings.zoneConflictStrategy,
+		// Story 17.2: Zone multiplier aggregation strategy
+		zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

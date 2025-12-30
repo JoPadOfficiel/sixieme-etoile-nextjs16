@@ -7,6 +7,13 @@
  */
 
 import type { GeoPoint, ZoneData, ZoneConflictStrategy } from "../lib/geo-utils";
+
+// Story 17.2: Zone multiplier aggregation strategy
+export type ZoneMultiplierAggregationStrategy =
+	| "MAX"           // Math.max(pickup, dropoff) - use highest multiplier
+	| "PICKUP_ONLY"   // Use pickup zone multiplier only
+	| "DROPOFF_ONLY"  // Use dropoff zone multiplier only
+	| "AVERAGE";      // (pickup + dropoff) / 2 - average of both
 import { findZoneForPoint } from "../lib/geo-utils";
 import {
 	calculateCommission,
@@ -361,6 +368,8 @@ export interface OrganizationPricingSettings {
 	dispoOverageRatePerKm?: number;      // Default: 0.50
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy?: ZoneConflictStrategy | null;
+	// Story 17.2: Zone multiplier aggregation strategy
+	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy | null;
 }
 
 // ============================================================================
@@ -442,6 +451,7 @@ export interface MultiplierEvaluationResult {
 
 /**
  * Applied zone multiplier rule for transparency
+ * Story 17.2: Updated to include aggregation strategy information
  */
 export interface AppliedZoneMultiplierRule extends AppliedRule {
 	type: "ZONE_MULTIPLIER";
@@ -449,9 +459,13 @@ export interface AppliedZoneMultiplierRule extends AppliedRule {
 	zoneName: string;
 	zoneCode: string;
 	multiplier: number;
-	source: "pickup" | "dropoff";
+	source: "pickup" | "dropoff" | "both"; // Story 17.2: "both" for AVERAGE strategy
 	priceBefore: number;
 	priceAfter: number;
+	// Story 17.2: Aggregation strategy information
+	strategy?: ZoneMultiplierAggregationStrategy;
+	pickupZone?: { code: string; name: string; multiplier: number };
+	dropoffZone?: { code: string; name: string; multiplier: number };
 }
 
 /**
@@ -2129,44 +2143,103 @@ export function applyAllMultipliers(
 
 // ============================================================================
 // Story 11.3: Zone Pricing Multiplier Functions
+// Story 17.2: Added configurable aggregation strategy support
 // ============================================================================
 
 /**
+ * Story 17.2: Calculate effective multiplier based on aggregation strategy
+ * 
+ * @param pickupMultiplier - The pickup zone multiplier
+ * @param dropoffMultiplier - The dropoff zone multiplier
+ * @param strategy - The aggregation strategy to use (null = MAX for backward compatibility)
+ * @returns Effective multiplier and source information
+ */
+export function calculateEffectiveZoneMultiplier(
+	pickupMultiplier: number,
+	dropoffMultiplier: number,
+	strategy: ZoneMultiplierAggregationStrategy | null,
+): { multiplier: number; source: "pickup" | "dropoff" | "both" } {
+	// Default to MAX for backward compatibility
+	const effectiveStrategy = strategy ?? "MAX";
+
+	switch (effectiveStrategy) {
+		case "MAX": {
+			const isPickupHigher = pickupMultiplier >= dropoffMultiplier;
+			return {
+				multiplier: Math.max(pickupMultiplier, dropoffMultiplier),
+				source: isPickupHigher ? "pickup" : "dropoff",
+			};
+		}
+		case "PICKUP_ONLY":
+			return { multiplier: pickupMultiplier, source: "pickup" };
+		case "DROPOFF_ONLY":
+			return { multiplier: dropoffMultiplier, source: "dropoff" };
+		case "AVERAGE":
+			return {
+				multiplier: Math.round(((pickupMultiplier + dropoffMultiplier) / 2) * 1000) / 1000,
+				source: "both",
+			};
+		default:
+			// Fallback to MAX
+			return {
+				multiplier: Math.max(pickupMultiplier, dropoffMultiplier),
+				source: pickupMultiplier >= dropoffMultiplier ? "pickup" : "dropoff",
+			};
+	}
+}
+
+/**
  * Apply zone pricing multiplier based on pickup and dropoff zones
- * Uses the highest multiplier between pickup and dropoff zone (Math.max)
  * 
  * Story 16.3: Always includes ZONE_MULTIPLIER rule for transparency
+ * Story 17.2: Added configurable aggregation strategy support
  * 
  * @param basePrice - The base price before zone multiplier
  * @param pickupZone - The pickup zone data (may include priceMultiplier)
  * @param dropoffZone - The dropoff zone data (may include priceMultiplier)
+ * @param strategy - The aggregation strategy to use (null = MAX for backward compatibility)
  * @returns Zone multiplier result with adjusted price and applied rule
  */
 export function applyZoneMultiplier(
 	basePrice: number,
 	pickupZone: ZoneData | null,
 	dropoffZone: ZoneData | null,
+	strategy?: ZoneMultiplierAggregationStrategy | null,
 ): ZoneMultiplierResult {
 	const pickupMultiplier = pickupZone?.priceMultiplier ?? 1.0;
 	const dropoffMultiplier = dropoffZone?.priceMultiplier ?? 1.0;
 	
-	// Use the highest multiplier (Math.max as per zone pricing spec)
-	const effectiveMultiplier = Math.max(pickupMultiplier, dropoffMultiplier);
+	// Story 17.2: Calculate effective multiplier based on strategy
+	const { multiplier: effectiveMultiplier, source } = calculateEffectiveZoneMultiplier(
+		pickupMultiplier,
+		dropoffMultiplier,
+		strategy ?? null,
+	);
 	
-	// Determine which zone provided the multiplier
-	const isPickupHigher = pickupMultiplier >= dropoffMultiplier;
-	const sourceZone = isPickupHigher ? pickupZone : dropoffZone;
-	const source: "pickup" | "dropoff" = isPickupHigher ? "pickup" : "dropoff";
+	// Determine source zone for description
+	const sourceZone = source === "pickup" ? pickupZone : 
+		source === "dropoff" ? dropoffZone : null;
 	
 	const adjustedPrice = Math.round(basePrice * effectiveMultiplier * 100) / 100;
 	
-	// Story 16.3: Always include ZONE_MULTIPLIER rule for transparency
-	// Even if multiplier is 1.0, we want to show which zones were detected
+	// Story 17.2: Determine the effective strategy for transparency
+	const effectiveStrategy: ZoneMultiplierAggregationStrategy = strategy ?? "MAX";
+	
+	// Build description based on strategy
+	let description: string;
+	if (effectiveMultiplier === 1.0) {
+		description = `Zone multiplier: no adjustment (${pickupZone?.code ?? "UNKNOWN"} → ${dropoffZone?.code ?? "UNKNOWN"})`;
+	} else if (source === "both") {
+		description = `Zone multiplier applied: average of ${pickupZone?.name ?? "Unknown"} (${pickupMultiplier}×) and ${dropoffZone?.name ?? "Unknown"} (${dropoffMultiplier}×) = ${effectiveMultiplier}×`;
+	} else {
+		description = `Zone multiplier applied: ${sourceZone?.name ?? "Unknown"} (${effectiveMultiplier}×) [${effectiveStrategy}]`;
+	}
+	
+	// Story 16.3 + 17.2: Always include ZONE_MULTIPLIER rule for transparency
 	const appliedRule: AppliedRule = {
 		type: "ZONE_MULTIPLIER",
-		description: effectiveMultiplier === 1.0
-			? `Zone multiplier: no adjustment (${pickupZone?.code ?? "UNKNOWN"} → ${dropoffZone?.code ?? "UNKNOWN"})`
-			: `Zone multiplier applied: ${sourceZone?.name ?? "Unknown"} (${effectiveMultiplier}×)`,
+		description,
+		strategy: effectiveStrategy,
 		pickupZone: {
 			code: pickupZone?.code ?? "UNKNOWN",
 			name: pickupZone?.name ?? "Unknown",
@@ -3614,9 +3687,15 @@ function buildDynamicResult(
 		appliedRules.push(categoryMultiplierResult.appliedRule);
 	}
 
-	// Story 11.3 + 16.3: Apply zone pricing multiplier (after category multiplier)
+	// Story 11.3 + 16.3 + 17.2: Apply zone pricing multiplier (after category multiplier)
 	// Always add the zone multiplier rule for transparency
-	const zoneMultiplierResult = applyZoneMultiplier(price, pickupZone, dropoffZone);
+	// Story 17.2: Pass aggregation strategy from settings
+	const zoneMultiplierResult = applyZoneMultiplier(
+		price,
+		pickupZone,
+		dropoffZone,
+		settings.zoneMultiplierAggregationStrategy,
+	);
 	price = zoneMultiplierResult.adjustedPrice;
 	appliedRules.push(zoneMultiplierResult.appliedRule);
 

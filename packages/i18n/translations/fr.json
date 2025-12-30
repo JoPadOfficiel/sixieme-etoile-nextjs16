@@ -2732,7 +2732,9 @@
 					"wearCostPerKm": "Coût usure (€/km)",
 					"driverHourlyCost": "Coût horaire chauffeur (€/h)",
 					"zoneConflictStrategy": "Stratégie de résolution",
-					"zoneConflictStrategyHelp": "Détermine quelle zone est sélectionnée quand un point se trouve dans plusieurs zones qui se chevauchent"
+					"zoneConflictStrategyHelp": "Détermine quelle zone est sélectionnée quand un point se trouve dans plusieurs zones qui se chevauchent",
+					"zoneMultiplierAggregationStrategy": "Agrégation des multiplicateurs",
+					"zoneMultiplierAggregationStrategyHelp": "Détermine comment les multiplicateurs des zones de prise en charge et de dépose sont combinés"
 				},
 				"roundingRules": {
 					"none": "Pas d'arrondi",
@@ -2747,6 +2749,13 @@
 					"MOST_EXPENSIVE": "Plus cher (multiplicateur le plus élevé)",
 					"CLOSEST": "Plus proche (centre de zone le plus proche)",
 					"COMBINED": "Combiné (priorité puis multiplicateur)"
+				},
+				"zoneMultiplierAggregationStrategies": {
+					"default": "Par défaut (MAX)",
+					"MAX": "Maximum (le plus élevé entre prise en charge/dépose)",
+					"PICKUP_ONLY": "Prise en charge uniquement",
+					"DROPOFF_ONLY": "Dépose uniquement",
+					"AVERAGE": "Moyenne (prise en charge + dépose / 2)"
 				},
 				"save": "Enregistrer",
 				"saveSuccess": "Paramètres enregistrés avec succès",

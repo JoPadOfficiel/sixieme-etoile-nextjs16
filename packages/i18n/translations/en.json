@@ -2732,7 +2732,9 @@
 					"wearCostPerKm": "Wear Cost (€/km)",
 					"driverHourlyCost": "Driver Hourly Cost (€/h)",
 					"zoneConflictStrategy": "Resolution Strategy",
-					"zoneConflictStrategyHelp": "Determines which zone is selected when a point falls within multiple overlapping zones"
+					"zoneConflictStrategyHelp": "Determines which zone is selected when a point falls within multiple overlapping zones",
+					"zoneMultiplierAggregationStrategy": "Multiplier Aggregation",
+					"zoneMultiplierAggregationStrategyHelp": "Determines how pickup and dropoff zone multipliers are combined"
 				},
 				"roundingRules": {
 					"none": "No rounding",
@@ -2747,6 +2749,13 @@
 					"MOST_EXPENSIVE": "Most Expensive (highest multiplier)",
 					"CLOSEST": "Closest (nearest zone center)",
 					"COMBINED": "Combined (priority then multiplier)"
+				},
+				"zoneMultiplierAggregationStrategies": {
+					"default": "Default (MAX)",
+					"MAX": "Maximum (highest of pickup/dropoff)",
+					"PICKUP_ONLY": "Pickup Only",
+					"DROPOFF_ONLY": "Dropoff Only",
+					"AVERAGE": "Average (pickup + dropoff / 2)"
 				},
 				"save": "Save Settings",
 				"saveSuccess": "Settings saved successfully",

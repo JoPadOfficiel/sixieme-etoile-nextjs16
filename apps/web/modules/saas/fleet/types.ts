@@ -434,6 +434,9 @@ export interface CumulativeComplianceResult {
 // Story 17.1: Zone conflict resolution strategy
 export type ZoneConflictStrategy = "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED";
 
+// Story 17.2: Zone multiplier aggregation strategy
+export type ZoneMultiplierAggregationStrategy = "MAX" | "PICKUP_ONLY" | "DROPOFF_ONLY" | "AVERAGE";
+
 export interface OrganizationPricingSettings {
 	id: string;
 	organizationId: string;
@@ -451,6 +454,8 @@ export interface OrganizationPricingSettings {
 	driverHourlyCost: number | null;
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy: ZoneConflictStrategy | null;
+	// Story 17.2: Zone multiplier aggregation strategy
+	zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategy | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -470,6 +475,8 @@ export interface PricingSettingsFormData {
 	driverHourlyCost: number | null;
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy: ZoneConflictStrategy | null;
+	// Story 17.2: Zone multiplier aggregation strategy
+	zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategy | null;
 }
 
 export type ConfigHealthStatus = "ok" | "warning" | "error";

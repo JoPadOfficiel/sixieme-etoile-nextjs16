@@ -25,6 +25,10 @@ import {
 	getProfitabilityDescription,
 	getThresholdsFromSettings,
 	DEFAULT_PROFITABILITY_THRESHOLDS,
+	// Story 17.2: Zone multiplier aggregation functions
+	applyZoneMultiplier,
+	calculateEffectiveZoneMultiplier,
+	type ZoneMultiplierAggregationStrategy,
 	type AdvancedRateData,
 	type AppliedMultiplierRule,
 	type AppliedRule,
@@ -3557,6 +3561,167 @@ describe("pricing-engine", () => {
 				expect(result.matchedGrid).toBeNull();
 				expect(result.fallbackReason).toBe("NO_ROUTE_MATCH");
 			});
+		});
+	});
+});
+
+// ============================================================================
+// Story 17.2: Zone Multiplier Aggregation Strategy Tests
+// ============================================================================
+
+describe("Story 17.2: Zone Multiplier Aggregation Strategy", () => {
+	// Test fixtures for zone multiplier tests
+	const pickupZone: ZoneData = {
+		id: "zone-paris-20",
+		name: "Paris 20km",
+		code: "PARIS_20",
+		zoneType: "RADIUS",
+		geometry: null,
+		centerLatitude: 48.8566,
+		centerLongitude: 2.3522,
+		radiusKm: 20,
+		isActive: true,
+		priceMultiplier: 1.1,
+		priority: 1,
+	};
+
+	const dropoffZone: ZoneData = {
+		id: "zone-cdg",
+		name: "CDG Airport",
+		code: "CDG",
+		zoneType: "RADIUS",
+		geometry: null,
+		centerLatitude: 49.0097,
+		centerLongitude: 2.5479,
+		radiusKm: 5,
+		isActive: true,
+		priceMultiplier: 1.3,
+		priority: 5,
+	};
+
+	const basePrice = 100;
+
+	describe("calculateEffectiveZoneMultiplier", () => {
+		it("MAX strategy: should use highest multiplier", () => {
+			const result = calculateEffectiveZoneMultiplier(1.1, 1.3, "MAX");
+			expect(result.multiplier).toBe(1.3);
+			expect(result.source).toBe("dropoff");
+		});
+
+		it("MAX strategy: should return pickup when pickup is higher", () => {
+			const result = calculateEffectiveZoneMultiplier(1.5, 1.2, "MAX");
+			expect(result.multiplier).toBe(1.5);
+			expect(result.source).toBe("pickup");
+		});
+
+		it("PICKUP_ONLY strategy: should use pickup multiplier only", () => {
+			const result = calculateEffectiveZoneMultiplier(1.1, 1.3, "PICKUP_ONLY");
+			expect(result.multiplier).toBe(1.1);
+			expect(result.source).toBe("pickup");
+		});
+
+		it("DROPOFF_ONLY strategy: should use dropoff multiplier only", () => {
+			const result = calculateEffectiveZoneMultiplier(1.1, 1.3, "DROPOFF_ONLY");
+			expect(result.multiplier).toBe(1.3);
+			expect(result.source).toBe("dropoff");
+		});
+
+		it("AVERAGE strategy: should use average of both multipliers", () => {
+			const result = calculateEffectiveZoneMultiplier(1.1, 1.3, "AVERAGE");
+			expect(result.multiplier).toBe(1.2);
+			expect(result.source).toBe("both");
+		});
+
+		it("null strategy: should default to MAX for backward compatibility", () => {
+			const result = calculateEffectiveZoneMultiplier(1.1, 1.3, null);
+			expect(result.multiplier).toBe(1.3);
+			expect(result.source).toBe("dropoff");
+		});
+	});
+
+	describe("applyZoneMultiplier with aggregation strategy", () => {
+		it("MAX: should apply highest multiplier (1.3) to price", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "MAX");
+			expect(result.adjustedPrice).toBe(130);
+			expect(result.appliedMultiplier).toBe(1.3);
+			expect(result.appliedRule.strategy).toBe("MAX");
+			expect(result.appliedRule.source).toBe("dropoff");
+		});
+
+		it("PICKUP_ONLY: should apply pickup multiplier (1.1) to price", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "PICKUP_ONLY");
+			expect(result.adjustedPrice).toBe(110);
+			expect(result.appliedMultiplier).toBe(1.1);
+			expect(result.appliedRule.strategy).toBe("PICKUP_ONLY");
+			expect(result.appliedRule.source).toBe("pickup");
+		});
+
+		it("DROPOFF_ONLY: should apply dropoff multiplier (1.3) to price", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "DROPOFF_ONLY");
+			expect(result.adjustedPrice).toBe(130);
+			expect(result.appliedMultiplier).toBe(1.3);
+			expect(result.appliedRule.strategy).toBe("DROPOFF_ONLY");
+			expect(result.appliedRule.source).toBe("dropoff");
+		});
+
+		it("AVERAGE: should apply average multiplier (1.2) to price", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "AVERAGE");
+			expect(result.adjustedPrice).toBe(120);
+			expect(result.appliedMultiplier).toBe(1.2);
+			expect(result.appliedRule.strategy).toBe("AVERAGE");
+			expect(result.appliedRule.source).toBe("both");
+		});
+
+		it("null strategy: should default to MAX for backward compatibility", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, null);
+			expect(result.adjustedPrice).toBe(130);
+			expect(result.appliedMultiplier).toBe(1.3);
+			expect(result.appliedRule.strategy).toBe("MAX");
+		});
+
+		it("undefined strategy: should default to MAX for backward compatibility", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone);
+			expect(result.adjustedPrice).toBe(130);
+			expect(result.appliedMultiplier).toBe(1.3);
+			expect(result.appliedRule.strategy).toBe("MAX");
+		});
+
+		it("should handle null pickup zone gracefully", () => {
+			const result = applyZoneMultiplier(basePrice, null, dropoffZone, "PICKUP_ONLY");
+			expect(result.adjustedPrice).toBe(100); // pickup multiplier = 1.0 (default)
+			expect(result.appliedMultiplier).toBe(1.0);
+		});
+
+		it("should handle null dropoff zone gracefully", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, null, "DROPOFF_ONLY");
+			expect(result.adjustedPrice).toBe(100); // dropoff multiplier = 1.0 (default)
+			expect(result.appliedMultiplier).toBe(1.0);
+		});
+
+		it("should handle both zones null gracefully", () => {
+			const result = applyZoneMultiplier(basePrice, null, null, "AVERAGE");
+			expect(result.adjustedPrice).toBe(100); // (1.0 + 1.0) / 2 = 1.0
+			expect(result.appliedMultiplier).toBe(1.0);
+		});
+
+		it("should include zone info in applied rule for transparency", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "AVERAGE");
+			expect(result.appliedRule.pickupZone).toEqual({
+				code: "PARIS_20",
+				name: "Paris 20km",
+				multiplier: 1.1,
+			});
+			expect(result.appliedRule.dropoffZone).toEqual({
+				code: "CDG",
+				name: "CDG Airport",
+				multiplier: 1.3,
+			});
+		});
+
+		it("should include price before and after in applied rule", () => {
+			const result = applyZoneMultiplier(basePrice, pickupZone, dropoffZone, "AVERAGE");
+			expect(result.appliedRule.priceBefore).toBe(100);
+			expect(result.appliedRule.priceAfter).toBe(120);
 		});
 	});
 });

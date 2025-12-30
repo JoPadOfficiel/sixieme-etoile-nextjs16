@@ -1302,6 +1302,8 @@ function CostParametersSection() {
 		driverHourlyCost: data?.driverHourlyCost ?? null,
 		// Story 17.1: Zone conflict resolution strategy
 		zoneConflictStrategy: data?.zoneConflictStrategy ?? null,
+		// Story 17.2: Zone multiplier aggregation strategy
+		zoneMultiplierAggregationStrategy: data?.zoneMultiplierAggregationStrategy ?? null,
 	};
 
 	const [formData, setFormData] = useState<PricingSettingsFormData>(defaultFormData);
@@ -1626,6 +1628,31 @@ function CostParametersSection() {
 								</p>
 							</div>
 						</div>
+					</div>
+
+					{/* Story 17.2: Zone Multiplier Aggregation Strategy */}
+					<div className="space-y-2">
+						<Label htmlFor="zoneMultiplierAggregationStrategy">{t("fleet.settings.costParameters.fields.zoneMultiplierAggregationStrategy")}</Label>
+						<Select
+							value={formData.zoneMultiplierAggregationStrategy || "default"}
+							onValueChange={(value) =>
+								setFormData((prev) => ({ ...prev, zoneMultiplierAggregationStrategy: value === "default" ? null : value as "MAX" | "PICKUP_ONLY" | "DROPOFF_ONLY" | "AVERAGE" }))
+							}
+						>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="default">{t("fleet.settings.costParameters.zoneMultiplierAggregationStrategies.default")}</SelectItem>
+								<SelectItem value="MAX">{t("fleet.settings.costParameters.zoneMultiplierAggregationStrategies.MAX")}</SelectItem>
+								<SelectItem value="PICKUP_ONLY">{t("fleet.settings.costParameters.zoneMultiplierAggregationStrategies.PICKUP_ONLY")}</SelectItem>
+								<SelectItem value="DROPOFF_ONLY">{t("fleet.settings.costParameters.zoneMultiplierAggregationStrategies.DROPOFF_ONLY")}</SelectItem>
+								<SelectItem value="AVERAGE">{t("fleet.settings.costParameters.zoneMultiplierAggregationStrategies.AVERAGE")}</SelectItem>
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">
+							{t("fleet.settings.costParameters.fields.zoneMultiplierAggregationStrategyHelp")}
+						</p>
 					</div>
 
 					<div className="flex justify-end">
