@@ -2485,6 +2485,19 @@
 				"preview": {
 					"title": "Résumé du trajet",
 					"segments": "Segments"
+				},
+				"routeScenarios": {
+					"title": "Scénarios de route",
+					"scenario": "Scénario",
+					"duration": "Durée",
+					"distance": "Distance",
+					"tolls": "Péages",
+					"fuel": "Carburant",
+					"driver": "Chauffeur",
+					"partialData": "Données partielles",
+					"recommended": "Recommandé",
+					"bestValue": "Meilleure valeur",
+					"recommendedOption": "Option recommandée"
 				}
 			},
 			"recomputeWarning": {

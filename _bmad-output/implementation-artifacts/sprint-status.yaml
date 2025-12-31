@@ -156,7 +156,7 @@ development_status:
   18-3-round-trip-to-mad-automatic-detection: done
   18-4-loss-of-exploitation-opportunity-cost-calculation: done
   18-5-stay-vs-return-empty-scenario-comparison: done
-  18-6-multi-scenario-route-optimization-min-t-min-d-min-tco: backlog
+  18-6-multi-scenario-route-optimization-min-t-min-d-min-tco: done
   18-7-transversal-trip-decomposition: backlog
   18-8-fixed-temporal-vectors-classic-destinations: backlog
   18-9-shadow-fleet-integration-subcontractors: backlog

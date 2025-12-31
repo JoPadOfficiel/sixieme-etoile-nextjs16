@@ -2485,6 +2485,19 @@
 				"preview": {
 					"title": "Trip Summary",
 					"segments": "Segments"
+				},
+				"routeScenarios": {
+					"title": "Route Scenarios",
+					"scenario": "Scenario",
+					"duration": "Duration",
+					"distance": "Distance",
+					"tolls": "Tolls",
+					"fuel": "Fuel",
+					"driver": "Driver",
+					"partialData": "Partial data",
+					"recommended": "Recommended",
+					"bestValue": "Best value",
+					"recommendedOption": "Recommended option"
 				}
 			},
 			"recomputeWarning": {

@@ -719,3 +719,565 @@ export async function cleanupExpiredTollCache(): Promise<number> {
 		return 0;
 	}
 }
+
+// ============================================================================
+// Story 18.6: Multi-Scenario Route Optimization
+// ============================================================================
+
+/**
+ * Story 18.6: Google Routes API routing preference types
+ */
+export type RoutingPreference = 
+	| "TRAFFIC_AWARE"           // Default - considers current traffic
+	| "TRAFFIC_AWARE_OPTIMAL"   // Pessimistic traffic model
+	| "TRAFFIC_UNAWARE";        // Ignores traffic (for distance optimization)
+
+/**
+ * Story 18.6: Single route result from Google Routes API
+ */
+export interface GoogleRouteResult {
+	distanceMeters: number;
+	durationSeconds: number;
+	tollAmount: number;
+	encodedPolyline: string | null;
+	success: boolean;
+	error?: string;
+}
+
+/**
+ * Story 18.6: Multi-scenario route results
+ */
+export interface MultiScenarioRouteResult {
+	/** Fastest route (traffic-aware) */
+	minTime: GoogleRouteResult | null;
+	/** Shortest distance route */
+	minDistance: GoogleRouteResult | null;
+	/** Whether all scenarios were fetched successfully */
+	allSuccessful: boolean;
+	/** Errors encountered */
+	errors: string[];
+}
+
+/**
+ * Story 18.6: Call Google Routes API with specific routing preference
+ * 
+ * @param origin - Origin point
+ * @param destination - Destination point
+ * @param apiKey - Google Maps API key
+ * @param routingPreference - Routing preference (TRAFFIC_AWARE, TRAFFIC_UNAWARE)
+ * @returns Route result with distance, duration, toll, and polyline
+ */
+export async function callGoogleRoutesAPIWithPreference(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	apiKey: string,
+	routingPreference: RoutingPreference,
+): Promise<GoogleRouteResult> {
+	try {
+		const response = await fetch(GOOGLE_ROUTES_API_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Goog-Api-Key": apiKey,
+				"X-Goog-FieldMask":
+					"routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo",
+			},
+			body: JSON.stringify({
+				origin: {
+					location: {
+						latLng: { latitude: origin.lat, longitude: origin.lng },
+					},
+				},
+				destination: {
+					location: {
+						latLng: { latitude: destination.lat, longitude: destination.lng },
+					},
+				},
+				travelMode: "DRIVE",
+				routingPreference: routingPreference,
+				computeAlternativeRoutes: false,
+				extraComputations: ["TOLLS"],
+			}),
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(
+				`[MultiScenario] Google Routes API HTTP error: ${response.status} - ${errorText}`,
+			);
+			return {
+				distanceMeters: 0,
+				durationSeconds: 0,
+				tollAmount: 0,
+				encodedPolyline: null,
+				success: false,
+				error: `HTTP ${response.status}`,
+			};
+		}
+
+		const data = (await response.json()) as GoogleRoutesResponse;
+
+		if (data.error) {
+			console.error(
+				`[MultiScenario] Google Routes API error: ${data.error.message}`,
+			);
+			return {
+				distanceMeters: 0,
+				durationSeconds: 0,
+				tollAmount: 0,
+				encodedPolyline: null,
+				success: false,
+				error: data.error.message,
+			};
+		}
+
+		const route = data.routes?.[0];
+		if (!route) {
+			return {
+				distanceMeters: 0,
+				durationSeconds: 0,
+				tollAmount: 0,
+				encodedPolyline: null,
+				success: false,
+				error: "No route found",
+			};
+		}
+
+		// Parse duration (format: "123s")
+		const durationSeconds = route.duration 
+			? parseInt(route.duration.replace("s", ""), 10) 
+			: 0;
+
+		// Parse toll amount
+		const tollAmount = parseTollAmount(data);
+
+		return {
+			distanceMeters: route.distanceMeters ?? 0,
+			durationSeconds,
+			tollAmount,
+			encodedPolyline: route.polyline?.encodedPolyline ?? null,
+			success: true,
+		};
+	} catch (error) {
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error";
+		console.error(`[MultiScenario] API call failed: ${errorMessage}`);
+		return {
+			distanceMeters: 0,
+			durationSeconds: 0,
+			tollAmount: 0,
+			encodedPolyline: null,
+			success: false,
+			error: errorMessage,
+		};
+	}
+}
+
+/**
+ * Story 18.6: Fetch multiple route scenarios in parallel
+ * 
+ * Calls Google Routes API twice:
+ * 1. TRAFFIC_AWARE_OPTIMAL for min(Time) - pessimistic traffic
+ * 2. TRAFFIC_UNAWARE for min(Distance) - shortest path
+ * 
+ * The min(TCO) scenario is calculated from these results.
+ * 
+ * @param origin - Origin point
+ * @param destination - Destination point
+ * @param apiKey - Google Maps API key
+ * @returns Multi-scenario route results
+ */
+export async function fetchMultiScenarioRoutes(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	apiKey: string,
+): Promise<MultiScenarioRouteResult> {
+	const errors: string[] = [];
+
+	// Fetch both scenarios in parallel
+	const [minTimeResult, minDistanceResult] = await Promise.all([
+		callGoogleRoutesAPIWithPreference(origin, destination, apiKey, "TRAFFIC_AWARE_OPTIMAL"),
+		callGoogleRoutesAPIWithPreference(origin, destination, apiKey, "TRAFFIC_UNAWARE"),
+	]);
+
+	if (!minTimeResult.success && minTimeResult.error) {
+		errors.push(`MIN_TIME: ${minTimeResult.error}`);
+	}
+	if (!minDistanceResult.success && minDistanceResult.error) {
+		errors.push(`MIN_DISTANCE: ${minDistanceResult.error}`);
+	}
+
+	return {
+		minTime: minTimeResult.success ? minTimeResult : null,
+		minDistance: minDistanceResult.success ? minDistanceResult : null,
+		allSuccessful: minTimeResult.success && minDistanceResult.success,
+		errors,
+	};
+}
+
+/**
+ * Story 18.6: Route scenario cache key generator
+ */
+export function getScenarioCacheKey(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	scenarioType: string,
+): string {
+	const originHash = hashCoordinates(origin);
+	const destHash = hashCoordinates(destination);
+	return `${originHash}_${destHash}_${scenarioType}`;
+}
+
+/**
+ * Story 18.6: Check cache for route scenario
+ */
+export async function checkRouteScenarioCache(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	scenarioType: string,
+): Promise<GoogleRouteResult | null> {
+	try {
+		const cacheKey = getScenarioCacheKey(origin, destination, scenarioType);
+		const originHash = hashCoordinates(origin);
+		const destHash = hashCoordinates(destination);
+		
+		// Use existing toll cache with scenario type suffix
+		const cached = await db.tollCache.findUnique({
+			where: {
+				originHash_destinationHash: { 
+					originHash: `${originHash}_${scenarioType}`, 
+					destinationHash: destHash 
+				},
+			},
+		});
+
+		if (cached && cached.expiresAt > new Date()) {
+			// Parse cached data (stored as JSON in a text field or reconstruct from toll amount)
+			return {
+				distanceMeters: 0, // Not cached in current schema
+				durationSeconds: 0, // Not cached in current schema
+				tollAmount: Number(cached.tollAmount),
+				encodedPolyline: null,
+				success: true,
+			};
+		}
+
+		return null;
+	} catch (error) {
+		console.warn(`[MultiScenario] Cache lookup failed:`, error);
+		return null;
+	}
+}
+
+/**
+ * Story 18.6: Store route scenario in cache
+ */
+export async function storeRouteScenarioCache(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	scenarioType: string,
+	result: GoogleRouteResult,
+	ttlHours: number = TOLL_CACHE_TTL_HOURS,
+): Promise<void> {
+	try {
+		const originHash = hashCoordinates(origin);
+		const destHash = hashCoordinates(destination);
+		const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+
+		await db.tollCache.upsert({
+			where: {
+				originHash_destinationHash: { 
+					originHash: `${originHash}_${scenarioType}`, 
+					destinationHash: destHash 
+				},
+			},
+			create: {
+				originHash: `${originHash}_${scenarioType}`,
+				destinationHash: destHash,
+				tollAmount: result.tollAmount,
+				currency: "EUR",
+				source: "GOOGLE_API",
+				expiresAt,
+			},
+			update: {
+				tollAmount: result.tollAmount,
+				fetchedAt: new Date(),
+				expiresAt,
+			},
+		});
+	} catch (error) {
+		console.warn(`[MultiScenario] Cache write failed:`, error);
+	}
+}
+
+/**
+ * Story 18.6: Route scenario configuration for TCO calculation
+ */
+export interface RouteScenarioTcoConfig {
+	/** Driver hourly cost in EUR */
+	driverHourlyCost: number;
+	/** Fuel consumption in L/100km */
+	fuelConsumptionL100km: number;
+	/** Fuel price per liter in EUR */
+	fuelPricePerLiter: number;
+	/** Wear/TCO cost per km in EUR */
+	wearCostPerKm: number;
+	/** Fallback toll rate per km (when API fails) */
+	fallbackTollRatePerKm: number;
+}
+
+/**
+ * Story 18.6: Default TCO configuration
+ */
+export const DEFAULT_ROUTE_SCENARIO_TCO_CONFIG: RouteScenarioTcoConfig = {
+	driverHourlyCost: 30,
+	fuelConsumptionL100km: 8.5,
+	fuelPricePerLiter: 1.789,
+	wearCostPerKm: 0.10,
+	fallbackTollRatePerKm: 0.12,
+};
+
+/**
+ * Story 18.6: Route scenario type labels
+ */
+export const ROUTE_SCENARIO_LABELS = {
+	MIN_TIME: "Temps minimum",
+	MIN_DISTANCE: "Distance minimum",
+	MIN_TCO: "Coût optimal (TCO)",
+} as const;
+
+export type RouteScenarioType = keyof typeof ROUTE_SCENARIO_LABELS;
+
+/**
+ * Story 18.6: Single route scenario with full cost breakdown
+ */
+export interface RouteScenarioResult {
+	type: RouteScenarioType;
+	label: string;
+	durationMinutes: number;
+	distanceKm: number;
+	tollCost: number;
+	fuelCost: number;
+	driverCost: number;
+	wearCost: number;
+	tco: number;
+	encodedPolyline: string | null;
+	isFromCache: boolean;
+	isRecommended: boolean;
+}
+
+/**
+ * Story 18.6: Complete route scenarios calculation result
+ */
+export interface RouteScenarioCalculationResult {
+	scenarios: RouteScenarioResult[];
+	selectedScenario: RouteScenarioType;
+	selectionReason: string;
+	selectionOverridden: boolean;
+	fallbackUsed: boolean;
+	fallbackReason?: string;
+	calculatedAt: string;
+}
+
+/**
+ * Story 18.6: Calculate TCO for a route scenario
+ */
+function calculateScenarioTco(
+	durationMinutes: number,
+	distanceKm: number,
+	tollCost: number,
+	config: RouteScenarioTcoConfig,
+): { driverCost: number; fuelCost: number; wearCost: number; tco: number } {
+	const driverCost = Math.round((durationMinutes / 60) * config.driverHourlyCost * 100) / 100;
+	const fuelCost = Math.round((distanceKm / 100) * config.fuelConsumptionL100km * config.fuelPricePerLiter * 100) / 100;
+	const wearCost = Math.round(distanceKm * config.wearCostPerKm * 100) / 100;
+	const tco = Math.round((driverCost + fuelCost + tollCost + wearCost) * 100) / 100;
+	return { driverCost, fuelCost, wearCost, tco };
+}
+
+/**
+ * Story 18.6: Build a route scenario from API result
+ */
+function buildRouteScenario(
+	type: RouteScenarioType,
+	apiResult: GoogleRouteResult,
+	config: RouteScenarioTcoConfig,
+	isFromCache: boolean,
+): RouteScenarioResult {
+	const durationMinutes = Math.round(apiResult.durationSeconds / 60 * 100) / 100;
+	const distanceKm = Math.round(apiResult.distanceMeters / 1000 * 100) / 100;
+	const tollCost = apiResult.tollAmount;
+	
+	const { driverCost, fuelCost, wearCost, tco } = calculateScenarioTco(
+		durationMinutes,
+		distanceKm,
+		tollCost,
+		config,
+	);
+	
+	return {
+		type,
+		label: ROUTE_SCENARIO_LABELS[type],
+		durationMinutes,
+		distanceKm,
+		tollCost,
+		fuelCost,
+		driverCost,
+		wearCost,
+		tco,
+		encodedPolyline: apiResult.encodedPolyline,
+		isFromCache,
+		isRecommended: false, // Will be set later
+	};
+}
+
+/**
+ * Story 18.6: Calculate MIN_TCO scenario by finding the best balance
+ * 
+ * MIN_TCO is calculated by comparing the TCO of MIN_TIME and MIN_DISTANCE
+ * and selecting the one with lower total cost. If they're equal, prefer MIN_TIME.
+ */
+function calculateMinTcoScenario(
+	minTime: RouteScenarioResult,
+	minDistance: RouteScenarioResult,
+): RouteScenarioResult {
+	// The MIN_TCO scenario is the one with the lowest TCO
+	// We create a synthetic scenario that represents the best option
+	const bestScenario = minTime.tco <= minDistance.tco ? minTime : minDistance;
+	
+	return {
+		...bestScenario,
+		type: "MIN_TCO",
+		label: ROUTE_SCENARIO_LABELS.MIN_TCO,
+		isRecommended: true, // MIN_TCO is always recommended by default
+	};
+}
+
+/**
+ * Story 18.6: Select optimal scenario and mark as recommended
+ */
+function selectAndMarkOptimalScenario(
+	scenarios: RouteScenarioResult[],
+): { scenarios: RouteScenarioResult[]; selectedScenario: RouteScenarioType; selectionReason: string } {
+	if (scenarios.length === 0) {
+		return {
+			scenarios: [],
+			selectedScenario: "MIN_TCO",
+			selectionReason: "Aucun scénario disponible",
+		};
+	}
+	
+	// Find the scenario with lowest TCO
+	const sorted = [...scenarios].sort((a, b) => a.tco - b.tco);
+	const best = sorted[0];
+	
+	// Mark the best as recommended
+	const markedScenarios = scenarios.map(s => ({
+		...s,
+		isRecommended: s.type === best.type,
+	}));
+	
+	// Calculate savings vs worst
+	const worst = sorted[sorted.length - 1];
+	const savings = Math.round((worst.tco - best.tco) * 100) / 100;
+	const percentSavings = worst.tco > 0 
+		? Math.round((savings / worst.tco) * 100 * 10) / 10 
+		: 0;
+	
+	const selectionReason = savings > 0
+		? `${best.label}: ${best.tco.toFixed(2)}€ (économie de ${savings.toFixed(2)}€ / ${percentSavings}% vs ${worst.label})`
+		: `${best.label}: ${best.tco.toFixed(2)}€`;
+	
+	return {
+		scenarios: markedScenarios,
+		selectedScenario: best.type,
+		selectionReason,
+	};
+}
+
+/**
+ * Story 18.6: Calculate route scenarios with TCO optimization
+ * 
+ * Main entry point for multi-scenario route calculation.
+ * Fetches MIN_TIME and MIN_DISTANCE from Google Routes API,
+ * calculates TCO for each, and derives MIN_TCO.
+ * 
+ * @param origin - Origin point
+ * @param destination - Destination point
+ * @param apiKey - Google Maps API key
+ * @param tcoConfig - TCO calculation configuration (optional)
+ * @returns Complete route scenarios result
+ */
+export async function calculateRouteScenarios(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	apiKey: string,
+	tcoConfig: RouteScenarioTcoConfig = DEFAULT_ROUTE_SCENARIO_TCO_CONFIG,
+): Promise<RouteScenarioCalculationResult> {
+	const calculatedAt = new Date().toISOString();
+	
+	// If no API key, return fallback
+	if (!apiKey) {
+		return {
+			scenarios: [],
+			selectedScenario: "MIN_TCO",
+			selectionReason: "Clé API non configurée",
+			selectionOverridden: false,
+			fallbackUsed: true,
+			fallbackReason: "No API key provided",
+			calculatedAt,
+		};
+	}
+	
+	// Fetch multi-scenario routes from API
+	const apiResults = await fetchMultiScenarioRoutes(origin, destination, apiKey);
+	
+	// If both failed, return fallback
+	if (!apiResults.minTime && !apiResults.minDistance) {
+		return {
+			scenarios: [],
+			selectedScenario: "MIN_TCO",
+			selectionReason: "Erreur API - aucun scénario disponible",
+			selectionOverridden: false,
+			fallbackUsed: true,
+			fallbackReason: apiResults.errors.join("; "),
+			calculatedAt,
+		};
+	}
+	
+	const scenarios: RouteScenarioResult[] = [];
+	
+	// Build MIN_TIME scenario
+	if (apiResults.minTime) {
+		const minTimeScenario = buildRouteScenario("MIN_TIME", apiResults.minTime, tcoConfig, false);
+		scenarios.push(minTimeScenario);
+	}
+	
+	// Build MIN_DISTANCE scenario
+	if (apiResults.minDistance) {
+		const minDistanceScenario = buildRouteScenario("MIN_DISTANCE", apiResults.minDistance, tcoConfig, false);
+		scenarios.push(minDistanceScenario);
+	}
+	
+	// Calculate MIN_TCO scenario (if we have both base scenarios)
+	if (apiResults.minTime && apiResults.minDistance) {
+		const minTimeScenario = scenarios.find(s => s.type === "MIN_TIME")!;
+		const minDistanceScenario = scenarios.find(s => s.type === "MIN_DISTANCE")!;
+		const minTcoScenario = calculateMinTcoScenario(minTimeScenario, minDistanceScenario);
+		scenarios.push(minTcoScenario);
+	}
+	
+	// Select optimal and mark recommended
+	const { scenarios: markedScenarios, selectedScenario, selectionReason } = 
+		selectAndMarkOptimalScenario(scenarios);
+	
+	return {
+		scenarios: markedScenarios,
+		selectedScenario,
+		selectionReason,
+		selectionOverridden: false,
+		fallbackUsed: !apiResults.allSuccessful,
+		fallbackReason: apiResults.errors.length > 0 ? apiResults.errors.join("; ") : undefined,
+		calculatedAt,
+	};
+}

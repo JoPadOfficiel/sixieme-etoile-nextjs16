@@ -1367,6 +1367,9 @@ export interface TripAnalysis {
 	
 	// Story 18.5: Stay vs Return Empty scenario comparison
 	stayVsReturnComparison?: StayVsReturnComparison | null;
+	
+	// Story 18.6: Multi-scenario route optimization
+	routeScenarios?: RouteScenarios | null;
 }
 
 /**
@@ -6551,5 +6554,241 @@ export function buildScenarioSelectionRule(
 		alternativeCost,
 		savings: comparison.costDifference,
 		overridden: comparison.scenarioOverridden,
+	};
+}
+
+// ============================================================================
+// Story 18.6: Multi-Scenario Route Optimization Types
+// ============================================================================
+
+/**
+ * Story 18.6: Route scenario type
+ * - MIN_TIME: Fastest route using pessimistic traffic model
+ * - MIN_DISTANCE: Shortest distance route
+ * - MIN_TCO: Route optimizing total cost of ownership
+ */
+export type RouteScenarioType = "MIN_TIME" | "MIN_DISTANCE" | "MIN_TCO";
+
+/**
+ * Story 18.6: Single route scenario with full cost breakdown
+ */
+export interface RouteScenario {
+	/** Scenario type identifier */
+	type: RouteScenarioType;
+	/** Human-readable label */
+	label: string;
+	/** Route duration in minutes */
+	durationMinutes: number;
+	/** Route distance in kilometers */
+	distanceKm: number;
+	/** Toll cost in EUR */
+	tollCost: number;
+	/** Fuel cost in EUR */
+	fuelCost: number;
+	/** Driver time cost in EUR */
+	driverCost: number;
+	/** Wear/TCO cost in EUR */
+	wearCost: number;
+	/** Total Cost of Ownership (sum of all costs) */
+	tco: number;
+	/** Encoded polyline for map display (optional) */
+	encodedPolyline?: string | null;
+	/** Whether this scenario came from cache */
+	isFromCache: boolean;
+	/** Whether this is the recommended scenario */
+	isRecommended: boolean;
+}
+
+/**
+ * Story 18.6: Complete route scenarios result
+ */
+export interface RouteScenarios {
+	/** Array of calculated scenarios */
+	scenarios: RouteScenario[];
+	/** Currently selected scenario type */
+	selectedScenario: RouteScenarioType;
+	/** Reason for selection */
+	selectionReason: string;
+	/** Whether the selection was overridden by operator */
+	selectionOverridden: boolean;
+	/** Whether fallback was used (API failure) */
+	fallbackUsed: boolean;
+	/** Fallback reason if applicable */
+	fallbackReason?: string;
+	/** Calculation timestamp */
+	calculatedAt: string;
+}
+
+/**
+ * Story 18.6: Applied rule for route scenario selection
+ */
+export interface AppliedRouteScenarioRule extends AppliedRule {
+	type: "ROUTE_SCENARIO_SELECTION";
+	description: string;
+	selectedScenario: RouteScenarioType;
+	selectedTco: number;
+	alternativeScenarios: Array<{
+		type: RouteScenarioType;
+		tco: number;
+		difference: number;
+	}>;
+	savingsVsWorst: number;
+	percentageSavings: number;
+}
+
+/**
+ * Story 18.6: Configuration for route scenario calculation
+ */
+export interface RouteScenarioConfig {
+	/** Google Maps API key */
+	apiKey: string;
+	/** Driver hourly cost in EUR */
+	driverHourlyCost: number;
+	/** Fuel consumption in L/100km */
+	fuelConsumptionL100km: number;
+	/** Fuel price per liter in EUR */
+	fuelPricePerLiter: number;
+	/** Wear/TCO cost per km in EUR */
+	wearCostPerKm: number;
+	/** Fallback toll rate per km (when API fails) */
+	fallbackTollRatePerKm: number;
+}
+
+/**
+ * Story 18.6: Default route scenario labels
+ */
+export const ROUTE_SCENARIO_LABELS: Record<RouteScenarioType, string> = {
+	MIN_TIME: "Temps minimum",
+	MIN_DISTANCE: "Distance minimum",
+	MIN_TCO: "Coût optimal (TCO)",
+};
+
+/**
+ * Story 18.6: Calculate TCO for a single route scenario
+ * 
+ * TCO = Driver cost + Fuel cost + Toll cost + Wear cost
+ * 
+ * @param durationMinutes - Route duration in minutes
+ * @param distanceKm - Route distance in km
+ * @param tollCost - Toll cost in EUR
+ * @param config - Cost configuration
+ * @returns Object with individual costs and total TCO
+ */
+export function calculateScenarioTco(
+	durationMinutes: number,
+	distanceKm: number,
+	tollCost: number,
+	config: RouteScenarioConfig,
+): {
+	driverCost: number;
+	fuelCost: number;
+	wearCost: number;
+	tco: number;
+} {
+	// Driver cost = duration × hourly rate
+	const driverCost = Math.round(
+		(durationMinutes / 60) * config.driverHourlyCost * 100
+	) / 100;
+	
+	// Fuel cost = distance × consumption × price
+	const fuelCost = Math.round(
+		(distanceKm / 100) * config.fuelConsumptionL100km * config.fuelPricePerLiter * 100
+	) / 100;
+	
+	// Wear cost = distance × rate
+	const wearCost = Math.round(distanceKm * config.wearCostPerKm * 100) / 100;
+	
+	// Total TCO
+	const tco = Math.round((driverCost + fuelCost + tollCost + wearCost) * 100) / 100;
+	
+	return { driverCost, fuelCost, wearCost, tco };
+}
+
+/**
+ * Story 18.6: Select optimal scenario based on TCO
+ * 
+ * @param scenarios - Array of calculated scenarios
+ * @returns Selected scenario type and reason
+ */
+export function selectOptimalScenario(
+	scenarios: RouteScenario[],
+): { selectedScenario: RouteScenarioType; selectionReason: string } {
+	if (scenarios.length === 0) {
+		return {
+			selectedScenario: "MIN_TCO",
+			selectionReason: "No scenarios available",
+		};
+	}
+	
+	// Find scenario with lowest TCO
+	const sorted = [...scenarios].sort((a, b) => a.tco - b.tco);
+	const best = sorted[0];
+	
+	// Check if MIN_TCO is actually the best
+	const minTcoScenario = scenarios.find(s => s.type === "MIN_TCO");
+	
+	if (minTcoScenario && minTcoScenario.tco <= best.tco) {
+		return {
+			selectedScenario: "MIN_TCO",
+			selectionReason: `Coût total optimal: ${minTcoScenario.tco.toFixed(2)}€`,
+		};
+	}
+	
+	// Otherwise select the actual best
+	const savings = sorted.length > 1 
+		? sorted[sorted.length - 1].tco - best.tco 
+		: 0;
+	
+	return {
+		selectedScenario: best.type,
+		selectionReason: `Meilleur TCO: ${best.tco.toFixed(2)}€ (économie de ${savings.toFixed(2)}€ vs pire option)`,
+	};
+}
+
+/**
+ * Story 18.6: Build applied rule for route scenario selection
+ * 
+ * @param routeScenarios - The complete route scenarios result
+ * @returns AppliedRouteScenarioRule for transparency
+ */
+export function buildRouteScenarioRule(
+	routeScenarios: RouteScenarios,
+): AppliedRouteScenarioRule | null {
+	if (!routeScenarios.scenarios.length) {
+		return null;
+	}
+	
+	const selected = routeScenarios.scenarios.find(
+		s => s.type === routeScenarios.selectedScenario
+	);
+	
+	if (!selected) {
+		return null;
+	}
+	
+	// Calculate alternatives comparison
+	const alternatives = routeScenarios.scenarios
+		.filter(s => s.type !== routeScenarios.selectedScenario)
+		.map(s => ({
+			type: s.type,
+			tco: s.tco,
+			difference: Math.round((s.tco - selected.tco) * 100) / 100,
+		}));
+	
+	// Calculate savings vs worst option
+	const worstTco = Math.max(...routeScenarios.scenarios.map(s => s.tco));
+	const savingsVsWorst = Math.round((worstTco - selected.tco) * 100) / 100;
+	const percentageSavings = worstTco > 0 
+		? Math.round((savingsVsWorst / worstTco) * 100 * 100) / 100 
+		: 0;
+	
+	return {
+		type: "ROUTE_SCENARIO_SELECTION",
+		description: `Scénario de route: ${ROUTE_SCENARIO_LABELS[selected.type]} (${selected.tco.toFixed(2)}€)`,
+		selectedScenario: routeScenarios.selectedScenario,
+		selectedTco: selected.tco,
+		alternativeScenarios: alternatives,
+		savingsVsWorst,
+		percentageSavings,
 	};
 }
