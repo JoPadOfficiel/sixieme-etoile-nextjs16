@@ -58,6 +58,16 @@ const updatePricingSettingsSchema = z.object({
 	timeBucketInterpolationStrategy: timeBucketInterpolationStrategyEnum.nullable().optional(),
 	// Story 17.15: Difficulty multipliers (Patience Tax)
 	difficultyMultipliers: difficultyMultipliersSchema.nullable().optional(),
+	// Story 18.11: Transfer-to-MAD thresholds
+	// Dense zone detection (Story 18.2)
+	denseZoneSpeedThreshold: z.number().min(0).max(100).nullable().optional(),
+	autoSwitchToMAD: z.boolean().optional(),
+	denseZoneCodes: z.array(z.string()).optional(),
+	// Round-trip detection (Story 18.3)
+	minWaitingTimeForSeparateTransfers: z.number().min(0).max(1440).nullable().optional(),
+	maxReturnDistanceKm: z.number().min(0).max(1000).nullable().optional(),
+	roundTripBuffer: z.number().min(0).max(240).nullable().optional(),
+	autoSwitchRoundTripToMAD: z.boolean().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -94,6 +104,14 @@ function serializePricingSettings(settings: {
 	timeBucketInterpolationStrategy?: string | null;
 	// Story 17.15: Difficulty multipliers
 	difficultyMultipliers?: unknown;
+	// Story 18.11: Transfer-to-MAD thresholds
+	denseZoneSpeedThreshold?: unknown;
+	autoSwitchToMAD?: boolean;
+	denseZoneCodes?: string[];
+	minWaitingTimeForSeparateTransfers?: number | null;
+	maxReturnDistanceKm?: unknown;
+	roundTripBuffer?: number | null;
+	autoSwitchRoundTripToMAD?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -150,6 +168,18 @@ function serializePricingSettings(settings: {
 		timeBucketInterpolationStrategy: settings.timeBucketInterpolationStrategy,
 		// Story 17.15: Difficulty multipliers
 		difficultyMultipliers: settings.difficultyMultipliers,
+		// Story 18.11: Transfer-to-MAD thresholds
+		denseZoneSpeedThreshold: settings.denseZoneSpeedThreshold
+			? Number(settings.denseZoneSpeedThreshold)
+			: null,
+		autoSwitchToMAD: settings.autoSwitchToMAD ?? false,
+		denseZoneCodes: settings.denseZoneCodes ?? [],
+		minWaitingTimeForSeparateTransfers: settings.minWaitingTimeForSeparateTransfers ?? null,
+		maxReturnDistanceKm: settings.maxReturnDistanceKm
+			? Number(settings.maxReturnDistanceKm)
+			: null,
+		roundTripBuffer: settings.roundTripBuffer ?? null,
+		autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

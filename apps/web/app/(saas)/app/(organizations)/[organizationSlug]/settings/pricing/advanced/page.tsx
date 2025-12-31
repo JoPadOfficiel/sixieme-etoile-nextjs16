@@ -68,6 +68,14 @@ interface AdvancedPricingSettings {
 	useDriverHomeForDeadhead: boolean;
 	timeBucketInterpolationStrategy: string | null;
 	difficultyMultipliers: Record<string, number> | null;
+	// Story 18.11: Transfer-to-MAD thresholds
+	denseZoneSpeedThreshold: number | null;
+	autoSwitchToMAD: boolean;
+	denseZoneCodes: string[];
+	minWaitingTimeForSeparateTransfers: number | null;
+	maxReturnDistanceKm: number | null;
+	roundTripBuffer: number | null;
+	autoSwitchRoundTripToMAD: boolean;
 }
 
 // Default difficulty multipliers
@@ -101,6 +109,14 @@ export default function AdvancedPricingSettingsPage() {
 		useDriverHomeForDeadhead: false,
 		timeBucketInterpolationStrategy: null,
 		difficultyMultipliers: null,
+		// Story 18.11: Transfer-to-MAD thresholds
+		denseZoneSpeedThreshold: null,
+		autoSwitchToMAD: false,
+		denseZoneCodes: [],
+		minWaitingTimeForSeparateTransfers: null,
+		maxReturnDistanceKm: null,
+		roundTripBuffer: null,
+		autoSwitchRoundTripToMAD: false,
 	});
 
 	const [hasChanges, setHasChanges] = useState(false);
@@ -134,6 +150,14 @@ export default function AdvancedPricingSettingsPage() {
 					settingsData.timeBucketInterpolationStrategy ?? null,
 				difficultyMultipliers:
 					(settingsData.difficultyMultipliers as Record<string, number>) ?? null,
+				// Story 18.11: Transfer-to-MAD thresholds
+				denseZoneSpeedThreshold: settingsData.denseZoneSpeedThreshold ?? null,
+				autoSwitchToMAD: settingsData.autoSwitchToMAD ?? false,
+				denseZoneCodes: settingsData.denseZoneCodes ?? [],
+				minWaitingTimeForSeparateTransfers: settingsData.minWaitingTimeForSeparateTransfers ?? null,
+				maxReturnDistanceKm: settingsData.maxReturnDistanceKm ?? null,
+				roundTripBuffer: settingsData.roundTripBuffer ?? null,
+				autoSwitchRoundTripToMAD: settingsData.autoSwitchRoundTripToMAD ?? false,
 			});
 			setHasChanges(false);
 		}
@@ -674,6 +698,262 @@ export default function AdvancedPricingSettingsPage() {
 									<ExternalLinkIcon className="ml-2 size-4" />
 								</Button>
 							</Link>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Story 18.11: Transfer/MAD Thresholds Section */}
+				<Card>
+					<CardHeader>
+						<div className="flex items-center gap-2">
+							<AlertTriangleIcon className="size-5 text-muted-foreground" />
+							<CardTitle>{t("sections.transferToMad.title")}</CardTitle>
+						</div>
+						<CardDescription>
+							{t("sections.transferToMad.description")}
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-6">
+						{/* Dense Zone Detection Subsection */}
+						<div className="space-y-4">
+							<h4 className="text-sm font-medium">
+								{t("sections.transferToMad.denseZone")}
+							</h4>
+							<p className="text-sm text-muted-foreground">
+								{t("sections.transferToMad.denseZoneDescription")}
+							</p>
+
+							<div className="grid gap-4 sm:grid-cols-2">
+								{/* Speed Threshold */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2">
+										<Label htmlFor="denseZoneSpeedThreshold">
+											{t("fields.denseZoneSpeedThreshold.label")}
+										</Label>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<HelpCircleIcon className="size-4 text-muted-foreground cursor-help" />
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												{t("fields.denseZoneSpeedThreshold.help")}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+									<div className="relative">
+										<Input
+											id="denseZoneSpeedThreshold"
+											type="number"
+											min={0}
+											step={1}
+											value={formData.denseZoneSpeedThreshold ?? ""}
+											onChange={(e) =>
+												updateField(
+													"denseZoneSpeedThreshold",
+													e.target.value ? Number(e.target.value) : null
+												)
+											}
+											placeholder="15"
+											className="pr-16"
+										/>
+										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+											km/h
+										</span>
+									</div>
+								</div>
+
+								{/* Dense Zone Codes - simplified text input */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2">
+										<Label htmlFor="denseZoneCodes">
+											{t("fields.denseZoneCodes.label")}
+										</Label>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<HelpCircleIcon className="size-4 text-muted-foreground cursor-help" />
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												{t("fields.denseZoneCodes.help")}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+									<Input
+										id="denseZoneCodes"
+										type="text"
+										value={formData.denseZoneCodes.join(", ")}
+										onChange={(e) =>
+											updateField(
+												"denseZoneCodes",
+												e.target.value
+													.split(",")
+													.map((s) => s.trim())
+													.filter((s) => s.length > 0)
+											)
+										}
+										placeholder="PARIS_0, PARIS_10"
+									/>
+								</div>
+							</div>
+
+							{/* Auto-switch toggle */}
+							<div className="flex items-center justify-between rounded-lg border p-4">
+								<div className="space-y-0.5">
+									<p className="text-sm font-medium">
+										{t("fields.autoSwitchToMAD.label")}
+									</p>
+									<p className="text-sm text-muted-foreground">
+										{t("fields.autoSwitchToMAD.description")}
+									</p>
+								</div>
+								<Switch
+									checked={formData.autoSwitchToMAD}
+									onCheckedChange={(checked) =>
+										updateField("autoSwitchToMAD", checked)
+									}
+								/>
+							</div>
+						</div>
+
+						<div className="border-t" />
+
+						{/* Round-Trip Detection Subsection */}
+						<div className="space-y-4">
+							<h4 className="text-sm font-medium">
+								{t("sections.transferToMad.roundTrip")}
+							</h4>
+							<p className="text-sm text-muted-foreground">
+								{t("sections.transferToMad.roundTripDescription")}
+							</p>
+
+							<div className="grid gap-4 sm:grid-cols-3">
+								{/* Min Waiting Time */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2">
+										<Label htmlFor="minWaitingTimeForSeparateTransfers">
+											{t("fields.minWaitingTimeForSeparateTransfers.label")}
+										</Label>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<HelpCircleIcon className="size-4 text-muted-foreground cursor-help" />
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												{t("fields.minWaitingTimeForSeparateTransfers.help")}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+									<div className="relative">
+										<Input
+											id="minWaitingTimeForSeparateTransfers"
+											type="number"
+											min={0}
+											step={15}
+											value={formData.minWaitingTimeForSeparateTransfers ?? ""}
+											onChange={(e) =>
+												updateField(
+													"minWaitingTimeForSeparateTransfers",
+													e.target.value ? Number(e.target.value) : null
+												)
+											}
+											placeholder="180"
+											className="pr-12"
+										/>
+										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+											min
+										</span>
+									</div>
+								</div>
+
+								{/* Max Return Distance */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2">
+										<Label htmlFor="maxReturnDistanceKm">
+											{t("fields.maxReturnDistanceKm.label")}
+										</Label>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<HelpCircleIcon className="size-4 text-muted-foreground cursor-help" />
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												{t("fields.maxReturnDistanceKm.help")}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+									<div className="relative">
+										<Input
+											id="maxReturnDistanceKm"
+											type="number"
+											min={0}
+											step={5}
+											value={formData.maxReturnDistanceKm ?? ""}
+											onChange={(e) =>
+												updateField(
+													"maxReturnDistanceKm",
+													e.target.value ? Number(e.target.value) : null
+												)
+											}
+											placeholder="50"
+											className="pr-12"
+										/>
+										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+											km
+										</span>
+									</div>
+								</div>
+
+								{/* Round Trip Buffer */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2">
+										<Label htmlFor="roundTripBuffer">
+											{t("fields.roundTripBuffer.label")}
+										</Label>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<HelpCircleIcon className="size-4 text-muted-foreground cursor-help" />
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												{t("fields.roundTripBuffer.help")}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+									<div className="relative">
+										<Input
+											id="roundTripBuffer"
+											type="number"
+											min={0}
+											step={5}
+											value={formData.roundTripBuffer ?? ""}
+											onChange={(e) =>
+												updateField(
+													"roundTripBuffer",
+													e.target.value ? Number(e.target.value) : null
+												)
+											}
+											placeholder="30"
+											className="pr-12"
+										/>
+										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+											min
+										</span>
+									</div>
+								</div>
+							</div>
+
+							{/* Auto-switch round-trip toggle */}
+							<div className="flex items-center justify-between rounded-lg border p-4">
+								<div className="space-y-0.5">
+									<p className="text-sm font-medium">
+										{t("fields.autoSwitchRoundTripToMAD.label")}
+									</p>
+									<p className="text-sm text-muted-foreground">
+										{t("fields.autoSwitchRoundTripToMAD.description")}
+									</p>
+								</div>
+								<Switch
+									checked={formData.autoSwitchRoundTripToMAD}
+									onCheckedChange={(checked) =>
+										updateField("autoSwitchRoundTripToMAD", checked)
+									}
+								/>
+							</div>
 						</div>
 					</CardContent>
 				</Card>

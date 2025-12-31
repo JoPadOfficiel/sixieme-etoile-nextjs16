@@ -1545,6 +1545,14 @@
 						"title": "Client Scoring",
 						"description": "Configure client difficulty multipliers (Patience Tax)",
 						"warning": "Difficulty multipliers are automatically applied to quotes for clients with a defined difficulty score. Use this feature with caution."
+					},
+					"transferToMad": {
+						"title": "Transfer/MAD Thresholds",
+						"description": "Configure thresholds for automatic transfer-to-MAD pricing suggestions",
+						"denseZone": "Dense Zone Detection",
+						"denseZoneDescription": "Suggest MAD pricing when commercial speed is too low in dense zones",
+						"roundTrip": "Round-Trip Detection",
+						"roundTripDescription": "Suggest MAD pricing when driver is blocked on-site during round-trips"
 					}
 				},
 				"fields": {
@@ -1623,6 +1631,39 @@
 							"4": "Difficult",
 							"5": "Very difficult"
 						}
+					},
+					"denseZoneSpeedThreshold": {
+						"label": "Speed threshold",
+						"help": "Commercial speed below which MAD pricing is suggested (km/h)",
+						"placeholder": "15"
+					},
+					"autoSwitchToMAD": {
+						"label": "Auto-switch to MAD",
+						"description": "Automatically switch to MAD pricing instead of just suggesting"
+					},
+					"denseZoneCodes": {
+						"label": "Dense zone codes",
+						"help": "Zone codes considered as dense zones for detection",
+						"placeholder": "Select zones..."
+					},
+					"minWaitingTimeForSeparateTransfers": {
+						"label": "Min waiting time for separate transfers",
+						"help": "Minimum on-site waiting time (minutes) for 2 separate transfers to be viable",
+						"placeholder": "180"
+					},
+					"maxReturnDistanceKm": {
+						"label": "Max return distance",
+						"help": "Maximum distance (km) to consider returning to base",
+						"placeholder": "50"
+					},
+					"roundTripBuffer": {
+						"label": "Round-trip buffer",
+						"help": "Buffer time (minutes) added to return calculation",
+						"placeholder": "30"
+					},
+					"autoSwitchRoundTripToMAD": {
+						"label": "Auto-switch round-trip to MAD",
+						"description": "Automatically switch round-trips to MAD pricing instead of just suggesting"
 					}
 				},
 				"links": {

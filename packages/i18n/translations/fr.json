@@ -1545,6 +1545,14 @@
 						"title": "Scoring Client",
 						"description": "Configurez les multiplicateurs de difficulté client (Patience Tax)",
 						"warning": "Les multiplicateurs de difficulté sont appliqués automatiquement aux devis pour les clients ayant un score de difficulté défini. Utilisez cette fonctionnalité avec précaution."
+					},
+					"transferToMad": {
+						"title": "Seuils Transfer/MAD",
+						"description": "Configurez les seuils pour les suggestions automatiques de passage Transfer vers MAD",
+						"denseZone": "Détection Zone Dense",
+						"denseZoneDescription": "Suggérer la tarification MAD quand la vitesse commerciale est trop basse en zone dense",
+						"roundTrip": "Détection Aller-Retour",
+						"roundTripDescription": "Suggérer la tarification MAD quand le chauffeur est bloqué sur place lors d'un aller-retour"
 					}
 				},
 				"fields": {
@@ -1623,6 +1631,39 @@
 							"4": "Difficile",
 							"5": "Très difficile"
 						}
+					},
+					"denseZoneSpeedThreshold": {
+						"label": "Seuil de vitesse",
+						"help": "Vitesse commerciale en dessous de laquelle la tarification MAD est suggérée (km/h)",
+						"placeholder": "15"
+					},
+					"autoSwitchToMAD": {
+						"label": "Basculement auto vers MAD",
+						"description": "Basculer automatiquement vers la tarification MAD au lieu de simplement suggérer"
+					},
+					"denseZoneCodes": {
+						"label": "Codes des zones denses",
+						"help": "Codes des zones considérées comme denses pour la détection",
+						"placeholder": "Sélectionner les zones..."
+					},
+					"minWaitingTimeForSeparateTransfers": {
+						"label": "Temps d'attente min pour transfers séparés",
+						"help": "Temps d'attente minimum sur place (minutes) pour que 2 transfers séparés soient viables",
+						"placeholder": "180"
+					},
+					"maxReturnDistanceKm": {
+						"label": "Distance de retour max",
+						"help": "Distance maximum (km) pour envisager un retour à la base",
+						"placeholder": "50"
+					},
+					"roundTripBuffer": {
+						"label": "Buffer aller-retour",
+						"help": "Temps tampon (minutes) ajouté au calcul de retour",
+						"placeholder": "30"
+					},
+					"autoSwitchRoundTripToMAD": {
+						"label": "Basculement auto aller-retour vers MAD",
+						"description": "Basculer automatiquement les aller-retours vers la tarification MAD au lieu de simplement suggérer"
 					}
 				},
 				"links": {
