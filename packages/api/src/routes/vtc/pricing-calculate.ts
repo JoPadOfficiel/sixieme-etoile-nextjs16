@@ -65,6 +65,14 @@ import {
 	buildRouteSegmentationRule,
 	type ZoneSegment,
 } from "../../services/route-segmentation";
+import {
+	decomposeTransversalTrip,
+	buildTransversalDecompositionRule,
+	buildTransitDiscountRules,
+	identifyTransitZones,
+	DEFAULT_TRANSIT_CONFIG,
+	type TransversalDecompositionConfig,
+} from "../../services/transversal-decomposition";
 
 // ============================================================================
 // Validation Schemas
@@ -962,6 +970,77 @@ export const pricingCalculateRouter = new Hono()
 					}
 				} catch (fallbackError) {
 					console.warn(`[PRICING] Fallback segmentation failed:`, fallbackError);
+				}
+			}
+
+			// Story 18.7: Transversal trip decomposition
+			// Only applies when we have zone segments and a dropoff point
+			if (result.tripAnalysis.zoneSegments && result.tripAnalysis.zoneSegments.length > 0 && data.dropoff) {
+				try {
+					// Find pickup and dropoff zones from the zone segments
+					const zoneSegments = result.tripAnalysis.zoneSegments as ZoneSegment[];
+					const pickupZoneCode = zoneSegments[0]?.zoneCode ?? "";
+					const dropoffZoneCode = zoneSegments[zoneSegments.length - 1]?.zoneCode ?? "";
+
+					// Build transversal decomposition config from organization settings
+					const transitConfig: TransversalDecompositionConfig = {
+						transitDiscountEnabled: pricingSettings.transitDiscountEnabled ?? DEFAULT_TRANSIT_CONFIG.transitDiscountEnabled,
+						transitDiscountPercent: pricingSettings.transitDiscountPercent ?? DEFAULT_TRANSIT_CONFIG.transitDiscountPercent,
+						transitZoneCodes: pricingSettings.transitZoneCodes ?? DEFAULT_TRANSIT_CONFIG.transitZoneCodes,
+						pickupZoneCode,
+						dropoffZoneCode,
+					};
+
+					// Decompose transversal trip
+					const transversalResult = decomposeTransversalTrip(
+						zoneSegments,
+						transitConfig,
+						{
+							baseRatePerKm: pricingSettings.baseRatePerKm,
+							baseRatePerHour: pricingSettings.baseRatePerHour,
+							targetMarginPercent: pricingSettings.targetMarginPercent,
+						},
+					);
+
+					// Store transversal decomposition in tripAnalysis
+					result.tripAnalysis.transversalDecomposition = transversalResult;
+
+					// If transversal and has transit discount, add applied rules
+					if (transversalResult.isTransversal) {
+						// Identify transit zones for the rule
+						const transitZones = identifyTransitZones(
+							zoneSegments,
+							pickupZoneCode,
+							dropoffZoneCode,
+							transitConfig.transitZoneCodes,
+						);
+
+						// Add transversal decomposition rule for transparency
+						const transversalRule = buildTransversalDecompositionRule(
+							transversalResult,
+							transitZones,
+							transitConfig.transitDiscountEnabled,
+						);
+						result.appliedRules.push(transversalRule);
+
+						// Add individual transit discount rules if any
+						if (transversalResult.totalTransitDiscount > 0) {
+							const transitDiscountRules = buildTransitDiscountRules(
+								transversalResult,
+								transitConfig.transitDiscountPercent,
+							);
+							result.appliedRules.push(...transitDiscountRules);
+						}
+
+						console.info(
+							`[PRICING] Transversal trip decomposed: ` +
+							`zones=${transversalResult.zonesTraversed.join(" → ")}, ` +
+							`segments=${transversalResult.totalSegments}, ` +
+							`transitDiscount=${transversalResult.totalTransitDiscount}€`,
+						);
+					}
+				} catch (transversalError) {
+					console.warn(`[PRICING] Transversal decomposition failed:`, transversalError);
 				}
 			}
 

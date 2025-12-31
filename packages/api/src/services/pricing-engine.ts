@@ -49,6 +49,7 @@ import {
 	type VehicleCategoryForTco,
 	type TcoCostComponent as TcoCalculatorResult,
 } from "./tco-calculator";
+import type { TransversalDecompositionResult } from "./transversal-decomposition";
 
 // Europe/Paris timezone constant
 const PARIS_TZ = "Europe/Paris";
@@ -420,6 +421,10 @@ export interface OrganizationPricingSettings {
 	maxReturnDistanceKm?: number | null;                 // km, default: 50
 	roundTripBuffer?: number | null;                     // minutes, default: 30
 	autoSwitchRoundTripToMAD?: boolean;                  // default: false
+	// Story 18.7: Transit discount configuration for transversal trips
+	transitDiscountEnabled?: boolean;                    // default: false
+	transitDiscountPercent?: number;                     // default: 10 (%)
+	transitZoneCodes?: string[];                         // default: ["PARIS_0", "PARIS_10"]
 }
 
 // ============================================================================
@@ -1370,6 +1375,9 @@ export interface TripAnalysis {
 	
 	// Story 18.6: Multi-scenario route optimization
 	routeScenarios?: RouteScenarios | null;
+	
+	// Story 18.7: Transversal trip decomposition
+	transversalDecomposition?: TransversalDecompositionResult | null;
 }
 
 /**
