@@ -4,7 +4,7 @@
 
 - **ID**: 18-7
 - **Epic**: Epic 18 - Advanced Geospatial, Route Optimization & Yield Management
-- **Status**: ready-for-dev
+- **Status**: done
 - **Priority**: high
 - **Story Points**: 5
 - **Branch**: `feature/18-7-transversal-trip-decomposition`
