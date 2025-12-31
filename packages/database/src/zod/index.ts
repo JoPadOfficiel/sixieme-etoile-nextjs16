@@ -128,7 +128,7 @@ export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licen
 
 export const DriverCalendarEventScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','eventType','title','notes','startAt','endAt','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','fixedParkingSurcharge','fixedAccessFee','surchargeDescription','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','fixedParkingSurcharge','fixedAccessFee','surchargeDescription','corridorPolyline','corridorBufferMeters','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -234,7 +234,7 @@ export const AdjustmentTypeSchema = z.enum(['PERCENTAGE','FIXED_AMOUNT']);
 
 export type AdjustmentTypeType = `${z.infer<typeof AdjustmentTypeSchema>}`
 
-export const ZoneTypeSchema = z.enum(['POLYGON','RADIUS','POINT']);
+export const ZoneTypeSchema = z.enum(['POLYGON','RADIUS','POINT','CORRIDOR']);
 
 export type ZoneTypeType = `${z.infer<typeof ZoneTypeSchema>}`
 
@@ -839,6 +839,8 @@ export const PricingZoneSchema = z.object({
   fixedParkingSurcharge: z.instanceof(Prisma.Decimal, { message: "Field 'fixedParkingSurcharge' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   fixedAccessFee: z.instanceof(Prisma.Decimal, { message: "Field 'fixedAccessFee' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   surchargeDescription: z.string().nullable(),
+  corridorPolyline: z.string().nullable(),
+  corridorBufferMeters: z.number().int().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

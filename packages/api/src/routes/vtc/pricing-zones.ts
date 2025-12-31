@@ -4,6 +4,10 @@ import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import {
+	generateCorridorBuffer,
+	calculateCorridorLength,
+} from "../../services/corridor-buffer";
 
 // Helper to convert Prisma Decimal to number for JSON serialization
 const decimalToNumber = (value: unknown): number | null => {
@@ -23,6 +27,13 @@ const transformZone = (zone: any) => ({
 	// Story 17.10: Zone fixed surcharges (friction costs)
 	fixedParkingSurcharge: decimalToNumber(zone.fixedParkingSurcharge),
 	fixedAccessFee: decimalToNumber(zone.fixedAccessFee),
+	// Story 18.1: Corridor-specific fields
+	corridorPolyline: zone.corridorPolyline ?? null,
+	corridorBufferMeters: zone.corridorBufferMeters ?? null,
+	// Calculate corridor length if applicable
+	corridorLengthKm: zone.corridorPolyline
+		? calculateCorridorLength(zone.corridorPolyline)
+		: null,
 });
 import {
 	withTenantCreate,
@@ -34,7 +45,8 @@ import { validateZoneTopology } from "../../lib/zone-topology-validator";
 import { organizationMiddleware } from "../../middleware/organization";
 
 // Validation schemas
-const zoneTypeEnum = z.enum(["POLYGON", "RADIUS", "POINT"]);
+// Story 18.1: Added CORRIDOR zone type
+const zoneTypeEnum = z.enum(["POLYGON", "RADIUS", "POINT", "CORRIDOR"]);
 
 const creationMethodEnum = z.enum(["DRAW", "POSTAL_CODE", "COORDINATES"]);
 
@@ -65,6 +77,9 @@ const createZoneSchema = z.object({
 	fixedParkingSurcharge: z.coerce.number().min(0).optional().nullable(),
 	fixedAccessFee: z.coerce.number().min(0).optional().nullable(),
 	surchargeDescription: z.string().max(500).optional().nullable(),
+	// Story 18.1: Corridor-specific fields
+	corridorPolyline: z.string().optional().nullable(),
+	corridorBufferMeters: z.coerce.number().int().min(100).max(5000).optional().nullable(),
 });
 
 const updateZoneSchema = z.object({
@@ -94,6 +109,9 @@ const updateZoneSchema = z.object({
 	fixedParkingSurcharge: z.coerce.number().min(0).optional().nullable(),
 	fixedAccessFee: z.coerce.number().min(0).optional().nullable(),
 	surchargeDescription: z.string().max(500).optional().nullable(),
+	// Story 18.1: Corridor-specific fields
+	corridorPolyline: z.string().optional().nullable(),
+	corridorBufferMeters: z.coerce.number().int().min(100).max(5000).optional().nullable(),
 });
 
 const listZonesSchema = z.object({
@@ -257,6 +275,22 @@ export const pricingZonesRouter = new Hono()
 				});
 			}
 
+			// Story 18.1: Validate CORRIDOR type requires corridorPolyline
+			if (data.zoneType === "CORRIDOR" && !data.corridorPolyline) {
+				throw new HTTPException(400, {
+					message: "corridorPolyline is required for CORRIDOR zone type",
+				});
+			}
+
+			// Story 18.1: Validate corridor buffer range
+			if (data.zoneType === "CORRIDOR" && data.corridorBufferMeters) {
+				if (data.corridorBufferMeters < 100 || data.corridorBufferMeters > 5000) {
+					throw new HTTPException(400, {
+						message: "corridorBufferMeters must be between 100 and 5000",
+					});
+				}
+			}
+
 			// Validate center coordinates
 			if (
 				(data.centerLatitude !== null && data.centerLongitude === null) ||
@@ -295,15 +329,30 @@ export const pricingZonesRouter = new Hono()
 			}
 
 			try {
+				// Story 18.1: Generate buffer geometry for CORRIDOR zones
+				let geometry = data.geometry ?? undefined;
+				let centerLatitude = data.centerLatitude ?? undefined;
+				let centerLongitude = data.centerLongitude ?? undefined;
+
+				if (data.zoneType === "CORRIDOR" && data.corridorPolyline) {
+					const bufferMeters = data.corridorBufferMeters ?? 500;
+					const bufferResult = generateCorridorBuffer(data.corridorPolyline, {
+						bufferMeters,
+					});
+					geometry = bufferResult.geometry;
+					centerLatitude = bufferResult.centerPoint.lat;
+					centerLongitude = bufferResult.centerPoint.lng;
+				}
+
 				const zone = await db.pricingZone.create({
 					data: withTenantCreate(
 						{
 							name: data.name,
 							code: data.code,
 							zoneType: data.zoneType,
-							geometry: data.geometry ?? undefined,
-							centerLatitude: data.centerLatitude ?? undefined,
-							centerLongitude: data.centerLongitude ?? undefined,
+							geometry,
+							centerLatitude,
+							centerLongitude,
 							radiusKm: data.radiusKm ?? undefined,
 							parentZoneId: data.parentZoneId ?? undefined,
 							isActive: data.isActive,
@@ -320,6 +369,9 @@ export const pricingZonesRouter = new Hono()
 							fixedParkingSurcharge: data.fixedParkingSurcharge ?? undefined,
 							fixedAccessFee: data.fixedAccessFee ?? undefined,
 							surchargeDescription: data.surchargeDescription ?? undefined,
+							// Story 18.1: Corridor-specific fields
+							corridorPolyline: data.corridorPolyline ?? undefined,
+							corridorBufferMeters: data.corridorBufferMeters ?? undefined,
 						},
 						organizationId,
 					),
@@ -406,6 +458,27 @@ export const pricingZonesRouter = new Hono()
 				}
 			}
 
+			// Story 18.1: Regenerate buffer geometry if corridor polyline or buffer changes
+			let corridorGeometryUpdate: { geometry?: unknown; centerLatitude?: number; centerLongitude?: number } = {};
+			const newZoneType = data.zoneType ?? existingZone.zoneType;
+			const newPolyline = data.corridorPolyline ?? existingZone.corridorPolyline;
+			const newBufferMeters = data.corridorBufferMeters ?? existingZone.corridorBufferMeters ?? 500;
+
+			if (
+				newZoneType === "CORRIDOR" &&
+				newPolyline &&
+				(data.corridorPolyline !== undefined || data.corridorBufferMeters !== undefined)
+			) {
+				const bufferResult = generateCorridorBuffer(newPolyline, {
+					bufferMeters: newBufferMeters,
+				});
+				corridorGeometryUpdate = {
+					geometry: bufferResult.geometry,
+					centerLatitude: bufferResult.centerPoint.lat,
+					centerLongitude: bufferResult.centerPoint.lng,
+				};
+			}
+
 			const zone = await db.pricingZone.update({
 				where: { id },
 				data: {
@@ -435,6 +508,11 @@ export const pricingZonesRouter = new Hono()
 					...(data.fixedParkingSurcharge !== undefined && { fixedParkingSurcharge: data.fixedParkingSurcharge }),
 					...(data.fixedAccessFee !== undefined && { fixedAccessFee: data.fixedAccessFee }),
 					...(data.surchargeDescription !== undefined && { surchargeDescription: data.surchargeDescription }),
+					// Story 18.1: Update corridor-specific fields
+					...(data.corridorPolyline !== undefined && { corridorPolyline: data.corridorPolyline }),
+					...(data.corridorBufferMeters !== undefined && { corridorBufferMeters: data.corridorBufferMeters }),
+					// Apply regenerated corridor geometry if applicable
+					...corridorGeometryUpdate,
 				},
 				include: {
 					parentZone: {

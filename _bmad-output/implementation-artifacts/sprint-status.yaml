@@ -150,8 +150,8 @@ development_status:
   17-15-client-difficulty-score-patience-tax: done
   17-16-fr-group-9-settings-ui-integration: done
   epic-17-retrospective: optional
-  epic-18: backlog
-  18-1-corridor-zone-type-highway-buffers: backlog
+  epic-18: in-progress
+  18-1-corridor-zone-type-highway-buffers: done
   18-2-automatic-transfer-to-mad-detection-dense-zone: backlog
   18-3-round-trip-to-mad-automatic-detection: backlog
   18-4-loss-of-exploitation-opportunity-cost-calculation: backlog

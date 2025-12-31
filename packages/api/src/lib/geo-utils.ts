@@ -100,8 +100,9 @@ export function isPointInPolygon(
 
 /**
  * Zone type enum matching Prisma schema
+ * Story 18.1: Added CORRIDOR type for highway buffer zones
  */
-export type ZoneType = "POLYGON" | "RADIUS" | "POINT";
+export type ZoneType = "POLYGON" | "RADIUS" | "POINT" | "CORRIDOR";
 
 /**
  * Story 17.1: Zone conflict resolution strategy
@@ -134,6 +135,9 @@ export interface ZoneData {
 	fixedParkingSurcharge?: number | null;
 	fixedAccessFee?: number | null;
 	surchargeDescription?: string | null;
+	// Story 18.1: Corridor-specific fields
+	corridorPolyline?: string | null;
+	corridorBufferMeters?: number | null;
 }
 
 /**
@@ -179,6 +183,14 @@ export function isPointInZone(point: GeoPoint, zone: ZoneData): boolean {
 				0.1, // 100 meters
 			);
 
+		case "CORRIDOR":
+			// Story 18.1: For CORRIDOR zones, use the pre-computed buffer geometry
+			// The geometry field contains the buffer polygon generated from corridorPolyline
+			if (!zone.geometry) {
+				return false;
+			}
+			return isPointInPolygon(point, zone.geometry);
+
 		default:
 			return false;
 	}
@@ -193,11 +205,18 @@ export function isPointInZone(point: GeoPoint, zone: ZoneData): boolean {
 export function findZonesForPoint(point: GeoPoint, zones: ZoneData[]): ZoneData[] {
 	const matchingZones = zones.filter((zone) => isPointInZone(point, zone));
 
-	// Sort by specificity: POINT > RADIUS (smaller first) > POLYGON
+	// Sort by specificity: POINT > CORRIDOR (smaller buffer first) > RADIUS (smaller first) > POLYGON
 	return matchingZones.sort((a, b) => {
 		// POINT zones are most specific
 		if (a.zoneType === "POINT" && b.zoneType !== "POINT") return -1;
 		if (b.zoneType === "POINT" && a.zoneType !== "POINT") return 1;
+
+		// Story 18.1: CORRIDOR zones, sorted by buffer size (smaller = more specific)
+		if (a.zoneType === "CORRIDOR" && b.zoneType === "CORRIDOR") {
+			return (a.corridorBufferMeters ?? 500) - (b.corridorBufferMeters ?? 500);
+		}
+		if (a.zoneType === "CORRIDOR" && b.zoneType !== "CORRIDOR" && b.zoneType !== "POINT") return -1;
+		if (b.zoneType === "CORRIDOR" && a.zoneType !== "CORRIDOR" && a.zoneType !== "POINT") return 1;
 
 		// Then RADIUS zones, sorted by radius (smaller = more specific)
 		if (a.zoneType === "RADIUS" && b.zoneType === "RADIUS") {
@@ -304,14 +323,22 @@ export function getZoneCenter(zone: ZoneData): GeoPoint | null {
 }
 
 /**
- * Sort zones by specificity (POINT > RADIUS > POLYGON)
+ * Sort zones by specificity (POINT > CORRIDOR > RADIUS > POLYGON)
  * This is the default sorting used when no conflict strategy is specified
+ * Story 18.1: Added CORRIDOR handling
  */
 function sortBySpecificity(zones: ZoneData[]): ZoneData[] {
 	return [...zones].sort((a, b) => {
 		// POINT zones are most specific
 		if (a.zoneType === "POINT" && b.zoneType !== "POINT") return -1;
 		if (b.zoneType === "POINT" && a.zoneType !== "POINT") return 1;
+
+		// Story 18.1: CORRIDOR zones, sorted by buffer size (smaller = more specific)
+		if (a.zoneType === "CORRIDOR" && b.zoneType === "CORRIDOR") {
+			return (a.corridorBufferMeters ?? 500) - (b.corridorBufferMeters ?? 500);
+		}
+		if (a.zoneType === "CORRIDOR" && b.zoneType !== "CORRIDOR" && b.zoneType !== "POINT") return -1;
+		if (b.zoneType === "CORRIDOR" && a.zoneType !== "CORRIDOR" && a.zoneType !== "POINT") return 1;
 
 		// Then RADIUS zones, sorted by radius (smaller = more specific)
 		if (a.zoneType === "RADIUS" && b.zoneType === "RADIUS") {
