@@ -132,7 +132,7 @@ development_status:
   16-9-support-off-grid-avec-notes-obligatoires: done
   16-10-tests-e2e-pour-tous-les-types-de-trajets: done
   epic-16-retrospective: optional
-  epic-17: in-progress
+  epic-17: done
   17-1-configurable-zone-conflict-resolution-strategy: done
   17-2-configurable-zone-multiplier-aggregation-strategy: done
   17-3-automatic-compliance-driven-staffing-integration: done
