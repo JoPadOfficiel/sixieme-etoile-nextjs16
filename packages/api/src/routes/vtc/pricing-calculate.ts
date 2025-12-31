@@ -23,6 +23,10 @@ import {
 	calculateExcursionLegs,
 	buildExcursionTripAnalysis,
 	calculateEstimatedEndAt,
+	// Story 18.2: Dense zone detection
+	detectDenseZone,
+	calculateMadSuggestion,
+	buildAutoSwitchedToMadRule,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
@@ -433,6 +437,10 @@ async function loadPricingSettings(
 			fuelPriceSource: fuelPriceResult,
 			// Story 17.15: Client difficulty multipliers (Patience Tax)
 			difficultyMultipliers: settings.difficultyMultipliers as Record<string, number> | null,
+			// Story 18.2: Dense zone detection settings
+			denseZoneSpeedThreshold: settings.denseZoneSpeedThreshold ? Number(settings.denseZoneSpeedThreshold) : undefined,
+			autoSwitchToMAD: settings.autoSwitchToMAD ?? false,
+			denseZoneCodes: settings.denseZoneCodes ?? [],
 		};
 	}
 
@@ -966,6 +974,93 @@ export const pricingCalculateRouter = new Hono()
 				const endAt = calculateEstimatedEndAt(pickupDate, result.tripAnalysis);
 				if (endAt) {
 					estimatedEndAt = endAt.toISOString();
+				}
+			}
+
+			// Story 18.2: Dense zone detection for Transfer-to-MAD switching
+			// Only applies to Transfer trips with both pickup and dropoff
+			if (data.tripType === "transfer" && data.dropoff && effectiveDistanceKm && effectiveDurationMinutes) {
+				// Find pickup and dropoff zones for dense zone detection
+				const pickupZoneForDense = zones.find(z => {
+					if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
+						const distance = Math.sqrt(
+							Math.pow((data.pickup.lat - z.centerLatitude) * 111, 2) +
+							Math.pow((data.pickup.lng - z.centerLongitude) * 111 * Math.cos(data.pickup.lat * Math.PI / 180), 2)
+						);
+						return distance <= z.radiusKm;
+					}
+					return false;
+				});
+				
+				const dropoffZoneForDense = zones.find(z => {
+					if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
+						const distance = Math.sqrt(
+							Math.pow((data.dropoff!.lat - z.centerLatitude) * 111, 2) +
+							Math.pow((data.dropoff!.lng - z.centerLongitude) * 111 * Math.cos(data.dropoff!.lat * Math.PI / 180), 2)
+						);
+						return distance <= z.radiusKm;
+					}
+					return false;
+				});
+
+				// Detect dense zone
+				const denseZoneDetection = detectDenseZone(
+					pickupZoneForDense ? { code: pickupZoneForDense.code } : null,
+					dropoffZoneForDense ? { code: dropoffZoneForDense.code } : null,
+					effectiveDistanceKm,
+					effectiveDurationMinutes,
+					effectivePricingSettings,
+				);
+
+				// Store detection result in tripAnalysis
+				result.tripAnalysis.denseZoneDetection = denseZoneDetection;
+
+				// If intra-dense-zone with low commercial speed, calculate MAD suggestion
+				if (denseZoneDetection.isIntraDenseZone && denseZoneDetection.isBelowThreshold) {
+					const autoSwitch = effectivePricingSettings.autoSwitchToMAD ?? false;
+					const madSuggestion = calculateMadSuggestion(
+						result.price,
+						effectiveDurationMinutes,
+						effectiveDistanceKm,
+						effectivePricingSettings,
+						autoSwitch,
+					);
+
+					result.tripAnalysis.madSuggestion = madSuggestion;
+
+					// If auto-switch is enabled and MAD is more profitable, switch the price
+					if (madSuggestion.autoSwitched) {
+						const originalPrice = result.price;
+						result.price = madSuggestion.madPrice;
+						
+						// Recalculate margin with new price
+						result.margin = Math.round((result.price - result.internalCost) * 100) / 100;
+						result.marginPercent = result.price > 0
+							? Math.round((result.margin / result.price) * 100 * 100) / 100
+							: 0;
+
+						// Update profitability indicator
+						const greenThreshold = pricingSettings.greenMarginThreshold ?? 20;
+						const orangeThreshold = pricingSettings.orangeMarginThreshold ?? 0;
+						if (result.marginPercent >= greenThreshold) {
+							result.profitabilityIndicator = "green";
+						} else if (result.marginPercent >= orangeThreshold) {
+							result.profitabilityIndicator = "orange";
+						} else {
+							result.profitabilityIndicator = "red";
+						}
+
+						// Add auto-switched rule for transparency
+						const autoSwitchRule = buildAutoSwitchedToMadRule(denseZoneDetection, madSuggestion);
+						result.appliedRules.push(autoSwitchRule);
+
+						console.info(
+							`[PRICING] Auto-switched Transfer to MAD: ` +
+							`originalPrice=${originalPrice}€, madPrice=${madSuggestion.madPrice}€, ` +
+							`commercialSpeed=${denseZoneDetection.commercialSpeedKmh}km/h, ` +
+							`threshold=${denseZoneDetection.speedThreshold}km/h`
+						);
+					}
 				}
 			}
 

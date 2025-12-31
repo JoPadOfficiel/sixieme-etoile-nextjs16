@@ -1177,6 +1177,15 @@ model OrganizationPricingSettings {
   // Example: {"1": 1.00, "2": 1.02, "3": 1.05, "4": 1.08, "5": 1.10}
   difficultyMultipliers Json?
 
+  // Story 18.2: Dense zone detection for Transfer-to-MAD switching
+  // Speed threshold below which MAD pricing is suggested (default: 15 km/h)
+  denseZoneSpeedThreshold Decimal? @db.Decimal(5, 2)
+  // When true, automatically switch to MAD pricing; when false, only suggest
+  autoSwitchToMAD         Boolean  @default(false)
+  // Zone codes considered "dense" (e.g., ["PARIS_0", "PARIS_10"])
+  // Empty array means use default ["PARIS_0"]
+  denseZoneCodes          String[] @default([])
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

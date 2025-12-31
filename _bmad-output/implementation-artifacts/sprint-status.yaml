@@ -152,7 +152,7 @@ development_status:
   epic-17-retrospective: optional
   epic-18: in-progress
   18-1-corridor-zone-type-highway-buffers: done
-  18-2-automatic-transfer-to-mad-detection-dense-zone: backlog
+  18-2-automatic-transfer-to-mad-detection-dense-zone: done
   18-3-round-trip-to-mad-automatic-detection: backlog
   18-4-loss-of-exploitation-opportunity-cost-calculation: backlog
   18-5-stay-vs-return-empty-scenario-comparison: backlog

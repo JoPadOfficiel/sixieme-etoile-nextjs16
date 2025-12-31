@@ -411,6 +411,10 @@ export interface OrganizationPricingSettings {
 	madTimeBuckets?: MadTimeBucketData[];
 	// Story 17.15: Client difficulty multipliers (Patience Tax)
 	difficultyMultipliers?: Record<string, number> | null;
+	// Story 18.2: Dense zone detection for Transfer-to-MAD switching
+	denseZoneSpeedThreshold?: number | null;  // km/h, default: 15
+	autoSwitchToMAD?: boolean;                // default: false
+	denseZoneCodes?: string[];                // default: ["PARIS_0"]
 }
 
 // ============================================================================
@@ -1259,6 +1263,38 @@ export interface ZoneSegmentInfo {
 	exitPoint: { lat: number; lng: number };
 }
 
+// ============================================================================
+// Story 18.2: Dense Zone Detection Types
+// ============================================================================
+
+/**
+ * Story 18.2: Dense zone detection result
+ * Used to determine if a Transfer trip should switch to MAD pricing
+ */
+export interface DenseZoneDetection {
+	isIntraDenseZone: boolean;
+	pickupZoneCode: string | null;
+	dropoffZoneCode: string | null;
+	denseZoneCodes: string[];
+	commercialSpeedKmh: number | null;
+	speedThreshold: number;
+	isBelowThreshold: boolean;
+}
+
+/**
+ * Story 18.2: MAD suggestion for Transfer trips in dense zones
+ * Provides comparison between Transfer and MAD pricing
+ */
+export interface MadSuggestion {
+	type: "CONSIDER_MAD_PRICING";
+	transferPrice: number;
+	madPrice: number;
+	priceDifference: number;
+	percentageGain: number;
+	recommendation: string;
+	autoSwitched: boolean;
+}
+
 /**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
@@ -1312,6 +1348,10 @@ export interface TripAnalysis {
 		zonesTraversed: string[];
 		segmentationMethod: "POLYLINE" | "FALLBACK";
 	} | null;
+	
+	// Story 18.2: Dense zone detection for Transfer-to-MAD switching
+	denseZoneDetection?: DenseZoneDetection | null;
+	madSuggestion?: MadSuggestion | null;
 }
 
 /**
@@ -3658,6 +3698,168 @@ export function applyTripTypePricing(
 
 	// Unknown trip type: use standard pricing
 	return { price: standardBasePrice, rule: null };
+}
+
+// ============================================================================
+// Story 18.2: Dense Zone Detection Functions
+// ============================================================================
+
+/**
+ * Story 18.2: Default dense zone codes (Paris intra-muros)
+ */
+export const DEFAULT_DENSE_ZONE_CODES = ["PARIS_0"];
+
+/**
+ * Story 18.2: Default speed threshold for dense zone detection (km/h)
+ */
+export const DEFAULT_DENSE_ZONE_SPEED_THRESHOLD = 15.0;
+
+/**
+ * Story 18.2: Detect if a trip is within a dense zone with low commercial speed
+ * 
+ * A trip is considered "intra-dense-zone" when:
+ * 1. Both pickup and dropoff are in zones marked as "dense"
+ * 2. The commercial speed (distance/duration) is below the configured threshold
+ * 
+ * @param pickupZone - Zone data for pickup location (or null if not in any zone)
+ * @param dropoffZone - Zone data for dropoff location (or null if not in any zone)
+ * @param distanceKm - Estimated distance in km
+ * @param durationMinutes - Estimated duration in minutes
+ * @param settings - Organization pricing settings with dense zone configuration
+ * @returns Dense zone detection result
+ */
+export function detectDenseZone(
+	pickupZone: { code: string } | null,
+	dropoffZone: { code: string } | null,
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+): DenseZoneDetection {
+	// Get configuration with defaults
+	const denseZoneCodes = settings.denseZoneCodes?.length 
+		? settings.denseZoneCodes 
+		: DEFAULT_DENSE_ZONE_CODES;
+	const speedThreshold = settings.denseZoneSpeedThreshold ?? DEFAULT_DENSE_ZONE_SPEED_THRESHOLD;
+	
+	const pickupCode = pickupZone?.code ?? null;
+	const dropoffCode = dropoffZone?.code ?? null;
+	
+	// Check if both pickup and dropoff are in dense zones
+	const pickupInDense = pickupCode !== null && denseZoneCodes.includes(pickupCode);
+	const dropoffInDense = dropoffCode !== null && denseZoneCodes.includes(dropoffCode);
+	const isIntraDenseZone = pickupInDense && dropoffInDense;
+	
+	// Calculate commercial speed (km/h)
+	// Commercial speed = distance / time, where time is in hours
+	const durationHours = durationMinutes / 60;
+	const commercialSpeedKmh = durationHours > 0 
+		? Math.round((distanceKm / durationHours) * 100) / 100 
+		: null;
+	
+	// Check if speed is below threshold
+	const isBelowThreshold = commercialSpeedKmh !== null && commercialSpeedKmh < speedThreshold;
+	
+	return {
+		isIntraDenseZone,
+		pickupZoneCode: pickupCode,
+		dropoffZoneCode: dropoffCode,
+		denseZoneCodes,
+		commercialSpeedKmh,
+		speedThreshold,
+		isBelowThreshold,
+	};
+}
+
+/**
+ * Story 18.2: Calculate MAD price suggestion for Transfer trips in dense zones
+ * 
+ * When a Transfer trip is in a dense zone with low commercial speed,
+ * this function calculates what the price would be using MAD (dispo) pricing
+ * and provides a comparison to help the operator make a decision.
+ * 
+ * @param transferPrice - The calculated Transfer price
+ * @param durationMinutes - Trip duration in minutes
+ * @param distanceKm - Trip distance in km
+ * @param settings - Organization pricing settings
+ * @param autoSwitch - Whether auto-switch is enabled
+ * @returns MAD suggestion with price comparison
+ */
+export function calculateMadSuggestion(
+	transferPrice: number,
+	durationMinutes: number,
+	distanceKm: number,
+	settings: OrganizationPricingSettings,
+	autoSwitch: boolean,
+): MadSuggestion {
+	// Calculate equivalent MAD price using dispo pricing logic
+	const madResult = calculateDispoPrice(
+		durationMinutes, 
+		distanceKm, 
+		settings.baseRatePerHour, 
+		settings
+	);
+	const madPrice = madResult.price;
+	
+	// Calculate price difference and percentage gain
+	const priceDifference = Math.round((madPrice - transferPrice) * 100) / 100;
+	const percentageGain = transferPrice > 0 
+		? Math.round((priceDifference / transferPrice) * 100 * 100) / 100 
+		: 0;
+	
+	// Generate recommendation message
+	let recommendation: string;
+	if (priceDifference > 0) {
+		recommendation = `MAD pricing recommandé: +${priceDifference.toFixed(2)}€ (+${percentageGain.toFixed(1)}%) - Vitesse commerciale trop basse pour le pricing au km`;
+	} else if (priceDifference < 0) {
+		recommendation = `Transfer pricing optimal pour ce trajet (MAD serait ${Math.abs(priceDifference).toFixed(2)}€ moins cher)`;
+	} else {
+		recommendation = `Prix équivalent entre Transfer et MAD`;
+	}
+	
+	return {
+		type: "CONSIDER_MAD_PRICING",
+		transferPrice,
+		madPrice,
+		priceDifference,
+		percentageGain,
+		recommendation,
+		autoSwitched: autoSwitch && priceDifference > 0,
+	};
+}
+
+/**
+ * Story 18.2: Applied rule for auto-switched MAD pricing
+ */
+export interface AutoSwitchedToMadRule extends AppliedRule {
+	type: "AUTO_SWITCHED_TO_MAD";
+	description: string;
+	originalTripType: "transfer";
+	originalPrice: number;
+	madPrice: number;
+	priceDifference: number;
+	commercialSpeedKmh: number;
+	speedThreshold: number;
+	denseZoneCodes: string[];
+}
+
+/**
+ * Story 18.2: Build the auto-switched rule for transparency
+ */
+export function buildAutoSwitchedToMadRule(
+	detection: DenseZoneDetection,
+	suggestion: MadSuggestion,
+): AutoSwitchedToMadRule {
+	return {
+		type: "AUTO_SWITCHED_TO_MAD",
+		description: `Auto-switched from Transfer to MAD pricing due to low commercial speed (${detection.commercialSpeedKmh?.toFixed(1)} km/h < ${detection.speedThreshold} km/h threshold) in dense zone`,
+		originalTripType: "transfer",
+		originalPrice: suggestion.transferPrice,
+		madPrice: suggestion.madPrice,
+		priceDifference: suggestion.priceDifference,
+		commercialSpeedKmh: detection.commercialSpeedKmh ?? 0,
+		speedThreshold: detection.speedThreshold,
+		denseZoneCodes: detection.denseZoneCodes,
+	};
 }
 
 // ============================================================================

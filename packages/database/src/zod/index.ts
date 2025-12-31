@@ -140,7 +140,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -996,6 +996,9 @@ export const OrganizationPricingSettingsSchema = z.object({
   relayDriverFixedFee: z.instanceof(Prisma.Decimal, { message: "Field 'relayDriverFixedFee' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   useDriverHomeForDeadhead: z.boolean(),
   difficultyMultipliers: JsonValueSchema.nullable(),
+  denseZoneSpeedThreshold: z.instanceof(Prisma.Decimal, { message: "Field 'denseZoneSpeedThreshold' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  autoSwitchToMAD: z.boolean(),
+  denseZoneCodes: z.string().array(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
