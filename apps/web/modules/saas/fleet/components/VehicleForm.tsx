@@ -24,7 +24,14 @@ import type {
 	VehicleStatus,
 	VehicleCategoriesResponse,
 	BasesResponse,
+	DepreciationMethod,
 } from "../types";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@ui/components/collapsible";
+import { ChevronDownIcon, InfoIcon } from "lucide-react";
 
 interface VehicleFormProps {
 	vehicle?: VehicleWithRelations | null;
@@ -50,6 +57,18 @@ function getInitialFormData(vehicle?: VehicleWithRelations | null): VehicleFormD
 			requiredLicenseCategoryId: vehicle.requiredLicenseCategoryId,
 			status: vehicle.status,
 			notes: vehicle.notes,
+			// Story 17.14: TCO fields
+			purchasePrice: vehicle.purchasePrice ? Number.parseFloat(vehicle.purchasePrice) : null,
+			expectedLifespanKm: vehicle.expectedLifespanKm,
+			expectedLifespanYears: vehicle.expectedLifespanYears,
+			annualMaintenanceBudget: vehicle.annualMaintenanceBudget
+				? Number.parseFloat(vehicle.annualMaintenanceBudget)
+				: null,
+			annualInsuranceCost: vehicle.annualInsuranceCost
+				? Number.parseFloat(vehicle.annualInsuranceCost)
+				: null,
+			depreciationMethod: vehicle.depreciationMethod,
+			currentOdometerKm: vehicle.currentOdometerKm,
 		};
 	}
 	return {
@@ -66,6 +85,41 @@ function getInitialFormData(vehicle?: VehicleWithRelations | null): VehicleFormD
 		requiredLicenseCategoryId: null,
 		status: "ACTIVE",
 		notes: null,
+		// Story 17.14: TCO fields
+		purchasePrice: null,
+		expectedLifespanKm: null,
+		expectedLifespanYears: null,
+		annualMaintenanceBudget: null,
+		annualInsuranceCost: null,
+		depreciationMethod: null,
+		currentOdometerKm: null,
+	};
+}
+
+// Story 17.14: Calculate TCO preview
+function calculateTcoPreview(formData: VehicleFormData): {
+	totalPerKm: number | null;
+	depreciation: number | null;
+	maintenance: number | null;
+	insurance: number | null;
+} {
+	const { purchasePrice, expectedLifespanKm, expectedLifespanYears, annualMaintenanceBudget, annualInsuranceCost } = formData;
+	
+	if (!purchasePrice || !expectedLifespanKm || !expectedLifespanYears || expectedLifespanKm <= 0 || expectedLifespanYears <= 0) {
+		return { totalPerKm: null, depreciation: null, maintenance: null, insurance: null };
+	}
+	
+	const depreciation = purchasePrice / expectedLifespanKm;
+	const annualKm = expectedLifespanKm / expectedLifespanYears;
+	const maintenance = (annualMaintenanceBudget ?? 0) / annualKm;
+	const insurance = (annualInsuranceCost ?? 0) / annualKm;
+	const totalPerKm = depreciation + maintenance + insurance;
+	
+	return {
+		totalPerKm: Math.round(totalPerKm * 10000) / 10000,
+		depreciation: Math.round(depreciation * 10000) / 10000,
+		maintenance: Math.round(maintenance * 10000) / 10000,
+		insurance: Math.round(insurance * 10000) / 10000,
 	};
 }
 
@@ -318,6 +372,180 @@ export function VehicleForm({ vehicle, onSuccess, onCancel }: VehicleFormProps) 
 					</div>
 				</div>
 			</div>
+
+			{/* Story 17.14: TCO Configuration */}
+			<Collapsible defaultOpen={!!formData.purchasePrice}>
+				<CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:underline">
+					<div className="flex items-center gap-2">
+						<span>{t("fleet.vehicles.form.tco.title")}</span>
+						{formData.purchasePrice && (
+							<span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+								{calculateTcoPreview(formData).totalPerKm?.toFixed(4)} €/km
+							</span>
+						)}
+					</div>
+					<ChevronDownIcon className="size-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+				</CollapsibleTrigger>
+				<CollapsibleContent className="space-y-4 pt-2">
+					<p className="text-xs text-muted-foreground flex items-start gap-1">
+						<InfoIcon className="size-3 mt-0.5 shrink-0" />
+						{t("fleet.vehicles.form.tco.description")}
+					</p>
+
+					{/* Purchase Price & Lifespan */}
+					<div className="grid grid-cols-3 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="purchasePrice">{t("fleet.vehicles.form.tco.purchasePrice")}</Label>
+							<Input
+								id="purchasePrice"
+								type="number"
+								step="100"
+								min={0}
+								value={formData.purchasePrice ?? ""}
+								onChange={(e) =>
+									updateField("purchasePrice", e.target.value ? Number.parseFloat(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.purchasePricePlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.purchasePriceHelp")}</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="expectedLifespanKm">{t("fleet.vehicles.form.tco.expectedLifespanKm")}</Label>
+							<Input
+								id="expectedLifespanKm"
+								type="number"
+								step="10000"
+								min={0}
+								value={formData.expectedLifespanKm ?? ""}
+								onChange={(e) =>
+									updateField("expectedLifespanKm", e.target.value ? Number.parseInt(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.expectedLifespanKmPlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.expectedLifespanKmHelp")}</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="expectedLifespanYears">{t("fleet.vehicles.form.tco.expectedLifespanYears")}</Label>
+							<Input
+								id="expectedLifespanYears"
+								type="number"
+								min={1}
+								max={20}
+								value={formData.expectedLifespanYears ?? ""}
+								onChange={(e) =>
+									updateField("expectedLifespanYears", e.target.value ? Number.parseInt(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.expectedLifespanYearsPlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.expectedLifespanYearsHelp")}</p>
+						</div>
+					</div>
+
+					{/* Maintenance & Insurance */}
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="annualMaintenanceBudget">{t("fleet.vehicles.form.tco.annualMaintenanceBudget")}</Label>
+							<Input
+								id="annualMaintenanceBudget"
+								type="number"
+								step="100"
+								min={0}
+								value={formData.annualMaintenanceBudget ?? ""}
+								onChange={(e) =>
+									updateField("annualMaintenanceBudget", e.target.value ? Number.parseFloat(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.annualMaintenanceBudgetPlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.annualMaintenanceBudgetHelp")}</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="annualInsuranceCost">{t("fleet.vehicles.form.tco.annualInsuranceCost")}</Label>
+							<Input
+								id="annualInsuranceCost"
+								type="number"
+								step="100"
+								min={0}
+								value={formData.annualInsuranceCost ?? ""}
+								onChange={(e) =>
+									updateField("annualInsuranceCost", e.target.value ? Number.parseFloat(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.annualInsuranceCostPlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.annualInsuranceCostHelp")}</p>
+						</div>
+					</div>
+
+					{/* Depreciation Method & Odometer */}
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="depreciationMethod">{t("fleet.vehicles.form.tco.depreciationMethod")}</Label>
+							<Select
+								value={formData.depreciationMethod ?? ""}
+								onValueChange={(value) => updateField("depreciationMethod", value as DepreciationMethod || null)}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder={t("fleet.vehicles.form.tco.selectDepreciationMethod")} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="LINEAR">{t("fleet.vehicles.form.tco.depreciationLinear")}</SelectItem>
+									<SelectItem value="DECLINING_BALANCE">{t("fleet.vehicles.form.tco.depreciationDecliningBalance")}</SelectItem>
+								</SelectContent>
+							</Select>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.depreciationHelp")}</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="currentOdometerKm">{t("fleet.vehicles.form.tco.currentOdometerKm")}</Label>
+							<Input
+								id="currentOdometerKm"
+								type="number"
+								step="1000"
+								min={0}
+								value={formData.currentOdometerKm ?? ""}
+								onChange={(e) =>
+									updateField("currentOdometerKm", e.target.value ? Number.parseInt(e.target.value) : null)
+								}
+								placeholder={t("fleet.vehicles.form.tco.currentOdometerKmPlaceholder")}
+							/>
+							<p className="text-xs text-muted-foreground">{t("fleet.vehicles.form.tco.currentOdometerKmHelp")}</p>
+						</div>
+					</div>
+
+					{/* TCO Preview */}
+					{(() => {
+						const preview = calculateTcoPreview(formData);
+						if (preview.totalPerKm !== null) {
+							return (
+								<div className="bg-muted/50 rounded-lg p-4 space-y-2">
+									<h4 className="text-sm font-medium">{t("fleet.vehicles.form.tco.preview.title")}</h4>
+									<div className="grid grid-cols-4 gap-4 text-sm">
+										<div>
+											<span className="text-muted-foreground">{t("fleet.vehicles.form.tco.preview.depreciation")}</span>
+											<p className="font-mono">{preview.depreciation?.toFixed(4)} €{t("fleet.vehicles.form.tco.preview.perKm")}</p>
+										</div>
+										<div>
+											<span className="text-muted-foreground">{t("fleet.vehicles.form.tco.preview.maintenance")}</span>
+											<p className="font-mono">{preview.maintenance?.toFixed(4)} €{t("fleet.vehicles.form.tco.preview.perKm")}</p>
+										</div>
+										<div>
+											<span className="text-muted-foreground">{t("fleet.vehicles.form.tco.preview.insurance")}</span>
+											<p className="font-mono">{preview.insurance?.toFixed(4)} €{t("fleet.vehicles.form.tco.preview.perKm")}</p>
+										</div>
+										<div className="font-semibold">
+											<span className="text-muted-foreground">{t("fleet.vehicles.form.tco.preview.totalPerKm")}</span>
+											<p className="font-mono text-primary">{preview.totalPerKm?.toFixed(4)} €{t("fleet.vehicles.form.tco.preview.perKm")}</p>
+										</div>
+									</div>
+								</div>
+							);
+						}
+						return (
+							<p className="text-xs text-muted-foreground italic">
+								{t("fleet.vehicles.form.tco.notConfigured")}
+							</p>
+						);
+					})()}
+				</CollapsibleContent>
+			</Collapsible>
 
 			{/* Status */}
 			<div className="space-y-2">

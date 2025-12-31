@@ -2523,7 +2523,8 @@
 				"status": "Status",
 				"base": "Base",
 				"seats": "Seats",
-				"luggage": "Luggage"
+				"luggage": "Luggage",
+				"tco": "TCO"
 			},
 			"status": {
 				"active": "Active",

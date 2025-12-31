@@ -26,6 +26,14 @@ const createVehicleSchema = z.object({
 	requiredLicenseCategoryId: z.string().optional().nullable(),
 	status: z.enum(["ACTIVE", "MAINTENANCE", "OUT_OF_SERVICE"]).default("ACTIVE"),
 	notes: z.string().optional().nullable(),
+	// Story 17.14: TCO fields
+	purchasePrice: z.number().positive().optional().nullable(),
+	expectedLifespanKm: z.number().int().positive().optional().nullable(),
+	expectedLifespanYears: z.number().int().positive().max(30).optional().nullable(),
+	annualMaintenanceBudget: z.number().nonnegative().optional().nullable(),
+	annualInsuranceCost: z.number().nonnegative().optional().nullable(),
+	depreciationMethod: z.enum(["LINEAR", "DECLINING_BALANCE"]).optional().nullable(),
+	currentOdometerKm: z.number().int().nonnegative().optional().nullable(),
 });
 
 const updateVehicleSchema = createVehicleSchema.partial();

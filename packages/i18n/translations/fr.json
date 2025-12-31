@@ -2523,7 +2523,8 @@
 				"status": "Statut",
 				"base": "Base",
 				"seats": "Places",
-				"luggage": "Bagages"
+				"luggage": "Bagages",
+				"tco": "TCO"
 			},
 			"status": {
 				"active": "Actif",

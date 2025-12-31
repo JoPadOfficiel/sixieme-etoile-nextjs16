@@ -185,6 +185,9 @@ export interface DriversResponse {
 	};
 }
 
+// Story 17.14: Depreciation method for TCO calculation
+export type DepreciationMethod = "LINEAR" | "DECLINING_BALANCE";
+
 // Vehicle
 export interface Vehicle {
 	id: string;
@@ -202,6 +205,14 @@ export interface Vehicle {
 	requiredLicenseCategoryId: string | null;
 	status: VehicleStatus;
 	notes: string | null;
+	// Story 17.14: TCO fields
+	purchasePrice: string | null; // Decimal as string
+	expectedLifespanKm: number | null;
+	expectedLifespanYears: number | null;
+	annualMaintenanceBudget: string | null; // Decimal as string
+	annualInsuranceCost: string | null; // Decimal as string
+	depreciationMethod: DepreciationMethod | null;
+	currentOdometerKm: number | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -262,6 +273,14 @@ export interface VehicleFormData {
 	requiredLicenseCategoryId: string | null;
 	status: VehicleStatus;
 	notes: string | null;
+	// Story 17.14: TCO fields
+	purchasePrice: number | null;
+	expectedLifespanKm: number | null;
+	expectedLifespanYears: number | null;
+	annualMaintenanceBudget: number | null;
+	annualInsuranceCost: number | null;
+	depreciationMethod: DepreciationMethod | null;
+	currentOdometerKm: number | null;
 }
 
 // Driver form data

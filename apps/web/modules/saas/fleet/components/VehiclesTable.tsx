@@ -29,6 +29,7 @@ import {
 	PlusIcon,
 	SearchIcon,
 	TruckIcon,
+	CalculatorIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -49,6 +50,29 @@ const statusColors: Record<VehicleStatus, "default" | "secondary" | "destructive
 	MAINTENANCE: "secondary",
 	OUT_OF_SERVICE: "destructive",
 };
+
+// Story 17.14: Calculate TCO cost per km for display
+function calculateTcoPerKm(vehicle: VehicleWithRelations): number | null {
+	const { purchasePrice, expectedLifespanKm, expectedLifespanYears, annualMaintenanceBudget, annualInsuranceCost } = vehicle;
+	
+	if (!purchasePrice || !expectedLifespanKm || !expectedLifespanYears || 
+			Number(expectedLifespanKm) <= 0 || Number(expectedLifespanYears) <= 0) {
+		return null;
+	}
+	
+	const price = Number.parseFloat(purchasePrice);
+	const lifespanKm = Number(expectedLifespanKm);
+	const lifespanYears = Number(expectedLifespanYears);
+	const maintenance = annualMaintenanceBudget ? Number.parseFloat(annualMaintenanceBudget) : 0;
+	const insurance = annualInsuranceCost ? Number.parseFloat(annualInsuranceCost) : 0;
+	
+	const depreciation = price / lifespanKm;
+	const annualKm = lifespanKm / lifespanYears;
+	const maintenancePerKm = maintenance / annualKm;
+	const insurancePerKm = insurance / annualKm;
+	
+	return Math.round((depreciation + maintenancePerKm + insurancePerKm) * 10000) / 10000;
+}
 
 export function VehiclesTable({ onAddVehicle, onEditVehicle }: VehiclesTableProps) {
 	const t = useTranslations();
@@ -151,12 +175,13 @@ export function VehiclesTable({ onAddVehicle, onEditVehicle }: VehiclesTableProp
 									<TableHead>{t("fleet.vehicles.columns.base")}</TableHead>
 									<TableHead className="text-center">{t("fleet.vehicles.columns.seats")}</TableHead>
 									<TableHead className="text-center">{t("fleet.vehicles.columns.luggage")}</TableHead>
+									<TableHead className="text-right">{t("fleet.vehicles.columns.tco")}</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{data?.data.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+										<TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
 											{search ? t("fleet.vehicles.noResults") : t("fleet.vehicles.empty")}
 										</TableCell>
 									</TableRow>
@@ -205,6 +230,22 @@ export function VehiclesTable({ onAddVehicle, onEditVehicle }: VehiclesTableProp
 											</TableCell>
 											<TableCell className="text-center">
 												{vehicle.luggageCapacity ?? "-"}
+											</TableCell>
+											<TableCell className="text-right">
+												{(() => {
+													const tco = calculateTcoPerKm(vehicle);
+													if (tco === null) {
+														return (
+															<span className="text-muted-foreground">-</span>
+														);
+													}
+													return (
+														<Badge variant="outline" className="font-mono gap-1">
+															<CalculatorIcon className="size-3" />
+															{tco.toFixed(4)} €/km
+														</Badge>
+													);
+												})()}
 											</TableCell>
 										</TableRow>
 									))
