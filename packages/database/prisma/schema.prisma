@@ -619,6 +619,10 @@ model VehicleCategory {
   defaultAnnualInsuranceCost     Decimal?            @db.Decimal(10, 2) // EUR
   defaultDepreciationMethod      DepreciationMethod?
 
+  // Story 18.4: Daily reference revenue for loss of exploitation calculation
+  // If null, calculated as 8h × defaultRatePerHour or from MadTimeBucket 8h
+  dailyReferenceRevenue Decimal? @db.Decimal(10, 2) // EUR
+
   // Metadata
   description String?
   isActive    Boolean  @default(true)
@@ -1195,6 +1199,13 @@ model OrganizationPricingSettings {
   roundTripBuffer                    Int?     @default(30)
   // When true, automatically switch round-trip to MAD; when false, only suggest
   autoSwitchRoundTripToMAD           Boolean  @default(false)
+
+  // Story 18.4: Loss of exploitation seasonality coefficients
+  // These coefficients determine what % of daily revenue is "lost" during idle days
+  // Higher coefficient = higher opportunity cost (e.g., 0.80 in high season)
+  defaultSeasonalityCoefficient Decimal? @default(0.65) @db.Decimal(3, 2) // 65%
+  highSeasonCoefficient         Decimal? @default(0.80) @db.Decimal(3, 2) // 80%
+  lowSeasonCoefficient          Decimal? @default(0.50) @db.Decimal(3, 2) // 50%
 
   // Metadata
   createdAt DateTime @default(now())

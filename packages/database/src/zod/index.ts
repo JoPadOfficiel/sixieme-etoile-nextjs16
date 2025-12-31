@@ -112,7 +112,7 @@ export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontracto
 
 export const SubcontractorVehicleCategoryScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','vehicleCategoryId']);
 
-export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','defaultPurchasePrice','defaultExpectedLifespanKm','defaultExpectedLifespanYears','defaultAnnualMaintenanceBudget','defaultAnnualInsuranceCost','defaultDepreciationMethod','description','isActive','createdAt','updatedAt']);
+export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','defaultPurchasePrice','defaultExpectedLifespanKm','defaultExpectedLifespanYears','defaultAnnualMaintenanceBudget','defaultAnnualInsuranceCost','defaultDepreciationMethod','dailyReferenceRevenue','description','isActive','createdAt','updatedAt']);
 
 export const OperatingBaseScalarFieldEnumSchema = z.enum(['id','organizationId','name','addressLine1','addressLine2','city','postalCode','countryCode','latitude','longitude','isActive','createdAt','updatedAt']);
 
@@ -140,7 +140,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -633,6 +633,7 @@ export const VehicleCategorySchema = z.object({
   defaultExpectedLifespanYears: z.number().int().nullable(),
   defaultAnnualMaintenanceBudget: z.instanceof(Prisma.Decimal, { message: "Field 'defaultAnnualMaintenanceBudget' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   defaultAnnualInsuranceCost: z.instanceof(Prisma.Decimal, { message: "Field 'defaultAnnualInsuranceCost' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
+  dailyReferenceRevenue: z.instanceof(Prisma.Decimal, { message: "Field 'dailyReferenceRevenue' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   description: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
@@ -1003,6 +1004,9 @@ export const OrganizationPricingSettingsSchema = z.object({
   maxReturnDistanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'maxReturnDistanceKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   roundTripBuffer: z.number().int().nullable(),
   autoSwitchRoundTripToMAD: z.boolean(),
+  defaultSeasonalityCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'defaultSeasonalityCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  highSeasonCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'highSeasonCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  lowSeasonCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'lowSeasonCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

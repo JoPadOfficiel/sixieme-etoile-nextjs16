@@ -1361,6 +1361,9 @@ export interface TripAnalysis {
 	// Story 18.3: Round-trip to MAD detection
 	roundTripDetection?: RoundTripDetection | null;
 	roundTripSuggestion?: RoundTripMadSuggestion | null;
+	
+	// Story 18.4: Loss of exploitation for multi-day missions
+	lossOfExploitation?: LossOfExploitationResult | null;
 }
 
 /**
@@ -5777,4 +5780,361 @@ export function applyPriceOverride(
 	};
 
 	return { success: true, result: updatedResult };
+}
+
+// ============================================================================
+// Story 18.4: Loss of Exploitation (Opportunity Cost) Calculation
+// ============================================================================
+
+/**
+ * Story 18.4: Daily revenue source for transparency
+ */
+export type DailyRevenueSource = "CONFIGURED" | "MAD_BUCKET_8H" | "HOURLY_RATE_8H";
+
+/**
+ * Story 18.4: Seasonality period classification
+ */
+export type SeasonalityPeriod = "HIGH_SEASON" | "LOW_SEASON" | "DEFAULT";
+
+/**
+ * Story 18.4: Loss of exploitation calculation result
+ */
+export interface LossOfExploitationResult {
+	// Mission analysis
+	totalDays: number;
+	idleDays: number;
+	isMultiDay: boolean;
+	
+	// Revenue calculation
+	dailyReferenceRevenue: number;
+	dailyRevenueSource: DailyRevenueSource;
+	vehicleCategoryId: string | null;
+	vehicleCategoryName: string | null;
+	
+	// Seasonality
+	seasonalityCoefficient: number;
+	seasonalityPeriod: SeasonalityPeriod;
+	seasonalityMultiplierName: string | null;
+	
+	// Final calculation
+	lossOfExploitation: number; // idleDays × dailyRevenue × coefficient
+	
+	// Breakdown for transparency
+	calculation: {
+		formula: string; // e.g., "2 × 400€ × 0.80 = 640€"
+		idleDays: number;
+		dailyRevenue: number;
+		coefficient: number;
+		total: number;
+	};
+}
+
+/**
+ * Story 18.4: Applied rule for loss of exploitation
+ */
+export interface AppliedLossOfExploitationRule extends AppliedRule {
+	type: "LOSS_OF_EXPLOITATION";
+	description: string;
+	amount: number;
+	details: {
+		idleDays: number;
+		dailyRevenue: number;
+		seasonalityCoefficient: number;
+		seasonalityPeriod: string;
+	};
+}
+
+/**
+ * Story 18.4: Default seasonality coefficients
+ */
+export const DEFAULT_SEASONALITY_COEFFICIENTS = {
+	DEFAULT: 0.65,      // 65% - standard period
+	HIGH_SEASON: 0.80,  // 80% - high demand period
+	LOW_SEASON: 0.50,   // 50% - low demand period
+};
+
+/**
+ * Story 18.4: Calculate idle days for a multi-day mission
+ * 
+ * Idle days = total calendar days - days with significant activity
+ * For simplicity, we use: idleDays = totalDays - 2 (first and last day are active)
+ * This is a conservative estimate that can be refined later.
+ * 
+ * @param pickupAt - Mission start date/time
+ * @param estimatedEndAt - Mission end date/time
+ * @returns Object with totalDays, idleDays, and isMultiDay flag
+ */
+export function calculateIdleDays(
+	pickupAt: Date,
+	estimatedEndAt: Date,
+): { totalDays: number; idleDays: number; isMultiDay: boolean } {
+	// Calculate total calendar days
+	const pickupDate = new Date(pickupAt);
+	const endDate = new Date(estimatedEndAt);
+	
+	// Set to start of day for accurate day counting
+	pickupDate.setHours(0, 0, 0, 0);
+	endDate.setHours(0, 0, 0, 0);
+	
+	const msPerDay = 24 * 60 * 60 * 1000;
+	const totalDays = Math.ceil((endDate.getTime() - pickupDate.getTime()) / msPerDay) + 1;
+	
+	const isMultiDay = totalDays > 1;
+	
+	// For single-day missions, no idle days
+	if (!isMultiDay) {
+		return { totalDays: 1, idleDays: 0, isMultiDay: false };
+	}
+	
+	// For multi-day missions:
+	// - Day 1: Active (outbound travel + service)
+	// - Day N: Active (service + return travel)
+	// - Days 2 to N-1: Potentially idle
+	// 
+	// Conservative estimate: all middle days are idle
+	const idleDays = Math.max(0, totalDays - 2);
+	
+	return { totalDays, idleDays, isMultiDay };
+}
+
+/**
+ * Story 18.4: Get daily reference revenue for a vehicle category (sync version)
+ * 
+ * This is a simplified sync version that uses provided data.
+ * For async version with DB lookups, use getDailyReferenceRevenueAsync.
+ * 
+ * Priority:
+ * 1. VehicleCategory.dailyReferenceRevenue (if configured)
+ * 2. 8h × VehicleCategory.defaultRatePerHour
+ * 3. 8h × OrganizationPricingSettings.baseRatePerHour
+ * 
+ * @param vehicleCategory - Vehicle category with optional dailyReferenceRevenue and defaultRatePerHour
+ * @param baseRatePerHour - Organization base rate per hour
+ * @returns Object with revenue amount and source
+ */
+export function getDailyReferenceRevenue(
+	vehicleCategory: { dailyReferenceRevenue?: number | null; defaultRatePerHour?: number | null } | null,
+	baseRatePerHour: number,
+): { revenue: number; source: DailyRevenueSource } {
+	// Priority 1: Configured daily reference revenue
+	if (vehicleCategory?.dailyReferenceRevenue) {
+		return {
+			revenue: Number(vehicleCategory.dailyReferenceRevenue),
+			source: "CONFIGURED",
+		};
+	}
+	
+	// Priority 2: 8h × category hourly rate
+	if (vehicleCategory?.defaultRatePerHour) {
+		return {
+			revenue: 8 * Number(vehicleCategory.defaultRatePerHour),
+			source: "HOURLY_RATE_8H",
+		};
+	}
+	
+	// Priority 3: 8h × org base rate
+	return {
+		revenue: 8 * baseRatePerHour,
+		source: "HOURLY_RATE_8H",
+	};
+}
+
+/**
+ * Story 18.4: Get seasonality coefficient for a given date
+ * 
+ * Uses existing SeasonalMultiplier to determine if date is in high/low season,
+ * then applies the corresponding coefficient.
+ * 
+ * @param date - The date to check
+ * @param seasonalMultiplier - Active seasonal multiplier for this date (if any)
+ * @param settings - Organization pricing settings with seasonality coefficients
+ * @returns Object with coefficient, period classification, and multiplier name
+ */
+export function getSeasonalityCoefficient(
+	date: Date,
+	seasonalMultiplier: { name: string; multiplier: number } | null,
+	settings: {
+		defaultSeasonalityCoefficient?: number | null;
+		highSeasonCoefficient?: number | null;
+		lowSeasonCoefficient?: number | null;
+	},
+): {
+	coefficient: number;
+	period: SeasonalityPeriod;
+	multiplierName: string | null;
+} {
+	const defaultCoeff = settings.defaultSeasonalityCoefficient 
+		? Number(settings.defaultSeasonalityCoefficient) 
+		: DEFAULT_SEASONALITY_COEFFICIENTS.DEFAULT;
+	const highSeasonCoeff = settings.highSeasonCoefficient 
+		? Number(settings.highSeasonCoefficient) 
+		: DEFAULT_SEASONALITY_COEFFICIENTS.HIGH_SEASON;
+	const lowSeasonCoeff = settings.lowSeasonCoefficient 
+		? Number(settings.lowSeasonCoefficient) 
+		: DEFAULT_SEASONALITY_COEFFICIENTS.LOW_SEASON;
+	
+	if (!seasonalMultiplier) {
+		return {
+			coefficient: defaultCoeff,
+			period: "DEFAULT",
+			multiplierName: null,
+		};
+	}
+	
+	// Determine if high or low season based on multiplier value
+	const multiplierValue = Number(seasonalMultiplier.multiplier);
+	
+	if (multiplierValue >= 1.1) {
+		// High season (multiplier >= 1.1 means +10% or more)
+		return {
+			coefficient: highSeasonCoeff,
+			period: "HIGH_SEASON",
+			multiplierName: seasonalMultiplier.name,
+		};
+	} else if (multiplierValue <= 0.95) {
+		// Low season (multiplier <= 0.95 means -5% or more discount)
+		return {
+			coefficient: lowSeasonCoeff,
+			period: "LOW_SEASON",
+			multiplierName: seasonalMultiplier.name,
+		};
+	}
+	
+	// Default season
+	return {
+		coefficient: defaultCoeff,
+		period: "DEFAULT",
+		multiplierName: seasonalMultiplier.name,
+	};
+}
+
+/**
+ * Story 18.4: Settings type for loss of exploitation calculation
+ * Allows both full OrganizationPricingSettings and partial settings objects
+ */
+export interface LossOfExploitationSettings {
+	baseRatePerHour?: number | { toNumber?: () => number } | null;
+	defaultSeasonalityCoefficient?: number | { toNumber?: () => number } | null;
+	highSeasonCoefficient?: number | { toNumber?: () => number } | null;
+	lowSeasonCoefficient?: number | { toNumber?: () => number } | null;
+}
+
+/**
+ * Story 18.4: Calculate loss of exploitation for a multi-day mission
+ * 
+ * @param pickupAt - Mission start date/time
+ * @param estimatedEndAt - Mission end date/time
+ * @param vehicleCategory - Vehicle category data
+ * @param seasonalMultiplier - Active seasonal multiplier (if any)
+ * @param settings - Organization pricing settings (or partial settings)
+ * @returns LossOfExploitationResult with full calculation details
+ */
+export function calculateLossOfExploitation(
+	pickupAt: Date,
+	estimatedEndAt: Date,
+	vehicleCategory: { 
+		id: string; 
+		name: string; 
+		dailyReferenceRevenue?: number | null; 
+		defaultRatePerHour?: number | null;
+	} | null,
+	seasonalMultiplier: { name: string; multiplier: number } | null,
+	settings: LossOfExploitationSettings,
+): LossOfExploitationResult {
+	// Step 1: Calculate idle days
+	const { totalDays, idleDays, isMultiDay } = calculateIdleDays(pickupAt, estimatedEndAt);
+	
+	// Step 2: Get daily reference revenue
+	// Handle Decimal type from Prisma
+	const rawBaseRate = settings.baseRatePerHour;
+	const baseRatePerHour = rawBaseRate 
+		? (typeof rawBaseRate === 'number' ? rawBaseRate : Number(rawBaseRate))
+		: 50;
+	const { revenue: dailyReferenceRevenue, source: dailyRevenueSource } = 
+		getDailyReferenceRevenue(vehicleCategory, baseRatePerHour);
+	
+	// Step 3: Get seasonality coefficient
+	// Convert Decimal types to numbers for the coefficient function
+	const coeffSettings = {
+		defaultSeasonalityCoefficient: settings.defaultSeasonalityCoefficient 
+			? (typeof settings.defaultSeasonalityCoefficient === 'number' 
+				? settings.defaultSeasonalityCoefficient 
+				: Number(settings.defaultSeasonalityCoefficient))
+			: null,
+		highSeasonCoefficient: settings.highSeasonCoefficient
+			? (typeof settings.highSeasonCoefficient === 'number'
+				? settings.highSeasonCoefficient
+				: Number(settings.highSeasonCoefficient))
+			: null,
+		lowSeasonCoefficient: settings.lowSeasonCoefficient
+			? (typeof settings.lowSeasonCoefficient === 'number'
+				? settings.lowSeasonCoefficient
+				: Number(settings.lowSeasonCoefficient))
+			: null,
+	};
+	const { coefficient: seasonalityCoefficient, period: seasonalityPeriod, multiplierName } = 
+		getSeasonalityCoefficient(pickupAt, seasonalMultiplier, coeffSettings);
+	
+	// Step 4: Calculate loss of exploitation
+	const lossOfExploitation = Math.round(
+		idleDays * dailyReferenceRevenue * seasonalityCoefficient * 100
+	) / 100;
+	
+	// Build formula string for transparency
+	const formula = idleDays > 0
+		? `${idleDays} × ${dailyReferenceRevenue.toFixed(2)}€ × ${(seasonalityCoefficient * 100).toFixed(0)}% = ${lossOfExploitation.toFixed(2)}€`
+		: "N/A (no idle days)";
+	
+	return {
+		totalDays,
+		idleDays,
+		isMultiDay,
+		dailyReferenceRevenue,
+		dailyRevenueSource,
+		vehicleCategoryId: vehicleCategory?.id ?? null,
+		vehicleCategoryName: vehicleCategory?.name ?? null,
+		seasonalityCoefficient,
+		seasonalityPeriod,
+		seasonalityMultiplierName: multiplierName,
+		lossOfExploitation,
+		calculation: {
+			formula,
+			idleDays,
+			dailyRevenue: dailyReferenceRevenue,
+			coefficient: seasonalityCoefficient,
+			total: lossOfExploitation,
+		},
+	};
+}
+
+/**
+ * Story 18.4: Build applied rule for loss of exploitation
+ * 
+ * @param result - The loss of exploitation calculation result
+ * @returns AppliedLossOfExploitationRule or null if no idle days
+ */
+export function buildLossOfExploitationRule(
+	result: LossOfExploitationResult,
+): AppliedLossOfExploitationRule | null {
+	if (result.idleDays === 0 || result.lossOfExploitation === 0) {
+		return null;
+	}
+	
+	const periodLabel = result.seasonalityPeriod === "HIGH_SEASON" 
+		? "haute saison"
+		: result.seasonalityPeriod === "LOW_SEASON"
+		? "basse saison"
+		: "période standard";
+	
+	return {
+		type: "LOSS_OF_EXPLOITATION",
+		description: `Perte d'exploitation: ${result.idleDays} jour(s) × ${result.dailyReferenceRevenue.toFixed(2)}€ × ${(result.seasonalityCoefficient * 100).toFixed(0)}% (${periodLabel})`,
+		amount: result.lossOfExploitation,
+		details: {
+			idleDays: result.idleDays,
+			dailyRevenue: result.dailyReferenceRevenue,
+			seasonalityCoefficient: result.seasonalityCoefficient,
+			seasonalityPeriod: result.seasonalityPeriod,
+		},
+	};
 }
