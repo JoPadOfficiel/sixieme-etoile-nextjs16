@@ -222,6 +222,18 @@ async function loadContactWithContract(
 							include: {
 								originZone: true,
 								destinationZone: true,
+								// Story 18.8: Include allowed origin zones for temporal vectors
+								allowedOriginZones: {
+									include: {
+										pricingZone: {
+											select: {
+												id: true,
+												name: true,
+												code: true,
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -346,7 +358,29 @@ async function loadContactWithContract(
 								code: ep.excursionPackage.destinationZone.code,
 							}
 						: null,
+					// Story 18.8: Temporal Vector fields
+					isTemporalVector: ep.excursionPackage.isTemporalVector ?? false,
+					minimumDurationHours: ep.excursionPackage.minimumDurationHours != null
+						? Number(ep.excursionPackage.minimumDurationHours)
+						: null,
+					destinationName: ep.excursionPackage.destinationName ?? null,
+					destinationDescription: ep.excursionPackage.destinationDescription ?? null,
+					includedDurationHours: ep.excursionPackage.includedDurationHours != null
+						? Number(ep.excursionPackage.includedDurationHours)
+						: undefined,
+					allowedOriginZones: ep.excursionPackage.allowedOriginZones?.map((oz: any) => ({
+						pricingZoneId: oz.pricingZoneId,
+						pricingZone: oz.pricingZone
+							? {
+									id: oz.pricingZone.id,
+									name: oz.pricingZone.name,
+									code: oz.pricingZone.code,
+								}
+							: undefined,
+					})) ?? [],
 				},
+				// Story 12.2: Partner-specific price override
+				overridePrice: ep.overridePrice != null ? Number(ep.overridePrice) : null,
 			}));
 
 		const dispoPackages: DispoPackageAssignment[] = contract.dispoPackages.map(

@@ -354,6 +354,13 @@ export interface ExcursionPackageAssignment {
 		isActive: boolean;
 		originZone?: { id: string; name: string; code: string } | null;
 		destinationZone?: { id: string; name: string; code: string } | null;
+		// Story 18.8: Temporal Vector fields
+		isTemporalVector?: boolean;
+		minimumDurationHours?: number | null;
+		destinationName?: string | null;
+		destinationDescription?: string | null;
+		includedDurationHours?: number;
+		allowedOriginZones?: Array<{ pricingZoneId: string; pricingZone?: { id: string; name: string; code: string } }>;
 	};
 	// Story 12.2: Partner-specific price override (null = use catalog price)
 	overridePrice?: number | null;
@@ -1305,6 +1312,26 @@ export interface MadSuggestion {
 	autoSwitched: boolean;
 }
 
+// ============================================================================
+// Story 18.8: Temporal Vector Types
+// ============================================================================
+
+/**
+ * Story 18.8: Temporal vector result for classic destinations
+ * Used to enforce minimum durations for well-known excursion destinations
+ */
+export interface TemporalVectorResult {
+	isTemporalVector: boolean;
+	destinationName: string;
+	minimumDurationHours: number;
+	actualEstimatedDurationHours: number;
+	durationUsed: number;
+	durationSource: "TEMPORAL_VECTOR" | "ACTUAL_ESTIMATE";
+	packageId: string;
+	packageName: string;
+	packagePrice: number;
+}
+
 /**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
@@ -1378,6 +1405,9 @@ export interface TripAnalysis {
 	
 	// Story 18.7: Transversal trip decomposition
 	transversalDecomposition?: TransversalDecompositionResult | null;
+	
+	// Story 18.8: Temporal vector for classic destinations
+	temporalVector?: TemporalVectorResult | null;
 }
 
 /**
@@ -4560,6 +4590,87 @@ function buildMatchedExcursionWithPrice(
 		effectivePrice,
 		isOverride,
 	};
+}
+
+/**
+ * Story 18.8: Match a temporal vector for an excursion
+ * Temporal vectors are excursion packages with guaranteed minimum durations
+ * for classic destinations (Normandy, Loire Valley, etc.)
+ * 
+ * @param dropoffZone - The dropoff zone (destination)
+ * @param pickupZone - The pickup zone (origin)
+ * @param vehicleCategoryId - The vehicle category ID
+ * @param estimatedDurationMinutes - The estimated trip duration from routing
+ * @param contractExcursions - The excursion packages from partner contract
+ * @returns TemporalVectorResult if a matching temporal vector is found, null otherwise
+ */
+export function matchTemporalVector(
+	dropoffZone: ZoneData | null,
+	pickupZone: ZoneData | null,
+	vehicleCategoryId: string,
+	estimatedDurationMinutes: number,
+	contractExcursions: ExcursionPackageAssignment[],
+): TemporalVectorResult | null {
+	// Filter to temporal vectors only
+	const temporalVectors = contractExcursions.filter(
+		(ep) => ep.excursionPackage.isTemporalVector && ep.excursionPackage.isActive
+	);
+
+	if (temporalVectors.length === 0) {
+		return null;
+	}
+
+	for (const assignment of temporalVectors) {
+		const pkg = assignment.excursionPackage;
+
+		// Check vehicle category
+		if (pkg.vehicleCategoryId !== vehicleCategoryId) {
+			continue;
+		}
+
+		// Check destination zone match (required for temporal vectors)
+		if (pkg.destinationZoneId) {
+			if (!dropoffZone || pkg.destinationZoneId !== dropoffZone.id) {
+				continue;
+			}
+		}
+
+		// Check origin zone is allowed (if allowedOriginZones configured)
+		if (pkg.allowedOriginZones && pkg.allowedOriginZones.length > 0) {
+			const originAllowed = pkg.allowedOriginZones.some(
+				(oz) => oz.pricingZoneId === pickupZone?.id
+			);
+			if (!originAllowed) {
+				continue;
+			}
+		}
+
+		// Match found - calculate duration
+		const minimumDurationHours = pkg.minimumDurationHours != null ? Number(pkg.minimumDurationHours) : 0;
+		const actualEstimatedDurationHours = estimatedDurationMinutes / 60;
+		const durationUsed = Math.max(minimumDurationHours, actualEstimatedDurationHours);
+
+		// Get effective price (considering partner override)
+		const catalogPrice = Number(pkg.price);
+		const overridePrice = assignment.overridePrice != null ? Number(assignment.overridePrice) : null;
+		const effectivePrice = (overridePrice !== null && overridePrice > 0) ? overridePrice : catalogPrice;
+
+		return {
+			isTemporalVector: true,
+			destinationName: pkg.destinationName || pkg.name,
+			minimumDurationHours,
+			actualEstimatedDurationHours,
+			durationUsed,
+			durationSource: actualEstimatedDurationHours >= minimumDurationHours
+				? "ACTUAL_ESTIMATE"
+				: "TEMPORAL_VECTOR",
+			packageId: pkg.id,
+			packageName: pkg.name,
+			packagePrice: effectivePrice,
+		};
+	}
+
+	return null;
 }
 
 /**

@@ -136,7 +136,9 @@ export const ZoneRouteOriginZoneScalarFieldEnumSchema = z.enum(['id','zoneRouteI
 
 export const ZoneRouteDestinationZoneScalarFieldEnumSchema = z.enum(['id','zoneRouteId','zoneId','pricingZoneId']);
 
-export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','originZoneId','destinationZoneId','vehicleCategoryId','includedDurationHours','includedDistanceKm','price','isActive','createdAt','updatedAt']);
+export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','originZoneId','destinationZoneId','vehicleCategoryId','includedDurationHours','includedDistanceKm','price','isTemporalVector','minimumDurationHours','destinationName','destinationDescription','isActive','createdAt','updatedAt']);
+
+export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','excursionPackageId','pricingZoneId']);
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
@@ -932,12 +934,31 @@ export const ExcursionPackageSchema = z.object({
   includedDurationHours: z.instanceof(Prisma.Decimal, { message: "Field 'includedDurationHours' must be a Decimal. Location: ['Models', 'ExcursionPackage']"}),
   includedDistanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'includedDistanceKm' must be a Decimal. Location: ['Models', 'ExcursionPackage']"}),
   price: z.instanceof(Prisma.Decimal, { message: "Field 'price' must be a Decimal. Location: ['Models', 'ExcursionPackage']"}),
+  isTemporalVector: z.boolean(),
+  minimumDurationHours: z.instanceof(Prisma.Decimal, { message: "Field 'minimumDurationHours' must be a Decimal. Location: ['Models', 'ExcursionPackage']"}).nullable(),
+  destinationName: z.string().nullable(),
+  destinationDescription: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
 
 export type ExcursionPackage = z.infer<typeof ExcursionPackageSchema>
+
+/////////////////////////////////////////
+// EXCURSION PACKAGE ORIGIN ZONE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Story 18.8: Junction table for ExcursionPackage allowed origin zones
+ */
+export const ExcursionPackageOriginZoneSchema = z.object({
+  id: z.string().cuid(),
+  excursionPackageId: z.string(),
+  pricingZoneId: z.string(),
+})
+
+export type ExcursionPackageOriginZone = z.infer<typeof ExcursionPackageOriginZoneSchema>
 
 /////////////////////////////////////////
 // DISPO PACKAGE SCHEMA

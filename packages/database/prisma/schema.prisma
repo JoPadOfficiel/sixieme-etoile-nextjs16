@@ -932,19 +932,21 @@ model PricingZone {
   updatedAt DateTime @updatedAt
 
   // Relations
-  fromRoutes                ZoneRoute[]                @relation("FromZone")
-  toRoutes                  ZoneRoute[]                @relation("ToZone")
+  fromRoutes                  ZoneRoute[]                  @relation("FromZone")
+  toRoutes                    ZoneRoute[]                  @relation("ToZone")
   // Story 14.2: Multi-zone route relations
-  originZoneRoutes          ZoneRouteOriginZone[]      @relation("OriginZones")
-  destinationZoneRoutes     ZoneRouteDestinationZone[] @relation("DestinationZones")
-  excursionOrigins          ExcursionPackage[]         @relation("ExcursionOrigin")
-  excursionDestinations     ExcursionPackage[]         @relation("ExcursionDestination")
-  advancedRates             AdvancedRate[]
-  emptyLegFrom              EmptyLegOpportunity[]      @relation("EmptyLegFrom")
-  emptyLegTo                EmptyLegOpportunity[]      @relation("EmptyLegTo")
-  subcontractorZones        SubcontractorZone[]
-  zoneRouteOriginZones      ZoneRouteOriginZone[]
-  zoneRouteDestinationZones ZoneRouteDestinationZone[]
+  originZoneRoutes            ZoneRouteOriginZone[]        @relation("OriginZones")
+  destinationZoneRoutes       ZoneRouteDestinationZone[]   @relation("DestinationZones")
+  excursionOrigins            ExcursionPackage[]           @relation("ExcursionOrigin")
+  excursionDestinations       ExcursionPackage[]           @relation("ExcursionDestination")
+  advancedRates               AdvancedRate[]
+  emptyLegFrom                EmptyLegOpportunity[]        @relation("EmptyLegFrom")
+  emptyLegTo                  EmptyLegOpportunity[]        @relation("EmptyLegTo")
+  subcontractorZones          SubcontractorZone[]
+  zoneRouteOriginZones        ZoneRouteOriginZone[]
+  zoneRouteDestinationZones   ZoneRouteDestinationZone[]
+  // Story 18.8: Allowed origin zones for temporal vectors
+  excursionPackageOriginZones ExcursionPackageOriginZone[] @relation("ExcursionAllowedOrigins")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1067,15 +1069,36 @@ model ExcursionPackage {
   // Pricing
   price Decimal @db.Decimal(10, 2) // EUR
 
+  // Story 18.8: Temporal Vector fields for classic destinations
+  isTemporalVector       Boolean  @default(false)
+  minimumDurationHours   Decimal? @db.Decimal(5, 2)
+  destinationName        String?
+  destinationDescription String?
+
   // Status
   isActive                         Boolean                           @default(true)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
   partnerContractExcursionPackages PartnerContractExcursionPackage[]
+  // Story 18.8: Allowed origin zones for temporal vectors
+  allowedOriginZones               ExcursionPackageOriginZone[]
 
   @@index([organizationId])
   @@index([vehicleCategoryId])
+  @@index([isTemporalVector])
   @@map("excursion_package")
+}
+
+/// Story 18.8: Junction table for ExcursionPackage allowed origin zones
+model ExcursionPackageOriginZone {
+  id                 String           @id @default(cuid())
+  excursionPackageId String
+  excursionPackage   ExcursionPackage @relation(fields: [excursionPackageId], references: [id], onDelete: Cascade)
+  pricingZoneId      String
+  pricingZone        PricingZone      @relation("ExcursionAllowedOrigins", fields: [pricingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([excursionPackageId, pricingZoneId])
+  @@map("excursion_package_origin_zone")
 }
 
 /// DispoPackage - Forfaits de mise à disposition (hourly dispos)

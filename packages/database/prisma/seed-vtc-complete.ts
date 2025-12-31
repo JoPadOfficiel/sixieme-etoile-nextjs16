@@ -652,28 +652,35 @@ async function createExcursionPackages() {
     { name: "Fontainebleau + Vaux Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 9.0, includedDistanceKm: 180.0, price: 755.0 },
     
     // ============================================================================
-    // EXCURSIONS LONGUE DISTANCE (10-14h)
+    // EXCURSIONS LONGUE DISTANCE (10-14h) - TEMPORAL VECTORS (Story 18.8)
     // ============================================================================
-    // Châteaux de la Loire: 225km A/R, 12h
-    { name: "Châteaux de la Loire Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 950.0 },
-    { name: "Châteaux de la Loire Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1235.0 },
-    { name: "Châteaux de la Loire Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1680.0 },
+    // These are classic destinations with guaranteed minimum durations
     
-    // Normandie D-Day: 275km A/R, 14h
-    { name: "Normandie D-Day Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 1080.0 },
-    { name: "Normandie D-Day Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 1405.0 },
+    // Châteaux de la Loire: 225km A/R, 12h minimum
+    { name: "Châteaux de la Loire Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 950.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Châteaux de la Loire", destinationDescription: "Chambord, Chenonceau, Amboise - Journée complète" },
+    { name: "Châteaux de la Loire Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1235.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Châteaux de la Loire", destinationDescription: "Chambord, Chenonceau, Amboise - Journée complète" },
+    { name: "Châteaux de la Loire Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 12.0, includedDistanceKm: 450.0, price: 1680.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Châteaux de la Loire", destinationDescription: "Chambord, Chenonceau, Amboise - Journée complète" },
     
-    // Mont Saint-Michel: 350km A/R, 14h
-    { name: "Mont Saint-Michel Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1250.0 },
-    { name: "Mont Saint-Michel Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1625.0 },
+    // Normandie D-Day: 275km A/R, 14h minimum
+    { name: "Normandie D-Day Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 1080.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Normandie D-Day", destinationDescription: "Plages du Débarquement, Cimetière américain, Pointe du Hoc" },
+    { name: "Normandie D-Day Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 550.0, price: 1405.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Normandie D-Day", destinationDescription: "Plages du Débarquement, Cimetière américain, Pointe du Hoc" },
     
-    // Deauville: 200km A/R, 10h
-    { name: "Deauville Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 780.0 },
-    { name: "Deauville Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 1015.0 },
-    { name: "Deauville Journée Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 1450.0 },
+    // Mont Saint-Michel: 350km A/R, 14h minimum
+    { name: "Mont Saint-Michel Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1250.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint-Michel", destinationDescription: "Abbaye du Mont Saint-Michel et baie" },
+    { name: "Mont Saint-Michel Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1625.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint-Michel", destinationDescription: "Abbaye du Mont Saint-Michel et baie" },
+    
+    // Deauville: 200km A/R, 10h minimum
+    { name: "Deauville Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 780.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Deauville", destinationDescription: "Plage, Planches, Casino - Côte Fleurie" },
+    { name: "Deauville Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 1015.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Deauville", destinationDescription: "Plage, Planches, Casino - Côte Fleurie" },
+    { name: "Deauville Journée Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 10.0, includedDistanceKm: 400.0, price: 1450.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Deauville", destinationDescription: "Plage, Planches, Casino - Côte Fleurie" },
+    
+    // Champagne (Reims): 160km A/R, 10h minimum
+    { name: "Champagne Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 720.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
+    { name: "Champagne Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 940.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
+    { name: "Champagne Journée Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1280.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
     
     // ============================================================================
-    // EXCURSIONS SPÉCIALES
+    // EXCURSIONS SPÉCIALES (Non-temporal vectors)
     // ============================================================================
     // Paris by Night: 40km, 3h
     { name: "Paris by Night Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 3.0, includedDistanceKm: 40.0, price: 195.0 },
@@ -685,7 +692,23 @@ async function createExcursionPackages() {
   ];
   for (const p of pkgs) {
     const created = await prisma.excursionPackage.create({
-      data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...p, isActive: true, createdAt: new Date(), updatedAt: new Date() },
+      data: { 
+        id: randomUUID(), 
+        organizationId: ORGANIZATION_ID, 
+        name: p.name,
+        vehicleCategoryId: p.vehicleCategoryId,
+        includedDurationHours: p.includedDurationHours,
+        includedDistanceKm: p.includedDistanceKm,
+        price: p.price,
+        // Story 18.8: Temporal Vector fields
+        isTemporalVector: (p as any).isTemporalVector ?? false,
+        minimumDurationHours: (p as any).minimumDurationHours ?? null,
+        destinationName: (p as any).destinationName ?? null,
+        destinationDescription: (p as any).destinationDescription ?? null,
+        isActive: true, 
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      },
     });
     EXCURSION_PACKAGE_IDS[p.name] = created.id;
   }
