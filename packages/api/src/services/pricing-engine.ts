@@ -1121,6 +1121,21 @@ export function integrateComplianceIntoPricing(
 }
 
 /**
+ * Story 17.13: Zone segment info for multi-zone trip transparency
+ */
+export interface ZoneSegmentInfo {
+	zoneId: string;
+	zoneCode: string;
+	zoneName: string;
+	distanceKm: number;
+	durationMinutes: number;
+	priceMultiplier: number;
+	surchargesApplied: number;
+	entryPoint: { lat: number; lng: number };
+	exitPoint: { lat: number; lng: number };
+}
+
+/**
  * Story 4.6: Complete trip analysis with all segments
  * Stored in Quote.tripAnalysis as JSON
  */
@@ -1164,6 +1179,15 @@ export interface TripAnalysis {
 	
 	// Story 17.3: Compliance-driven staffing plan
 	compliancePlan?: CompliancePlan | null;
+	
+	// Story 17.13: Route segmentation for multi-zone trips
+	zoneSegments?: ZoneSegmentInfo[] | null;
+	routeSegmentation?: {
+		weightedMultiplier: number;
+		totalSurcharges: number;
+		zonesTraversed: string[];
+		segmentationMethod: "POLYLINE" | "FALLBACK";
+	} | null;
 }
 
 /**

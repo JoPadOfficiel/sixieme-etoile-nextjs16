@@ -64,6 +64,8 @@ export interface TollResult {
 	fetchedAt: Date | null;
 	/** Whether the result came from cache */
 	isFromCache: boolean;
+	/** Story 17.13: Encoded polyline for route segmentation (null if not available) */
+	encodedPolyline?: string | null;
 }
 
 /**
@@ -85,6 +87,10 @@ interface GoogleRoutesResponse {
 	routes?: Array<{
 		distanceMeters?: number;
 		duration?: string;
+		// Story 17.13: Polyline for route segmentation
+		polyline?: {
+			encodedPolyline?: string;
+		};
 		travelAdvisory?: {
 			tollInfo?: {
 				estimatedPrice?: Array<{
@@ -164,25 +170,27 @@ export function calculateFallbackToll(
 
 /**
  * Call Google Routes API to get toll information
+ * Story 17.13: Also returns encoded polyline for route segmentation
  *
  * @param origin - Origin point
  * @param destination - Destination point
  * @param apiKey - Google Maps API key
- * @returns Toll amount and success status
+ * @returns Toll amount, polyline, and success status
  */
 export async function callGoogleRoutesAPI(
 	origin: GeoPoint,
 	destination: GeoPoint,
 	apiKey: string,
-): Promise<{ tollAmount: number; success: boolean; error?: string }> {
+): Promise<{ tollAmount: number; success: boolean; error?: string; encodedPolyline?: string }> {
 	try {
 		const response = await fetch(GOOGLE_ROUTES_API_URL, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				"X-Goog-Api-Key": apiKey,
+				// Story 17.13: Added routes.polyline.encodedPolyline to field mask
 				"X-Goog-FieldMask":
-					"routes.travelAdvisory.tollInfo,routes.distanceMeters,routes.duration",
+					"routes.travelAdvisory.tollInfo,routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
 			},
 			body: JSON.stringify({
 				origin: {
@@ -228,7 +236,9 @@ export async function callGoogleRoutesAPI(
 		}
 
 		const tollAmount = parseTollAmount(data);
-		return { tollAmount, success: true };
+		// Story 17.13: Extract encoded polyline from response
+		const encodedPolyline = data.routes?.[0]?.polyline?.encodedPolyline;
+		return { tollAmount, success: true, encodedPolyline };
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
@@ -371,7 +381,7 @@ export async function getTollCost(
 
 	// Step 2: Call API if key provided
 	if (config.apiKey) {
-		const { tollAmount, success } = await callGoogleRoutesAPI(
+		const { tollAmount, success, encodedPolyline } = await callGoogleRoutesAPI(
 			origin,
 			destination,
 			config.apiKey,
@@ -387,6 +397,8 @@ export async function getTollCost(
 				source: "GOOGLE_API",
 				fetchedAt: new Date(),
 				isFromCache: false,
+				// Story 17.13: Include polyline for route segmentation
+				encodedPolyline: encodedPolyline ?? null,
 			};
 		}
 	}

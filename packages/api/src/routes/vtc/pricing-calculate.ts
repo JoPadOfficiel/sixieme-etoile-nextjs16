@@ -51,6 +51,12 @@ import {
 	type VehicleCandidate,
 	type VehicleSelectionInput,
 } from "../../services/vehicle-selection";
+import {
+	segmentRouteByZones,
+	createFallbackSegmentation,
+	buildRouteSegmentationRule,
+	type ZoneSegment,
+} from "../../services/route-segmentation";
 
 // ============================================================================
 // Validation Schemas
@@ -820,6 +826,50 @@ export const pricingCalculateRouter = new Hono()
 
 						// Set toll source for transparency
 						result.tripAnalysis.tollSource = tollResult.source;
+						
+						// Story 17.13: Route segmentation for multi-zone trips
+						if (tollResult.encodedPolyline && zones.length > 0 && effectiveDurationMinutes) {
+							try {
+								const segmentationResult = segmentRouteByZones(
+									tollResult.encodedPolyline,
+									zones,
+									effectiveDurationMinutes,
+									pricingSettings.zoneConflictStrategy ?? null,
+								);
+								
+								if (segmentationResult.segments.length > 0) {
+									// Store zone segments in tripAnalysis
+									result.tripAnalysis.zoneSegments = segmentationResult.segments.map(seg => ({
+										zoneId: seg.zoneId,
+										zoneCode: seg.zoneCode,
+										zoneName: seg.zoneName,
+										distanceKm: seg.distanceKm,
+										durationMinutes: seg.durationMinutes,
+										priceMultiplier: seg.priceMultiplier,
+										surchargesApplied: seg.surchargesApplied,
+										entryPoint: seg.entryPoint,
+										exitPoint: seg.exitPoint,
+									}));
+									
+									result.tripAnalysis.routeSegmentation = {
+										weightedMultiplier: segmentationResult.weightedMultiplier,
+										totalSurcharges: segmentationResult.totalSurcharges,
+										zonesTraversed: segmentationResult.zonesTraversed,
+										segmentationMethod: segmentationResult.segmentationMethod,
+									};
+									
+									// Add route segmentation rule for transparency
+									const segmentationRule = buildRouteSegmentationRule(
+										segmentationResult,
+										result.price,
+										result.price, // Price not modified here, just for transparency
+									);
+									result.appliedRules.push(segmentationRule);
+								}
+							} catch (segError) {
+								console.warn(`[PRICING] Route segmentation failed:`, segError);
+							}
+						}
 					} else {
 						// API failed, mark as estimate
 						result.tripAnalysis.tollSource = "ESTIMATE";
@@ -831,6 +881,65 @@ export const pricingCalculateRouter = new Hono()
 			} else {
 				// No API key, using estimate
 				result.tripAnalysis.tollSource = "ESTIMATE";
+			}
+			
+			// Story 17.13: Fallback segmentation when no polyline available
+			if (!result.tripAnalysis.zoneSegments && zones.length > 0 && data.dropoff && effectiveDistanceKm && effectiveDurationMinutes) {
+				try {
+					const pickupZone = zones.find(z => {
+						if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
+							const dist = Math.sqrt(
+								Math.pow((data.pickup.lat - z.centerLatitude) * 111, 2) +
+								Math.pow((data.pickup.lng - z.centerLongitude) * 111 * Math.cos(data.pickup.lat * Math.PI / 180), 2)
+							);
+							return dist <= z.radiusKm;
+						}
+						return false;
+					}) ?? null;
+					
+					const dropoffZone = zones.find(z => {
+						if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
+							const dist = Math.sqrt(
+								Math.pow((data.dropoff!.lat - z.centerLatitude) * 111, 2) +
+								Math.pow((data.dropoff!.lng - z.centerLongitude) * 111 * Math.cos(data.dropoff!.lat * Math.PI / 180), 2)
+							);
+							return dist <= z.radiusKm;
+						}
+						return false;
+					}) ?? null;
+					
+					if (pickupZone || dropoffZone) {
+						const fallbackResult = createFallbackSegmentation(
+							pickupZone,
+							dropoffZone,
+							effectiveDistanceKm,
+							effectiveDurationMinutes,
+						);
+						
+						if (fallbackResult.segments.length > 0) {
+							result.tripAnalysis.zoneSegments = fallbackResult.segments.map(seg => ({
+								zoneId: seg.zoneId,
+								zoneCode: seg.zoneCode,
+								zoneName: seg.zoneName,
+								distanceKm: seg.distanceKm,
+								durationMinutes: seg.durationMinutes,
+								priceMultiplier: seg.priceMultiplier,
+								surchargesApplied: seg.surchargesApplied,
+								entryPoint: seg.entryPoint,
+								exitPoint: seg.exitPoint,
+							}));
+							
+							result.tripAnalysis.routeSegmentation = {
+								weightedMultiplier: fallbackResult.weightedMultiplier,
+								totalSurcharges: fallbackResult.totalSurcharges,
+								zonesTraversed: fallbackResult.zonesTraversed,
+								segmentationMethod: fallbackResult.segmentationMethod,
+							};
+						}
+					}
+				} catch (fallbackError) {
+					console.warn(`[PRICING] Fallback segmentation failed:`, fallbackError);
+				}
 			}
 
 			// Log negative margin partner trips for analysis
