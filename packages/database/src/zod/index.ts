@@ -112,11 +112,11 @@ export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontracto
 
 export const SubcontractorVehicleCategoryScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','vehicleCategoryId']);
 
-export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','description','isActive','createdAt','updatedAt']);
+export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','defaultPurchasePrice','defaultExpectedLifespanKm','defaultExpectedLifespanYears','defaultAnnualMaintenanceBudget','defaultAnnualInsuranceCost','defaultDepreciationMethod','description','isActive','createdAt','updatedAt']);
 
 export const OperatingBaseScalarFieldEnumSchema = z.enum(['id','organizationId','name','addressLine1','addressLine2','city','postalCode','countryCode','latitude','longitude','isActive','createdAt','updatedAt']);
 
-export const VehicleScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleCategoryId','operatingBaseId','registrationNumber','internalName','vin','passengerCapacity','luggageCapacity','consumptionLPer100Km','averageSpeedKmh','costPerKm','requiredLicenseCategoryId','status','notes','createdAt','updatedAt']);
+export const VehicleScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleCategoryId','operatingBaseId','registrationNumber','internalName','vin','passengerCapacity','luggageCapacity','consumptionLPer100Km','averageSpeedKmh','costPerKm','purchasePrice','expectedLifespanKm','expectedLifespanYears','annualMaintenanceBudget','annualInsuranceCost','depreciationMethod','currentOdometerKm','requiredLicenseCategoryId','status','notes','createdAt','updatedAt']);
 
 export const LicenseCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','code','name','description','createdAt','updatedAt']);
 
@@ -269,6 +269,10 @@ export type InvoiceLineTypeType = `${z.infer<typeof InvoiceLineTypeSchema>}`
 export const PaymentTermsSchema = z.enum(['IMMEDIATE','DAYS_15','DAYS_30','DAYS_45','DAYS_60']);
 
 export type PaymentTermsType = `${z.infer<typeof PaymentTermsSchema>}`
+
+export const DepreciationMethodSchema = z.enum(['LINEAR','DECLINING_BALANCE']);
+
+export type DepreciationMethodType = `${z.infer<typeof DepreciationMethodSchema>}`
 
 export const CalendarEventTypeSchema = z.enum(['HOLIDAY','SICK','PERSONAL','TRAINING','OTHER']);
 
@@ -612,6 +616,7 @@ export type SubcontractorVehicleCategory = z.infer<typeof SubcontractorVehicleCa
  */
 export const VehicleCategorySchema = z.object({
   regulatoryCategory: VehicleRegulatoryCategorySchema,
+  defaultDepreciationMethod: DepreciationMethodSchema.nullable(),
   id: z.string().cuid(),
   organizationId: z.string(),
   name: z.string(),
@@ -622,6 +627,11 @@ export const VehicleCategorySchema = z.object({
   defaultRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'defaultRatePerKm' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   defaultRatePerHour: z.instanceof(Prisma.Decimal, { message: "Field 'defaultRatePerHour' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   averageConsumptionL100km: z.instanceof(Prisma.Decimal, { message: "Field 'averageConsumptionL100km' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
+  defaultPurchasePrice: z.instanceof(Prisma.Decimal, { message: "Field 'defaultPurchasePrice' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
+  defaultExpectedLifespanKm: z.number().int().nullable(),
+  defaultExpectedLifespanYears: z.number().int().nullable(),
+  defaultAnnualMaintenanceBudget: z.instanceof(Prisma.Decimal, { message: "Field 'defaultAnnualMaintenanceBudget' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
+  defaultAnnualInsuranceCost: z.instanceof(Prisma.Decimal, { message: "Field 'defaultAnnualInsuranceCost' must be a Decimal. Location: ['Models', 'VehicleCategory']"}).nullable(),
   description: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
@@ -663,6 +673,7 @@ export type OperatingBase = z.infer<typeof OperatingBaseSchema>
  * Vehicle - Individual fleet vehicles
  */
 export const VehicleSchema = z.object({
+  depreciationMethod: DepreciationMethodSchema.nullable(),
   status: VehicleStatusSchema,
   id: z.string().cuid(),
   organizationId: z.string(),
@@ -676,6 +687,12 @@ export const VehicleSchema = z.object({
   consumptionLPer100Km: z.instanceof(Prisma.Decimal, { message: "Field 'consumptionLPer100Km' must be a Decimal. Location: ['Models', 'Vehicle']"}).nullable(),
   averageSpeedKmh: z.number().int().nullable(),
   costPerKm: z.instanceof(Prisma.Decimal, { message: "Field 'costPerKm' must be a Decimal. Location: ['Models', 'Vehicle']"}).nullable(),
+  purchasePrice: z.instanceof(Prisma.Decimal, { message: "Field 'purchasePrice' must be a Decimal. Location: ['Models', 'Vehicle']"}).nullable(),
+  expectedLifespanKm: z.number().int().nullable(),
+  expectedLifespanYears: z.number().int().nullable(),
+  annualMaintenanceBudget: z.instanceof(Prisma.Decimal, { message: "Field 'annualMaintenanceBudget' must be a Decimal. Location: ['Models', 'Vehicle']"}).nullable(),
+  annualInsuranceCost: z.instanceof(Prisma.Decimal, { message: "Field 'annualInsuranceCost' must be a Decimal. Location: ['Models', 'Vehicle']"}).nullable(),
+  currentOdometerKm: z.number().int().nullable(),
   requiredLicenseCategoryId: z.string().nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),

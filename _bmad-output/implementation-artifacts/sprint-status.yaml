@@ -146,7 +146,7 @@ development_status:
   17-11-zone-topology-validation-tools: done
   17-12-driver-home-location-for-deadhead-calculations: done
   17-13-route-segmentation-for-multi-zone-trips: done
-  17-14-vehicle-tco-model-enrichment: backlog
+  17-14-vehicle-tco-model-enrichment: done
   17-15-client-difficulty-score-patience-tax: backlog
   17-16-fr-group-9-settings-ui-integration: backlog
   epic-17-retrospective: optional

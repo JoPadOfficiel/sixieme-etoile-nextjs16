@@ -340,6 +340,12 @@ enum PaymentTerms {
   DAYS_60
 }
 
+/// Story 17.14: Depreciation method for vehicle TCO calculation
+enum DepreciationMethod {
+  LINEAR // Straight-line depreciation: purchasePrice / expectedLifespanKm
+  DECLINING_BALANCE // Accelerated depreciation: higher in early years
+}
+
 /// Story 17.6: Calendar event types for driver unavailability
 enum CalendarEventType {
   HOLIDAY // Congés payés
@@ -600,6 +606,14 @@ model VehicleCategory {
   // Story 15.2: Average fuel consumption for this category (L/100km)
   averageConsumptionL100km Decimal? @db.Decimal(5, 2)
 
+  // Story 17.14: TCO defaults for category (used when vehicle has no TCO configured)
+  defaultPurchasePrice           Decimal?            @db.Decimal(12, 2) // EUR
+  defaultExpectedLifespanKm      Int? // km
+  defaultExpectedLifespanYears   Int? // years
+  defaultAnnualMaintenanceBudget Decimal?            @db.Decimal(10, 2) // EUR
+  defaultAnnualInsuranceCost     Decimal?            @db.Decimal(10, 2) // EUR
+  defaultDepreciationMethod      DepreciationMethod?
+
   // Metadata
   description String?
   isActive    Boolean  @default(true)
@@ -677,6 +691,15 @@ model Vehicle {
   consumptionLPer100Km Decimal? @db.Decimal(5, 2)
   averageSpeedKmh      Int?
   costPerKm            Decimal? @db.Decimal(10, 4)
+
+  // Story 17.14: TCO (Total Cost of Ownership) fields
+  purchasePrice           Decimal?            @db.Decimal(12, 2) // EUR - Vehicle purchase price
+  expectedLifespanKm      Int? // Expected lifespan in kilometers (e.g., 300000)
+  expectedLifespanYears   Int? // Expected lifespan in years (e.g., 5)
+  annualMaintenanceBudget Decimal?            @db.Decimal(10, 2) // EUR - Annual maintenance budget
+  annualInsuranceCost     Decimal?            @db.Decimal(10, 2) // EUR - Annual insurance cost
+  depreciationMethod      DepreciationMethod? // LINEAR or DECLINING_BALANCE
+  currentOdometerKm       Int? // Current odometer reading in km
 
   // Regulatory - required license
   requiredLicenseCategoryId String?

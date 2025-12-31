@@ -38,6 +38,17 @@ import {
 	DEFAULT_ALTERNATIVE_COST_PARAMETERS,
 	type StaffingSelectionPolicy as ComplianceStaffingPolicy,
 } from "./compliance-validator";
+import {
+	calculateTcoCost,
+	buildTcoConfig,
+	getTcoSource,
+	hasTcoConfig,
+	hasCategoryTcoDefaults,
+	type TcoConfig,
+	type VehicleForTco,
+	type VehicleCategoryForTco,
+	type TcoCostComponent as TcoCalculatorResult,
+} from "./tco-calculator";
 
 // Europe/Paris timezone constant
 const PARIS_TZ = "Europe/Paris";
@@ -834,6 +845,29 @@ export interface ZoneSurcharges {
 	total: number;
 }
 
+/**
+ * Story 17.14: TCO cost component (replaces wear when configured)
+ */
+export interface TcoCostComponent {
+	amount: number;
+	distanceKm: number;
+	depreciation: {
+		amount: number;
+		ratePerKm: number;
+		method: "LINEAR" | "DECLINING_BALANCE";
+	};
+	maintenance: {
+		amount: number;
+		ratePerKm: number;
+	};
+	insurance: {
+		amount: number;
+		ratePerKm: number;
+	};
+	totalRatePerKm: number;
+	source: "VEHICLE" | "CATEGORY"; // Where TCO config came from
+}
+
 export interface CostBreakdown {
 	fuel: FuelCostComponent;
 	tolls: TollCostComponent;
@@ -842,6 +876,8 @@ export interface CostBreakdown {
 	parking: ParkingCostComponent;
 	// Story 17.10: Zone surcharges (friction costs)
 	zoneSurcharges?: ZoneSurcharges;
+	// Story 17.14: TCO replaces wear when configured on vehicle
+	tco?: TcoCostComponent;
 	total: number;
 }
 
@@ -1799,6 +1835,170 @@ export function calculateInternalCost(
 export function estimateInternalCost(distanceKm: number): number {
 	const costPerKm = 2.5; // Rough estimate including fuel, driver, wear
 	return Math.round(distanceKm * costPerKm * 100) / 100;
+}
+
+/**
+ * Story 17.14: Vehicle data for TCO calculation
+ */
+export interface VehicleWithTco {
+	id: string;
+	purchasePrice?: number | null;
+	expectedLifespanKm?: number | null;
+	expectedLifespanYears?: number | null;
+	annualMaintenanceBudget?: number | null;
+	annualInsuranceCost?: number | null;
+	depreciationMethod?: "LINEAR" | "DECLINING_BALANCE" | null;
+	currentOdometerKm?: number | null;
+}
+
+/**
+ * Story 17.14: Vehicle category data for TCO defaults
+ */
+export interface VehicleCategoryWithTco {
+	defaultPurchasePrice?: number | null;
+	defaultExpectedLifespanKm?: number | null;
+	defaultExpectedLifespanYears?: number | null;
+	defaultAnnualMaintenanceBudget?: number | null;
+	defaultAnnualInsuranceCost?: number | null;
+	defaultDepreciationMethod?: "LINEAR" | "DECLINING_BALANCE" | null;
+}
+
+/**
+ * Story 17.14: Calculate cost breakdown with TCO instead of wear when configured
+ * 
+ * This function replaces the generic wear cost with vehicle-specific TCO
+ * (depreciation + maintenance + insurance) when TCO is configured on the vehicle
+ * or its category.
+ * 
+ * @param distanceKm - Distance in kilometers
+ * @param durationMinutes - Duration in minutes
+ * @param settings - Organization pricing settings
+ * @param vehicle - Optional vehicle with TCO configuration
+ * @param vehicleCategory - Optional vehicle category with TCO defaults
+ * @param parkingCost - Optional parking cost
+ * @param parkingDescription - Optional parking description
+ * @param fuelType - Optional fuel type (defaults to DIESEL)
+ * @returns Cost breakdown with TCO when configured, otherwise with wear
+ */
+export function calculateCostBreakdownWithTco(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	vehicle?: VehicleWithTco | null,
+	vehicleCategory?: VehicleCategoryWithTco | null,
+	parkingCost: number = 0,
+	parkingDescription: string = "",
+	fuelType: FuelType = "DIESEL",
+): { breakdown: CostBreakdown; tcoApplied: boolean; tcoSource: "VEHICLE" | "CATEGORY" | null } {
+	// Use settings or defaults
+	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
+	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
+	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
+	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
+
+	// Calculate base costs
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelType);
+	const tolls = calculateTollCost(distanceKm, tollCostPerKm);
+	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
+	const parking: ParkingCostComponent = {
+		amount: parkingCost,
+		description: parkingDescription,
+	};
+
+	// Try to build TCO config from vehicle or category
+	const tcoConfig = vehicle ? buildTcoConfig(
+		vehicle as VehicleForTco,
+		vehicleCategory as VehicleCategoryForTco | undefined
+	) : null;
+
+	let wear: WearCostComponent;
+	let tco: TcoCostComponent | undefined;
+	let tcoApplied = false;
+	let tcoSource: "VEHICLE" | "CATEGORY" | null = null;
+
+	if (tcoConfig) {
+		// Calculate TCO instead of wear
+		const tcoResult = calculateTcoCost(distanceKm, tcoConfig);
+		tcoSource = getTcoSource(
+			vehicle as VehicleForTco,
+			vehicleCategory as VehicleCategoryForTco | undefined
+		);
+		
+		tco = {
+			amount: tcoResult.amount,
+			distanceKm: tcoResult.distanceKm,
+			depreciation: tcoResult.depreciation,
+			maintenance: tcoResult.maintenance,
+			insurance: tcoResult.insurance,
+			totalRatePerKm: tcoResult.totalRatePerKm,
+			source: tcoSource!,
+		};
+		
+		// Set wear to zero since TCO replaces it
+		wear = {
+			amount: 0,
+			distanceKm,
+			ratePerKm: 0,
+		};
+		
+		tcoApplied = true;
+	} else {
+		// Use standard wear cost
+		wear = calculateWearCost(distanceKm, wearCostPerKm);
+	}
+
+	// Calculate total (use TCO amount if applied, otherwise wear)
+	const wearOrTcoAmount = tcoApplied ? tco!.amount : wear.amount;
+	const total = Math.round(
+		(fuel.amount + tolls.amount + wearOrTcoAmount + driver.amount + parking.amount) * 100
+	) / 100;
+
+	return {
+		breakdown: {
+			fuel,
+			tolls,
+			wear,
+			driver,
+			parking,
+			tco,
+			total,
+		},
+		tcoApplied,
+		tcoSource,
+	};
+}
+
+/**
+ * Story 17.14: Create TCO applied rule for transparency
+ */
+export function createTcoAppliedRule(
+	tco: TcoCostComponent,
+	vehicleId: string,
+	vehicleName?: string,
+): AppliedRule {
+	return {
+		type: "TCO_COST",
+		description: `TCO replaces generic wear cost (source: ${tco.source})`,
+		vehicleId,
+		vehicleName: vehicleName ?? "Unknown",
+		totalAmount: tco.amount,
+		distanceKm: tco.distanceKm,
+		totalRatePerKm: tco.totalRatePerKm,
+		depreciation: {
+			amount: tco.depreciation.amount,
+			ratePerKm: tco.depreciation.ratePerKm,
+			method: tco.depreciation.method,
+		},
+		maintenance: {
+			amount: tco.maintenance.amount,
+			ratePerKm: tco.maintenance.ratePerKm,
+		},
+		insurance: {
+			amount: tco.insurance.amount,
+			ratePerKm: tco.insurance.ratePerKm,
+		},
+		source: tco.source,
+	};
 }
 
 // ============================================================================
