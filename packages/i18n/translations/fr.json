@@ -3216,7 +3216,11 @@
 				"all": "Tous",
 				"okOnly": "OK uniquement",
 				"includeWarnings": "Inclure les avertissements",
-				"search": "Rechercher véhicule ou chauffeur..."
+				"search": "Rechercher véhicule ou chauffeur...",
+				"fleetType": "Type de flotte",
+				"allFleets": "Toutes les flottes",
+				"internalOnly": "Flotte interne",
+				"shadowFleetOnly": "Shadow Fleet"
 			},
 			"candidate": {
 				"flexibilityScore": "Score de flexibilité",
@@ -3224,6 +3228,13 @@
 				"distance": "Distance",
 				"licenses": "Permis",
 				"noDriverAssigned": "Aucun chauffeur assigné",
+				"shadowFleet": "Shadow Fleet",
+				"marginIfSubcontracted": "Marge: €{margin} ({percent}%)",
+				"availability": {
+					"available": "Disponible",
+					"busy": "Occupé",
+					"offline": "Hors ligne"
+				},
 				"scoreBreakdown": {
 					"title": "Détail du score",
 					"licenses": "Permis",

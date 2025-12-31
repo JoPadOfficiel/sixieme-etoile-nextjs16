@@ -11,16 +11,18 @@ import {
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
-import type { CandidateSortBy, ComplianceFilter } from "../types/assignment";
+import type { CandidateSortBy, ComplianceFilter, FleetTypeFilter } from "../types/assignment";
 
 /**
  * CandidateFilters Component
  *
  * Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
+ * Story 18.9: Add Fleet Type filter for Shadow Fleet
  *
  * Filter and sort controls for the candidates list.
  *
  * @see AC9: Filter and Sort Candidates
+ * @see Story 18.9 AC5: Shadow Fleet Filtering
  */
 
 interface CandidateFiltersProps {
@@ -28,6 +30,9 @@ interface CandidateFiltersProps {
 	onSortChange: (value: CandidateSortBy) => void;
 	complianceFilter: ComplianceFilter;
 	onComplianceFilterChange: (value: ComplianceFilter) => void;
+	// Story 18.9: Fleet type filter
+	fleetTypeFilter: FleetTypeFilter;
+	onFleetTypeFilterChange: (value: FleetTypeFilter) => void;
 	search: string;
 	onSearchChange: (value: string) => void;
 	className?: string;
@@ -38,6 +43,8 @@ export function CandidateFilters({
 	onSortChange,
 	complianceFilter,
 	onComplianceFilterChange,
+	fleetTypeFilter,
+	onFleetTypeFilterChange,
 	search,
 	onSearchChange,
 	className,
@@ -59,13 +66,13 @@ export function CandidateFilters({
 			</div>
 
 			{/* Sort & Filter Row */}
-			<div className="flex gap-2">
+			<div className="flex gap-2 flex-wrap">
 				{/* Sort By */}
 				<Select
 					value={sortBy}
 					onValueChange={(value) => onSortChange(value as CandidateSortBy)}
 				>
-					<SelectTrigger className="w-[140px]" data-testid="sort-by">
+					<SelectTrigger className="w-[130px]" data-testid="sort-by">
 						<SelectValue placeholder={t("sortBy")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -80,13 +87,28 @@ export function CandidateFilters({
 					value={complianceFilter}
 					onValueChange={(value) => onComplianceFilterChange(value as ComplianceFilter)}
 				>
-					<SelectTrigger className="w-[160px]" data-testid="compliance-filter">
+					<SelectTrigger className="w-[130px]" data-testid="compliance-filter">
 						<SelectValue placeholder={t("compliance")} />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="all">{t("all")}</SelectItem>
 						<SelectItem value="ok">{t("okOnly")}</SelectItem>
 						<SelectItem value="warnings">{t("includeWarnings")}</SelectItem>
+					</SelectContent>
+				</Select>
+
+				{/* Story 18.9: Fleet Type Filter */}
+				<Select
+					value={fleetTypeFilter}
+					onValueChange={(value) => onFleetTypeFilterChange(value as FleetTypeFilter)}
+				>
+					<SelectTrigger className="w-[130px]" data-testid="fleet-type-filter">
+						<SelectValue placeholder={t("fleetType")} />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">{t("allFleets")}</SelectItem>
+						<SelectItem value="internal">{t("internalOnly")}</SelectItem>
+						<SelectItem value="shadow">{t("shadowFleetOnly")}</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>

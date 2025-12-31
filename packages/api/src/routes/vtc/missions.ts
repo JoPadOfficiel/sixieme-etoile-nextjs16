@@ -30,6 +30,10 @@ import {
 	type MissionForChaining,
 	type ChainingSuggestion,
 } from "../../services/chaining-service";
+import {
+	getShadowFleetCandidates,
+	transformToAssignmentCandidate,
+} from "../../services/shadow-fleet-service";
 
 /**
  * Missions Router
@@ -877,8 +881,39 @@ export const missionsRouter = new Hono()
 			// Sort by flexibility score descending
 			candidates.sort((a: { flexibilityScore: number }, b: { flexibilityScore: number }) => b.flexibilityScore - a.flexibilityScore);
 
+			// Story 18.9: Get Shadow Fleet candidates
+			const shadowFleetResult = await getShadowFleetCandidates(
+				{
+					id: quote.id,
+					pickupLatitude: quote.pickupLatitude ? Number(quote.pickupLatitude) : null,
+					pickupLongitude: quote.pickupLongitude ? Number(quote.pickupLongitude) : null,
+					dropoffLatitude: quote.dropoffLatitude ? Number(quote.dropoffLatitude) : null,
+					dropoffLongitude: quote.dropoffLongitude ? Number(quote.dropoffLongitude) : null,
+					vehicleCategoryId: quote.vehicleCategoryId,
+					finalPrice: Number(quote.finalPrice),
+					internalCost: quote.internalCost ? Number(quote.internalCost) : null,
+					tripAnalysis: quote.tripAnalysis,
+				},
+				organizationId,
+				db
+			);
+
+			// Transform Shadow Fleet candidates to assignment-compatible format
+			const shadowFleetCandidates = shadowFleetResult.candidates.map((sfCandidate) =>
+				transformToAssignmentCandidate(sfCandidate, shadowFleetResult.internalCost)
+			);
+
+			// Combine internal and Shadow Fleet candidates
+			// Add isShadowFleet: false to internal candidates for consistency
+			const internalCandidatesWithFlag = candidates.map((c) => ({
+				...c,
+				isShadowFleet: false as const,
+			}));
+
+			const allCandidates = [...internalCandidatesWithFlag, ...shadowFleetCandidates];
+
 			return c.json({
-				candidates,
+				candidates: allCandidates,
 				mission: {
 					id: quote.id,
 					pickupAddress: quote.pickupAddress,
@@ -887,6 +922,12 @@ export const missionsRouter = new Hono()
 					vehicleCategoryId: quote.vehicleCategoryId,
 					passengerCount: quote.passengerCount,
 					luggageCount: quote.luggageCount,
+				},
+				// Story 18.9: Include Shadow Fleet metadata
+				shadowFleet: {
+					count: shadowFleetCandidates.length,
+					internalCost: shadowFleetResult.internalCost,
+					sellingPrice: shadowFleetResult.sellingPrice,
 				},
 			});
 		},

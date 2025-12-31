@@ -21,6 +21,7 @@ import { useAssignMission } from "../hooks/useAssignMission";
 import type {
 	CandidateSortBy,
 	ComplianceFilter,
+	FleetTypeFilter,
 } from "../types/assignment";
 
 /**
@@ -71,6 +72,8 @@ export function AssignmentDrawer({
 	const [selectedCandidateId, setSelectedCandidateIdInternal] = useState<string | null>(null);
 	const [sortBy, setSortBy] = useState<CandidateSortBy>("score");
 	const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
+	// Story 18.9: Fleet type filter state
+	const [fleetTypeFilter, setFleetTypeFilter] = useState<FleetTypeFilter>("all");
 	const [search, setSearch] = useState("");
 
 	// Story 8.3: Wrap setSelectedCandidateId to notify parent
@@ -121,6 +124,13 @@ export function AssignmentDrawer({
 			result = result.filter((c) => c.compliance.status !== "VIOLATION");
 		}
 
+		// Story 18.9: Apply fleet type filter
+		if (fleetTypeFilter === "internal") {
+			result = result.filter((c) => !c.isShadowFleet);
+		} else if (fleetTypeFilter === "shadow") {
+			result = result.filter((c) => c.isShadowFleet);
+		}
+
 		// Apply search filter
 		if (search) {
 			const searchLower = search.toLowerCase();
@@ -128,7 +138,9 @@ export function AssignmentDrawer({
 				(c) =>
 					c.vehicleName.toLowerCase().includes(searchLower) ||
 					(c.driverName?.toLowerCase().includes(searchLower) ?? false) ||
-					c.baseName.toLowerCase().includes(searchLower),
+					c.baseName.toLowerCase().includes(searchLower) ||
+					// Story 18.9: Also search in subcontractor name
+					(c.subcontractorName?.toLowerCase().includes(searchLower) ?? false),
 			);
 		}
 
@@ -147,7 +159,7 @@ export function AssignmentDrawer({
 		});
 
 		return result;
-	}, [candidates, complianceFilter, search, sortBy]);
+	}, [candidates, complianceFilter, fleetTypeFilter, search, sortBy]);
 
 	// Get selected candidate
 	const selectedCandidate = useMemo(() => {
@@ -213,6 +225,8 @@ export function AssignmentDrawer({
 						onSortChange={setSortBy}
 						complianceFilter={complianceFilter}
 						onComplianceFilterChange={setComplianceFilter}
+						fleetTypeFilter={fleetTypeFilter}
+						onFleetTypeFilterChange={setFleetTypeFilter}
 						search={search}
 						onSearchChange={setSearch}
 					/>

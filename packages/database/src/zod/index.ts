@@ -106,7 +106,7 @@ export const PartnerContractExcursionPackageScalarFieldEnumSchema = z.enum(['id'
 
 export const PartnerContractDispoPackageScalarFieldEnumSchema = z.enum(['id','partnerContractId','dispoPackageId','overridePrice']);
 
-export const SubcontractorProfileScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','ratePerKm','ratePerHour','minimumFare','isActive','notes','createdAt','updatedAt']);
+export const SubcontractorProfileScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','ratePerKm','ratePerHour','minimumFare','isActive','availabilityStatus','availabilityNotes','notes','createdAt','updatedAt']);
 
 export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','pricingZoneId']);
 
@@ -283,6 +283,10 @@ export type CalendarEventTypeType = `${z.infer<typeof CalendarEventTypeSchema>}`
 export const TimeBucketInterpolationStrategySchema = z.enum(['ROUND_UP','ROUND_DOWN','PROPORTIONAL']);
 
 export type TimeBucketInterpolationStrategyType = `${z.infer<typeof TimeBucketInterpolationStrategySchema>}`
+
+export const SubcontractorAvailabilitySchema = z.enum(['AVAILABLE','BUSY','OFFLINE']);
+
+export type SubcontractorAvailabilityType = `${z.infer<typeof SubcontractorAvailabilitySchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -566,6 +570,7 @@ export type PartnerContractDispoPackage = z.infer<typeof PartnerContractDispoPac
  * SubcontractorProfile - Details for subcontractor contacts
  */
 export const SubcontractorProfileSchema = z.object({
+  availabilityStatus: SubcontractorAvailabilitySchema,
   id: z.string().cuid(),
   organizationId: z.string(),
   contactId: z.string(),
@@ -573,6 +578,7 @@ export const SubcontractorProfileSchema = z.object({
   ratePerHour: z.instanceof(Prisma.Decimal, { message: "Field 'ratePerHour' must be a Decimal. Location: ['Models', 'SubcontractorProfile']"}).nullable(),
   minimumFare: z.instanceof(Prisma.Decimal, { message: "Field 'minimumFare' must be a Decimal. Location: ['Models', 'SubcontractorProfile']"}).nullable(),
   isActive: z.boolean(),
+  availabilityNotes: z.string().nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

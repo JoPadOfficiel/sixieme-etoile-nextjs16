@@ -3216,7 +3216,11 @@
 				"all": "All",
 				"okOnly": "OK only",
 				"includeWarnings": "Include warnings",
-				"search": "Search vehicle or driver..."
+				"search": "Search vehicle or driver...",
+				"fleetType": "Fleet Type",
+				"allFleets": "All Fleets",
+				"internalOnly": "Internal Only",
+				"shadowFleetOnly": "Shadow Fleet Only"
 			},
 			"candidate": {
 				"flexibilityScore": "Flexibility Score",
@@ -3224,6 +3228,13 @@
 				"distance": "Distance",
 				"licenses": "Licenses",
 				"noDriverAssigned": "No driver assigned",
+				"shadowFleet": "Shadow Fleet",
+				"marginIfSubcontracted": "Margin: €{margin} ({percent}%)",
+				"availability": {
+					"available": "Available",
+					"busy": "Busy",
+					"offline": "Offline"
+				},
 				"scoreBreakdown": {
 					"title": "Score Breakdown",
 					"licenses": "Licenses",

@@ -43,6 +43,26 @@ export interface CandidateSegments {
 	return: RouteSegment;
 }
 
+/**
+ * Story 18.9: Margin comparison for Shadow Fleet candidates
+ */
+export interface MarginComparison {
+	internalCost: number;
+	subcontractorCost: number;
+	savings: number;
+	savingsPercent: number;
+	recommendation: "SUBCONTRACT" | "INTERNAL" | "REVIEW";
+}
+
+/**
+ * Story 18.9: Zone match information for Shadow Fleet
+ */
+export interface ZoneMatch {
+	pickup: boolean;
+	dropoff: boolean;
+	score: number;
+}
+
 export interface AssignmentCandidate {
 	/** Unique candidate ID combining vehicleId and driverId */
 	candidateId: string;
@@ -66,9 +86,20 @@ export interface AssignmentCandidate {
 	scoreBreakdown: ScoreBreakdown;
 	compliance: CandidateCompliance;
 	estimatedCost: CandidateCost;
-	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
+	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "SHADOW_FLEET";
 	// Story 8.3: Segment details for route visualization
 	segments: CandidateSegments;
+	// Story 18.9: Shadow Fleet fields
+	isShadowFleet: boolean;
+	subcontractorId?: string;
+	subcontractorName?: string;
+	indicativePrice?: number;
+	availabilityStatus?: "AVAILABLE" | "BUSY" | "OFFLINE";
+	availabilityNotes?: string | null;
+	zoneMatch?: ZoneMatch;
+	marginComparison?: MarginComparison;
+	marginIfSubcontracted?: number;
+	marginPercentIfSubcontracted?: number;
 }
 
 /**
@@ -135,3 +166,5 @@ export interface AssignMissionResponse {
 
 export type CandidateSortBy = "score" | "cost" | "distance";
 export type ComplianceFilter = "all" | "ok" | "warnings";
+// Story 18.9: Fleet type filter for Shadow Fleet
+export type FleetTypeFilter = "all" | "internal" | "shadow";

@@ -364,6 +364,14 @@ enum TimeBucketInterpolationStrategy {
   PROPORTIONAL // Interpolate linearly between bucket prices
 }
 
+/// Story 18.9: Subcontractor availability status for Shadow Fleet
+/// Indicates whether a subcontractor is available to take missions
+enum SubcontractorAvailability {
+  AVAILABLE // Ready to accept missions
+  BUSY // Currently occupied, may become available
+  OFFLINE // Not accepting missions (vacation, maintenance, etc.)
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -540,8 +548,10 @@ model SubcontractorProfile {
   minimumFare Decimal? @db.Decimal(8, 2)
 
   // Status
-  isActive Boolean @default(true)
-  notes    String?
+  isActive           Boolean                   @default(true)
+  availabilityStatus SubcontractorAvailability @default(AVAILABLE)
+  availabilityNotes  String?
+  notes              String?
 
   // Metadata
   createdAt DateTime @default(now())
