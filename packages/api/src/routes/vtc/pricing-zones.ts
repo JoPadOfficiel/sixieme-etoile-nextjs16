@@ -20,6 +20,9 @@ const transformZone = (zone: any) => ({
 	radiusKm: decimalToNumber(zone.radiusKm),
 	// Story 11.3: Zone pricing multiplier
 	priceMultiplier: decimalToNumber(zone.priceMultiplier) ?? 1.0,
+	// Story 17.10: Zone fixed surcharges (friction costs)
+	fixedParkingSurcharge: decimalToNumber(zone.fixedParkingSurcharge),
+	fixedAccessFee: decimalToNumber(zone.fixedAccessFee),
 });
 import {
 	withTenantCreate,
@@ -56,6 +59,10 @@ const createZoneSchema = z.object({
 	multiplierDescription: z.string().max(500).optional().nullable(),
 	// Story 17.1: Zone priority for conflict resolution
 	priority: z.coerce.number().int().min(0).max(100).optional().default(0),
+	// Story 17.10: Zone fixed surcharges (friction costs)
+	fixedParkingSurcharge: z.coerce.number().min(0).optional().nullable(),
+	fixedAccessFee: z.coerce.number().min(0).optional().nullable(),
+	surchargeDescription: z.string().max(500).optional().nullable(),
 });
 
 const updateZoneSchema = z.object({
@@ -81,6 +88,10 @@ const updateZoneSchema = z.object({
 	multiplierDescription: z.string().max(500).optional().nullable(),
 	// Story 17.1: Zone priority for conflict resolution
 	priority: z.coerce.number().int().min(0).max(100).optional(),
+	// Story 17.10: Zone fixed surcharges (friction costs)
+	fixedParkingSurcharge: z.coerce.number().min(0).optional().nullable(),
+	fixedAccessFee: z.coerce.number().min(0).optional().nullable(),
+	surchargeDescription: z.string().max(500).optional().nullable(),
 });
 
 const listZonesSchema = z.object({
@@ -303,6 +314,10 @@ export const pricingZonesRouter = new Hono()
 							multiplierDescription: data.multiplierDescription ?? undefined,
 							// Story 17.1: Zone priority for conflict resolution
 							priority: data.priority ?? 0,
+							// Story 17.10: Zone fixed surcharges (friction costs)
+							fixedParkingSurcharge: data.fixedParkingSurcharge ?? undefined,
+							fixedAccessFee: data.fixedAccessFee ?? undefined,
+							surchargeDescription: data.surchargeDescription ?? undefined,
 						},
 						organizationId,
 					),
@@ -414,6 +429,10 @@ export const pricingZonesRouter = new Hono()
 					...(data.multiplierDescription !== undefined && { multiplierDescription: data.multiplierDescription }),
 					// Story 17.1: Update zone priority
 					...(data.priority !== undefined && { priority: data.priority }),
+					// Story 17.10: Update zone fixed surcharges (friction costs)
+					...(data.fixedParkingSurcharge !== undefined && { fixedParkingSurcharge: data.fixedParkingSurcharge }),
+					...(data.fixedAccessFee !== undefined && { fixedAccessFee: data.fixedAccessFee }),
+					...(data.surchargeDescription !== undefined && { surchargeDescription: data.surchargeDescription }),
 				},
 				include: {
 					parentZone: {

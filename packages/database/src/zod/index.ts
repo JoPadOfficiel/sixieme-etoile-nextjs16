@@ -128,7 +128,7 @@ export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licen
 
 export const DriverCalendarEventScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','eventType','title','notes','startAt','endAt','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','fixedParkingSurcharge','fixedAccessFee','surchargeDescription','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -815,6 +815,9 @@ export const PricingZoneSchema = z.object({
   priceMultiplier: z.instanceof(Prisma.Decimal, { message: "Field 'priceMultiplier' must be a Decimal. Location: ['Models', 'PricingZone']"}),
   multiplierDescription: z.string().nullable(),
   priority: z.number().int(),
+  fixedParkingSurcharge: z.instanceof(Prisma.Decimal, { message: "Field 'fixedParkingSurcharge' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
+  fixedAccessFee: z.instanceof(Prisma.Decimal, { message: "Field 'fixedAccessFee' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
+  surchargeDescription: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

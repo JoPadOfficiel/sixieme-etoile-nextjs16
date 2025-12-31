@@ -142,7 +142,7 @@ development_status:
   17-7-driver-availability-overlap-detection: done
   17-8-weighted-day-night-rate-application: done
   17-9-configurable-time-buckets-for-mad-pricing: done
-  17-10-zone-fixed-surcharges-friction-costs: backlog
+  17-10-zone-fixed-surcharges-friction-costs: done
   17-11-zone-topology-validation-tools: backlog
   17-12-driver-home-location-for-deadhead-calculations: backlog
   17-13-route-segmentation-for-multi-zone-trips: backlog

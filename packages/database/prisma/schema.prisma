@@ -880,6 +880,11 @@ model PricingZone {
   // Story 17.1: Zone priority for conflict resolution
   priority Int @default(0) // Higher priority zones are selected first when using PRIORITY or COMBINED strategy
 
+  // Story 17.10: Zone fixed surcharges (friction costs)
+  fixedParkingSurcharge Decimal? @db.Decimal(10, 2) // Parking fee in EUR
+  fixedAccessFee        Decimal? @db.Decimal(10, 2) // Access/entry fee in EUR
+  surchargeDescription  String? // Description of surcharges
+
   // Metadata
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

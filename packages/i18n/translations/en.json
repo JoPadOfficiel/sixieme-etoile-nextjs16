@@ -741,7 +741,14 @@
 				"priceMultiplier": "Price Multiplier",
 				"priceMultiplierHelp": "Adjust the base price for trips in this zone. 1.0 = no adjustment, 1.5 = 50% increase, 0.8 = 20% discount.",
 				"multiplierDescription": "Multiplier Description",
-				"multiplierDescriptionPlaceholder": "e.g., Premium zone surcharge"
+				"multiplierDescriptionPlaceholder": "e.g., Premium zone surcharge",
+				"surchargesSection": "Zone Surcharges (Friction Costs)",
+				"fixedParkingSurcharge": "Parking Surcharge",
+				"fixedParkingSurchargeHelp": "Fixed parking fee added to operational cost for trips involving this zone (e.g., Versailles parking).",
+				"fixedAccessFee": "Access Fee",
+				"fixedAccessFeeHelp": "Fixed access fee added to operational cost (e.g., airport access fee).",
+				"surchargeDescription": "Surcharge Description",
+				"surchargeDescriptionPlaceholder": "e.g., Versailles castle parking - 2h minimum"
 			},
 			"map": {
 				"noApiKey": "Google Maps API key not configured.",
@@ -2296,6 +2303,8 @@
 					"wear": "Wear & Tear",
 					"driver": "Driver",
 					"parking": "Parking",
+					"zoneSurcharges": "Zone Surcharges",
+					"zoneSurchargesDescription": "Friction costs (parking, access) for zones involved",
 					"manuallyEdited": "Costs have been manually edited",
 					"editedTooltip": "This cost has been manually adjusted",
 					"originalValue": "Original value"

@@ -741,7 +741,14 @@
 				"priceMultiplier": "Multiplicateur de Prix",
 				"priceMultiplierHelp": "Ajustez le prix de base pour les trajets dans cette zone. 1.0 = pas d'ajustement, 1.5 = augmentation de 50%, 0.8 = réduction de 20%.",
 				"multiplierDescription": "Description du Multiplicateur",
-				"multiplierDescriptionPlaceholder": "ex: Supplément zone premium"
+				"multiplierDescriptionPlaceholder": "ex: Supplément zone premium",
+				"surchargesSection": "Frais de Zone (Coûts de Friction)",
+				"fixedParkingSurcharge": "Frais de Parking",
+				"fixedParkingSurchargeHelp": "Frais de parking fixes ajoutés au coût opérationnel pour les trajets impliquant cette zone (ex: parking Versailles).",
+				"fixedAccessFee": "Frais d'Accès",
+				"fixedAccessFeeHelp": "Frais d'accès fixes ajoutés au coût opérationnel (ex: frais d'accès aéroport).",
+				"surchargeDescription": "Description des Frais",
+				"surchargeDescriptionPlaceholder": "ex: Parking château de Versailles - 2h minimum"
 			},
 			"map": {
 				"noApiKey": "Clé API Google Maps non configurée.",
@@ -2296,6 +2303,8 @@
 					"wear": "Usure",
 					"driver": "Chauffeur",
 					"parking": "Parking",
+					"zoneSurcharges": "Frais de zone",
+					"zoneSurchargesDescription": "Frais de friction (parking, accès) pour les zones impliquées",
 					"manuallyEdited": "Les coûts ont été modifiés manuellement",
 					"editedTooltip": "Ce coût a été ajusté manuellement",
 					"originalValue": "Valeur d'origine"

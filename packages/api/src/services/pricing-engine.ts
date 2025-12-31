@@ -748,6 +748,31 @@ export interface TripTypePricingResult {
 	rule: AppliedTripTypeRule | null;
 }
 
+/**
+ * Story 17.10: Applied zone surcharge rule for transparency
+ */
+export interface AppliedZoneSurchargeRule extends AppliedRule {
+	type: "ZONE_SURCHARGE";
+	description: string;
+	pickupZone: {
+		zoneId: string;
+		zoneName: string;
+		zoneCode: string;
+		parkingSurcharge: number;
+		accessFee: number;
+		total: number;
+	} | null;
+	dropoffZone: {
+		zoneId: string;
+		zoneName: string;
+		zoneCode: string;
+		parkingSurcharge: number;
+		accessFee: number;
+		total: number;
+	} | null;
+	totalSurcharge: number;
+}
+
 // ============================================================================
 // Cost Breakdown Types (Story 4.2)
 // ============================================================================
@@ -787,12 +812,36 @@ export interface ParkingCostComponent {
 	description: string;
 }
 
+/**
+ * Story 17.10: Zone surcharge component for friction costs
+ */
+export interface ZoneSurchargeComponent {
+	zoneId: string;
+	zoneName: string;
+	zoneCode: string;
+	parkingSurcharge: number;
+	accessFee: number;
+	total: number;
+	description: string | null;
+}
+
+/**
+ * Story 17.10: Combined zone surcharges for pickup and dropoff
+ */
+export interface ZoneSurcharges {
+	pickup: ZoneSurchargeComponent | null;
+	dropoff: ZoneSurchargeComponent | null;
+	total: number;
+}
+
 export interface CostBreakdown {
 	fuel: FuelCostComponent;
 	tolls: TollCostComponent;
 	wear: WearCostComponent;
 	driver: DriverCostComponent;
 	parking: ParkingCostComponent;
+	// Story 17.10: Zone surcharges (friction costs)
+	zoneSurcharges?: ZoneSurcharges;
 	total: number;
 }
 
@@ -1505,6 +1554,51 @@ export function calculateDriverCost(
 		durationMinutes,
 		hourlyRate,
 	};
+}
+
+/**
+ * Story 17.10: Create a zone surcharge component from zone data
+ */
+function createZoneSurchargeComponent(zone: ZoneData): ZoneSurchargeComponent {
+	const parkingSurcharge = zone.fixedParkingSurcharge ?? 0;
+	const accessFee = zone.fixedAccessFee ?? 0;
+	const total = Math.round((parkingSurcharge + accessFee) * 100) / 100;
+	
+	return {
+		zoneId: zone.id,
+		zoneName: zone.name,
+		zoneCode: zone.code,
+		parkingSurcharge,
+		accessFee,
+		total,
+		description: zone.surchargeDescription ?? null,
+	};
+}
+
+/**
+ * Story 17.10: Calculate zone surcharges for pickup and dropoff zones
+ * Avoids double-counting if pickup and dropoff are in the same zone
+ * 
+ * @param pickupZone - The resolved pickup zone (or null)
+ * @param dropoffZone - The resolved dropoff zone (or null)
+ * @returns Combined zone surcharges with total
+ */
+export function calculateZoneSurcharges(
+	pickupZone: ZoneData | null,
+	dropoffZone: ZoneData | null,
+): ZoneSurcharges {
+	// Calculate pickup zone surcharges
+	const pickup = pickupZone ? createZoneSurchargeComponent(pickupZone) : null;
+	
+	// Calculate dropoff zone surcharges, but avoid double-counting if same zone
+	const dropoff = dropoffZone && dropoffZone.id !== pickupZone?.id
+		? createZoneSurchargeComponent(dropoffZone)
+		: null;
+	
+	// Calculate total
+	const total = Math.round(((pickup?.total ?? 0) + (dropoff?.total ?? 0)) * 100) / 100;
+	
+	return { pickup, dropoff, total };
 }
 
 /**
@@ -4498,6 +4592,40 @@ function buildDynamicResult(
 	// Use total internal cost from shadow calculation
 	let internalCost = tripAnalysis.totalInternalCost;
 	
+	// Story 17.10: Calculate and add zone surcharges (friction costs)
+	const zoneSurcharges = calculateZoneSurcharges(pickupZone, dropoffZone);
+	if (zoneSurcharges.total > 0) {
+		internalCost = Math.round((internalCost + zoneSurcharges.total) * 100) / 100;
+		
+		// Add zone surcharge rule for transparency
+		const zoneSurchargeRule: AppliedZoneSurchargeRule = {
+			type: "ZONE_SURCHARGE",
+			description: `Zone surcharges applied: ${zoneSurcharges.total}€ (friction costs)`,
+			pickupZone: zoneSurcharges.pickup ? {
+				zoneId: zoneSurcharges.pickup.zoneId,
+				zoneName: zoneSurcharges.pickup.zoneName,
+				zoneCode: zoneSurcharges.pickup.zoneCode,
+				parkingSurcharge: zoneSurcharges.pickup.parkingSurcharge,
+				accessFee: zoneSurcharges.pickup.accessFee,
+				total: zoneSurcharges.pickup.total,
+			} : null,
+			dropoffZone: zoneSurcharges.dropoff ? {
+				zoneId: zoneSurcharges.dropoff.zoneId,
+				zoneName: zoneSurcharges.dropoff.zoneName,
+				zoneCode: zoneSurcharges.dropoff.zoneCode,
+				parkingSurcharge: zoneSurcharges.dropoff.parkingSurcharge,
+				accessFee: zoneSurcharges.dropoff.accessFee,
+				total: zoneSurcharges.dropoff.total,
+			} : null,
+			totalSurcharge: zoneSurcharges.total,
+		};
+		appliedRules.push(zoneSurchargeRule);
+		
+		// Store zone surcharges in trip analysis for transparency
+		tripAnalysis.costBreakdown.zoneSurcharges = zoneSurcharges;
+		tripAnalysis.costBreakdown.total = Math.round((tripAnalysis.costBreakdown.total + zoneSurcharges.total) * 100) / 100;
+	}
+	
 	// Story 16.6: Apply round trip multiplier (×2) LAST, after all other adjustments
 	// Only applies to TRANSFER trip type with isRoundTrip = true
 	if (isRoundTrip && tripType === "transfer") {
@@ -4513,7 +4641,7 @@ function buildDynamicResult(
 	const marginPercent =
 		price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
 
-	// Add cost breakdown rule (Story 4.2)
+	// Add cost breakdown rule (Story 4.2 + 17.10: zone surcharges)
 	appliedRules.push({
 		type: "COST_BREAKDOWN",
 		description: "Internal cost calculated with operational components",
@@ -4523,6 +4651,8 @@ function buildDynamicResult(
 			wear: tripAnalysis.costBreakdown.wear.amount,
 			driver: tripAnalysis.costBreakdown.driver.amount,
 			parking: tripAnalysis.costBreakdown.parking.amount,
+			// Story 17.10: Include zone surcharges in cost breakdown
+			zoneSurcharges: tripAnalysis.costBreakdown.zoneSurcharges?.total ?? 0,
 			total: tripAnalysis.costBreakdown.total,
 		},
 	});

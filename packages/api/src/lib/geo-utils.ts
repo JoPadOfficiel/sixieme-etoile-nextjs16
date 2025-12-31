@@ -130,6 +130,10 @@ export interface ZoneData {
 	priceMultiplier?: number;
 	// Story 17.1: Zone priority for conflict resolution
 	priority?: number;
+	// Story 17.10: Zone fixed surcharges (friction costs)
+	fixedParkingSurcharge?: number | null;
+	fixedAccessFee?: number | null;
+	surchargeDescription?: string | null;
 }
 
 /**
