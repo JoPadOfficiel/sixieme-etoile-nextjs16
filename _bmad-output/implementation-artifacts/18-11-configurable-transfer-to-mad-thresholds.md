@@ -7,7 +7,7 @@
 | **Story ID**         | 18.11                                                                |
 | **Epic**             | Epic 18 - Advanced Geospatial, Route Optimization & Yield Management |
 | **Title**            | Configurable Transfer-to-MAD Thresholds                              |
-| **Status**           | 🚧 In Progress                                                       |
+| **Status**           | ✅ Done                                                              |
 | **Created**          | 2025-12-31                                                           |
 | **Priority**         | Medium                                                               |
 | **Estimated Effort** | 3 Story Points                                                       |
@@ -119,8 +119,47 @@ And the form shall not submit
 - [x] All 7 threshold fields configurable via UI
 - [x] Translations added (fr/en)
 - [x] API updated to support new fields (GET/PATCH)
-- [ ] Settings persist correctly (manual test)
+- [x] Settings persist correctly (tested via Playwright + DB verification)
 - [x] Existing detection functions use configured values (already implemented in 18.2/18.3)
+
+## Test Results (2025-12-31)
+
+### Playwright UI Tests
+
+| Test                                          | Result  |
+| --------------------------------------------- | ------- |
+| Navigate to Advanced Pricing Settings         | ✅ Pass |
+| View Transfer/MAD Thresholds section          | ✅ Pass |
+| Fill denseZoneSpeedThreshold = 20             | ✅ Pass |
+| Fill denseZoneCodes = "PARIS_0, PARIS_10"     | ✅ Pass |
+| Toggle autoSwitchToMAD = true                 | ✅ Pass |
+| Fill minWaitingTimeForSeparateTransfers = 240 | ✅ Pass |
+| Fill maxReturnDistanceKm = 75                 | ✅ Pass |
+| Fill roundTripBuffer = 45                     | ✅ Pass |
+| Toggle autoSwitchRoundTripToMAD = true        | ✅ Pass |
+| Click Save button                             | ✅ Pass |
+| Toast "Paramètres enregistrés avec succès"    | ✅ Pass |
+| Page reload - values persisted                | ✅ Pass |
+
+### Database Verification (MCP postgres_vtc_sixiemme_etoile)
+
+```sql
+SELECT "denseZoneSpeedThreshold", "autoSwitchToMAD", "denseZoneCodes",
+       "minWaitingTimeForSeparateTransfers", "maxReturnDistanceKm",
+       "roundTripBuffer", "autoSwitchRoundTripToMAD"
+FROM organization_pricing_settings
+WHERE "organizationId" = (SELECT id FROM organization WHERE slug = 'sixieme-etoile-vtc');
+```
+
+| Field                              | Value                   |
+| ---------------------------------- | ----------------------- |
+| denseZoneSpeedThreshold            | 20.00                   |
+| autoSwitchToMAD                    | true                    |
+| denseZoneCodes                     | ["PARIS_0", "PARIS_10"] |
+| minWaitingTimeForSeparateTransfers | 240                     |
+| maxReturnDistanceKm                | 75.00                   |
+| roundTripBuffer                    | 45                      |
+| autoSwitchRoundTripToMAD           | true                    |
 
 ## Files Modified
 
