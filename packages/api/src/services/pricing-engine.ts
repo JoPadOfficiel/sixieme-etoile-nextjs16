@@ -1364,6 +1364,9 @@ export interface TripAnalysis {
 	
 	// Story 18.4: Loss of exploitation for multi-day missions
 	lossOfExploitation?: LossOfExploitationResult | null;
+	
+	// Story 18.5: Stay vs Return Empty scenario comparison
+	stayVsReturnComparison?: StayVsReturnComparison | null;
 }
 
 /**
@@ -6136,5 +6139,417 @@ export function buildLossOfExploitationRule(
 			seasonalityCoefficient: result.seasonalityCoefficient,
 			seasonalityPeriod: result.seasonalityPeriod,
 		},
+	};
+}
+
+// ============================================================================
+// Story 18.5: Stay vs Return Empty Scenario Comparison
+// ============================================================================
+
+/**
+ * Story 18.5: Stay on-site scenario costs
+ */
+export interface StayOnSiteScenario {
+	hotelCost: number;
+	mealCost: number;
+	driverPremium: number;
+	lossOfExploitation: number;
+	totalCost: number;
+	breakdown: {
+		nights: number;
+		hotelCostPerNight: number;
+		days: number;
+		mealCostPerDay: number;
+		driverPremiumPerNight: number;
+		idleDays: number;
+		dailyRevenue: number;
+		seasonalityCoefficient: number;
+	};
+}
+
+/**
+ * Story 18.5: Return empty scenario costs
+ */
+export interface ReturnEmptyScenario {
+	isViable: boolean;
+	reason: string | null;
+	emptyTripsCount: number;
+	totalEmptyDistanceKm: number;
+	fuelCost: number;
+	tollCost: number;
+	driverTimeCost: number;
+	totalCost: number;
+	breakdown: {
+		distanceOneWayKm: number;
+		durationOneWayMinutes: number;
+		fuelCostPerKm: number;
+		tollCostPerTrip: number;
+		driverHourlyRate: number;
+		tripsPerIdleDay: number;
+	};
+}
+
+/**
+ * Story 18.5: Stay vs Return comparison result
+ */
+export interface StayVsReturnComparison {
+	isApplicable: boolean;
+	stayScenario: StayOnSiteScenario | null;
+	returnScenario: ReturnEmptyScenario | null;
+	recommendedScenario: "STAY_ON_SITE" | "RETURN_EMPTY" | null;
+	selectedScenario: "STAY_ON_SITE" | "RETURN_EMPTY" | null;
+	scenarioOverridden: boolean;
+	costDifference: number;
+	percentageSavings: number;
+	recommendation: string;
+}
+
+/**
+ * Story 18.5: Applied rule for scenario selection
+ */
+export interface AppliedScenarioSelectionRule extends AppliedRule {
+	type: "MULTI_DAY_SCENARIO_SELECTION";
+	description: string;
+	selectedScenario: "STAY_ON_SITE" | "RETURN_EMPTY";
+	scenarioCost: number;
+	alternativeCost: number;
+	savings: number;
+	overridden: boolean;
+}
+
+/**
+ * Story 18.5: Default settings for stay vs return comparison
+ */
+export const DEFAULT_STAY_VS_RETURN_SETTINGS = {
+	maxReturnEmptyDistanceKm: 300,
+	minIdleDaysForComparison: 1,
+	hotelCostPerNight: 120,
+	mealCostPerDay: 25,
+	driverOvernightPremium: 50,
+	fuelCostPerKm: 0.15,
+	driverHourlyRate: 25,
+};
+
+/**
+ * Story 18.5: Calculate costs for staying on-site during multi-day mission
+ * 
+ * @param totalDays - Total calendar days of the mission
+ * @param idleDays - Number of idle days (from Story 18.4)
+ * @param lossOfExploitationResult - Loss of exploitation calculation (from Story 18.4)
+ * @param staffingSettings - Hotel, meal, and driver premium costs
+ * @returns StayOnSiteScenario with full cost breakdown
+ */
+export function calculateStayOnSiteScenario(
+	totalDays: number,
+	idleDays: number,
+	lossOfExploitationResult: LossOfExploitationResult,
+	staffingSettings: {
+		hotelCostPerNight: number;
+		mealCostPerDay: number;
+		driverOvernightPremium: number;
+	},
+): StayOnSiteScenario {
+	const nights = Math.max(0, totalDays - 1); // One less night than days
+	
+	const hotelCost = Math.round(nights * staffingSettings.hotelCostPerNight * 100) / 100;
+	const mealCost = Math.round(totalDays * staffingSettings.mealCostPerDay * 100) / 100;
+	const driverPremium = Math.round(nights * staffingSettings.driverOvernightPremium * 100) / 100;
+	const lossOfExploitation = lossOfExploitationResult.lossOfExploitation;
+	
+	const totalCost = Math.round((hotelCost + mealCost + driverPremium + lossOfExploitation) * 100) / 100;
+	
+	return {
+		hotelCost,
+		mealCost,
+		driverPremium,
+		lossOfExploitation,
+		totalCost,
+		breakdown: {
+			nights,
+			hotelCostPerNight: staffingSettings.hotelCostPerNight,
+			days: totalDays,
+			mealCostPerDay: staffingSettings.mealCostPerDay,
+			driverPremiumPerNight: staffingSettings.driverOvernightPremium,
+			idleDays,
+			dailyRevenue: lossOfExploitationResult.dailyReferenceRevenue,
+			seasonalityCoefficient: lossOfExploitationResult.seasonalityCoefficient,
+		},
+	};
+}
+
+/**
+ * Story 18.5: Calculate costs for returning empty each day
+ * 
+ * @param distanceOneWayKm - One-way distance from base to mission location
+ * @param durationOneWayMinutes - One-way duration in minutes
+ * @param idleDays - Number of idle days
+ * @param tollCostPerTrip - Toll cost for one trip
+ * @param settings - Fuel cost, driver rate, and max distance threshold
+ * @returns ReturnEmptyScenario with full cost breakdown
+ */
+export function calculateReturnEmptyScenario(
+	distanceOneWayKm: number,
+	durationOneWayMinutes: number,
+	idleDays: number,
+	tollCostPerTrip: number,
+	settings: {
+		fuelCostPerKm: number;
+		driverHourlyRate: number;
+		maxReturnEmptyDistanceKm: number;
+	},
+): ReturnEmptyScenario {
+	const maxDistance = settings.maxReturnEmptyDistanceKm;
+	
+	// Check if return empty is viable
+	if (distanceOneWayKm > maxDistance) {
+		return {
+			isViable: false,
+			reason: `Distance trop longue pour retour à vide (${distanceOneWayKm.toFixed(0)}km > ${maxDistance}km)`,
+			emptyTripsCount: 0,
+			totalEmptyDistanceKm: 0,
+			fuelCost: 0,
+			tollCost: 0,
+			driverTimeCost: 0,
+			totalCost: Number.POSITIVE_INFINITY, // Not viable
+			breakdown: {
+				distanceOneWayKm,
+				durationOneWayMinutes,
+				fuelCostPerKm: settings.fuelCostPerKm,
+				tollCostPerTrip,
+				driverHourlyRate: settings.driverHourlyRate,
+				tripsPerIdleDay: 2,
+			},
+		};
+	}
+	
+	// For each idle day: 1 return trip (evening) + 1 outbound trip (morning)
+	const tripsPerIdleDay = 2;
+	const emptyTripsCount = idleDays * tripsPerIdleDay;
+	const totalEmptyDistanceKm = emptyTripsCount * distanceOneWayKm;
+	
+	const fuelCost = Math.round(totalEmptyDistanceKm * settings.fuelCostPerKm * 100) / 100;
+	const tollCost = Math.round(emptyTripsCount * tollCostPerTrip * 100) / 100;
+	const driverTimeHours = (emptyTripsCount * durationOneWayMinutes) / 60;
+	const driverTimeCost = Math.round(driverTimeHours * settings.driverHourlyRate * 100) / 100;
+	
+	const totalCost = Math.round((fuelCost + tollCost + driverTimeCost) * 100) / 100;
+	
+	return {
+		isViable: true,
+		reason: null,
+		emptyTripsCount,
+		totalEmptyDistanceKm,
+		fuelCost,
+		tollCost,
+		driverTimeCost,
+		totalCost,
+		breakdown: {
+			distanceOneWayKm,
+			durationOneWayMinutes,
+			fuelCostPerKm: settings.fuelCostPerKm,
+			tollCostPerTrip,
+			driverHourlyRate: settings.driverHourlyRate,
+			tripsPerIdleDay,
+		},
+	};
+}
+
+/**
+ * Story 18.5: Compare stay on-site vs return empty scenarios
+ * 
+ * @param stayScenario - Stay on-site scenario costs
+ * @param returnScenario - Return empty scenario costs
+ * @returns Comparison result with recommendation
+ */
+export function compareStayVsReturn(
+	stayScenario: StayOnSiteScenario,
+	returnScenario: ReturnEmptyScenario,
+): {
+	recommendedScenario: "STAY_ON_SITE" | "RETURN_EMPTY";
+	costDifference: number;
+	percentageSavings: number;
+	recommendation: string;
+} {
+	// If return empty is not viable, stay is the only option
+	if (!returnScenario.isViable) {
+		return {
+			recommendedScenario: "STAY_ON_SITE",
+			costDifference: 0,
+			percentageSavings: 0,
+			recommendation: `Rester sur place (seule option viable) - ${returnScenario.reason}`,
+		};
+	}
+	
+	const stayCost = stayScenario.totalCost;
+	const returnCost = returnScenario.totalCost;
+	
+	if (stayCost <= returnCost) {
+		const savings = Math.round((returnCost - stayCost) * 100) / 100;
+		const percentage = returnCost > 0 
+			? Math.round((savings / returnCost) * 100 * 10) / 10 
+			: 0;
+		return {
+			recommendedScenario: "STAY_ON_SITE",
+			costDifference: savings,
+			percentageSavings: percentage,
+			recommendation: `Rester sur place recommandé - Économie de ${savings.toFixed(2)}€ (${percentage}%)`,
+		};
+	} else {
+		const savings = Math.round((stayCost - returnCost) * 100) / 100;
+		const percentage = stayCost > 0 
+			? Math.round((savings / stayCost) * 100 * 10) / 10 
+			: 0;
+		return {
+			recommendedScenario: "RETURN_EMPTY",
+			costDifference: savings,
+			percentageSavings: percentage,
+			recommendation: `Retour à vide recommandé - Économie de ${savings.toFixed(2)}€ (${percentage}%)`,
+		};
+	}
+}
+
+/**
+ * Story 18.5: Settings type for stay vs return comparison
+ */
+export interface StayVsReturnSettings {
+	maxReturnEmptyDistanceKm?: number | { toNumber?: () => number } | null;
+	minIdleDaysForComparison?: number | null;
+	hotelCostPerNight?: number | { toNumber?: () => number } | null;
+	mealCostPerDay?: number | { toNumber?: () => number } | null;
+	driverOvernightPremium?: number | { toNumber?: () => number } | null;
+	fuelConsumptionL100km?: number | { toNumber?: () => number } | null;
+	fuelPricePerLiter?: number | { toNumber?: () => number } | null;
+	driverHourlyCost?: number | { toNumber?: () => number } | null;
+	baseRatePerHour?: number | { toNumber?: () => number } | null;
+}
+
+/**
+ * Story 18.5: Helper to convert Decimal to number
+ */
+function toNumber(value: number | { toNumber?: () => number } | null | undefined, defaultValue: number): number {
+	if (value == null) return defaultValue;
+	if (typeof value === 'number') return value;
+	if (typeof value.toNumber === 'function') return value.toNumber();
+	return Number(value) || defaultValue;
+}
+
+/**
+ * Story 18.5: Calculate stay vs return comparison for a multi-day mission
+ * 
+ * @param lossOfExploitationResult - Loss of exploitation calculation (from Story 18.4)
+ * @param distanceOneWayKm - One-way distance from base to mission location
+ * @param durationOneWayMinutes - One-way duration in minutes
+ * @param tollCostPerTrip - Toll cost for one trip
+ * @param settings - Organization pricing settings
+ * @returns StayVsReturnComparison with full analysis
+ */
+export function calculateStayVsReturnComparison(
+	lossOfExploitationResult: LossOfExploitationResult,
+	distanceOneWayKm: number,
+	durationOneWayMinutes: number,
+	tollCostPerTrip: number,
+	settings: StayVsReturnSettings,
+): StayVsReturnComparison {
+	// Check if comparison is applicable
+	const minIdleDays = settings.minIdleDaysForComparison ?? DEFAULT_STAY_VS_RETURN_SETTINGS.minIdleDaysForComparison;
+	
+	if (!lossOfExploitationResult.isMultiDay || lossOfExploitationResult.idleDays < minIdleDays) {
+		return {
+			isApplicable: false,
+			stayScenario: null,
+			returnScenario: null,
+			recommendedScenario: null,
+			selectedScenario: null,
+			scenarioOverridden: false,
+			costDifference: 0,
+			percentageSavings: 0,
+			recommendation: "Non applicable - Mission sur une seule journée ou sans jours d'inactivité suffisants",
+		};
+	}
+	
+	// Build staffing settings
+	const staffingSettings = {
+		hotelCostPerNight: toNumber(settings.hotelCostPerNight, DEFAULT_STAY_VS_RETURN_SETTINGS.hotelCostPerNight),
+		mealCostPerDay: toNumber(settings.mealCostPerDay, DEFAULT_STAY_VS_RETURN_SETTINGS.mealCostPerDay),
+		driverOvernightPremium: toNumber(settings.driverOvernightPremium, DEFAULT_STAY_VS_RETURN_SETTINGS.driverOvernightPremium),
+	};
+	
+	// Build return settings
+	// Calculate fuel cost per km from consumption and price
+	const fuelConsumption = toNumber(settings.fuelConsumptionL100km, 8.0); // L/100km
+	const fuelPrice = toNumber(settings.fuelPricePerLiter, 1.80); // EUR/L
+	const fuelCostPerKm = (fuelConsumption / 100) * fuelPrice;
+	
+	const returnSettings = {
+		fuelCostPerKm,
+		driverHourlyRate: toNumber(settings.driverHourlyCost, DEFAULT_STAY_VS_RETURN_SETTINGS.driverHourlyRate),
+		maxReturnEmptyDistanceKm: toNumber(settings.maxReturnEmptyDistanceKm, DEFAULT_STAY_VS_RETURN_SETTINGS.maxReturnEmptyDistanceKm),
+	};
+	
+	// Calculate both scenarios
+	const stayScenario = calculateStayOnSiteScenario(
+		lossOfExploitationResult.totalDays,
+		lossOfExploitationResult.idleDays,
+		lossOfExploitationResult,
+		staffingSettings,
+	);
+	
+	const returnScenario = calculateReturnEmptyScenario(
+		distanceOneWayKm,
+		durationOneWayMinutes,
+		lossOfExploitationResult.idleDays,
+		tollCostPerTrip,
+		returnSettings,
+	);
+	
+	// Compare and get recommendation
+	const comparison = compareStayVsReturn(stayScenario, returnScenario);
+	
+	return {
+		isApplicable: true,
+		stayScenario,
+		returnScenario,
+		recommendedScenario: comparison.recommendedScenario,
+		selectedScenario: comparison.recommendedScenario, // Default to recommended
+		scenarioOverridden: false,
+		costDifference: comparison.costDifference,
+		percentageSavings: comparison.percentageSavings,
+		recommendation: comparison.recommendation,
+	};
+}
+
+/**
+ * Story 18.5: Build applied rule for scenario selection
+ * 
+ * @param comparison - The stay vs return comparison result
+ * @returns AppliedScenarioSelectionRule or null if not applicable
+ */
+export function buildScenarioSelectionRule(
+	comparison: StayVsReturnComparison,
+): AppliedScenarioSelectionRule | null {
+	if (!comparison.isApplicable || !comparison.selectedScenario) {
+		return null;
+	}
+	
+	const selectedCost = comparison.selectedScenario === "STAY_ON_SITE"
+		? comparison.stayScenario?.totalCost ?? 0
+		: comparison.returnScenario?.totalCost ?? 0;
+		
+	const alternativeCost = comparison.selectedScenario === "STAY_ON_SITE"
+		? (comparison.returnScenario?.isViable ? comparison.returnScenario.totalCost : 0)
+		: comparison.stayScenario?.totalCost ?? 0;
+	
+	const scenarioLabel = comparison.selectedScenario === "STAY_ON_SITE"
+		? "Rester sur place"
+		: "Retour à vide";
+	
+	return {
+		type: "MULTI_DAY_SCENARIO_SELECTION",
+		description: `Stratégie multi-jours: ${scenarioLabel} (${selectedCost.toFixed(2)}€)`,
+		selectedScenario: comparison.selectedScenario,
+		scenarioCost: selectedCost,
+		alternativeCost,
+		savings: comparison.costDifference,
+		overridden: comparison.scenarioOverridden,
 	};
 }

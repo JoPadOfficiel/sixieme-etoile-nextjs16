@@ -1207,6 +1207,12 @@ model OrganizationPricingSettings {
   highSeasonCoefficient         Decimal? @default(0.80) @db.Decimal(3, 2) // 80%
   lowSeasonCoefficient          Decimal? @default(0.50) @db.Decimal(3, 2) // 50%
 
+  // Story 18.5: Stay vs Return Empty scenario comparison
+  // Maximum distance for return empty to be viable (default: 300 km)
+  maxReturnEmptyDistanceKm Decimal? @default(300.0) @db.Decimal(10, 2)
+  // Minimum idle days to trigger comparison (default: 1)
+  minIdleDaysForComparison Int?     @default(1)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

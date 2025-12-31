@@ -140,7 +140,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -1007,6 +1007,8 @@ export const OrganizationPricingSettingsSchema = z.object({
   defaultSeasonalityCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'defaultSeasonalityCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   highSeasonCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'highSeasonCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   lowSeasonCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'lowSeasonCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  maxReturnEmptyDistanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'maxReturnEmptyDistanceKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  minIdleDaysForComparison: z.number().int().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
