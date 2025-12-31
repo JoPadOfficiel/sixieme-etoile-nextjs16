@@ -15,7 +15,7 @@ import {
 	TooltipTrigger,
 } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
-import { CircleIcon, HandIcon, PentagonIcon, Trash2Icon } from "lucide-react";
+import { CheckCircle2, CircleIcon, HandIcon, Loader2, PentagonIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export type DrawingMode = "pan" | "polygon" | "circle" | null;
@@ -26,6 +26,8 @@ interface ZoneMapToolbarProps {
 	onClear: () => void;
 	hasDrawnShape: boolean;
 	className?: string;
+	onValidate?: () => void;
+	isValidating?: boolean;
 }
 
 export function ZoneMapToolbar({
@@ -34,6 +36,8 @@ export function ZoneMapToolbar({
 	onClear,
 	hasDrawnShape,
 	className,
+	onValidate,
+	isValidating,
 }: ZoneMapToolbarProps) {
 	const t = useTranslations();
 
@@ -104,6 +108,35 @@ export function ZoneMapToolbar({
 							</TooltipTrigger>
 							<TooltipContent side="bottom">
 								<p>{t("pricing.zones.map.clearToolTip")}</p>
+							</TooltipContent>
+						</Tooltip>
+					</>
+				)}
+
+				{/* Story 17.11: Validate Topology Button */}
+				{onValidate && (
+					<>
+						<div className="mx-1 h-6 w-px bg-border" />
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="size-9 p-0"
+									onClick={onValidate}
+									disabled={isValidating}
+									aria-label={t("pricing.zones.validation.validateButton")}
+								>
+									{isValidating ? (
+										<Loader2 className="size-4 animate-spin" />
+									) : (
+										<CheckCircle2 className="size-4" />
+									)}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">
+								<p>{t("pricing.zones.validation.validateTooltip")}</p>
 							</TooltipContent>
 						</Tooltip>
 					</>

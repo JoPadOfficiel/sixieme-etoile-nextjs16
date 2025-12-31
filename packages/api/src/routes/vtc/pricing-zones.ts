@@ -29,6 +29,8 @@ import {
 	withTenantFilter,
 	withTenantId,
 } from "../../lib/tenant-prisma";
+import type { ZoneData } from "../../lib/geo-utils";
+import { validateZoneTopology } from "../../lib/zone-topology-validator";
 import { organizationMiddleware } from "../../middleware/organization";
 
 // Validation schemas
@@ -499,8 +501,68 @@ export const pricingZonesRouter = new Hono()
 
 			await db.pricingZone.delete({
 				where: { id },
+			})
+			return c.json({ success: true });
+		},
+	)
+
+	// Story 17.11: Validate zone topology
+	.post(
+		"/validate",
+		describeRoute({
+			summary: "Validate zone topology",
+			description: "Analyse all zones and detect overlaps, gaps, and configuration issues",
+			tags: ["VTC - Pricing Zones"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+
+			// Fetch all zones for the organization
+			const zones = await db.pricingZone.findMany({
+				where: { organizationId },
+				orderBy: { name: "asc" },
 			});
 
-			return c.json({ success: true });
+			// Fetch organization settings to check conflict strategy
+			const orgSettings = await db.organizationPricingSettings.findFirst({
+				where: { organizationId },
+				select: {
+					zoneConflictStrategy: true,
+				},
+			});
+
+			const conflictStrategy = orgSettings?.zoneConflictStrategy ?? null;
+			const conflictStrategyConfigured = conflictStrategy !== null;
+
+			// Transform zones to ZoneData format
+			// biome-ignore lint/suspicious/noExplicitAny: Prisma types may not include all fields after migration
+			const zoneData: ZoneData[] = zones.map((zone: any) => ({
+				id: zone.id,
+				name: zone.name,
+				code: zone.code,
+				zoneType: zone.zoneType as "POLYGON" | "RADIUS" | "POINT",
+				geometry: zone.geometry as import("../../lib/geo-utils").GeoPolygon | null,
+				centerLatitude: zone.centerLatitude ? Number(zone.centerLatitude) : null,
+				centerLongitude: zone.centerLongitude ? Number(zone.centerLongitude) : null,
+				radiusKm: zone.radiusKm ? Number(zone.radiusKm) : null,
+				isActive: zone.isActive,
+				priceMultiplier: zone.priceMultiplier ? Number(zone.priceMultiplier) : 1.0,
+				priority: zone.priority ?? 0,
+				fixedParkingSurcharge: zone.fixedParkingSurcharge ? Number(zone.fixedParkingSurcharge) : null,
+				fixedAccessFee: zone.fixedAccessFee ? Number(zone.fixedAccessFee) : null,
+				surchargeDescription: zone.surchargeDescription,
+			}));
+
+			// Run validation
+			const result = validateZoneTopology(
+				zoneData,
+				{
+					conflictStrategyConfigured,
+					checkCoverageGaps: true,
+				},
+				conflictStrategy,
+			);
+
+			return c.json(result);
 		},
 	);

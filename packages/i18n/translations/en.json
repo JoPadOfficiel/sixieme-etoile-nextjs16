@@ -814,6 +814,21 @@
 				"preview": "Zone Preview",
 				"usedCodes": "Postal Codes Used",
 				"editTitle": "Postal Codes"
+			},
+			"validation": {
+				"title": "Zone Topology Validation",
+				"validateButton": "Validate Topology",
+				"validateTooltip": "Check for overlaps and configuration issues",
+				"totalZones": "Total zones",
+				"activeZones": "Active zones",
+				"overlaps": "Overlaps",
+				"issues": "Issues",
+				"noIssues": "All zones are valid",
+				"noIssuesDescription": "No overlaps or configuration issues detected.",
+				"overlapsSection": "Zone Overlaps",
+				"missingFieldsSection": "Missing Fields",
+				"warningsSection": "Warnings",
+				"error": "Failed to validate zones. Please try again."
 			}
 		}
 	},

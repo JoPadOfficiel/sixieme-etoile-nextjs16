@@ -15,6 +15,7 @@ import { ZoneDrawer } from "./ZoneDrawer";
 import { ZoneQuickEditPanel } from "./ZoneQuickEditPanel";
 import { ZoneSidebarList } from "./ZoneSidebarList";
 import { ZonesInteractiveMap } from "./ZonesInteractiveMap";
+import { type ZoneValidationResult, ZoneValidationResultsPanel } from "./ZoneValidationResultsPanel";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -48,6 +49,10 @@ export function ZoneManagementLayout({
 		centerLongitude?: number;
 		radiusKm?: number;
 	} | null>(null);
+
+	// Story 17.11: Validation state
+	const [isValidating, setIsValidating] = useState(false);
+	const [validationResult, setValidationResult] = useState<ZoneValidationResult | null>(null);
 
 	// Fetch zones
 	const fetchZones = useCallback(async () => {
@@ -199,6 +204,45 @@ export function ZoneManagementLayout({
 		setSelectedZone(null);
 	}, []);
 
+	// Story 17.11: Handle zone topology validation
+	const handleValidate = useCallback(async () => {
+		setIsValidating(true);
+		setValidationResult(null);
+		try {
+			const response = await fetch("/api/vtc/pricing/zones/validate", {
+				method: "POST",
+			});
+			if (!response.ok) throw new Error("Failed to validate zones");
+
+			const result: ZoneValidationResult = await response.json();
+			setValidationResult(result);
+
+			if (result.isValid && result.overlaps.length === 0 && result.missingFields.length === 0) {
+				toast({
+					title: t("common.success"),
+					description: t("pricing.zones.validation.noIssues"),
+				});
+			}
+		} catch {
+			toast({
+				title: t("common.error"),
+				description: t("pricing.zones.validation.error"),
+				variant: "error",
+			});
+		} finally {
+			setIsValidating(false);
+		}
+	}, [t, toast]);
+
+	// Handle zone selection from validation panel
+	const handleSelectZoneById = useCallback((zoneId: string) => {
+		const zone = zones.find((z) => z.id === zoneId);
+		if (zone) {
+			setSelectedZone(zone);
+			setValidationResult(null);
+		}
+	}, [zones]);
+
 	return (
 		<div className="flex h-[calc(100vh-12rem)] gap-0 rounded-lg border overflow-hidden">
 			{/* Left Sidebar - Zone List */}
@@ -226,6 +270,8 @@ export function ZoneManagementLayout({
 					onCreateFromDrawing={handleCreateFromDrawing}
 					googleMapsApiKey={googleMapsApiKey}
 					statusFilter={statusFilter}
+					onValidate={handleValidate}
+					isValidating={isValidating}
 				/>
 
 				{/* Quick Edit Panel */}
@@ -235,6 +281,15 @@ export function ZoneManagementLayout({
 						onEdit={handleEditZone}
 						onDelete={handleDeleteZone}
 						onClose={handleCloseQuickEdit}
+					/>
+				)}
+
+				{/* Story 17.11: Validation Results Panel */}
+				{validationResult && (
+					<ZoneValidationResultsPanel
+						result={validationResult}
+						onClose={() => setValidationResult(null)}
+						onSelectZone={handleSelectZoneById}
 					/>
 				)}
 			</div>

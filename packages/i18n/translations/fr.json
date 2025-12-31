@@ -814,6 +814,21 @@
 				"preview": "Aperçu de la zone",
 				"usedCodes": "Codes postaux utilisés",
 				"editTitle": "Codes postaux"
+			},
+			"validation": {
+				"title": "Validation de la topologie des zones",
+				"validateButton": "Valider la topologie",
+				"validateTooltip": "Vérifier les chevauchements et problèmes de configuration",
+				"totalZones": "Total des zones",
+				"activeZones": "Zones actives",
+				"overlaps": "Chevauchements",
+				"issues": "Problèmes",
+				"noIssues": "Toutes les zones sont valides",
+				"noIssuesDescription": "Aucun chevauchement ni problème de configuration détecté.",
+				"overlapsSection": "Chevauchements de zones",
+				"missingFieldsSection": "Champs manquants",
+				"warningsSection": "Avertissements",
+				"error": "Échec de la validation des zones. Veuillez réessayer."
 			}
 		}
 	},

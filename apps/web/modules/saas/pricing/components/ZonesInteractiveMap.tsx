@@ -31,6 +31,8 @@ interface ZonesInteractiveMapProps {
 	}) => void;
 	googleMapsApiKey: string | null;
 	statusFilter: "all" | "active" | "inactive";
+	onValidate?: () => void;
+	isValidating?: boolean;
 }
 
 type Overlay =
@@ -97,6 +99,8 @@ export function ZonesInteractiveMap({
 	onCreateFromDrawing,
 	googleMapsApiKey,
 	statusFilter,
+	onValidate,
+	isValidating,
 }: ZonesInteractiveMapProps) {
 	const t = useTranslations();
 	const mapRef = useRef<HTMLDivElement>(null);
@@ -499,6 +503,8 @@ export function ZonesInteractiveMap({
 				onModeChange={handleModeChange}
 				onClear={handleClearDrawing}
 				hasDrawnShape={hasDrawnShape}
+				onValidate={onValidate}
+				isValidating={isValidating}
 			/>
 
 			{/* Map */}
