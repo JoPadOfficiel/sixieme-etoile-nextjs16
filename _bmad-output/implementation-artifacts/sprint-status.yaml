@@ -148,7 +148,7 @@ development_status:
   17-13-route-segmentation-for-multi-zone-trips: done
   17-14-vehicle-tco-model-enrichment: done
   17-15-client-difficulty-score-patience-tax: done
-  17-16-fr-group-9-settings-ui-integration: backlog
+  17-16-fr-group-9-settings-ui-integration: done
   epic-17-retrospective: optional
   epic-18: backlog
   18-1-corridor-zone-type-highway-buffers: backlog

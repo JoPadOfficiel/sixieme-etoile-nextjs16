@@ -14,6 +14,18 @@ const zoneMultiplierAggregationStrategyEnum = z.enum(["MAX", "PICKUP_ONLY", "DRO
 // Story 17.3: Staffing selection policy enum
 const staffingSelectionPolicyEnum = z.enum(["CHEAPEST", "FASTEST", "PREFER_INTERNAL"]);
 
+// Story 17.9: Time bucket interpolation strategy enum
+const timeBucketInterpolationStrategyEnum = z.enum(["ROUND_UP", "ROUND_DOWN", "PROPORTIONAL"]);
+
+// Story 17.15: Difficulty multipliers schema
+const difficultyMultipliersSchema = z.object({
+	"1": z.number().min(0.5).max(3),
+	"2": z.number().min(0.5).max(3),
+	"3": z.number().min(0.5).max(3),
+	"4": z.number().min(0.5).max(3),
+	"5": z.number().min(0.5).max(3),
+});
+
 // Validation schema for updating pricing settings
 const updatePricingSettingsSchema = z.object({
 	baseRatePerKm: z.number().positive().optional(),
@@ -42,6 +54,10 @@ const updatePricingSettingsSchema = z.object({
 	relayDriverFixedFee: z.number().min(0).max(10000).nullable().optional(),
 	// Story 17.12: Use driver home for deadhead calculations
 	useDriverHomeForDeadhead: z.boolean().optional(),
+	// Story 17.9: Time bucket interpolation strategy
+	timeBucketInterpolationStrategy: timeBucketInterpolationStrategyEnum.nullable().optional(),
+	// Story 17.15: Difficulty multipliers (Patience Tax)
+	difficultyMultipliers: difficultyMultipliersSchema.nullable().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -74,6 +90,10 @@ function serializePricingSettings(settings: {
 	relayDriverFixedFee?: unknown;
 	// Story 17.12: Use driver home for deadhead calculations
 	useDriverHomeForDeadhead?: boolean;
+	// Story 17.9: Time bucket interpolation strategy
+	timeBucketInterpolationStrategy?: string | null;
+	// Story 17.15: Difficulty multipliers
+	difficultyMultipliers?: unknown;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -126,6 +146,10 @@ function serializePricingSettings(settings: {
 			: null,
 		// Story 17.12: Use driver home for deadhead calculations
 		useDriverHomeForDeadhead: settings.useDriverHomeForDeadhead ?? false,
+		// Story 17.9: Time bucket interpolation strategy
+		timeBucketInterpolationStrategy: settings.timeBucketInterpolationStrategy,
+		// Story 17.15: Difficulty multipliers
+		difficultyMultipliers: settings.difficultyMultipliers,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

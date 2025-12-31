@@ -1315,7 +1315,8 @@
 					"excursions": "Excursions",
 					"dispos": "Disposals",
 					"adjustments": "Pricing Adjustments",
-					"extras": "Extras & Promotions"
+					"extras": "Extras & Promotions",
+					"advanced": "Advanced Settings"
 				},
 				"fleet": {
 					"title": "Fleet",
@@ -1517,6 +1518,134 @@
 					"activePromosDesc": "Promotional codes",
 					"promoUses": "Promo Uses",
 					"promoUsesDesc": "Total redemptions"
+				}
+			},
+			"advanced": {
+				"title": "Advanced Pricing Settings",
+				"description": "Configure advanced pricing and operational options for your organization",
+				"toast": {
+					"saveSuccess": "Settings saved successfully",
+					"saveError": "Error saving settings"
+				},
+				"sections": {
+					"zoneResolution": {
+						"title": "Zone Resolution",
+						"description": "Configure how the system resolves zone conflicts and combines multipliers"
+					},
+					"complianceStaffing": {
+						"title": "Compliance & Staffing",
+						"description": "Configure staffing selection policy and associated costs for long missions",
+						"costParameters": "Staffing cost parameters"
+					},
+					"timeBasedPricing": {
+						"title": "Time-Based Pricing",
+						"description": "Configure time and duration-based calculation options"
+					},
+					"clientScoring": {
+						"title": "Client Scoring",
+						"description": "Configure client difficulty multipliers (Patience Tax)",
+						"warning": "Difficulty multipliers are automatically applied to quotes for clients with a defined difficulty score. Use this feature with caution."
+					}
+				},
+				"fields": {
+					"zoneConflictStrategy": {
+						"label": "Zone conflict resolution strategy",
+						"placeholder": "Select a strategy...",
+						"help": "Determines how the system chooses a zone when a point falls within multiple overlapping zones",
+						"options": {
+							"default": "Default (specificity: Point > Radius > Polygon)",
+							"PRIORITY": "By priority (zone with highest priority)",
+							"MOST_EXPENSIVE": "Most expensive wins (zone with highest multiplier)",
+							"CLOSEST": "Closest (zone whose center is nearest)",
+							"COMBINED": "Combined (priority then multiplier)"
+						}
+					},
+					"zoneMultiplierAggregation": {
+						"label": "Zone multiplier aggregation",
+						"placeholder": "Select a strategy...",
+						"help": "Determines how pickup and dropoff zone multipliers are combined",
+						"options": {
+							"default": "Default (Maximum)",
+							"MAX": "Maximum (Math.max of both zones)",
+							"PICKUP_ONLY": "Pickup zone only",
+							"DROPOFF_ONLY": "Dropoff zone only",
+							"AVERAGE": "Average of both zones"
+						}
+					},
+					"staffingSelectionPolicy": {
+						"label": "Staffing selection policy",
+						"placeholder": "Select a policy...",
+						"help": "Determines how the system selects the best staffing plan when RSE violations are detected",
+						"options": {
+							"default": "Default (Cheapest)",
+							"CHEAPEST": "Cheapest (minimal additional cost)",
+							"FASTEST": "Fastest (minimal total duration)",
+							"PREFER_INTERNAL": "Prefer internal (double crew over relay)"
+						}
+					},
+					"hotelCostPerNight": {
+						"label": "Hotel cost per night"
+					},
+					"mealCostPerDay": {
+						"label": "Meal cost per day"
+					},
+					"driverOvernightPremium": {
+						"label": "Driver overnight premium"
+					},
+					"secondDriverHourlyRate": {
+						"label": "Second driver hourly rate"
+					},
+					"relayDriverFixedFee": {
+						"label": "Relay driver fixed fee"
+					},
+					"useDriverHomeForDeadhead": {
+						"label": "Use driver home for deadhead",
+						"description": "When enabled and driver has a configured home location, use it instead of vehicle base",
+						"help": "Enables more accurate deadhead calculations based on driver's actual position"
+					},
+					"timeBucketInterpolation": {
+						"label": "Time bucket interpolation strategy",
+						"placeholder": "Select a strategy...",
+						"help": "Determines how to calculate price when requested duration falls between defined buckets",
+						"options": {
+							"default": "Default (hourly calculation)",
+							"ROUND_UP": "Round up (use next higher bucket)",
+							"ROUND_DOWN": "Round down (use previous bucket)",
+							"PROPORTIONAL": "Proportional (linear interpolation)"
+						}
+					},
+					"difficultyMultipliers": {
+						"label": "Difficulty multipliers",
+						"scores": {
+							"1": "Easy",
+							"2": "Normal",
+							"3": "Moderate",
+							"4": "Difficult",
+							"5": "Very difficult"
+						}
+					}
+				},
+				"links": {
+					"zoneManagement": {
+						"title": "Zone management",
+						"description": "Configure fixed surcharges per zone (parking, access)",
+						"button": "Manage zones"
+					},
+					"fleetSettings": {
+						"title": "Fleet settings",
+						"description": "Configure RSE rules and license categories",
+						"button": "RSE settings"
+					},
+					"dispoPackages": {
+						"title": "Dispo packages",
+						"description": "Configure time buckets and MAD prices",
+						"button": "Manage MAD"
+					},
+					"contacts": {
+						"title": "Contact management",
+						"description": "Assign difficulty scores to clients",
+						"button": "Manage contacts"
+					}
 				}
 			},
 			"advancedRates": {

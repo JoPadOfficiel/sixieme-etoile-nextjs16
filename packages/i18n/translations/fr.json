@@ -1315,7 +1315,8 @@
 					"excursions": "Excursions",
 					"dispos": "Mises à disposition",
 					"adjustments": "Ajustements de Prix",
-					"extras": "Extras & Promotions"
+					"extras": "Extras & Promotions",
+					"advanced": "Paramètres Avancés"
 				},
 				"fleet": {
 					"title": "Flotte",
@@ -1517,6 +1518,134 @@
 					"activePromosDesc": "Codes promotionnels",
 					"promoUses": "Utilisations",
 					"promoUsesDesc": "Total des utilisations"
+				}
+			},
+			"advanced": {
+				"title": "Paramètres Avancés de Tarification",
+				"description": "Configurez les options avancées de tarification et d'opérations pour votre organisation",
+				"toast": {
+					"saveSuccess": "Paramètres enregistrés avec succès",
+					"saveError": "Erreur lors de l'enregistrement des paramètres"
+				},
+				"sections": {
+					"zoneResolution": {
+						"title": "Résolution des Zones",
+						"description": "Configurez comment le système résout les conflits de zones et combine les multiplicateurs"
+					},
+					"complianceStaffing": {
+						"title": "Conformité & Staffing",
+						"description": "Configurez la politique de sélection du staffing et les coûts associés pour les missions longues",
+						"costParameters": "Paramètres de coûts de staffing"
+					},
+					"timeBasedPricing": {
+						"title": "Tarification Temporelle",
+						"description": "Configurez les options de calcul basées sur le temps et la durée"
+					},
+					"clientScoring": {
+						"title": "Scoring Client",
+						"description": "Configurez les multiplicateurs de difficulté client (Patience Tax)",
+						"warning": "Les multiplicateurs de difficulté sont appliqués automatiquement aux devis pour les clients ayant un score de difficulté défini. Utilisez cette fonctionnalité avec précaution."
+					}
+				},
+				"fields": {
+					"zoneConflictStrategy": {
+						"label": "Stratégie de résolution des conflits de zones",
+						"placeholder": "Sélectionner une stratégie...",
+						"help": "Détermine comment le système choisit une zone quand un point se trouve dans plusieurs zones superposées",
+						"options": {
+							"default": "Par défaut (spécificité: Point > Rayon > Polygone)",
+							"PRIORITY": "Par priorité (zone avec la priorité la plus haute)",
+							"MOST_EXPENSIVE": "Plus cher gagne (zone avec le multiplicateur le plus élevé)",
+							"CLOSEST": "Plus proche (zone dont le centre est le plus proche)",
+							"COMBINED": "Combiné (priorité puis multiplicateur)"
+						}
+					},
+					"zoneMultiplierAggregation": {
+						"label": "Agrégation des multiplicateurs de zones",
+						"placeholder": "Sélectionner une stratégie...",
+						"help": "Détermine comment les multiplicateurs des zones de départ et d'arrivée sont combinés",
+						"options": {
+							"default": "Par défaut (Maximum)",
+							"MAX": "Maximum (Math.max des deux zones)",
+							"PICKUP_ONLY": "Zone de départ uniquement",
+							"DROPOFF_ONLY": "Zone d'arrivée uniquement",
+							"AVERAGE": "Moyenne des deux zones"
+						}
+					},
+					"staffingSelectionPolicy": {
+						"label": "Politique de sélection du staffing",
+						"placeholder": "Sélectionner une politique...",
+						"help": "Détermine comment le système choisit le meilleur plan de staffing quand des violations RSE sont détectées",
+						"options": {
+							"default": "Par défaut (Moins cher)",
+							"CHEAPEST": "Moins cher (coût additionnel minimal)",
+							"FASTEST": "Plus rapide (durée totale minimale)",
+							"PREFER_INTERNAL": "Préférer interne (double équipage plutôt que relais)"
+						}
+					},
+					"hotelCostPerNight": {
+						"label": "Coût hôtel par nuit"
+					},
+					"mealCostPerDay": {
+						"label": "Coût repas par jour"
+					},
+					"driverOvernightPremium": {
+						"label": "Prime de nuit chauffeur"
+					},
+					"secondDriverHourlyRate": {
+						"label": "Taux horaire 2e chauffeur"
+					},
+					"relayDriverFixedFee": {
+						"label": "Frais fixes chauffeur relais"
+					},
+					"useDriverHomeForDeadhead": {
+						"label": "Utiliser le domicile du chauffeur pour l'approche",
+						"description": "Quand activé et si le chauffeur a un domicile configuré, l'utiliser au lieu de la base du véhicule",
+						"help": "Permet des calculs d'approche plus précis basés sur la position réelle du chauffeur"
+					},
+					"timeBucketInterpolation": {
+						"label": "Stratégie d'interpolation des tranches horaires",
+						"placeholder": "Sélectionner une stratégie...",
+						"help": "Détermine comment calculer le prix quand la durée demandée tombe entre deux tranches définies",
+						"options": {
+							"default": "Par défaut (calcul horaire)",
+							"ROUND_UP": "Arrondir au supérieur (utiliser la tranche suivante)",
+							"ROUND_DOWN": "Arrondir à l'inférieur (utiliser la tranche précédente)",
+							"PROPORTIONAL": "Proportionnel (interpolation linéaire)"
+						}
+					},
+					"difficultyMultipliers": {
+						"label": "Multiplicateurs de difficulté",
+						"scores": {
+							"1": "Facile",
+							"2": "Normal",
+							"3": "Modéré",
+							"4": "Difficile",
+							"5": "Très difficile"
+						}
+					}
+				},
+				"links": {
+					"zoneManagement": {
+						"title": "Gestion des zones",
+						"description": "Configurez les surcharges fixes par zone (parking, accès)",
+						"button": "Gérer les zones"
+					},
+					"fleetSettings": {
+						"title": "Paramètres de flotte",
+						"description": "Configurez les règles RSE et les catégories de permis",
+						"button": "Paramètres RSE"
+					},
+					"dispoPackages": {
+						"title": "Forfaits mise à disposition",
+						"description": "Configurez les tranches horaires et prix des MAD",
+						"button": "Gérer les MAD"
+					},
+					"contacts": {
+						"title": "Gestion des contacts",
+						"description": "Attribuez des scores de difficulté aux clients",
+						"button": "Gérer les contacts"
+					}
 				}
 			},
 			"advancedRates": {
