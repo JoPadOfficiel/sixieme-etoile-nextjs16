@@ -415,6 +415,11 @@ export interface OrganizationPricingSettings {
 	denseZoneSpeedThreshold?: number | null;  // km/h, default: 15
 	autoSwitchToMAD?: boolean;                // default: false
 	denseZoneCodes?: string[];                // default: ["PARIS_0"]
+	// Story 18.3: Round-trip to MAD detection
+	minWaitingTimeForSeparateTransfers?: number | null;  // minutes, default: 180 (3h)
+	maxReturnDistanceKm?: number | null;                 // km, default: 50
+	roundTripBuffer?: number | null;                     // minutes, default: 30
+	autoSwitchRoundTripToMAD?: boolean;                  // default: false
 }
 
 // ============================================================================
@@ -1352,6 +1357,10 @@ export interface TripAnalysis {
 	// Story 18.2: Dense zone detection for Transfer-to-MAD switching
 	denseZoneDetection?: DenseZoneDetection | null;
 	madSuggestion?: MadSuggestion | null;
+	
+	// Story 18.3: Round-trip to MAD detection
+	roundTripDetection?: RoundTripDetection | null;
+	roundTripSuggestion?: RoundTripMadSuggestion | null;
 }
 
 /**
@@ -3859,6 +3868,256 @@ export function buildAutoSwitchedToMadRule(
 		commercialSpeedKmh: detection.commercialSpeedKmh ?? 0,
 		speedThreshold: detection.speedThreshold,
 		denseZoneCodes: detection.denseZoneCodes,
+	};
+}
+
+// ============================================================================
+// Story 18.3: Round-Trip to MAD Detection Types and Functions
+// ============================================================================
+
+/**
+ * Story 18.3: Default thresholds for round-trip to MAD detection
+ */
+export const DEFAULT_MIN_WAITING_TIME_FOR_SEPARATE_TRANSFERS = 180; // 3 hours in minutes
+export const DEFAULT_MAX_RETURN_DISTANCE_KM = 50; // km
+export const DEFAULT_ROUND_TRIP_BUFFER = 30; // minutes
+
+/**
+ * Story 18.3: Round-trip detection result
+ * Used to determine if a round-trip should switch to MAD pricing
+ */
+export interface RoundTripDetection {
+	isRoundTrip: boolean;
+	waitingTimeMinutes: number | null;
+	returnToBaseMinutes: number | null;
+	bufferMinutes: number;
+	isDriverBlocked: boolean;
+	exceedsMaxReturnDistance: boolean;
+	totalMissionDurationMinutes: number | null;
+	// Thresholds used for transparency
+	minWaitingTimeThreshold: number;
+	maxReturnDistanceKm: number;
+}
+
+/**
+ * Story 18.3: Round-trip MAD suggestion
+ * Provides comparison between 2×Transfer and MAD pricing for round-trips
+ */
+export interface RoundTripMadSuggestion {
+	type: "ROUND_TRIP_TO_MAD";
+	twoTransferPrice: number;
+	madPrice: number;
+	priceDifference: number;
+	percentageGain: number;
+	recommendation: string;
+	autoSwitched: boolean;
+	// Details for transparency
+	details: {
+		distanceKm: number;
+		durationAllerMinutes: number;
+		waitingTimeMinutes: number;
+		totalMissionMinutes: number;
+		returnToBaseMinutes: number;
+		isDriverBlocked: boolean;
+		exceedsMaxReturnDistance: boolean;
+	};
+}
+
+/**
+ * Story 18.3: Applied rule for auto-switched round-trip to MAD
+ */
+export interface AppliedRoundTripToMadRule extends AppliedRule {
+	type: "AUTO_SWITCHED_ROUND_TRIP_TO_MAD";
+	description: string;
+	originalTwoTransferPrice: number;
+	newMadPrice: number;
+	priceDifference: number;
+	reason: "DRIVER_BLOCKED" | "EXCEEDS_MAX_RETURN_DISTANCE";
+	waitingTimeMinutes: number;
+	returnToBaseMinutes: number;
+	totalMissionMinutes: number;
+}
+
+/**
+ * Story 18.3: Detect if a round-trip has a blocked driver
+ * 
+ * A driver is considered "blocked" when:
+ * 1. The waiting time on-site is less than the time to return to base + buffer
+ * 2. OR the distance exceeds the max return distance threshold
+ * 
+ * @param isRoundTrip - Whether this is a round-trip request
+ * @param distanceKm - One-way distance in km
+ * @param durationAllerMinutes - One-way duration in minutes
+ * @param waitingTimeMinutes - Waiting time on-site in minutes (null if not specified)
+ * @param settings - Organization pricing settings with round-trip thresholds
+ * @returns Round-trip detection result
+ */
+export function detectRoundTripBlocked(
+	isRoundTrip: boolean,
+	distanceKm: number,
+	durationAllerMinutes: number,
+	waitingTimeMinutes: number | null,
+	settings: OrganizationPricingSettings,
+): RoundTripDetection {
+	// Get configuration with defaults
+	const minWaitingTime = settings.minWaitingTimeForSeparateTransfers ?? DEFAULT_MIN_WAITING_TIME_FOR_SEPARATE_TRANSFERS;
+	const maxReturnDistance = Number(settings.maxReturnDistanceKm ?? DEFAULT_MAX_RETURN_DISTANCE_KM);
+	const buffer = settings.roundTripBuffer ?? DEFAULT_ROUND_TRIP_BUFFER;
+
+	// Not a round-trip - return early
+	if (!isRoundTrip) {
+		return {
+			isRoundTrip: false,
+			waitingTimeMinutes: null,
+			returnToBaseMinutes: null,
+			bufferMinutes: buffer,
+			isDriverBlocked: false,
+			exceedsMaxReturnDistance: false,
+			totalMissionDurationMinutes: null,
+			minWaitingTimeThreshold: minWaitingTime,
+			maxReturnDistanceKm: maxReturnDistance,
+		};
+	}
+
+	// Calculate return to base time (2× aller duration for round trip to base)
+	const returnToBaseMinutes = durationAllerMinutes * 2;
+
+	// Check if distance exceeds max return distance
+	const exceedsMaxReturnDistance = distanceKm > maxReturnDistance;
+
+	// Calculate if driver is blocked
+	// Driver is blocked if:
+	// 1. Distance exceeds max return distance (driver can't reasonably return)
+	// 2. OR waiting time < time to return to base + buffer
+	const effectiveWaitingTime = waitingTimeMinutes ?? 0;
+	const isDriverBlocked = exceedsMaxReturnDistance ||
+		(effectiveWaitingTime < returnToBaseMinutes + buffer);
+
+	// Total mission duration: aller + attente + retour + buffer
+	const totalMissionDurationMinutes =
+		durationAllerMinutes + effectiveWaitingTime + durationAllerMinutes + buffer;
+
+	return {
+		isRoundTrip: true,
+		waitingTimeMinutes: effectiveWaitingTime,
+		returnToBaseMinutes,
+		bufferMinutes: buffer,
+		isDriverBlocked,
+		exceedsMaxReturnDistance,
+		totalMissionDurationMinutes,
+		minWaitingTimeThreshold: minWaitingTime,
+		maxReturnDistanceKm: maxReturnDistance,
+	};
+}
+
+/**
+ * Story 18.3: Calculate MAD price suggestion for round-trip
+ * 
+ * When a round-trip has a blocked driver (waiting time too short to return),
+ * this function calculates what the price would be using MAD pricing
+ * for the total mission duration and provides a comparison.
+ * 
+ * @param twoTransferPrice - The calculated 2×Transfer price
+ * @param distanceKm - One-way distance in km
+ * @param durationAllerMinutes - One-way duration in minutes
+ * @param waitingTimeMinutes - Waiting time on-site in minutes
+ * @param detection - Round-trip detection result
+ * @param settings - Organization pricing settings
+ * @param autoSwitch - Whether auto-switch is enabled
+ * @returns Round-trip MAD suggestion with price comparison
+ */
+export function calculateRoundTripMadSuggestion(
+	twoTransferPrice: number,
+	distanceKm: number,
+	durationAllerMinutes: number,
+	waitingTimeMinutes: number,
+	detection: RoundTripDetection,
+	settings: OrganizationPricingSettings,
+	autoSwitch: boolean,
+): RoundTripMadSuggestion {
+	// Calculate total mission duration in minutes
+	const totalMissionMinutes = detection.totalMissionDurationMinutes ??
+		(durationAllerMinutes * 2 + waitingTimeMinutes + (settings.roundTripBuffer ?? DEFAULT_ROUND_TRIP_BUFFER));
+
+	// Calculate equivalent MAD price using dispo pricing logic
+	// For MAD, we use the total mission duration and only outbound distance
+	const madResult = calculateDispoPrice(
+		totalMissionMinutes,
+		distanceKm, // Only outbound distance for MAD (driver stays on-site)
+		settings.baseRatePerHour,
+		settings,
+	);
+	const madPrice = madResult.price;
+
+	// Calculate price difference and percentage gain
+	const priceDifference = Math.round((madPrice - twoTransferPrice) * 100) / 100;
+	const percentageGain = twoTransferPrice > 0
+		? Math.round((priceDifference / twoTransferPrice) * 100 * 100) / 100
+		: 0;
+
+	// Generate recommendation message
+	let recommendation: string;
+	if (detection.exceedsMaxReturnDistance) {
+		recommendation = `MAD pricing recommandé: distance trop longue pour retour base (${distanceKm.toFixed(1)}km > ${detection.maxReturnDistanceKm}km)`;
+	} else if (detection.isDriverBlocked && priceDifference > 0) {
+		recommendation = `MAD pricing recommandé: chauffeur bloqué sur place (attente ${waitingTimeMinutes}min < retour base ${detection.returnToBaseMinutes}min + buffer ${detection.bufferMinutes}min). Gain: +${priceDifference.toFixed(2)}€ (+${percentageGain.toFixed(1)}%)`;
+	} else if (detection.isDriverBlocked && priceDifference <= 0) {
+		recommendation = `Chauffeur bloqué sur place mais 2×Transfer reste optimal (MAD serait ${Math.abs(priceDifference).toFixed(2)}€ moins cher)`;
+	} else {
+		recommendation = `2×Transfer optimal pour ce trajet - temps d'attente suffisant pour retour base`;
+	}
+
+	// Determine if we should auto-switch
+	// Only auto-switch if driver is blocked AND MAD is more profitable
+	const shouldAutoSwitch = autoSwitch && detection.isDriverBlocked && priceDifference > 0;
+
+	return {
+		type: "ROUND_TRIP_TO_MAD",
+		twoTransferPrice,
+		madPrice,
+		priceDifference,
+		percentageGain,
+		recommendation,
+		autoSwitched: shouldAutoSwitch,
+		details: {
+			distanceKm,
+			durationAllerMinutes,
+			waitingTimeMinutes,
+			totalMissionMinutes,
+			returnToBaseMinutes: detection.returnToBaseMinutes ?? 0,
+			isDriverBlocked: detection.isDriverBlocked,
+			exceedsMaxReturnDistance: detection.exceedsMaxReturnDistance,
+		},
+	};
+}
+
+/**
+ * Story 18.3: Build the auto-switched round-trip to MAD rule for transparency
+ */
+export function buildAutoSwitchedRoundTripToMadRule(
+	detection: RoundTripDetection,
+	suggestion: RoundTripMadSuggestion,
+): AppliedRoundTripToMadRule {
+	const reason: "DRIVER_BLOCKED" | "EXCEEDS_MAX_RETURN_DISTANCE" = 
+		detection.exceedsMaxReturnDistance ? "EXCEEDS_MAX_RETURN_DISTANCE" : "DRIVER_BLOCKED";
+
+	let description: string;
+	if (detection.exceedsMaxReturnDistance) {
+		description = `Auto-switched round-trip to MAD: distance (${suggestion.details.distanceKm.toFixed(1)}km) exceeds max return distance (${detection.maxReturnDistanceKm}km)`;
+	} else {
+		description = `Auto-switched round-trip to MAD: driver blocked on-site (waiting ${suggestion.details.waitingTimeMinutes}min < return time ${detection.returnToBaseMinutes}min + buffer ${detection.bufferMinutes}min)`;
+	}
+
+	return {
+		type: "AUTO_SWITCHED_ROUND_TRIP_TO_MAD",
+		description,
+		originalTwoTransferPrice: suggestion.twoTransferPrice,
+		newMadPrice: suggestion.madPrice,
+		priceDifference: suggestion.priceDifference,
+		reason,
+		waitingTimeMinutes: suggestion.details.waitingTimeMinutes,
+		returnToBaseMinutes: suggestion.details.returnToBaseMinutes,
+		totalMissionMinutes: suggestion.details.totalMissionMinutes,
 	};
 }
 

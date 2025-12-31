@@ -27,6 +27,10 @@ import {
 	detectDenseZone,
 	calculateMadSuggestion,
 	buildAutoSwitchedToMadRule,
+	// Story 18.3: Round-trip to MAD detection
+	detectRoundTripBlocked,
+	calculateRoundTripMadSuggestion,
+	buildAutoSwitchedRoundTripToMadRule,
 	type AdvancedRateData,
 	type ContactData,
 	type DispoPackageAssignment,
@@ -100,6 +104,8 @@ const calculatePricingSchema = z.object({
 	maxCandidatesForRouting: z.coerce.number().int().positive().optional(),
 	// Story 16.6: Round trip flag for transfer pricing
 	isRoundTrip: z.boolean().default(false),
+	// Story 18.3: Waiting time on-site for round-trip MAD detection (in minutes)
+	waitingTimeMinutes: z.coerce.number().nonnegative().optional(),
 	// Story 16.7: Excursion stops for multi-stop pricing
 	stops: z.array(excursionStopSchema).optional(),
 	// Story 16.7: Return date for multi-day excursions
@@ -441,6 +447,11 @@ async function loadPricingSettings(
 			denseZoneSpeedThreshold: settings.denseZoneSpeedThreshold ? Number(settings.denseZoneSpeedThreshold) : undefined,
 			autoSwitchToMAD: settings.autoSwitchToMAD ?? false,
 			denseZoneCodes: settings.denseZoneCodes ?? [],
+			// Story 18.3: Round-trip to MAD detection settings
+			minWaitingTimeForSeparateTransfers: settings.minWaitingTimeForSeparateTransfers ?? undefined,
+			maxReturnDistanceKm: settings.maxReturnDistanceKm ? Number(settings.maxReturnDistanceKm) : undefined,
+			roundTripBuffer: settings.roundTripBuffer ?? undefined,
+			autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
 		};
 	}
 
@@ -977,9 +988,76 @@ export const pricingCalculateRouter = new Hono()
 				}
 			}
 
+			// Story 18.3: Round-trip to MAD detection
+			// Only applies to Transfer trips with isRoundTrip = true
+			if (data.tripType === "transfer" && data.isRoundTrip && effectiveDistanceKm && effectiveDurationMinutes) {
+				// Detect if driver is blocked on-site
+				const roundTripDetection = detectRoundTripBlocked(
+					true, // isRoundTrip
+					effectiveDistanceKm,
+					effectiveDurationMinutes,
+					data.waitingTimeMinutes ?? null,
+					effectivePricingSettings,
+				);
+
+				// Store detection result in tripAnalysis
+				result.tripAnalysis.roundTripDetection = roundTripDetection;
+
+				// If driver is blocked, calculate MAD suggestion
+				if (roundTripDetection.isDriverBlocked) {
+					const autoSwitch = effectivePricingSettings.autoSwitchRoundTripToMAD ?? false;
+					const roundTripSuggestion = calculateRoundTripMadSuggestion(
+						result.price, // This is already 2×Transfer price from Story 16.6
+						effectiveDistanceKm,
+						effectiveDurationMinutes,
+						roundTripDetection.waitingTimeMinutes ?? 0,
+						roundTripDetection,
+						effectivePricingSettings,
+						autoSwitch,
+					);
+
+					result.tripAnalysis.roundTripSuggestion = roundTripSuggestion;
+
+					// If auto-switch is enabled and MAD is more profitable, switch the price
+					if (roundTripSuggestion.autoSwitched) {
+						const originalPrice = result.price;
+						result.price = roundTripSuggestion.madPrice;
+
+						// Recalculate margin with new price
+						result.margin = Math.round((result.price - result.internalCost) * 100) / 100;
+						result.marginPercent = result.price > 0
+							? Math.round((result.margin / result.price) * 100 * 100) / 100
+							: 0;
+
+						// Update profitability indicator
+						const greenThreshold = pricingSettings.greenMarginThreshold ?? 20;
+						const orangeThreshold = pricingSettings.orangeMarginThreshold ?? 0;
+						if (result.marginPercent >= greenThreshold) {
+							result.profitabilityIndicator = "green";
+						} else if (result.marginPercent >= orangeThreshold) {
+							result.profitabilityIndicator = "orange";
+						} else {
+							result.profitabilityIndicator = "red";
+						}
+
+						// Add auto-switched rule for transparency
+						const autoSwitchRule = buildAutoSwitchedRoundTripToMadRule(roundTripDetection, roundTripSuggestion);
+						result.appliedRules.push(autoSwitchRule);
+
+						console.info(
+							`[PRICING] Auto-switched round-trip to MAD: ` +
+							`originalPrice=${originalPrice}€, madPrice=${roundTripSuggestion.madPrice}€, ` +
+							`waitingTime=${roundTripDetection.waitingTimeMinutes}min, ` +
+							`returnToBase=${roundTripDetection.returnToBaseMinutes}min, ` +
+							`reason=${roundTripDetection.exceedsMaxReturnDistance ? 'EXCEEDS_MAX_DISTANCE' : 'DRIVER_BLOCKED'}`
+						);
+					}
+				}
+			}
+
 			// Story 18.2: Dense zone detection for Transfer-to-MAD switching
-			// Only applies to Transfer trips with both pickup and dropoff
-			if (data.tripType === "transfer" && data.dropoff && effectiveDistanceKm && effectiveDurationMinutes) {
+			// Only applies to Transfer trips with both pickup and dropoff (and NOT round-trips, as 18.3 handles those)
+			if (data.tripType === "transfer" && !data.isRoundTrip && data.dropoff && effectiveDistanceKm && effectiveDurationMinutes) {
 				// Find pickup and dropoff zones for dense zone detection
 				const pickupZoneForDense = zones.find(z => {
 					if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {

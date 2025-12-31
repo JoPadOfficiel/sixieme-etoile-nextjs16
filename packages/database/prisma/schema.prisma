@@ -1186,6 +1186,16 @@ model OrganizationPricingSettings {
   // Empty array means use default ["PARIS_0"]
   denseZoneCodes          String[] @default([])
 
+  // Story 18.3: Round-trip to MAD detection
+  // Minimum waiting time on-site for separate transfers to be viable (default: 180 min = 3h)
+  minWaitingTimeForSeparateTransfers Int?     @default(180)
+  // Maximum return distance to consider returning to base (default: 50 km)
+  maxReturnDistanceKm                Decimal? @db.Decimal(10, 2)
+  // Buffer time to add to return calculation (default: 30 min)
+  roundTripBuffer                    Int?     @default(30)
+  // When true, automatically switch round-trip to MAD; when false, only suggest
+  autoSwitchRoundTripToMAD           Boolean  @default(false)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
