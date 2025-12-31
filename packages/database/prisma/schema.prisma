@@ -772,6 +772,11 @@ model Driver {
   // Status
   isActive Boolean @default(true)
 
+  // Story 17.12: Home location for deadhead calculations
+  homeLat     Decimal? @db.Decimal(10, 7)
+  homeLng     Decimal? @db.Decimal(10, 7)
+  homeAddress String?
+
   // Metadata
   notes     String?
   createdAt DateTime @default(now())
@@ -1130,6 +1135,10 @@ model OrganizationPricingSettings {
   // Story 17.9: Time bucket interpolation strategy for MAD pricing
   // null = use hourly rate calculation (backward compatible)
   timeBucketInterpolationStrategy TimeBucketInterpolationStrategy?
+
+  // Story 17.12: Use driver home for deadhead calculations
+  // When true and driver has home location, use it instead of vehicle base
+  useDriverHomeForDeadhead Boolean @default(false)
 
   // Metadata
   createdAt DateTime @default(now())

@@ -40,6 +40,8 @@ const updatePricingSettingsSchema = z.object({
 	driverOvernightPremium: z.number().min(0).max(10000).nullable().optional(),
 	secondDriverHourlyRate: z.number().min(0).max(1000).nullable().optional(),
 	relayDriverFixedFee: z.number().min(0).max(10000).nullable().optional(),
+	// Story 17.12: Use driver home for deadhead calculations
+	useDriverHomeForDeadhead: z.boolean().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -70,6 +72,8 @@ function serializePricingSettings(settings: {
 	driverOvernightPremium?: unknown;
 	secondDriverHourlyRate?: unknown;
 	relayDriverFixedFee?: unknown;
+	// Story 17.12: Use driver home for deadhead calculations
+	useDriverHomeForDeadhead?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -120,6 +124,8 @@ function serializePricingSettings(settings: {
 		relayDriverFixedFee: settings.relayDriverFixedFee
 			? Number(settings.relayDriverFixedFee)
 			: null,
+		// Story 17.12: Use driver home for deadhead calculations
+		useDriverHomeForDeadhead: settings.useDriverHomeForDeadhead ?? false,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

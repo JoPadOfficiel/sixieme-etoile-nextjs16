@@ -122,7 +122,7 @@ export const LicenseCategoryScalarFieldEnumSchema = z.enum(['id','organizationId
 
 export const OrganizationLicenseRuleScalarFieldEnumSchema = z.enum(['id','organizationId','licenseCategoryId','maxDailyDrivingHours','maxDailyAmplitudeHours','breakMinutesPerDrivingBlock','drivingBlockHoursForBreak','cappedAverageSpeedKmh','createdAt','updatedAt']);
 
-export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstName','lastName','email','phone','employmentStatus','hourlyCost','isActive','notes','createdAt','updatedAt']);
+export const DriverScalarFieldEnumSchema = z.enum(['id','organizationId','firstName','lastName','email','phone','employmentStatus','hourlyCost','isActive','homeLat','homeLng','homeAddress','notes','createdAt','updatedAt']);
 
 export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licenseCategoryId','licenseNumber','validFrom','validTo','createdAt','updatedAt']);
 
@@ -140,7 +140,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -742,6 +742,9 @@ export const DriverSchema = z.object({
   phone: z.string().nullable(),
   hourlyCost: z.instanceof(Prisma.Decimal, { message: "Field 'hourlyCost' must be a Decimal. Location: ['Models', 'Driver']"}).nullable(),
   isActive: z.boolean(),
+  homeLat: z.instanceof(Prisma.Decimal, { message: "Field 'homeLat' must be a Decimal. Location: ['Models', 'Driver']"}).nullable(),
+  homeLng: z.instanceof(Prisma.Decimal, { message: "Field 'homeLng' must be a Decimal. Location: ['Models', 'Driver']"}).nullable(),
+  homeAddress: z.string().nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -971,6 +974,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   driverOvernightPremium: z.instanceof(Prisma.Decimal, { message: "Field 'driverOvernightPremium' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   secondDriverHourlyRate: z.instanceof(Prisma.Decimal, { message: "Field 'secondDriverHourlyRate' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   relayDriverFixedFee: z.instanceof(Prisma.Decimal, { message: "Field 'relayDriverFixedFee' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
+  useDriverHomeForDeadhead: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

@@ -31,6 +31,10 @@ const createDriverSchema = z.object({
 	hourlyCost: z.number().positive().optional().nullable(),
 	isActive: z.boolean().default(true),
 	notes: z.string().max(1000).optional().nullable(),
+	// Story 17.12: Home location for deadhead calculations
+	homeLat: z.number().min(-90).max(90).optional().nullable(),
+	homeLng: z.number().min(-180).max(180).optional().nullable(),
+	homeAddress: z.string().max(500).optional().nullable(),
 });
 
 const updateDriverSchema = createDriverSchema.partial();

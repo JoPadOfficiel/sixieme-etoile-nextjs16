@@ -162,6 +162,10 @@ export interface Driver {
 	employmentStatus: DriverEmploymentStatus;
 	hourlyCost: string | null; // Decimal as string
 	isActive: boolean;
+	// Story 17.12: Home location for deadhead calculations
+	homeLat: string | null; // Decimal as string
+	homeLng: string | null; // Decimal as string
+	homeAddress: string | null;
 	notes: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -269,6 +273,10 @@ export interface DriverFormData {
 	employmentStatus: DriverEmploymentStatus;
 	hourlyCost: number | null;
 	isActive: boolean;
+	// Story 17.12: Home location for deadhead calculations
+	homeLat: number | null;
+	homeLng: number | null;
+	homeAddress: string | null;
 	notes: string | null;
 }
 

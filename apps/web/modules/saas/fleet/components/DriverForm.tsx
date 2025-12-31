@@ -15,7 +15,7 @@ import { Switch } from "@ui/components/switch";
 import { Textarea } from "@ui/components/textarea";
 import { apiClient } from "@shared/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon, PlusIcon, TrashIcon, ShieldCheckIcon } from "lucide-react";
+import { Loader2Icon, PlusIcon, TrashIcon, ShieldCheckIcon, MapPinIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { useToast } from "@ui/hooks/use-toast";
@@ -45,6 +45,10 @@ function getInitialFormData(driver?: DriverWithLicenses | null): DriverFormData 
 			employmentStatus: driver.employmentStatus,
 			hourlyCost: driver.hourlyCost ? Number.parseFloat(driver.hourlyCost) : null,
 			isActive: driver.isActive,
+			// Story 17.12: Home location
+			homeLat: driver.homeLat ? Number.parseFloat(driver.homeLat) : null,
+			homeLng: driver.homeLng ? Number.parseFloat(driver.homeLng) : null,
+			homeAddress: driver.homeAddress,
 			notes: driver.notes,
 		};
 	}
@@ -56,6 +60,10 @@ function getInitialFormData(driver?: DriverWithLicenses | null): DriverFormData 
 		employmentStatus: "EMPLOYEE",
 		hourlyCost: null,
 		isActive: true,
+		// Story 17.12: Home location
+		homeLat: null,
+		homeLng: null,
+		homeAddress: null,
 		notes: null,
 	};
 }
@@ -294,6 +302,77 @@ export function DriverForm({ driver, onSuccess, onCancel }: DriverFormProps) {
 						onCheckedChange={(checked) => updateField("isActive", checked)}
 					/>
 					<Label htmlFor="isActive">{t("fleet.drivers.form.isActive")}</Label>
+				</div>
+			</div>
+
+			{/* Story 17.12: Home Location for Deadhead Calculations */}
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<h3 className="text-sm font-medium flex items-center gap-2">
+						<MapPinIcon className="h-4 w-4" />
+						{t("fleet.drivers.form.homeLocation")}
+					</h3>
+					{(formData.homeLat || formData.homeLng || formData.homeAddress) && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								updateField("homeLat", null);
+								updateField("homeLng", null);
+								updateField("homeAddress", null);
+							}}
+						>
+							<XIcon className="size-4 mr-1" />
+							{t("common.clear")}
+						</Button>
+					)}
+				</div>
+				<p className="text-sm text-muted-foreground">
+					{t("fleet.drivers.form.homeLocationDescription")}
+				</p>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="homeAddress">{t("fleet.drivers.form.homeAddress")}</Label>
+						<Input
+							id="homeAddress"
+							value={formData.homeAddress || ""}
+							onChange={(e) => updateField("homeAddress", e.target.value || null)}
+							placeholder={t("fleet.drivers.form.homeAddressPlaceholder")}
+						/>
+					</div>
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="homeLat">{t("fleet.drivers.form.latitude")}</Label>
+							<Input
+								id="homeLat"
+								type="number"
+								step="0.0000001"
+								min={-90}
+								max={90}
+								value={formData.homeLat ?? ""}
+								onChange={(e) =>
+									updateField("homeLat", e.target.value ? Number.parseFloat(e.target.value) : null)
+								}
+								placeholder="48.8566"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="homeLng">{t("fleet.drivers.form.longitude")}</Label>
+							<Input
+								id="homeLng"
+								type="number"
+								step="0.0000001"
+								min={-180}
+								max={180}
+								value={formData.homeLng ?? ""}
+								onChange={(e) =>
+									updateField("homeLng", e.target.value ? Number.parseFloat(e.target.value) : null)
+								}
+								placeholder="2.3522"
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 

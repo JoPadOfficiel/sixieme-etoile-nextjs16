@@ -41,6 +41,9 @@ export interface VehicleCandidate {
 	// Story 17.7: Driver availability
 	driverId?: string | null;
 	driverName?: string | null;
+	// Story 17.12: Driver home location for deadhead calculations
+	driverHomeLocation?: GeoPoint | null;
+	driverHomeAddress?: string | null;
 }
 
 /**
@@ -50,6 +53,11 @@ export interface CandidateWithDistance extends VehicleCandidate {
 	haversineDistanceKm: number;
 	isWithinThreshold: boolean;
 }
+
+/**
+ * Story 17.12: Deadhead origin type
+ */
+export type DeadheadOriginType = "VEHICLE_BASE" | "DRIVER_HOME";
 
 /**
  * Candidate with full routing information
@@ -71,6 +79,10 @@ export interface CandidateWithRouting extends CandidateWithDistance {
 	internalCost: number;
 	// Routing source
 	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE";
+	// Story 17.12: Deadhead origin info
+	deadheadOrigin: DeadheadOriginType;
+	deadheadOriginAddress?: string;
+	deadheadOriginCoords: GeoPoint;
 }
 
 /**
@@ -134,6 +146,8 @@ export interface VehicleSelectionInput {
 	missionWindow?: MissionWindow;
 	includeUnavailableDrivers?: boolean;
 	excludeQuoteId?: string; // For updates - exclude current quote from overlap check
+	// Story 17.12: Use driver home for deadhead calculations
+	useDriverHomeForDeadhead?: boolean;
 }
 
 // ============================================================================
@@ -346,6 +360,7 @@ export function estimateRoutingFromHaversine(
 /**
  * Get routing for all three segments (approach, service, return)
  * AC3, AC5, AC6: Routing for segments
+ * Story 17.12: Support driver home location for deadhead calculations
  */
 export async function getRoutingForCandidate(
 	candidate: CandidateWithDistance,
@@ -353,6 +368,7 @@ export async function getRoutingForCandidate(
 	dropoff: GeoPoint,
 	pricingSettings: OrganizationPricingSettings,
 	googleMapsApiKey?: string,
+	useDriverHomeForDeadhead?: boolean,
 ): Promise<CandidateWithRouting> {
 	let routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" = "HAVERSINE_ESTIMATE";
 	let approach: { distanceKm: number; durationMinutes: number };
@@ -361,12 +377,23 @@ export async function getRoutingForCandidate(
 
 	const averageSpeed = candidate.averageSpeedKmh ?? DEFAULT_AVERAGE_SPEED_KMH;
 
+	// Story 17.12: Determine deadhead origin (driver home or vehicle base)
+	let deadheadOrigin: DeadheadOriginType = "VEHICLE_BASE";
+	let deadheadOriginCoords: GeoPoint = candidate.baseLocation;
+	let deadheadOriginAddress: string | undefined = candidate.baseName;
+
+	if (useDriverHomeForDeadhead && candidate.driverHomeLocation) {
+		deadheadOrigin = "DRIVER_HOME";
+		deadheadOriginCoords = candidate.driverHomeLocation;
+		deadheadOriginAddress = candidate.driverHomeAddress ?? undefined;
+	}
+
 	if (googleMapsApiKey) {
 		// Try Google Distance Matrix API
 		const [approachResult, serviceResult, returnResult] = await Promise.all([
-			callGoogleDistanceMatrix(candidate.baseLocation, pickup, googleMapsApiKey),
+			callGoogleDistanceMatrix(deadheadOriginCoords, pickup, googleMapsApiKey),
 			callGoogleDistanceMatrix(pickup, dropoff, googleMapsApiKey),
-			callGoogleDistanceMatrix(dropoff, candidate.baseLocation, googleMapsApiKey),
+			callGoogleDistanceMatrix(dropoff, deadheadOriginCoords, googleMapsApiKey),
 		]);
 
 		if (approachResult && serviceResult && returnResult) {
@@ -376,15 +403,15 @@ export async function getRoutingForCandidate(
 			returnSeg = returnResult;
 		} else {
 			// Fallback to Haversine estimate
-			approach = estimateRoutingFromHaversine(candidate.baseLocation, pickup, averageSpeed);
+			approach = estimateRoutingFromHaversine(deadheadOriginCoords, pickup, averageSpeed);
 			service = estimateRoutingFromHaversine(pickup, dropoff, averageSpeed);
-			returnSeg = estimateRoutingFromHaversine(dropoff, candidate.baseLocation, averageSpeed);
+			returnSeg = estimateRoutingFromHaversine(dropoff, deadheadOriginCoords, averageSpeed);
 		}
 	} else {
 		// No API key - use Haversine estimates
-		approach = estimateRoutingFromHaversine(candidate.baseLocation, pickup, averageSpeed);
+		approach = estimateRoutingFromHaversine(deadheadOriginCoords, pickup, averageSpeed);
 		service = estimateRoutingFromHaversine(pickup, dropoff, averageSpeed);
-		returnSeg = estimateRoutingFromHaversine(dropoff, candidate.baseLocation, averageSpeed);
+		returnSeg = estimateRoutingFromHaversine(dropoff, deadheadOriginCoords, averageSpeed);
 	}
 
 	// Calculate totals
@@ -416,11 +443,16 @@ export async function getRoutingForCandidate(
 		totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
 		internalCost: costBreakdown.total,
 		routingSource,
+		// Story 17.12: Deadhead origin info
+		deadheadOrigin,
+		deadheadOriginAddress,
+		deadheadOriginCoords,
 	};
 }
 
 /**
  * Get routing for multiple candidates
+ * Story 17.12: Added useDriverHomeForDeadhead parameter
  */
 export async function getRoutingForCandidates(
 	candidates: CandidateWithDistance[],
@@ -428,10 +460,11 @@ export async function getRoutingForCandidates(
 	dropoff: GeoPoint,
 	pricingSettings: OrganizationPricingSettings,
 	googleMapsApiKey?: string,
+	useDriverHomeForDeadhead?: boolean,
 ): Promise<CandidateWithRouting[]> {
 	const results = await Promise.all(
 		candidates.map((candidate) =>
-			getRoutingForCandidate(candidate, pickup, dropoff, pricingSettings, googleMapsApiKey),
+			getRoutingForCandidate(candidate, pickup, dropoff, pricingSettings, googleMapsApiKey, useDriverHomeForDeadhead),
 		),
 	);
 	return results;
@@ -490,6 +523,8 @@ export async function selectOptimalVehicle(
 		maxCandidatesForRouting = DEFAULT_MAX_CANDIDATES_FOR_ROUTING,
 		selectionCriterion = "MINIMAL_COST",
 		includeAllCandidates = false,
+		// Story 17.12: Use driver home for deadhead calculations
+		useDriverHomeForDeadhead = false,
 	} = input;
 
 	const candidatesConsidered = vehicles.length;
@@ -570,12 +605,14 @@ export async function selectOptimalVehicle(
 	const topCandidates = getTopCandidates(haversineFiltered, maxCandidatesForRouting);
 
 	// Step 5: Get routing for candidates (AC5, AC6)
+	// Story 17.12: Pass useDriverHomeForDeadhead to routing
 	const candidatesWithRouting = await getRoutingForCandidates(
 		topCandidates,
 		pickup,
 		dropoff,
 		pricingSettings,
 		googleMapsApiKey,
+		useDriverHomeForDeadhead,
 	);
 
 	// Step 6: Select optimal candidate (AC4)
@@ -599,6 +636,7 @@ export async function selectOptimalVehicle(
 
 /**
  * Transform database vehicle records to VehicleCandidate format
+ * Story 17.12: Added driver home location support
  */
 export function transformVehicleToCandidate(
 	vehicle: {
@@ -628,15 +666,26 @@ export function transformVehicleToCandidate(
 			id: string;
 			firstName: string;
 			lastName: string;
+			// Story 17.12: Driver home location
+			homeLat?: number | { toNumber(): number } | null;
+			homeLng?: number | { toNumber(): number } | null;
+			homeAddress?: string | null;
 		} | null;
 	},
 ): VehicleCandidate {
 	// Handle Prisma Decimal type
-	const toNumber = (val: number | { toNumber(): number } | null): number | null => {
-		if (val === null) return null;
+	const toNumber = (val: number | { toNumber(): number } | null | undefined): number | null => {
+		if (val === null || val === undefined) return null;
 		if (typeof val === "number") return val;
 		return val.toNumber();
 	};
+
+	// Story 17.12: Build driver home location if available
+	const driverHomeLat = toNumber(vehicle.defaultDriver?.homeLat);
+	const driverHomeLng = toNumber(vehicle.defaultDriver?.homeLng);
+	const driverHomeLocation = (driverHomeLat !== null && driverHomeLng !== null)
+		? { lat: driverHomeLat, lng: driverHomeLng }
+		: null;
 
 	return {
 		vehicleId: vehicle.id,
@@ -664,5 +713,8 @@ export function transformVehicleToCandidate(
 		driverName: vehicle.defaultDriver 
 			? `${vehicle.defaultDriver.firstName} ${vehicle.defaultDriver.lastName}`
 			: null,
+		// Story 17.12: Driver home location
+		driverHomeLocation,
+		driverHomeAddress: vehicle.defaultDriver?.homeAddress ?? null,
 	};
 }

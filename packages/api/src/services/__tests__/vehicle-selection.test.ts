@@ -60,6 +60,9 @@ function createVehicle(overrides: Partial<VehicleCandidate> = {}): VehicleCandid
 		costPerKm: 0.10,
 		averageSpeedKmh: 50,
 		status: "ACTIVE",
+		// Story 17.12: Driver home location fields
+		driverHomeLocation: null,
+		driverHomeAddress: null,
 		...overrides,
 	};
 }
@@ -92,6 +95,10 @@ function createCandidateWithRouting(
 		totalDurationMinutes: 70,
 		internalCost: 100,
 		routingSource: "HAVERSINE_ESTIMATE",
+		// Story 17.12: Deadhead origin info
+		deadheadOrigin: "VEHICLE_BASE",
+		deadheadOriginCoords: candidate.baseLocation,
+		deadheadOriginAddress: candidate.baseName,
 		...overrides,
 	};
 }
@@ -771,5 +778,95 @@ describe("Edge Cases", () => {
 		);
 
 		expect(result.candidatesWithRouting).toBeLessThanOrEqual(3);
+	});
+
+	// Story 17.12: Driver Home Location for Deadhead Calculations
+	it("should use driver home location when useDriverHomeForDeadhead is true (Story 17.12)", async () => {
+		const driverHomeLocation = { lat: 48.8700, lng: 2.3400 }; // Closer to pickup than base
+		const vehicles = [
+			createVehicle({ 
+				vehicleId: "v1", 
+				driverId: "driver-1",
+				driverName: "John Doe",
+				driverHomeLocation,
+				driverHomeAddress: "123 Rue de Paris",
+			}),
+		];
+
+		const result = await selectOptimalVehicle(
+			{
+				organizationId: "org-1",
+				pickup: parisPickup,
+				dropoff: cdgDropoff,
+				passengerCount: 2,
+				useDriverHomeForDeadhead: true,
+			},
+			vehicles,
+			defaultPricingSettings,
+		);
+
+		expect(result.fallbackUsed).toBe(false);
+		expect(result.selectedCandidate).not.toBeNull();
+		expect(result.selectedCandidate!.deadheadOrigin).toBe("DRIVER_HOME");
+		expect(result.selectedCandidate!.deadheadOriginCoords).toEqual(driverHomeLocation);
+		expect(result.selectedCandidate!.deadheadOriginAddress).toBe("123 Rue de Paris");
+	});
+
+	it("should fallback to vehicle base when driver has no home location (Story 17.12)", async () => {
+		const vehicles = [
+			createVehicle({ 
+				vehicleId: "v1", 
+				driverId: "driver-1",
+				driverName: "John Doe",
+				driverHomeLocation: null,
+				driverHomeAddress: null,
+			}),
+		];
+
+		const result = await selectOptimalVehicle(
+			{
+				organizationId: "org-1",
+				pickup: parisPickup,
+				dropoff: cdgDropoff,
+				passengerCount: 2,
+				useDriverHomeForDeadhead: true,
+			},
+			vehicles,
+			defaultPricingSettings,
+		);
+
+		expect(result.fallbackUsed).toBe(false);
+		expect(result.selectedCandidate).not.toBeNull();
+		expect(result.selectedCandidate!.deadheadOrigin).toBe("VEHICLE_BASE");
+		expect(result.selectedCandidate!.deadheadOriginCoords).toEqual(vehicles[0].baseLocation);
+	});
+
+	it("should use vehicle base when useDriverHomeForDeadhead is false (Story 17.12)", async () => {
+		const driverHomeLocation = { lat: 48.8700, lng: 2.3400 };
+		const vehicles = [
+			createVehicle({ 
+				vehicleId: "v1", 
+				driverId: "driver-1",
+				driverName: "John Doe",
+				driverHomeLocation,
+				driverHomeAddress: "123 Rue de Paris",
+			}),
+		];
+
+		const result = await selectOptimalVehicle(
+			{
+				organizationId: "org-1",
+				pickup: parisPickup,
+				dropoff: cdgDropoff,
+				passengerCount: 2,
+				useDriverHomeForDeadhead: false,
+			},
+			vehicles,
+			defaultPricingSettings,
+		);
+
+		expect(result.fallbackUsed).toBe(false);
+		expect(result.selectedCandidate).not.toBeNull();
+		expect(result.selectedCandidate!.deadheadOrigin).toBe("VEHICLE_BASE");
 	});
 });
