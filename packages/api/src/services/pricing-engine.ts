@@ -894,6 +894,116 @@ export interface AppliedZoneSurchargeRule extends AppliedRule {
 }
 
 // ============================================================================
+// Story 18.10: Hierarchical Pricing Algorithm Types
+// ============================================================================
+
+/**
+ * Story 18.10: Hierarchical pricing level names
+ */
+export type HierarchicalPricingLevel = 1 | 2 | 3 | 4;
+
+export type HierarchicalPricingLevelName =
+	| "INTRA_CENTRAL_FLAT_RATE"    // Priority 1
+	| "INTER_ZONE_FORFAIT"         // Priority 2
+	| "SAME_RING_DYNAMIC"          // Priority 3
+	| "HOROKILOMETRIC_FALLBACK";   // Priority 4
+
+/**
+ * Story 18.10: Reason why a level was skipped
+ */
+export type SkippedLevelReason =
+	| "NOT_APPLICABLE"       // Trip doesn't match criteria (e.g., not intra-central)
+	| "NO_RATE_CONFIGURED"   // No flat rate or forfait configured
+	| "DISABLED_BY_CONFIG"   // Level disabled in org settings
+	| "ZONE_MISMATCH";       // Zones don't match (e.g., not same ring)
+
+/**
+ * Story 18.10: Information about a skipped hierarchical level
+ */
+export interface SkippedLevel {
+	level: HierarchicalPricingLevel;
+	levelName: HierarchicalPricingLevelName;
+	reason: SkippedLevelReason;
+	details?: string;
+}
+
+/**
+ * Story 18.10: Hierarchical pricing configuration from organization settings
+ */
+export interface HierarchicalPricingConfig {
+	enabled: boolean;
+	skipLevel1?: boolean;  // Skip intra-central flat rate
+	skipLevel2?: boolean;  // Skip inter-zone forfait
+	skipLevel3?: boolean;  // Skip same-ring dynamic
+	centralZoneCodes?: string[];  // Zone codes considered "central" (e.g., ["PARIS_0", "Z_0"])
+}
+
+/**
+ * Story 18.10: Default hierarchical pricing configuration
+ */
+export const DEFAULT_HIERARCHICAL_PRICING_CONFIG: HierarchicalPricingConfig = {
+	enabled: true,
+	skipLevel1: false,
+	skipLevel2: false,
+	skipLevel3: false,
+	centralZoneCodes: ["PARIS_0", "Z_0", "BUSSY_0"],
+};
+
+/**
+ * Story 18.10: Intra-central flat rate data
+ */
+export interface IntraCentralFlatRateData {
+	id: string;
+	vehicleCategoryId: string;
+	flatRate: number;
+	description: string | null;
+	isActive: boolean;
+}
+
+/**
+ * Story 18.10: Result of hierarchical pricing evaluation
+ */
+export interface HierarchicalPricingResult {
+	level: HierarchicalPricingLevel;
+	levelName: HierarchicalPricingLevelName;
+	reason: string;
+	skippedLevels: SkippedLevel[];
+	appliedPrice: number;
+	// Additional details for transparency
+	details?: {
+		flatRateId?: string;
+		forfaitId?: string;
+		ringMultiplier?: number;
+		ringCode?: string;
+	};
+}
+
+/**
+ * Story 18.10: Applied hierarchical pricing rule for transparency
+ */
+export interface AppliedHierarchicalPricingRule extends AppliedRule {
+	type: "HIERARCHICAL_PRICING";
+	level: HierarchicalPricingLevel;
+	levelName: HierarchicalPricingLevelName;
+	reason: string;
+	skippedLevels: SkippedLevel[];
+	appliedPrice: number;
+	details?: {
+		flatRateId?: string;
+		forfaitId?: string;
+		ringMultiplier?: number;
+		ringCode?: string;
+	};
+}
+
+/**
+ * Story 18.10: Extended zone data with isCentralZone flag
+ */
+export interface ZoneDataWithCentralFlag extends ZoneData {
+	isCentralZone?: boolean;
+}
+
+// ============================================================================
 // Cost Breakdown Types (Story 4.2)
 // ============================================================================
 
@@ -4857,6 +4967,270 @@ export function matchDispoPackage(
 ): DispoPackageAssignment["dispoPackage"] | null {
 	const result = matchDispoPackageWithDetails(vehicleCategoryId, contractDispos);
 	return result.matchedDispo?.dispo ?? null;
+}
+
+// ============================================================================
+// Story 18.10: Hierarchical Pricing Algorithm
+// ============================================================================
+
+/**
+ * Story 18.10: Check if a zone is a central zone
+ * Uses isCentralZone flag first, then falls back to code pattern matching
+ * 
+ * @param zone - Zone to check
+ * @param config - Hierarchical pricing config with centralZoneCodes
+ * @returns true if zone is considered central
+ */
+export function isCentralZone(
+	zone: ZoneDataWithCentralFlag | null,
+	config: HierarchicalPricingConfig,
+): boolean {
+	if (!zone) return false;
+	
+	// First check the explicit flag
+	if (zone.isCentralZone === true) return true;
+	
+	// Fall back to code pattern matching
+	const centralCodes = config.centralZoneCodes ?? DEFAULT_HIERARCHICAL_PRICING_CONFIG.centralZoneCodes ?? [];
+	return centralCodes.includes(zone.code);
+}
+
+/**
+ * Story 18.10: Check if two zones are in the same ring
+ * Rings are identified by zone code patterns (e.g., PARIS_20, PARIS_30)
+ * 
+ * @param zone1 - First zone
+ * @param zone2 - Second zone
+ * @returns Object with isSameRing flag and ring info
+ */
+export function checkSameRing(
+	zone1: ZoneData | null,
+	zone2: ZoneData | null,
+): { isSameRing: boolean; ringCode: string | null; ringMultiplier: number | null } {
+	if (!zone1 || !zone2) {
+		return { isSameRing: false, ringCode: null, ringMultiplier: null };
+	}
+	
+	// Extract ring identifier from zone codes
+	// Pattern: PREFIX_DISTANCE (e.g., PARIS_20, BUSSY_10)
+	const getRingId = (code: string): string | null => {
+		const match = code.match(/^([A-Z]+)_(\d+)$/);
+		if (match) {
+			return `${match[1]}_${match[2]}`;
+		}
+		return null;
+	};
+	
+	const ring1 = getRingId(zone1.code);
+	const ring2 = getRingId(zone2.code);
+	
+	if (ring1 && ring2 && ring1 === ring2) {
+		// Same ring - use the zone's multiplier
+		const multiplier = zone1.priceMultiplier ?? 1.0;
+		return { isSameRing: true, ringCode: ring1, ringMultiplier: multiplier };
+	}
+	
+	return { isSameRing: false, ringCode: null, ringMultiplier: null };
+}
+
+/**
+ * Story 18.10: Find intra-central flat rate for a vehicle category
+ * 
+ * @param vehicleCategoryId - Vehicle category ID
+ * @param flatRates - Available flat rates
+ * @returns Matching flat rate or null
+ */
+export function findIntraCentralFlatRate(
+	vehicleCategoryId: string,
+	flatRates: IntraCentralFlatRateData[],
+): IntraCentralFlatRateData | null {
+	return flatRates.find(
+		(rate) => rate.vehicleCategoryId === vehicleCategoryId && rate.isActive
+	) ?? null;
+}
+
+/**
+ * Story 18.10: Evaluate hierarchical pricing algorithm
+ * 
+ * Evaluates pricing in strict priority order:
+ * 1. Intra-Central Flat Rate (both points in central zone + flat rate exists)
+ * 2. Inter-Zone Forfait (defined forfait between zones)
+ * 3. Same-Ring Dynamic (both points in same outer ring)
+ * 4. Horokilometric Fallback (standard dynamic pricing)
+ * 
+ * @param pickupZone - Pickup zone (with isCentralZone flag)
+ * @param dropoffZone - Dropoff zone (with isCentralZone flag)
+ * @param vehicleCategoryId - Vehicle category ID
+ * @param config - Hierarchical pricing configuration
+ * @param intraCentralFlatRates - Available intra-central flat rates
+ * @param matchedForfait - Pre-matched forfait from grid search (if any)
+ * @param dynamicPrice - Calculated dynamic price (for fallback)
+ * @returns Hierarchical pricing result with level, price, and skipped levels
+ */
+export function evaluateHierarchicalPricing(
+	pickupZone: ZoneDataWithCentralFlag | null,
+	dropoffZone: ZoneDataWithCentralFlag | null,
+	vehicleCategoryId: string,
+	config: HierarchicalPricingConfig,
+	intraCentralFlatRates: IntraCentralFlatRateData[],
+	matchedForfait: { id: string; price: number } | null,
+	dynamicPrice: number,
+): HierarchicalPricingResult {
+	const skippedLevels: SkippedLevel[] = [];
+	
+	// If hierarchical pricing is disabled, go straight to fallback
+	if (!config.enabled) {
+		return {
+			level: 4,
+			levelName: "HOROKILOMETRIC_FALLBACK",
+			reason: "Hierarchical pricing disabled - using standard dynamic pricing",
+			skippedLevels: [],
+			appliedPrice: dynamicPrice,
+		};
+	}
+	
+	// -------------------------------------------------------------------------
+	// Priority 1: Intra-Central Flat Rate
+	// -------------------------------------------------------------------------
+	if (!config.skipLevel1) {
+		const pickupIsCentral = isCentralZone(pickupZone, config);
+		const dropoffIsCentral = isCentralZone(dropoffZone, config);
+		
+		if (pickupIsCentral && dropoffIsCentral) {
+			// Both zones are central - look for flat rate
+			const flatRate = findIntraCentralFlatRate(vehicleCategoryId, intraCentralFlatRates);
+			
+			if (flatRate) {
+				return {
+					level: 1,
+					levelName: "INTRA_CENTRAL_FLAT_RATE",
+					reason: `Intra-central flat rate applied: ${pickupZone?.code} → ${dropoffZone?.code}`,
+					skippedLevels,
+					appliedPrice: flatRate.flatRate,
+					details: {
+						flatRateId: flatRate.id,
+					},
+				};
+			} else {
+				skippedLevels.push({
+					level: 1,
+					levelName: "INTRA_CENTRAL_FLAT_RATE",
+					reason: "NO_RATE_CONFIGURED",
+					details: `No flat rate configured for vehicle category in central zones`,
+				});
+			}
+		} else {
+			skippedLevels.push({
+				level: 1,
+				levelName: "INTRA_CENTRAL_FLAT_RATE",
+				reason: "NOT_APPLICABLE",
+				details: `Trip is not intra-central (pickup: ${pickupIsCentral}, dropoff: ${dropoffIsCentral})`,
+			});
+		}
+	} else {
+		skippedLevels.push({
+			level: 1,
+			levelName: "INTRA_CENTRAL_FLAT_RATE",
+			reason: "DISABLED_BY_CONFIG",
+		});
+	}
+	
+	// -------------------------------------------------------------------------
+	// Priority 2: Inter-Zone Forfait
+	// -------------------------------------------------------------------------
+	if (!config.skipLevel2) {
+		if (matchedForfait) {
+			return {
+				level: 2,
+				levelName: "INTER_ZONE_FORFAIT",
+				reason: `Inter-zone forfait applied: ${pickupZone?.code ?? "?"} → ${dropoffZone?.code ?? "?"}`,
+				skippedLevels,
+				appliedPrice: matchedForfait.price,
+				details: {
+					forfaitId: matchedForfait.id,
+				},
+			};
+		} else {
+			skippedLevels.push({
+				level: 2,
+				levelName: "INTER_ZONE_FORFAIT",
+				reason: "NO_RATE_CONFIGURED",
+				details: `No forfait configured for ${pickupZone?.code ?? "?"} → ${dropoffZone?.code ?? "?"}`,
+			});
+		}
+	} else {
+		skippedLevels.push({
+			level: 2,
+			levelName: "INTER_ZONE_FORFAIT",
+			reason: "DISABLED_BY_CONFIG",
+		});
+	}
+	
+	// -------------------------------------------------------------------------
+	// Priority 3: Same-Ring Dynamic
+	// -------------------------------------------------------------------------
+	if (!config.skipLevel3) {
+		const ringCheck = checkSameRing(pickupZone, dropoffZone);
+		
+		if (ringCheck.isSameRing && ringCheck.ringMultiplier !== null) {
+			// Apply ring multiplier to dynamic price
+			const ringAdjustedPrice = Math.round(dynamicPrice * ringCheck.ringMultiplier * 100) / 100;
+			
+			return {
+				level: 3,
+				levelName: "SAME_RING_DYNAMIC",
+				reason: `Same-ring dynamic pricing: ${ringCheck.ringCode} (${ringCheck.ringMultiplier}×)`,
+				skippedLevels,
+				appliedPrice: ringAdjustedPrice,
+				details: {
+					ringMultiplier: ringCheck.ringMultiplier,
+					ringCode: ringCheck.ringCode ?? undefined,
+				},
+			};
+		} else {
+			skippedLevels.push({
+				level: 3,
+				levelName: "SAME_RING_DYNAMIC",
+				reason: "ZONE_MISMATCH",
+				details: `Zones are not in the same ring (${pickupZone?.code ?? "?"} vs ${dropoffZone?.code ?? "?"})`,
+			});
+		}
+	} else {
+		skippedLevels.push({
+			level: 3,
+			levelName: "SAME_RING_DYNAMIC",
+			reason: "DISABLED_BY_CONFIG",
+		});
+	}
+	
+	// -------------------------------------------------------------------------
+	// Priority 4: Horokilometric Fallback (always available)
+	// -------------------------------------------------------------------------
+	return {
+		level: 4,
+		levelName: "HOROKILOMETRIC_FALLBACK",
+		reason: "Standard horokilometric calculation (no higher priority matched)",
+		skippedLevels,
+		appliedPrice: dynamicPrice,
+	};
+}
+
+/**
+ * Story 18.10: Build applied hierarchical pricing rule for transparency
+ */
+export function buildHierarchicalPricingRule(
+	result: HierarchicalPricingResult,
+): AppliedHierarchicalPricingRule {
+	return {
+		type: "HIERARCHICAL_PRICING",
+		description: result.reason,
+		level: result.level,
+		levelName: result.levelName,
+		reason: result.reason,
+		skippedLevels: result.skippedLevels,
+		appliedPrice: result.appliedPrice,
+		details: result.details,
+	};
 }
 
 // ============================================================================

@@ -128,7 +128,7 @@ export const DriverLicenseScalarFieldEnumSchema = z.enum(['id','driverId','licen
 
 export const DriverCalendarEventScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','eventType','title','notes','startAt','endAt','createdAt','updatedAt']);
 
-export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','fixedParkingSurcharge','fixedAccessFee','surchargeDescription','corridorPolyline','corridorBufferMeters','isActive','createdAt','updatedAt']);
+export const PricingZoneScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','zoneType','geometry','centerLatitude','centerLongitude','radiusKm','parentZoneId','color','postalCodes','creationMethod','priceMultiplier','multiplierDescription','priority','fixedParkingSurcharge','fixedAccessFee','surchargeDescription','isCentralZone','corridorPolyline','corridorBufferMeters','isActive','createdAt','updatedAt']);
 
 export const ZoneRouteScalarFieldEnumSchema = z.enum(['id','organizationId','originType','originPlaceId','originAddress','originLat','originLng','destinationType','destPlaceId','destAddress','destLat','destLng','fromZoneId','toZoneId','vehicleCategoryId','direction','fixedPrice','isActive','createdAt','updatedAt']);
 
@@ -142,9 +142,11 @@ export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','exc
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','hierarchicalPricingConfig','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
+
+export const IntraCentralFlatRateScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','vehicleCategoryId','flatRate','description','isActive','createdAt','updatedAt']);
 
 export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
 
@@ -848,6 +850,7 @@ export const PricingZoneSchema = z.object({
   fixedParkingSurcharge: z.instanceof(Prisma.Decimal, { message: "Field 'fixedParkingSurcharge' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   fixedAccessFee: z.instanceof(Prisma.Decimal, { message: "Field 'fixedAccessFee' must be a Decimal. Location: ['Models', 'PricingZone']"}).nullable(),
   surchargeDescription: z.string().nullable(),
+  isCentralZone: z.boolean(),
   corridorPolyline: z.string().nullable(),
   corridorBufferMeters: z.number().int().nullable(),
   isActive: z.boolean(),
@@ -1036,6 +1039,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   lowSeasonCoefficient: z.instanceof(Prisma.Decimal, { message: "Field 'lowSeasonCoefficient' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   maxReturnEmptyDistanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'maxReturnEmptyDistanceKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   minIdleDaysForComparison: z.number().int().nullable(),
+  hierarchicalPricingConfig: JsonValueSchema.nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
@@ -1063,6 +1067,28 @@ export const MadTimeBucketSchema = z.object({
 })
 
 export type MadTimeBucket = z.infer<typeof MadTimeBucketSchema>
+
+/////////////////////////////////////////
+// INTRA CENTRAL FLAT RATE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Story 18.10: IntraCentralFlatRate - Flat rates for intra-central zone trips
+ * Priority 1 in the hierarchical pricing algorithm
+ */
+export const IntraCentralFlatRateSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  pricingSettingsId: z.string(),
+  vehicleCategoryId: z.string(),
+  flatRate: z.instanceof(Prisma.Decimal, { message: "Field 'flatRate' must be a Decimal. Location: ['Models', 'IntraCentralFlatRate']"}),
+  description: z.string().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type IntraCentralFlatRate = z.infer<typeof IntraCentralFlatRateSchema>
 
 /////////////////////////////////////////
 // ADVANCED RATE SCHEMA

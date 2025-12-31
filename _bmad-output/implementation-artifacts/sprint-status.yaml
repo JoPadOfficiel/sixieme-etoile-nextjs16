@@ -160,6 +160,6 @@ development_status:
   18-7-transversal-trip-decomposition: done
   18-8-fixed-temporal-vectors-classic-destinations: done
   18-9-shadow-fleet-integration-subcontractors: done
-  18-10-hierarchical-pricing-algorithm-implementation: backlog
+  18-10-hierarchical-pricing-algorithm-implementation: done
   18-11-configurable-transfer-to-mad-thresholds: backlog
   epic-18-retrospective: optional

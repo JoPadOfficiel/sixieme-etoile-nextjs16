@@ -647,6 +647,7 @@ model VehicleCategory {
   quotes                         Quote[]
   subcontractorVehicleCategories SubcontractorVehicleCategory[]
   madTimeBuckets                 MadTimeBucket[]
+  intraCentralFlatRates          IntraCentralFlatRate[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -931,6 +932,10 @@ model PricingZone {
   fixedParkingSurcharge Decimal? @db.Decimal(10, 2) // Parking fee in EUR
   fixedAccessFee        Decimal? @db.Decimal(10, 2) // Access/entry fee in EUR
   surchargeDescription  String? // Description of surcharges
+
+  // Story 18.10: Central zone flag for hierarchical pricing algorithm
+  // When true, this zone is considered a "central zone" (Z_0) for Priority 1 flat rate pricing
+  isCentralZone Boolean @default(false)
 
   // Story 18.1: Corridor-specific fields (for CORRIDOR zone type)
   corridorPolyline     String? // Encoded polyline of the road axis (Google Polyline format)
@@ -1246,12 +1251,19 @@ model OrganizationPricingSettings {
   // Minimum idle days to trigger comparison (default: 1)
   minIdleDaysForComparison Int?     @default(1)
 
+  // Story 18.10: Hierarchical pricing algorithm configuration
+  // JSON config: { enabled: boolean, skipLevel1?: boolean, skipLevel2?: boolean, skipLevel3?: boolean, centralZoneCodes?: string[] }
+  hierarchicalPricingConfig Json?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Story 17.9: Time buckets for MAD pricing
   madTimeBuckets MadTimeBucket[]
+
+  // Story 18.10: Intra-central zone flat rates for hierarchical pricing
+  intraCentralFlatRates IntraCentralFlatRate[]
 
   @@map("organization_pricing_settings")
 }
@@ -1283,6 +1295,39 @@ model MadTimeBucket {
   @@index([pricingSettingsId])
   @@index([vehicleCategoryId])
   @@map("mad_time_bucket")
+}
+
+/// Story 18.10: IntraCentralFlatRate - Flat rates for intra-central zone trips
+/// Priority 1 in the hierarchical pricing algorithm
+model IntraCentralFlatRate {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Link to pricing settings (for cascade delete)
+  pricingSettingsId String
+  pricingSettings   OrganizationPricingSettings @relation(fields: [pricingSettingsId], references: [id], onDelete: Cascade)
+
+  // Vehicle category for this flat rate
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  // Flat rate price in EUR for intra-central zone trips
+  flatRate Decimal @db.Decimal(10, 2)
+
+  // Optional description
+  description String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pricingSettingsId, vehicleCategoryId])
+  @@index([pricingSettingsId])
+  @@index([vehicleCategoryId])
+  @@map("intra_central_flat_rate")
 }
 
 /// AdvancedRate - Advanced modifiers (night, weekend, long-distance, zone-based)

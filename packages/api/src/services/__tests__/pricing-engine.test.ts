@@ -3725,3 +3725,455 @@ describe("Story 17.2: Zone Multiplier Aggregation Strategy", () => {
 		});
 	});
 });
+
+// ============================================================================
+// Story 18.10: Hierarchical Pricing Algorithm Tests
+// ============================================================================
+
+import {
+	evaluateHierarchicalPricing,
+	isCentralZone,
+	checkSameRing,
+	findIntraCentralFlatRate,
+	buildHierarchicalPricingRule,
+	DEFAULT_HIERARCHICAL_PRICING_CONFIG,
+	type HierarchicalPricingConfig,
+	type IntraCentralFlatRateData,
+	type ZoneDataWithCentralFlag,
+} from "../pricing-engine";
+
+describe("Story 18.10: Hierarchical Pricing Algorithm", () => {
+	// Test zones - using partial type for test simplicity
+	const parisCenter = {
+		id: "zone-paris-0",
+		name: "Paris Centre",
+		code: "PARIS_0",
+		zoneType: "RADIUS" as const,
+		priceMultiplier: 1.0,
+		isCentralZone: true,
+	} as ZoneDataWithCentralFlag;
+
+	const paris20 = {
+		id: "zone-paris-20",
+		name: "Paris 20km",
+		code: "PARIS_20",
+		zoneType: "RADIUS" as const,
+		priceMultiplier: 1.1,
+		isCentralZone: false,
+	} as ZoneDataWithCentralFlag;
+
+	const paris20bis = {
+		id: "zone-paris-20-bis",
+		name: "Paris 20km Bis",
+		code: "PARIS_20",
+		zoneType: "RADIUS" as const,
+		priceMultiplier: 1.1,
+		isCentralZone: false,
+	} as ZoneDataWithCentralFlag;
+
+	const cdgZone = {
+		id: "zone-cdg",
+		name: "CDG Airport",
+		code: "CDG",
+		zoneType: "RADIUS" as const,
+		priceMultiplier: 1.2,
+		isCentralZone: false,
+	} as ZoneDataWithCentralFlag;
+
+	const bussyCenter = {
+		id: "zone-bussy-0",
+		name: "Bussy Centre",
+		code: "BUSSY_0",
+		zoneType: "RADIUS" as const,
+		priceMultiplier: 0.8,
+		isCentralZone: true,
+	} as ZoneDataWithCentralFlag;
+
+	// Test flat rates
+	const flatRates: IntraCentralFlatRateData[] = [
+		{
+			id: "flat-rate-1",
+			vehicleCategoryId: "cat-berline",
+			flatRate: 80.0,
+			description: "Intra-Paris Berline",
+			isActive: true,
+		},
+		{
+			id: "flat-rate-2",
+			vehicleCategoryId: "cat-van",
+			flatRate: 120.0,
+			description: "Intra-Paris Van",
+			isActive: true,
+		},
+		{
+			id: "flat-rate-3",
+			vehicleCategoryId: "cat-inactive",
+			flatRate: 50.0,
+			description: "Inactive rate",
+			isActive: false,
+		},
+	];
+
+	const defaultConfig: HierarchicalPricingConfig = {
+		enabled: true,
+		skipLevel1: false,
+		skipLevel2: false,
+		skipLevel3: false,
+		centralZoneCodes: ["PARIS_0", "BUSSY_0", "Z_0"],
+	};
+
+	describe("isCentralZone", () => {
+		it("should return true for zone with isCentralZone flag", () => {
+			expect(isCentralZone(parisCenter, defaultConfig)).toBe(true);
+		});
+
+		it("should return true for zone matching centralZoneCodes", () => {
+			const zoneWithoutFlag: ZoneDataWithCentralFlag = {
+				...parisCenter,
+				isCentralZone: undefined,
+			};
+			expect(isCentralZone(zoneWithoutFlag, defaultConfig)).toBe(true);
+		});
+
+		it("should return false for non-central zone", () => {
+			expect(isCentralZone(paris20, defaultConfig)).toBe(false);
+		});
+
+		it("should return false for null zone", () => {
+			expect(isCentralZone(null, defaultConfig)).toBe(false);
+		});
+
+		it("should use default central codes when config has none", () => {
+			const configWithoutCodes: HierarchicalPricingConfig = {
+				enabled: true,
+			};
+			expect(isCentralZone(parisCenter, configWithoutCodes)).toBe(true);
+		});
+	});
+
+	describe("checkSameRing", () => {
+		it("should detect same ring for zones with matching codes", () => {
+			const result = checkSameRing(paris20, paris20bis);
+			expect(result.isSameRing).toBe(true);
+			expect(result.ringCode).toBe("PARIS_20");
+			expect(result.ringMultiplier).toBe(1.1);
+		});
+
+		it("should return false for different rings", () => {
+			const result = checkSameRing(paris20, parisCenter);
+			expect(result.isSameRing).toBe(false);
+			expect(result.ringCode).toBeNull();
+		});
+
+		it("should return false for zones without ring pattern", () => {
+			const result = checkSameRing(cdgZone, paris20);
+			expect(result.isSameRing).toBe(false);
+		});
+
+		it("should return false for null zones", () => {
+			expect(checkSameRing(null, paris20).isSameRing).toBe(false);
+			expect(checkSameRing(paris20, null).isSameRing).toBe(false);
+			expect(checkSameRing(null, null).isSameRing).toBe(false);
+		});
+	});
+
+	describe("findIntraCentralFlatRate", () => {
+		it("should find active flat rate for vehicle category", () => {
+			const result = findIntraCentralFlatRate("cat-berline", flatRates);
+			expect(result).not.toBeNull();
+			expect(result?.id).toBe("flat-rate-1");
+			expect(result?.flatRate).toBe(80.0);
+		});
+
+		it("should return null for non-existent category", () => {
+			const result = findIntraCentralFlatRate("cat-unknown", flatRates);
+			expect(result).toBeNull();
+		});
+
+		it("should not return inactive flat rates", () => {
+			const result = findIntraCentralFlatRate("cat-inactive", flatRates);
+			expect(result).toBeNull();
+		});
+	});
+
+	describe("evaluateHierarchicalPricing", () => {
+		const dynamicPrice = 100.0;
+
+		describe("Priority 1: Intra-Central Flat Rate", () => {
+			it("should apply flat rate for intra-central trip", () => {
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					bussyCenter,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(1);
+				expect(result.levelName).toBe("INTRA_CENTRAL_FLAT_RATE");
+				expect(result.appliedPrice).toBe(80.0);
+				expect(result.details?.flatRateId).toBe("flat-rate-1");
+				expect(result.skippedLevels).toHaveLength(0);
+			});
+
+			it("should skip to level 2 if no flat rate configured", () => {
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					bussyCenter,
+					"cat-unknown",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(4); // Falls through to horokilometric
+				expect(result.skippedLevels.some(s => s.level === 1 && s.reason === "NO_RATE_CONFIGURED")).toBe(true);
+			});
+
+			it("should skip level 1 if not intra-central", () => {
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					cdgZone,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).not.toBe(1);
+				expect(result.skippedLevels.some(s => s.level === 1 && s.reason === "NOT_APPLICABLE")).toBe(true);
+			});
+		});
+
+		describe("Priority 2: Inter-Zone Forfait", () => {
+			it("should apply forfait when matched", () => {
+				const matchedForfait = { id: "forfait-1", price: 150.0 };
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					cdgZone,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					matchedForfait,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(2);
+				expect(result.levelName).toBe("INTER_ZONE_FORFAIT");
+				expect(result.appliedPrice).toBe(150.0);
+				expect(result.details?.forfaitId).toBe("forfait-1");
+			});
+
+			it("should skip to level 3 if no forfait", () => {
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					cdgZone,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.skippedLevels.some(s => s.level === 2 && s.reason === "NO_RATE_CONFIGURED")).toBe(true);
+			});
+		});
+
+		describe("Priority 3: Same-Ring Dynamic", () => {
+			it("should apply ring multiplier for same-ring trip", () => {
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					paris20bis,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(3);
+				expect(result.levelName).toBe("SAME_RING_DYNAMIC");
+				expect(result.appliedPrice).toBe(110.0); // 100 * 1.1
+				expect(result.details?.ringMultiplier).toBe(1.1);
+				expect(result.details?.ringCode).toBe("PARIS_20");
+			});
+
+			it("should skip to level 4 if not same ring", () => {
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					cdgZone,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(4);
+				expect(result.skippedLevels.some(s => s.level === 3 && s.reason === "ZONE_MISMATCH")).toBe(true);
+			});
+		});
+
+		describe("Priority 4: Horokilometric Fallback", () => {
+			it("should use dynamic price as fallback", () => {
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					cdgZone,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(4);
+				expect(result.levelName).toBe("HOROKILOMETRIC_FALLBACK");
+				expect(result.appliedPrice).toBe(dynamicPrice);
+			});
+		});
+
+		describe("Configuration options", () => {
+			it("should skip level 1 when disabled by config", () => {
+				const configSkipLevel1: HierarchicalPricingConfig = {
+					...defaultConfig,
+					skipLevel1: true,
+				};
+
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					bussyCenter,
+					"cat-berline",
+					configSkipLevel1,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).not.toBe(1);
+				expect(result.skippedLevels.some(s => s.level === 1 && s.reason === "DISABLED_BY_CONFIG")).toBe(true);
+			});
+
+			it("should skip level 2 when disabled by config", () => {
+				const configSkipLevel2: HierarchicalPricingConfig = {
+					...defaultConfig,
+					skipLevel2: true,
+				};
+				const matchedForfait = { id: "forfait-1", price: 150.0 };
+
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					cdgZone,
+					"cat-berline",
+					configSkipLevel2,
+					flatRates,
+					matchedForfait,
+					dynamicPrice,
+				);
+
+				expect(result.level).not.toBe(2);
+				expect(result.skippedLevels.some(s => s.level === 2 && s.reason === "DISABLED_BY_CONFIG")).toBe(true);
+			});
+
+			it("should skip level 3 when disabled by config", () => {
+				const configSkipLevel3: HierarchicalPricingConfig = {
+					...defaultConfig,
+					skipLevel3: true,
+				};
+
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					paris20bis,
+					"cat-berline",
+					configSkipLevel3,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(4);
+				expect(result.skippedLevels.some(s => s.level === 3 && s.reason === "DISABLED_BY_CONFIG")).toBe(true);
+			});
+
+			it("should go straight to fallback when hierarchical pricing disabled", () => {
+				const disabledConfig: HierarchicalPricingConfig = {
+					enabled: false,
+				};
+
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					bussyCenter,
+					"cat-berline",
+					disabledConfig,
+					flatRates,
+					null,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(4);
+				expect(result.levelName).toBe("HOROKILOMETRIC_FALLBACK");
+				expect(result.skippedLevels).toHaveLength(0);
+			});
+		});
+
+		describe("Priority order enforcement", () => {
+			it("should prefer level 1 over level 2 when both match", () => {
+				const matchedForfait = { id: "forfait-1", price: 150.0 };
+				const result = evaluateHierarchicalPricing(
+					parisCenter,
+					bussyCenter,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					matchedForfait,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(1);
+				expect(result.appliedPrice).toBe(80.0); // Flat rate, not forfait
+			});
+
+			it("should prefer level 2 over level 3 when both match", () => {
+				// Create a scenario where both forfait and same-ring could match
+				const matchedForfait = { id: "forfait-1", price: 150.0 };
+				const result = evaluateHierarchicalPricing(
+					paris20,
+					paris20bis,
+					"cat-berline",
+					defaultConfig,
+					flatRates,
+					matchedForfait,
+					dynamicPrice,
+				);
+
+				expect(result.level).toBe(2);
+				expect(result.appliedPrice).toBe(150.0); // Forfait, not ring dynamic
+			});
+		});
+	});
+
+	describe("buildHierarchicalPricingRule", () => {
+		it("should build applied rule from result", () => {
+			const result = evaluateHierarchicalPricing(
+				parisCenter,
+				bussyCenter,
+				"cat-berline",
+				defaultConfig,
+				flatRates,
+				null,
+				100.0,
+			);
+
+			const rule = buildHierarchicalPricingRule(result);
+
+			expect(rule.type).toBe("HIERARCHICAL_PRICING");
+			expect(rule.level).toBe(1);
+			expect(rule.levelName).toBe("INTRA_CENTRAL_FLAT_RATE");
+			expect(rule.appliedPrice).toBe(80.0);
+			expect(rule.description).toContain("Intra-central flat rate");
+		});
+	});
+});
