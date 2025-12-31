@@ -415,6 +415,10 @@ model Contact {
   isSubcontractor   Boolean    @default(false)
   defaultClientType ClientType @default(PRIVATE)
 
+  // Story 17.15: Client difficulty score for "Patience Tax" pricing adjustment
+  // Scale 1-5, null means no difficulty adjustment applied
+  difficultyScore Int?
+
   // Metadata
   notes     String?
   createdAt DateTime @default(now())
@@ -1162,6 +1166,11 @@ model OrganizationPricingSettings {
   // Story 17.12: Use driver home for deadhead calculations
   // When true and driver has home location, use it instead of vehicle base
   useDriverHomeForDeadhead Boolean @default(false)
+
+  // Story 17.15: Client difficulty multipliers (Patience Tax)
+  // JSON mapping difficulty score (1-5) to price multiplier
+  // Example: {"1": 1.00, "2": 1.02, "3": 1.05, "4": 1.08, "5": 1.10}
+  difficultyMultipliers Json?
 
   // Metadata
   createdAt DateTime @default(now())

@@ -96,7 +96,7 @@ export const InvitationScalarFieldEnumSchema = z.enum(['id','organizationId','em
 
 export const PurchaseScalarFieldEnumSchema = z.enum(['id','organizationId','userId','type','customerId','subscriptionId','productId','status','createdAt','updatedAt']);
 
-export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','isSubcontractor','defaultClientType','notes','createdAt','updatedAt']);
+export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','isSubcontractor','defaultClientType','difficultyScore','notes','createdAt','updatedAt']);
 
 export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
 
@@ -140,7 +140,7 @@ export const ExcursionPackageScalarFieldEnumSchema = z.enum(['id','organizationI
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -476,6 +476,7 @@ export const ContactSchema = z.object({
   billingAddress: z.string().nullable(),
   isPartner: z.boolean(),
   isSubcontractor: z.boolean(),
+  difficultyScore: z.number().int().nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -992,6 +993,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   secondDriverHourlyRate: z.instanceof(Prisma.Decimal, { message: "Field 'secondDriverHourlyRate' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   relayDriverFixedFee: z.instanceof(Prisma.Decimal, { message: "Field 'relayDriverFixedFee' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}).nullable(),
   useDriverHomeForDeadhead: z.boolean(),
+  difficultyMultipliers: JsonValueSchema.nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

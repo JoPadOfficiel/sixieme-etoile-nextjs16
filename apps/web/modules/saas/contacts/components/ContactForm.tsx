@@ -36,6 +36,8 @@ function getInitialFormData(contact?: Contact | null) {
       billingAddress: contact.billingAddress || "",
       isPartner: contact.isPartner,
       notes: contact.notes || "",
+      // Story 17.15: Client difficulty score for Patience Tax
+      difficultyScore: contact.difficultyScore ?? null,
     };
   }
   return {
@@ -51,6 +53,8 @@ function getInitialFormData(contact?: Contact | null) {
     billingAddress: "",
     isPartner: false,
     notes: "",
+    // Story 17.15: Client difficulty score for Patience Tax
+    difficultyScore: null as number | null,
   };
 }
 
@@ -330,6 +334,30 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
           onChange={(e) => updateField("notes", e.target.value)}
           rows={3}
         />
+      </div>
+
+      {/* Story 17.15: Client Difficulty Score (Patience Tax) */}
+      <div className="space-y-2">
+        <Label htmlFor="difficultyScore">{t("contacts.form.difficultyScore")}</Label>
+        <Select
+          value={formData.difficultyScore?.toString() ?? "none"}
+          onValueChange={(value) => updateField("difficultyScore", value === "none" ? null : parseInt(value, 10))}
+        >
+          <SelectTrigger id="difficultyScore">
+            <SelectValue placeholder={t("contacts.form.difficultyScorePlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t("contacts.form.difficultyScoreNone")}</SelectItem>
+            <SelectItem value="1">1 - {t("contacts.form.difficultyScore1")}</SelectItem>
+            <SelectItem value="2">2 - {t("contacts.form.difficultyScore2")}</SelectItem>
+            <SelectItem value="3">3 - {t("contacts.form.difficultyScore3")}</SelectItem>
+            <SelectItem value="4">4 - {t("contacts.form.difficultyScore4")}</SelectItem>
+            <SelectItem value="5">5 - {t("contacts.form.difficultyScore5")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {t("contacts.form.difficultyScoreHelp")}
+        </p>
       </div>
 
       {/* Actions */}

@@ -17,6 +17,8 @@ export interface Contact {
   isPartner: boolean;
   defaultClientType: "PARTNER" | "PRIVATE";
   notes: string | null;
+  // Story 17.15: Client difficulty score for Patience Tax (1-5 scale)
+  difficultyScore: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -26,6 +26,8 @@ const createContactSchema = z.object({
 	isPartner: z.boolean().default(false),
 	defaultClientType: z.enum(["PARTNER", "PRIVATE"]).default("PRIVATE"),
 	notes: z.string().optional().nullable(),
+	// Story 17.15: Client difficulty score for Patience Tax (1-5 scale)
+	difficultyScore: z.coerce.number().int().min(1).max(5).optional().nullable(),
 });
 
 const updateContactSchema = createContactSchema.partial();

@@ -290,6 +290,8 @@ export interface ContactData {
 	id: string;
 	isPartner: boolean;
 	partnerContract?: PartnerContractData | null;
+	// Story 17.15: Client difficulty score for Patience Tax
+	difficultyScore?: number | null;
 }
 
 export interface PartnerContractData {
@@ -407,6 +409,8 @@ export interface OrganizationPricingSettings {
 	// Story 17.9: Time bucket configuration for MAD pricing
 	timeBucketInterpolationStrategy?: TimeBucketInterpolationStrategy | null;
 	madTimeBuckets?: MadTimeBucketData[];
+	// Story 17.15: Client difficulty multipliers (Patience Tax)
+	difficultyMultipliers?: Record<string, number> | null;
 }
 
 // ============================================================================
@@ -559,6 +563,90 @@ export interface RoundTripMultiplierResult {
 	adjustedPrice: number;
 	adjustedInternalCost: number;
 	appliedRule: AppliedRoundTripRule | null;
+}
+
+// ============================================================================
+// Story 17.15: Client Difficulty Score (Patience Tax) Types
+// ============================================================================
+
+/**
+ * Story 17.15: Default difficulty multipliers if not configured
+ * Scale 1-5 where higher score = more difficult client = higher multiplier
+ */
+export const DEFAULT_DIFFICULTY_MULTIPLIERS: Record<number, number> = {
+	1: 1.00, // No adjustment
+	2: 1.02, // +2%
+	3: 1.05, // +5%
+	4: 1.08, // +8%
+	5: 1.10, // +10%
+};
+
+/**
+ * Story 17.15: Applied client difficulty multiplier rule for transparency
+ */
+export interface AppliedClientDifficultyRule extends AppliedRule {
+	type: "CLIENT_DIFFICULTY_MULTIPLIER";
+	description: string;
+	difficultyScore: number;
+	multiplier: number;
+	priceBefore: number;
+	priceAfter: number;
+}
+
+/**
+ * Story 17.15: Result of client difficulty multiplier application
+ */
+export interface ClientDifficultyMultiplierResult {
+	adjustedPrice: number;
+	appliedRule: AppliedClientDifficultyRule | null;
+}
+
+/**
+ * Story 17.15: Apply client difficulty multiplier (Patience Tax)
+ * 
+ * @param price - Current price before difficulty adjustment
+ * @param difficultyScore - Client's difficulty score (1-5), null if not set
+ * @param configuredMultipliers - Organization's configured multipliers, null uses defaults
+ * @returns Adjusted price and applied rule (null if no adjustment)
+ */
+export function applyClientDifficultyMultiplier(
+	price: number,
+	difficultyScore: number | null | undefined,
+	configuredMultipliers?: Record<string, number> | null,
+): ClientDifficultyMultiplierResult {
+	// No adjustment if no difficulty score
+	if (difficultyScore == null || difficultyScore < 1 || difficultyScore > 5) {
+		return { adjustedPrice: price, appliedRule: null };
+	}
+
+	// Get multiplier from configured or defaults
+	// configuredMultipliers uses string keys from JSON, DEFAULT uses number keys
+	let multiplier = 1.0;
+	if (configuredMultipliers) {
+		multiplier = configuredMultipliers[String(difficultyScore)] ?? 1.0;
+	} else {
+		multiplier = DEFAULT_DIFFICULTY_MULTIPLIERS[difficultyScore] ?? 1.0;
+	}
+
+	// No adjustment if multiplier is 1.0 (neutral)
+	if (multiplier === 1.0) {
+		return { adjustedPrice: price, appliedRule: null };
+	}
+
+	const adjustedPrice = Math.round(price * multiplier * 100) / 100;
+	const percentChange = Math.round((multiplier - 1) * 100 * 100) / 100;
+
+	return {
+		adjustedPrice,
+		appliedRule: {
+			type: "CLIENT_DIFFICULTY_MULTIPLIER",
+			description: `Client difficulty adjustment: +${percentChange}% (score ${difficultyScore}/5)`,
+			difficultyScore,
+			multiplier,
+			priceBefore: price,
+			priceAfter: adjustedPrice,
+		},
+	};
 }
 
 // ============================================================================
@@ -4375,6 +4463,8 @@ export function calculatePrice(
 			request.tripType,
 			// Story 16.6: Pass round trip flag
 			request.isRoundTrip ?? false,
+			// Story 17.15: Pass client difficulty score for Patience Tax
+			contact.difficultyScore ?? null,
 		);
 	}
 
@@ -4417,6 +4507,8 @@ export function calculatePrice(
 			request.tripType,
 			// Story 16.6: Pass round trip flag
 			request.isRoundTrip ?? false,
+			// Story 17.15: Pass client difficulty score for Patience Tax
+			contact.difficultyScore ?? null,
 		);
 	}
 
@@ -4692,16 +4784,19 @@ export function calculatePrice(
 		request.tripType,
 		// Story 16.6: Pass round trip flag
 		request.isRoundTrip ?? false,
+		// Story 17.15: Pass client difficulty score for Patience Tax
+		contact.difficultyScore ?? null,
 	);
 }
 
 /**
- * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3 + 15.5 + 16.6)
+ * Build a dynamic pricing result with enhanced calculation details (Story 4.1 + 4.2 + 4.3 + 4.6 + 11.3 + 15.5 + 16.6 + 17.15)
  * Story 4.3: Now applies multipliers (advanced rates + seasonal) to the base price
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
  * Story 11.3: Now applies zone pricing multipliers
  * Story 15.5: Now applies trip type specific pricing
  * Story 16.6: Now applies round trip multiplier (×2) for transfers
+ * Story 17.15: Now applies client difficulty multiplier (Patience Tax)
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -4726,6 +4821,8 @@ function buildDynamicResult(
 	tripType: TripType = "transfer",
 	// Story 16.6: Round trip flag for transfer pricing
 	isRoundTrip: boolean = false,
+	// Story 17.15: Client difficulty score for Patience Tax
+	clientDifficultyScore: number | null = null,
 ): PricingResult {
 	// Story 15.4: Resolve rates with fallback chain (Category → Organization)
 	const resolvedRates = resolveRates(vehicleCategory, settings);
@@ -4802,6 +4899,20 @@ function buildDynamicResult(
 			price = multiplierResult.adjustedPrice;
 			// Add all multiplier rules to the applied rules list
 			appliedRules.push(...multiplierResult.appliedRules);
+		}
+	}
+
+	// Story 17.15: Apply client difficulty multiplier (Patience Tax)
+	// Applied after all other multipliers, before round trip
+	if (clientDifficultyScore != null) {
+		const difficultyResult = applyClientDifficultyMultiplier(
+			price,
+			clientDifficultyScore,
+			settings.difficultyMultipliers as Record<string, number> | null,
+		);
+		if (difficultyResult.appliedRule) {
+			price = difficultyResult.adjustedPrice;
+			appliedRules.push(difficultyResult.appliedRule);
 		}
 	}
 	

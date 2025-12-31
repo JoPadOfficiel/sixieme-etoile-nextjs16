@@ -228,10 +228,12 @@ async function loadContactWithContract(
 	}
 
 	// Transform to ContactData format
+	// Story 17.15: Include difficultyScore for Patience Tax
 	const contactData: ContactData = {
 		id: contact.id,
 		isPartner: contact.isPartner,
 		partnerContract: null,
+		difficultyScore: contact.difficultyScore ?? null,
 	};
 
 	if (contact.partnerContract) {
@@ -429,6 +431,8 @@ async function loadPricingSettings(
 			orangeMarginThreshold: settings.orangeMarginThreshold ? Number(settings.orangeMarginThreshold) : undefined,
 			// Story 17.1: Include fuel price source for transparency
 			fuelPriceSource: fuelPriceResult,
+			// Story 17.15: Client difficulty multipliers (Patience Tax)
+			difficultyMultipliers: settings.difficultyMultipliers as Record<string, number> | null,
 		};
 	}
 
