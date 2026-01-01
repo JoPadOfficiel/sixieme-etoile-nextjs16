@@ -912,6 +912,44 @@ export interface AppliedZoneSurchargeRule extends AppliedRule {
 }
 
 // ============================================================================
+// Story 19.3: Excursion Return Trip Cost Types
+// ============================================================================
+
+/**
+ * Story 19.3: Source of return trip distance calculation
+ */
+export type ExcursionReturnSource = "SHADOW_CALCULATION" | "SYMMETRIC_ESTIMATE";
+
+/**
+ * Story 19.3: Applied excursion return trip rule for transparency
+ */
+export interface AppliedExcursionReturnTripRule extends AppliedRule {
+	type: "EXCURSION_RETURN_TRIP";
+	description: string;
+	returnDistanceKm: number;
+	returnDurationMinutes: number;
+	returnCost: number;
+	returnSource: ExcursionReturnSource;
+	costBreakdown: {
+		fuel: number;
+		driver: number;
+		tolls?: number;
+	};
+	addedToPrice: number;
+}
+
+/**
+ * Story 19.3: Result of excursion return cost calculation
+ */
+export interface ExcursionReturnCostResult {
+	returnDistanceKm: number;
+	returnDurationMinutes: number;
+	returnCost: number;
+	returnSource: ExcursionReturnSource;
+	appliedRule: AppliedExcursionReturnTripRule;
+}
+
+// ============================================================================
 // Story 18.10: Hierarchical Pricing Algorithm Types
 // ============================================================================
 
@@ -3625,6 +3663,79 @@ export function calculateExcursionPrice(
 }
 
 /**
+ * Story 19.3: Calculate excursion return trip cost
+ * 
+ * For excursions, the vehicle must return to base after the service.
+ * This function calculates the cost of that return trip and adds it to the price.
+ * 
+ * @param tripAnalysis - Trip analysis with segment data
+ * @param settings - Organization pricing settings
+ * @param serviceDistanceKm - Service segment distance (fallback for symmetric estimate)
+ * @returns Return cost result with breakdown
+ */
+export function calculateExcursionReturnCost(
+	tripAnalysis: TripAnalysis,
+	settings: OrganizationPricingSettings,
+	serviceDistanceKm: number,
+): ExcursionReturnCostResult {
+	// Get return segment from shadow calculation
+	const returnSegment = tripAnalysis.segments.return;
+	
+	let returnDistanceKm: number;
+	let returnDurationMinutes: number;
+	let returnSource: ExcursionReturnSource;
+	
+	if (returnSegment && returnSegment.distanceKm > 0) {
+		// Use actual return segment from shadow calculation
+		returnDistanceKm = returnSegment.distanceKm;
+		returnDurationMinutes = returnSegment.durationMinutes;
+		returnSource = "SHADOW_CALCULATION";
+	} else {
+		// Fallback: symmetric estimate (return ≈ service distance)
+		// Assume average speed of 50km/h for return trip
+		returnDistanceKm = serviceDistanceKm;
+		returnDurationMinutes = (serviceDistanceKm / 50) * 60; // ~50km/h average
+		returnSource = "SYMMETRIC_ESTIMATE";
+	}
+	
+	// Calculate return cost components
+	const fuelConsumption = settings.fuelConsumptionL100km ?? 7.5;
+	const fuelPrice = settings.fuelPricePerLiter ?? 1.80;
+	const driverHourlyRate = settings.driverHourlyCost ?? 25;
+	
+	// Fuel cost: (distance / 100) × consumption × price
+	const fuelCost = Math.round((returnDistanceKm / 100) * fuelConsumption * fuelPrice * 100) / 100;
+	
+	// Driver cost: (duration / 60) × hourly rate
+	const driverCost = Math.round((returnDurationMinutes / 60) * driverHourlyRate * 100) / 100;
+	
+	// Total return cost
+	const returnCost = Math.round((fuelCost + driverCost) * 100) / 100;
+	
+	const appliedRule: AppliedExcursionReturnTripRule = {
+		type: "EXCURSION_RETURN_TRIP",
+		description: `Return trip cost: ${Math.round(returnDistanceKm)}km, ${Math.round(returnDurationMinutes)}min = ${returnCost}€ (${returnSource === "SHADOW_CALCULATION" ? "from vehicle base" : "symmetric estimate"})`,
+		returnDistanceKm: Math.round(returnDistanceKm * 100) / 100,
+		returnDurationMinutes: Math.round(returnDurationMinutes * 100) / 100,
+		returnCost,
+		returnSource,
+		costBreakdown: {
+			fuel: fuelCost,
+			driver: driverCost,
+		},
+		addedToPrice: returnCost,
+	};
+	
+	return {
+		returnDistanceKm: Math.round(returnDistanceKm * 100) / 100,
+		returnDurationMinutes: Math.round(returnDurationMinutes * 100) / 100,
+		returnCost,
+		returnSource,
+		appliedRule,
+	};
+}
+
+/**
  * Story 15.5: Calculate dispo price with overage
  * 
  * Dispo pricing logic:
@@ -5979,6 +6090,23 @@ function buildDynamicResult(
 		// Store zone surcharges in trip analysis for transparency
 		tripAnalysis.costBreakdown.zoneSurcharges = zoneSurcharges;
 		tripAnalysis.costBreakdown.total = Math.round((tripAnalysis.costBreakdown.total + zoneSurcharges.total) * 100) / 100;
+	}
+	
+	// Story 19.3: Add return trip cost for excursions (dynamic pricing only)
+	// For excursions, the vehicle must return to base after the service
+	// This cost is added to the selling price to ensure profitability
+	if (tripType === "excursion") {
+		const returnCostResult = calculateExcursionReturnCost(
+			tripAnalysis,
+			settings,
+			distanceKm, // fallback for symmetric estimate
+		);
+		
+		// Add return cost to price
+		price = Math.round((price + returnCostResult.returnCost) * 100) / 100;
+		
+		// Add applied rule for transparency
+		appliedRules.push(returnCostResult.appliedRule);
 	}
 	
 	// Story 19.2: Integrate RSE compliance for HEAVY vehicles
