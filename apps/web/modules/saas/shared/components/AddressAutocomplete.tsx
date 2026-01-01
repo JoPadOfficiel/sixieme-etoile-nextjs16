@@ -96,7 +96,7 @@ export function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch suggestions using new Places API
+  // Fetch suggestions using legacy AutocompleteService (more widely available)
   const fetchSuggestions = useCallback(async (input: string) => {
     if (input.length < 3 || !isGoogleLoaded) {
       setSuggestions([]);
@@ -106,7 +106,36 @@ export function AddressAutocomplete({
     setIsLoading(true);
 
     try {
-      // Try new Places API first (google.maps.places.AutocompleteSuggestion)
+      // Use legacy AutocompleteService first (works with standard Places API)
+      if (window.google?.maps?.places?.AutocompleteService) {
+        const service = new google.maps.places.AutocompleteService();
+        service.getPlacePredictions(
+          {
+            input,
+            componentRestrictions: { country: "fr" },
+            types: ["geocode", "establishment"],
+            sessionToken: sessionTokenRef.current || undefined,
+          },
+          (predictions, status) => {
+            setIsLoading(false);
+            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+              const formattedSuggestions: PlaceSuggestion[] = predictions.map((p) => ({
+                placeId: p.place_id,
+                mainText: p.structured_formatting.main_text,
+                secondaryText: p.structured_formatting.secondary_text || "",
+                fullText: p.description,
+              }));
+              setSuggestions(formattedSuggestions);
+              setShowSuggestions(formattedSuggestions.length > 0);
+            } else {
+              setSuggestions([]);
+            }
+          }
+        );
+        return;
+      }
+      
+      // Fallback to new Places API if legacy is not available
       if (window.google?.maps?.places?.AutocompleteSuggestion) {
         const request: google.maps.places.AutocompleteRequest = {
           input,
@@ -131,31 +160,6 @@ export function AddressAutocomplete({
 
         setSuggestions(formattedSuggestions);
         setShowSuggestions(formattedSuggestions.length > 0);
-      } else if (window.google?.maps?.places?.AutocompleteService) {
-        // Fallback to legacy AutocompleteService
-        const service = new google.maps.places.AutocompleteService();
-        service.getPlacePredictions(
-          {
-            input,
-            componentRestrictions: { country: "fr" },
-            types: ["geocode"],
-            sessionToken: sessionTokenRef.current || undefined,
-          },
-          (predictions, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-              const formattedSuggestions: PlaceSuggestion[] = predictions.map((p) => ({
-                placeId: p.place_id,
-                mainText: p.structured_formatting.main_text,
-                secondaryText: p.structured_formatting.secondary_text || "",
-                fullText: p.description,
-              }));
-              setSuggestions(formattedSuggestions);
-              setShowSuggestions(formattedSuggestions.length > 0);
-            } else {
-              setSuggestions([]);
-            }
-          }
-        );
       } else {
         setSuggestions([]);
       }
@@ -192,31 +196,13 @@ export function AddressAutocomplete({
     }
   };
 
-  // Handle suggestion selection using new Place class
+  // Handle suggestion selection using legacy PlacesService (more widely available)
   const handleSelectSuggestion = useCallback(async (suggestion: PlaceSuggestion) => {
     setInputValue(suggestion.fullText);
     setShowSuggestions(false);
 
     try {
-      // Try new Place class first
-      if (window.google?.maps?.places?.Place) {
-        const place = new google.maps.places.Place({ id: suggestion.placeId });
-        await place.fetchFields({ fields: ["formattedAddress", "location"] });
-        
-        const address = place.formattedAddress || suggestion.fullText;
-        const lat = place.location?.lat() ?? null;
-        const lng = place.location?.lng() ?? null;
-
-        onChange({ address, latitude: lat, longitude: lng });
-        
-        // Create new session token after successful selection
-        if (window.google?.maps?.places?.AutocompleteSessionToken) {
-          sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
-        }
-        return;
-      }
-
-      // Fallback to legacy PlacesService
+      // Use legacy PlacesService first (works with standard Places API)
       if (window.google?.maps?.places?.PlacesService) {
         const dummyDiv = document.createElement("div");
         const service = new google.maps.places.PlacesService(dummyDiv);
@@ -244,6 +230,24 @@ export function AddressAutocomplete({
             }
           }
         );
+        return;
+      }
+
+      // Fallback to new Place class if legacy is not available
+      if (window.google?.maps?.places?.Place) {
+        const place = new google.maps.places.Place({ id: suggestion.placeId });
+        await place.fetchFields({ fields: ["formattedAddress", "location"] });
+        
+        const address = place.formattedAddress || suggestion.fullText;
+        const lat = place.location?.lat() ?? null;
+        const lng = place.location?.lng() ?? null;
+
+        onChange({ address, latitude: lat, longitude: lng });
+        
+        // Create new session token after successful selection
+        if (window.google?.maps?.places?.AutocompleteSessionToken) {
+          sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+        }
         return;
       }
 
