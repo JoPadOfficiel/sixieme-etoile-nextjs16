@@ -652,7 +652,7 @@ export const pricingCalculateRouter = new Hono()
 				});
 			}
 
-			// Validate vehicle category exists and load consumption + rates (Story 15.2 + 15.4)
+			// Validate vehicle category exists and load consumption + rates (Story 15.2 + 15.4 + 19.2)
 			const vehicleCategory = await db.vehicleCategory.findFirst({
 				where: withTenantFilter(
 					{ id: data.vehicleCategoryId },
@@ -666,6 +666,7 @@ export const pricingCalculateRouter = new Hono()
 					averageConsumptionL100km: true, // Story 15.2
 					defaultRatePerKm: true,         // Story 15.4
 					defaultRatePerHour: true,       // Story 15.4
+					regulatoryCategory: true,       // Story 19.2: RSE compliance
 				},
 			});
 
@@ -790,14 +791,14 @@ export const pricingCalculateRouter = new Hono()
 				maxKilometers: data.maxKilometers,
 			};
 
-			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category)
+			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category, Story 19.2: RSE compliance)
 			const result = calculatePrice(pricingRequest, {
 				contact,
 				zones,
 				pricingSettings: effectivePricingSettings,
 				advancedRates,
 				seasonalMultipliers,
-				// Story 15.3 + 15.4: Pass vehicle category for multiplier and rates
+				// Story 15.3 + 15.4 + 19.2: Pass vehicle category for multiplier, rates, and RSE compliance
 				vehicleCategory: vehicleCategory ? {
 					id: vehicleCategory.id,
 					code: vehicleCategory.code,
@@ -812,6 +813,8 @@ export const pricingCalculateRouter = new Hono()
 						: null,
 					// Story 15.6: Fuel type - default to null (DIESEL will be used)
 					fuelType: null,
+					// Story 19.2: Regulatory category for RSE compliance (LIGHT = no RSE, HEAVY = RSE applies)
+					regulatoryCategory: vehicleCategory.regulatoryCategory as "LIGHT" | "HEAVY" | null,
 				} : undefined,
 			});
 

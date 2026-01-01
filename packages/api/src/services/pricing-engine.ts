@@ -391,6 +391,8 @@ export interface MadTimeBucketData {
 }
 
 export interface OrganizationPricingSettings {
+	// Story 19.2: Organization ID for compliance integration
+	organizationId?: string;
 	baseRatePerKm: number;
 	baseRatePerHour: number;
 	targetMarginPercent: number;
@@ -414,6 +416,8 @@ export interface OrganizationPricingSettings {
 	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy | null;
 	// Story 17.3: Staffing selection policy
 	staffingSelectionPolicy?: StaffingSelectionPolicy | null;
+	// Story 19.2: Staffing cost parameters for RSE compliance
+	staffingCostParameters?: AlternativeCostParameters | null;
 	// Story 17.9: Time bucket configuration for MAD pricing
 	timeBucketInterpolationStrategy?: TimeBucketInterpolationStrategy | null;
 	madTimeBuckets?: MadTimeBucketData[];
@@ -677,6 +681,7 @@ export function applyClientDifficultyMultiplier(
 /**
  * Story 15.3: Vehicle category information for pricing
  * Story 15.4: Extended with default rates
+ * Story 19.2: Extended with regulatory category for RSE compliance
  */
 export interface VehicleCategoryInfo {
 	id: string;
@@ -688,6 +693,8 @@ export interface VehicleCategoryInfo {
 	defaultRatePerHour: number | null;
 	// Story 15.6: Fuel type for accurate fuel cost (null = DIESEL)
 	fuelType: FuelType | null;
+	// Story 19.2: Regulatory category for RSE compliance (LIGHT = no RSE, HEAVY = RSE applies)
+	regulatoryCategory: RegulatoryCategory | null;
 }
 
 // ============================================================================
@@ -5591,6 +5598,10 @@ export function calculatePrice(
 				null, // shadowInput
 				// Story 16.6: Pass round trip flag
 				request.isRoundTrip ?? false,
+				// Story 19.2: Pass vehicle category for RSE compliance
+				vehicleCategory,
+				// Story 19.2: Pass multiplier context for pickup/dropoff times
+				{ pickupAt, estimatedEndAt, distanceKm: estimatedDistanceKm, pickupZoneId: pickupZone?.id ?? null, dropoffZoneId: dropoffZone?.id ?? null },
 			);
 		}
 	}
@@ -5649,6 +5660,10 @@ export function calculatePrice(
 				null, // shadowInput
 				// Story 16.6: Pass round trip flag (excursions don't use round trip)
 				false,
+				// Story 19.2: Pass vehicle category for RSE compliance
+				vehicleCategory,
+				// Story 19.2: Pass multiplier context for pickup/dropoff times
+				{ pickupAt, estimatedEndAt, distanceKm: estimatedDistanceKm, pickupZoneId: pickupZone?.id ?? null, dropoffZoneId: dropoffZone?.id ?? null },
 			);
 		}
 	}
@@ -5703,6 +5718,10 @@ export function calculatePrice(
 				null, // shadowInput
 				// Story 16.6: Pass round trip flag (dispos don't use round trip)
 				false,
+				// Story 19.2: Pass vehicle category for RSE compliance
+				vehicleCategory,
+				// Story 19.2: Pass multiplier context for pickup/dropoff times
+				{ pickupAt, estimatedEndAt, distanceKm: estimatedDistanceKm, pickupZoneId: pickupZone?.id ?? null, dropoffZoneId: dropoffZone?.id ?? null },
 			);
 		}
 	}
@@ -5962,6 +5981,36 @@ function buildDynamicResult(
 		tripAnalysis.costBreakdown.total = Math.round((tripAnalysis.costBreakdown.total + zoneSurcharges.total) * 100) / 100;
 	}
 	
+	// Story 19.2: Integrate RSE compliance for HEAVY vehicles
+	// Automatically adds staffing costs (double crew, relay, multi-day) when RSE limits are exceeded
+	if (vehicleCategory?.regulatoryCategory === "HEAVY") {
+		const complianceResult = integrateComplianceIntoPricing({
+			organizationId: settings.organizationId ?? "default",
+			vehicleCategoryId: vehicleCategory.id,
+			regulatoryCategory: "HEAVY",
+			tripAnalysis,
+			pickupAt: multiplierContext?.pickupAt ?? new Date(),
+			estimatedDropoffAt: multiplierContext?.estimatedEndAt ?? undefined,
+			costParameters: settings.staffingCostParameters ?? DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+			staffingSelectionPolicy: (settings.staffingSelectionPolicy as ComplianceStaffingPolicy) ?? "CHEAPEST",
+		});
+		
+		// Update tripAnalysis with compliance plan
+		Object.assign(tripAnalysis, complianceResult.tripAnalysis);
+		
+		// Add staffing cost to internal cost
+		if (complianceResult.additionalStaffingCost > 0) {
+			internalCost = Math.round((internalCost + complianceResult.additionalStaffingCost) * 100) / 100;
+			// Also add to price to maintain margin
+			price = Math.round((price + complianceResult.additionalStaffingCost) * 100) / 100;
+		}
+		
+		// Add applied rule for transparency
+		if (complianceResult.appliedRule) {
+			appliedRules.push(complianceResult.appliedRule);
+		}
+	}
+	
 	// Story 16.6: Apply round trip multiplier (×2) LAST, after all other adjustments
 	// Only applies to TRANSFER trip type with isRoundTrip = true
 	if (isRoundTrip && tripType === "transfer") {
@@ -6044,9 +6093,10 @@ function buildDynamicResult(
 }
 
 /**
- * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5, Story 4.6, Story 16.6)
+ * Build a FIXED_GRID pricing result with cost analysis (Story 4.2 - AC5, Story 4.6, Story 16.6, Story 19.2)
  * Story 4.6: Now includes full shadow calculation with segments A/B/C
  * Story 16.6: Now applies round trip multiplier (×2) for transfers
+ * Story 19.2: Now integrates RSE compliance for HEAVY vehicles
  */
 function buildGridResult(
 	price: number,
@@ -6059,6 +6109,10 @@ function buildGridResult(
 	shadowInput: ShadowCalculationInput | null = null,
 	// Story 16.6: Round trip flag for transfer pricing
 	isRoundTrip: boolean = false,
+	// Story 19.2: Vehicle category for RSE compliance
+	vehicleCategory?: VehicleCategoryInfo,
+	// Story 19.2: Multiplier context for pickup/dropoff times
+	multiplierContext?: MultiplierContext | null,
 ): PricingResult {
 	// Story 4.6: Calculate shadow segments (A/B/C)
 	const tripAnalysis = calculateShadowSegments(
@@ -6070,6 +6124,36 @@ function buildGridResult(
 	
 	// Use total internal cost from shadow calculation
 	let internalCost = tripAnalysis.totalInternalCost;
+	
+	// Story 19.2: Integrate RSE compliance for HEAVY vehicles (grid prices too)
+	// Even fixed partner prices need staffing costs added when RSE limits are exceeded
+	if (vehicleCategory?.regulatoryCategory === "HEAVY") {
+		const complianceResult = integrateComplianceIntoPricing({
+			organizationId: settings.organizationId ?? "default",
+			vehicleCategoryId: vehicleCategory.id,
+			regulatoryCategory: "HEAVY",
+			tripAnalysis,
+			pickupAt: multiplierContext?.pickupAt ?? new Date(),
+			estimatedDropoffAt: multiplierContext?.estimatedEndAt ?? undefined,
+			costParameters: settings.staffingCostParameters ?? DEFAULT_ALTERNATIVE_COST_PARAMETERS,
+			staffingSelectionPolicy: (settings.staffingSelectionPolicy as ComplianceStaffingPolicy) ?? "CHEAPEST",
+		});
+		
+		// Update tripAnalysis with compliance plan
+		Object.assign(tripAnalysis, complianceResult.tripAnalysis);
+		
+		// Add staffing cost to internal cost AND price (grid price + staffing surcharge)
+		if (complianceResult.additionalStaffingCost > 0) {
+			internalCost = Math.round((internalCost + complianceResult.additionalStaffingCost) * 100) / 100;
+			// For grid prices, staffing is an additional surcharge on top of the contract price
+			price = Math.round((price + complianceResult.additionalStaffingCost) * 100) / 100;
+		}
+		
+		// Add applied rule for transparency
+		if (complianceResult.appliedRule) {
+			appliedRules.push(complianceResult.appliedRule);
+		}
+	}
 	
 	// Story 16.6: Apply round trip multiplier (×2) for grid prices too
 	if (isRoundTrip) {

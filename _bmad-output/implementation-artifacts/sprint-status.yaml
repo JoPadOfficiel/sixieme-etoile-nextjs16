@@ -165,7 +165,7 @@ development_status:
   epic-18-retrospective: optional
   epic-19: in-progress
   19-1-fix-double-category-pricing: done
-  19-2-implement-automatic-rse-compliant-staffing-for-long-trips: backlog
+  19-2-implement-automatic-rse-compliant-staffing-for-long-trips: done
   19-3-fix-excursion-pricing-to-include-return-trip-cost: backlog
   19-4-fix-dispo-pricing-formula: backlog
   19-5-fix-off-grid-trip-type-to-show-manual-pricing-ui: backlog
