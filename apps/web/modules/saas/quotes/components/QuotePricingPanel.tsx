@@ -14,6 +14,7 @@ import {
   Loader2Icon,
   LockIcon,
   PlusIcon,
+  PencilIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -96,6 +97,9 @@ export function QuotePricingPanel({
   // Story 16.4: Check if this is a contract price (FIXED_GRID)
   const isContractPrice = pricingResult?.pricingMode === "FIXED_GRID";
   const isPriceLocked = isContractPrice && !priceOverridden;
+  
+  // Story 19.5: Check if this is an OFF_GRID trip (manual pricing only)
+  const isManualPricingMode = formData.tripType === "OFF_GRID";
 
   // Calculate margin based on final price and internal cost
   const calculateMargin = (finalPrice: number, internalCost: number): number => {
@@ -169,7 +173,9 @@ export function QuotePricingPanel({
     (!isDropoffRequired || formData.dropoffAddress) &&
     formData.pickupAt &&
     formData.vehicleCategoryId &&
-    formData.finalPrice > 0;
+    formData.finalPrice > 0 &&
+    // Story 19.5: Notes required for OFF_GRID
+    (!isManualPricingMode || formData.notes.trim().length > 0);
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -188,11 +194,27 @@ export function QuotePricingPanel({
               {/* Story 16.4: Contract Price Badge */}
               {isContractPrice && <ContractPriceBadge />}
             </div>
-            {isCalculating ? (
-              <Skeleton className="h-10 w-full" />
+            {/* Story 19.5: Manual pricing mode for OFF_GRID */}
+            {isManualPricingMode ? (
+              <div className="space-y-3">
+                {/* Manual Pricing Badge */}
+                <div data-testid="manual-pricing-badge" className="flex items-center gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                  <PencilIcon className="size-5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      {t("quotes.create.pricing.manualPricingMode")}
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      {t("quotes.create.pricing.manualPricingHint")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : isCalculating ? (
+              <Skeleton data-testid="pricing-skeleton" className="h-10 w-full" />
             ) : (
               <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 bg-muted rounded-md">
+                  <div data-testid="suggested-price" className="flex-1 p-3 bg-muted rounded-md">
                   <div className="flex items-center gap-2">
                     <EuroIcon className="size-4 text-muted-foreground" />
                     <span className="text-lg font-bold">
@@ -256,16 +278,24 @@ export function QuotePricingPanel({
             ) : (
               <div className="relative">
                 <EuroIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
+                  <Input
                   id="finalPrice"
+                  data-testid="final-price"
                   type="number"
                   min={0}
                   step={0.01}
                   value={formData.finalPrice || ""}
                   onChange={handleFinalPriceChange}
                   disabled={isSubmitting}
-                  className="pl-9 text-lg font-medium"
-                  placeholder="0.00"
+                  className={cn(
+                    "pl-9 text-lg font-medium",
+                    // Story 19.5: Highlight for manual pricing mode
+                    isManualPricingMode && "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+                  )}
+                  placeholder={isManualPricingMode 
+                    ? t("quotes.create.pricing.manualPricePlaceholder")
+                    : "0.00"
+                  }
                 />
               </div>
             )}
@@ -400,9 +430,10 @@ export function QuotePricingPanel({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="w-full">
-              <Button
+                <Button
                 type="button"
                 size="lg"
+                data-testid="create-quote-button"
                 className={cn(
                   "w-full",
                   hasBlockingViolations && "opacity-50 cursor-not-allowed"
@@ -458,6 +489,10 @@ export function QuotePricingPanel({
           )}
           {formData.finalPrice <= 0 && (
             <p>• {t("quotes.create.validation.priceRequired")}</p>
+          )}
+          {/* Story 19.5: Notes validation for OFF_GRID */}
+          {isManualPricingMode && !formData.notes.trim() && (
+            <p>• {t("quotes.create.validation.notesRequiredOffGrid")}</p>
           )}
         </div>
       )}

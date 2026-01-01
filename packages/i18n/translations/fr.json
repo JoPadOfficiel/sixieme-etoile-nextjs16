@@ -2436,6 +2436,9 @@
 				"contractPriceTooltip": "Ce prix est défini par le contrat partenaire et ne peut pas être modifié",
 				"contractPriceTooltipAdmin": "Cliquez pour modifier ce prix contractuel (admin uniquement)",
 				"profitabilityTooltip": "Prix contractuel - la rentabilité ne peut pas être ajustée",
+				"manualPricingMode": "Tarification manuelle",
+				"manualPricingHint": "Ce type de trajet nécessite une tarification manuelle. Saisissez le prix et justifiez-le dans les notes.",
+				"manualPricePlaceholder": "Saisissez le prix",
 				"overrideDialog": {
 					"title": "Modifier le prix contractuel ?",
 					"message": "Il s'agit d'un prix contractuellement convenu avec {partnerName}. Le modifier peut affecter les relations partenaires et nécessite une justification.",
@@ -2452,7 +2455,8 @@
 				"dropoffRequired": "Veuillez entrer une adresse de destination",
 				"dateTimeRequired": "Veuillez sélectionner une date et heure",
 				"vehicleRequired": "Veuillez sélectionner une catégorie de véhicule",
-				"priceRequired": "Veuillez entrer un prix final"
+				"priceRequired": "Veuillez entrer un prix final",
+				"notesRequiredOffGrid": "Les notes sont obligatoires pour les trajets hors grille"
 			},
 			"tripTransparency": {
 				"title": "Transparence du trajet",
