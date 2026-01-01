@@ -238,3 +238,61 @@ describe("Edge Cases", () => {
 		expect(result.price).toBe(200); // 180 + 20
 	});
 });
+
+// ============================================================================
+// Story 19.4: DISPO Pricing Formula Fix Tests
+// ============================================================================
+
+describe("Story 19.4: DISPO uses durationHours instead of route duration", () => {
+	it("should include requestedDurationHours in the rule for transparency", () => {
+		const durationMinutes = 4 * 60; // 4 hours
+		const distanceKm = 150;
+		const ratePerHour = 45;
+
+		const result = calculateDispoPrice(durationMinutes, distanceKm, ratePerHour, mockSettings);
+
+		// Story 19.4: requestedDurationHours should be included for transparency
+		expect(result.rule?.requestedDurationHours).toBe(4);
+	});
+
+	it("should calculate price based on provided duration, not route estimate", () => {
+		// Scenario: User requests 4h DISPO, but route estimate is only 30 minutes
+		// The price should be based on 4h, not 30 minutes
+		const requestedDurationMinutes = 4 * 60; // 4 hours (from durationHours)
+		const distanceKm = 100;
+		const ratePerHour = 45;
+
+		// Using requestedDurationMinutes (correct behavior after fix)
+		const result = calculateDispoPrice(requestedDurationMinutes, distanceKm, ratePerHour, mockSettings);
+
+		// Correct: 4h × 45€/h = 180€
+		// This demonstrates that DISPO pricing uses the provided duration (4h)
+		// NOT the route duration estimate which would be much shorter
+		expect(result.price).toBe(180);
+		expect(result.rule?.requestedDurationHours).toBe(4);
+		expect(result.rule?.includedKm).toBe(200); // 4h × 50km/h
+		
+		// The key insight: if we had used route duration (e.g., 30 min for 100km),
+		// the price would have been only ~22.50€ instead of 180€
+		// Story 19.4 ensures buildDynamicResult passes the correct duration
+	});
+
+	it("should calculate overage correctly with requested duration", () => {
+		// 8h DISPO with 500km actual distance
+		const requestedDurationMinutes = 8 * 60;
+		const distanceKm = 500;
+		const ratePerHour = 45;
+
+		const result = calculateDispoPrice(requestedDurationMinutes, distanceKm, ratePerHour, mockSettings);
+
+		// Base: 8h × 45€ = 360€
+		// Included: 8h × 50km/h = 400km
+		// Overage: (500 - 400) × 0.50€ = 50€
+		// Total: 360 + 50 = 410€
+		expect(result.price).toBe(410);
+		expect(result.rule?.requestedDurationHours).toBe(8);
+		expect(result.rule?.includedKm).toBe(400);
+		expect(result.rule?.overageKm).toBe(100);
+		expect(result.rule?.overageAmount).toBe(50);
+	});
+});

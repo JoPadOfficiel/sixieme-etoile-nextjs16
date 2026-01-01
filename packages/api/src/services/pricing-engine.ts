@@ -845,6 +845,7 @@ export interface VehicleCategoryMultiplierResult {
 /**
  * Story 15.5: Applied trip type rule for transparency
  * Story 17.9: Extended for time bucket pricing
+ * Story 19.4: Extended for DISPO requested duration transparency
  */
 export interface AppliedTripTypeRule extends AppliedRule {
 	type: "TRIP_TYPE" | "TIME_BUCKET";
@@ -862,6 +863,9 @@ export interface AppliedTripTypeRule extends AppliedRule {
 	overageKm?: number;
 	overageRatePerKm?: number;
 	overageAmount?: number;
+	// Story 19.4: DISPO requested duration for transparency
+	requestedDurationHours?: number;
+	usedFallbackDuration?: boolean;
 	// Story 17.9: Time bucket specific
 	timeBucketUsed?: {
 		durationHours: number;
@@ -3776,6 +3780,8 @@ export function calculateDispoPrice(
 		overageKm,
 		overageRatePerKm,
 		overageAmount,
+		// Story 19.4: Add requested duration for transparency
+		requestedDurationHours: Math.round(hours * 100) / 100,
 		basePriceBeforeAdjustment: basePrice,
 		priceAfterAdjustment: price,
 	};
@@ -5578,6 +5584,8 @@ export function calculatePrice(
 			request.isRoundTrip ?? false,
 			// Story 17.15: Pass client difficulty score for Patience Tax
 			contact.difficultyScore ?? null,
+			// Story 19.4: Pass requested duration for DISPO pricing
+			request.durationHours != null ? request.durationHours * 60 : null,
 		);
 	}
 
@@ -5622,6 +5630,8 @@ export function calculatePrice(
 			request.isRoundTrip ?? false,
 			// Story 17.15: Pass client difficulty score for Patience Tax
 			contact.difficultyScore ?? null,
+			// Story 19.4: Pass requested duration for DISPO pricing
+			request.durationHours != null ? request.durationHours * 60 : null,
 		);
 	}
 
@@ -5911,6 +5921,8 @@ export function calculatePrice(
 		request.isRoundTrip ?? false,
 		// Story 17.15: Pass client difficulty score for Patience Tax
 		contact.difficultyScore ?? null,
+		// Story 19.4: Pass requested duration for DISPO pricing
+		request.durationHours != null ? request.durationHours * 60 : null,
 	);
 }
 
@@ -5922,6 +5934,7 @@ export function calculatePrice(
  * Story 15.5: Now applies trip type specific pricing
  * Story 16.6: Now applies round trip multiplier (×2) for transfers
  * Story 17.15: Now applies client difficulty multiplier (Patience Tax)
+ * Story 19.4: Now uses requestedDurationMinutes for DISPO pricing
  */
 function buildDynamicResult(
 	distanceKm: number,
@@ -5948,18 +5961,36 @@ function buildDynamicResult(
 	isRoundTrip: boolean = false,
 	// Story 17.15: Client difficulty score for Patience Tax
 	clientDifficultyScore: number | null = null,
+	// Story 19.4: Requested duration for DISPO (in minutes, from durationHours * 60)
+	requestedDurationMinutes: number | null = null,
 ): PricingResult {
 	// Story 15.4: Resolve rates with fallback chain (Category → Organization)
 	const resolvedRates = resolveRates(vehicleCategory, settings);
+	
+	// Story 19.4: For DISPO, use requested duration if provided, otherwise fallback to route duration
+	const effectiveDurationForPricing = (tripType === "dispo" && requestedDurationMinutes != null)
+		? requestedDurationMinutes
+		: durationMinutes;
+	
+	// Story 19.4: Add warning if DISPO uses fallback duration (durationHours not provided)
+	if (tripType === "dispo" && requestedDurationMinutes == null) {
+		appliedRules.push({
+			type: "DISPO_DURATION_FALLBACK",
+			description: "DISPO using route duration as fallback (durationHours not provided)",
+			routeDurationMinutes: durationMinutes,
+			warning: "For accurate DISPO pricing, please specify durationHours",
+		});
+	}
 	
 	// Calculate with full details using resolved rates
 	const calculation = calculateDynamicBasePrice(distanceKm, durationMinutes, settings, resolvedRates);
 	
 	// Story 15.5: Apply trip type specific pricing BEFORE margin
+	// Story 19.4: Use effectiveDurationForPricing for DISPO trips
 	const tripTypePricingResult = applyTripTypePricing(
 		tripType,
 		distanceKm,
-		durationMinutes,
+		effectiveDurationForPricing,
 		resolvedRates.ratePerHour,
 		calculation.basePrice,
 		settings,

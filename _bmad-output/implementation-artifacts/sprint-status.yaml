@@ -167,7 +167,7 @@ development_status:
   19-1-fix-double-category-pricing: done
   19-2-implement-automatic-rse-compliant-staffing-for-long-trips: done
   19-3-fix-excursion-pricing-to-include-return-trip-cost: done
-  19-4-fix-dispo-pricing-formula: backlog
+  19-4-fix-dispo-pricing-formula: done
   19-5-fix-off-grid-trip-type-to-show-manual-pricing-ui: backlog
   19-6-implement-automatic-vehicle-category-selection-based-on-capacity: backlog
   19-7-fix-route-trace-display-on-quote-map: backlog
