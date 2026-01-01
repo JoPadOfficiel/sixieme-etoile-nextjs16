@@ -1,4 +1,4 @@
-generated: "2025-12-30T21:03:11.121774+00:00"
+generated: "2026-01-01T21:51:00+01:00"
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -163,5 +163,21 @@ development_status:
   18-10-hierarchical-pricing-algorithm-implementation: done
   18-11-configurable-transfer-to-mad-thresholds: done
   epic-18-retrospective: optional
-  epic-19: backlog
+  epic-19: in-progress
   19-1-fix-double-category-pricing: done
+  19-2-implement-automatic-rse-compliant-staffing-for-long-trips: backlog
+  19-3-fix-excursion-pricing-to-include-return-trip-cost: backlog
+  19-4-fix-dispo-pricing-formula: backlog
+  19-5-fix-off-grid-trip-type-to-show-manual-pricing-ui: backlog
+  19-6-implement-automatic-vehicle-category-selection-based-on-capacity: backlog
+  19-7-fix-route-trace-display-on-quote-map: backlog
+  19-8-fix-vehicle-driver-assignment-in-dispatch: backlog
+  19-9-enlarge-assignment-and-detail-panels-in-dispatch: backlog
+  19-10-move-ui-blocks-for-better-quote-layout: backlog
+  19-11-add-address-field-to-operating-base-form: backlog
+  19-12-display-driver-missions-in-driver-calendar: backlog
+  19-13-validate-zone-conflict-resolution-for-concentric-circles: backlog
+  19-14-add-comprehensive-pricing-tests: backlog
+  19-15-decompose-pricing-engine-into-modular-architecture: backlog
+  19-16-implement-mandatory-testing-protocol-for-all-stories: backlog
+  epic-19-retrospective: optional
