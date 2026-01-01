@@ -4009,21 +4009,727 @@ This epic depends on and extends the work done in Epics 3, 4, 8, 11, 14, 15, 16,
 
 ---
 
+## Epic 19: Pricing Engine Critical Fixes & Quote System Stabilization
+
+**Goal:** Fix critical pricing calculation bugs causing prices 5-10× higher than expected, implement automatic RSE-compliant staffing (double driver), fix UI/UX issues in quote creation, and ensure all trip types calculate correctly.
+
+**Priority:** CRITICAL - Blocking production use
+
+**Root Cause Analysis:**
+The pricing engine currently applies BOTH category-specific rates (e.g., Autocar at 4.50€/km vs base 1.80€/km) AND the category price multiplier (2.5× for Autocar), resulting in a ~6× price inflation instead of the intended ~2.5× premium. Additionally, the RSE compliance system blocks long trips instead of automatically adding a second driver.
+
+---
+
+### Story 19.1: Fix Double Application of Category Pricing
+
+As a **pricing engineer**,  
+I want the pricing engine to apply EITHER category-specific rates OR the category multiplier, not both,  
+So that vehicle category pricing is applied correctly without double inflation.
+
+**Related FRs:** FR13, FR15, FR58.
+
+**Acceptance Criteria:**
+
+**Given** a vehicle category with `defaultRatePerKm = 4.50€`, `defaultRatePerHour = 120€`, and `priceMultiplier = 2.50`,  
+**When** the pricing engine calculates a dynamic price,  
+**Then** it shall use the category rates (4.50€/km, 120€/h) WITHOUT also applying the 2.5× multiplier.
+
+**Or alternatively:**
+
+**Given** a vehicle category with `priceMultiplier = 2.50` and organization base rates (1.80€/km, 45€/h),  
+**When** the pricing engine calculates a dynamic price,  
+**Then** it shall use organization rates × category multiplier (1.80 × 2.5 = 4.50€/km).
+
+**And** the `appliedRules` shall clearly indicate which pricing method was used (category rates OR base rates × multiplier).
+
+**And** for a Paris → Marseille trip (~780km, ~8h) with Autocar category, the suggested price shall be approximately 2,500-4,000€, not 19,000€+.
+
+**Technical Notes:**
+
+- Modify `resolveRates()` in `pricing-engine.ts` to return a flag indicating if category rates were used.
+- Modify `applyVehicleCategoryMultiplier()` to skip application if category rates were already used.
+- Add unit tests with expected price ranges for common long-distance scenarios.
+- File: `packages/api/src/services/pricing-engine.ts` lines 718-740 and 5507-5540.
+
+**Prerequisites:** None (critical bug fix).
+
+---
+
+### Story 19.2: Implement Automatic RSE-Compliant Staffing for Long Trips
+
+As an **operator**,  
+I want the system to automatically add a second driver for trips exceeding RSE limits,  
+So that long trips are quoted with compliant staffing instead of being blocked.
+
+**Related FRs:** FR25-FR30, FR47-FR49.
+
+**Acceptance Criteria:**
+
+**Given** a trip where driving time exceeds 9 hours OR work amplitude exceeds 13 hours,  
+**When** the pricing engine calculates the quote,  
+**Then** it shall automatically:
+
+1. Detect the RSE violation
+2. Calculate the cost of a second driver (using `secondDriverHourlyRate` from settings)
+3. Add the second driver cost to `internalCost`
+4. Include the second driver cost in the suggested price
+5. Mark the quote as "Double Crew" in `tripAnalysis.staffingMode`
+
+**And** the quote shall NOT be blocked with "Trajet impossible" when double crew resolves the violation.
+
+**And** the Trip Transparency panel shall show:
+
+- Staffing mode: "Double Crew" / "Single Driver" / "Relay" / "Multi-Day"
+- Additional staffing cost breakdown
+
+**And** the `appliedRules` shall include a rule of type `RSE_STAFFING_ADJUSTMENT` with details.
+
+**Technical Notes:**
+
+- Add `staffingMode` enum: `SINGLE_DRIVER`, `DOUBLE_CREW`, `RELAY`, `MULTI_DAY`.
+- Modify compliance validation to suggest solutions instead of just blocking.
+- Use `secondDriverHourlyRate` (30€/h), `driverOvernightPremium` (75€), `hotelCostPerNight` (150€), `mealCostPerDay` (40€) from settings.
+- File: `packages/api/src/services/pricing-engine.ts` and `packages/api/src/routes/vtc/compliance.ts`.
+
+**Prerequisites:** Story 19.1.
+
+---
+
+### Story 19.3: Fix Excursion Pricing to Include Return Trip Cost
+
+As an **operator**,  
+I want excursion quotes to include the cost of the return trip,  
+So that excursions are priced higher than one-way transfers as expected.
+
+**Related FRs:** FR10, FR12.
+
+**Acceptance Criteria:**
+
+**Given** an excursion trip type with a return date specified,  
+**When** the pricing engine calculates the quote,  
+**Then** the price shall include:
+
+1. Outbound trip cost
+2. Waiting/activity time at destination (if applicable)
+3. Return trip cost
+4. Any overnight costs if multi-day
+
+**And** an excursion Paris → Marseille with return shall cost MORE than a simple transfer Paris → Marseille.
+
+**And** the `tripAnalysis` shall show separate segments for outbound, activity, and return.
+
+**Technical Notes:**
+
+- Modify `applyTripTypePricing()` to properly calculate excursion costs.
+- Ensure `returnDate` is used to calculate multi-day costs.
+- File: `packages/api/src/services/pricing-engine.ts` function `applyTripTypePricing`.
+
+**Prerequisites:** Story 19.1.
+
+---
+
+### Story 19.4: Fix DISPO (Mise à Disposition) Pricing Formula
+
+As an **operator**,  
+I want DISPO quotes to use the correct hourly-based pricing formula,  
+So that mise à disposition trips are priced appropriately.
+
+**Related FRs:** FR10, FR12.
+
+**Acceptance Criteria:**
+
+**Given** a DISPO trip type with `durationHours` specified,  
+**When** the pricing engine calculates the quote,  
+**Then** the price shall be calculated as:
+
+- Base: `durationHours × ratePerHour`
+- Plus: included kilometers overage if exceeded
+- Plus: applicable multipliers (category, zone, time-based)
+
+**And** a 10-hour DISPO with Autocar shall cost approximately 1,200-1,800€, not 10,000€+.
+
+**And** the `tripAnalysis` shall show the DISPO-specific breakdown (hours, included km, overage).
+
+**Technical Notes:**
+
+- Review `calculateDispoPrice()` function.
+- Ensure DISPO doesn't apply distance-based pricing on top of hourly pricing.
+- File: `packages/api/src/services/pricing-engine.ts`.
+
+**Prerequisites:** Story 19.1.
+
+---
+
+### Story 19.5: Fix OFF_GRID Trip Type to Show Manual Pricing UI
+
+As an **operator**,  
+I want OFF_GRID trips to show a manual pricing interface,  
+So that I can enter custom prices for non-standard trips.
+
+**Related FRs:** FR16.
+
+**Acceptance Criteria:**
+
+**Given** an OFF_GRID trip type selected,  
+**When** the quote form is displayed,  
+**Then** the "Prix suggéré" field shall show "Manuel" or "—" (not 0€).
+
+**And** the operator shall be able to enter any final price without validation errors.
+
+**And** the quote shall be saveable with the manually entered price.
+
+**Technical Notes:**
+
+- Modify `usePricingCalculation.ts` to handle OFF_GRID correctly.
+- Update UI to show appropriate messaging for manual pricing mode.
+- File: `apps/web/modules/saas/quotes/hooks/usePricingCalculation.ts`.
+
+**Prerequisites:** None.
+
+---
+
+### Story 19.6: Implement Automatic Vehicle Category Selection Based on Capacity
+
+As an **operator**,  
+I want the system to automatically select the appropriate vehicle category based on passenger count,  
+So that I don't have to manually match capacity requirements.
+
+**Related FRs:** FR17, FR42.
+
+**Acceptance Criteria:**
+
+**Given** a quote form with passenger count entered,  
+**When** the passenger count changes,  
+**Then** the system shall automatically select the smallest vehicle category that can accommodate the passengers:
+
+- 1-4 passengers → Berline (maxPassengers: 4)
+- 5-7 passengers → Van Premium (maxPassengers: 7)
+- 8-16 passengers → Minibus (maxPassengers: 16)
+- 17-50 passengers → Autocar (maxPassengers: 50)
+
+**And** if luggage count is high, the system may suggest upgrading to a larger category.
+
+**And** the operator can override the automatic selection.
+
+**Technical Notes:**
+
+- Add auto-selection logic to `CreateQuoteCockpit.tsx`.
+- Query vehicle categories sorted by `maxPassengers`.
+- File: `apps/web/modules/saas/quotes/components/CreateQuoteCockpit.tsx`.
+
+**Prerequisites:** None.
+
+---
+
+### Story 19.7: Fix Route Trace Display on Quote Map
+
+As an **operator**,  
+I want the map in the quote form to show the actual route trace,  
+So that I can visualize the trip path.
+
+**Related FRs:** FR42, FR43.
+
+**Acceptance Criteria:**
+
+**Given** a quote with pickup and dropoff addresses with valid coordinates,  
+**When** the map is displayed in the "Itinéraire" tab,  
+**Then** the map shall show:
+
+1. Pickup marker (green)
+2. Dropoff marker (red)
+3. Route polyline connecting them (blue line following roads)
+
+**And** the route shall be fetched from Google Directions API.
+
+**And** if the API fails, a straight line shall be shown as fallback.
+
+**Technical Notes:**
+
+- Check `QuoteMapPanel.tsx` or similar component.
+- Ensure Google Directions API is called with the route.
+- Use the `encodedPolyline` from toll calculation if available.
+- File: `apps/web/modules/saas/quotes/components/` map components.
+
+**Prerequisites:** Story 1.5 (Google Maps integration).
+
+---
+
+### Story 19.8: Fix Vehicle/Driver Assignment in Dispatch
+
+As a **dispatcher**,  
+I want to be able to assign vehicles and drivers to missions,  
+So that I can complete the dispatch workflow.
+
+**Related FRs:** FR50-FR54.
+
+**Acceptance Criteria:**
+
+**Given** a mission in the dispatch screen,  
+**When** I click "Assigner Véhicule & Chauffeur",  
+**Then** the assignment panel shall show available vehicles and drivers.
+
+**And** if no candidates are shown ("Aucun candidat disponible"), the system shall explain why:
+
+- No vehicles of required category
+- All drivers busy at that time
+- RSE constraints preventing assignment
+
+**And** the assignment shall be saveable when a valid vehicle/driver combination is selected.
+
+**Technical Notes:**
+
+- Debug the vehicle/driver availability query.
+- Check RSE counter validation in assignment flow.
+- File: `apps/web/modules/saas/dispatch/` components.
+
+**Prerequisites:** Epic 5 (Fleet & RSE Compliance).
+
+---
+
+### Story 19.9: Enlarge Assignment and Detail Panels in Dispatch
+
+As a **dispatcher**,  
+I want the assignment and detail panels to be wider,  
+So that I can see all information without scrolling or truncation.
+
+**Related FRs:** FR42 (UX).
+
+**Acceptance Criteria:**
+
+**Given** the dispatch screen,  
+**When** I open the vehicle/driver assignment panel,  
+**Then** the panel shall be at least 400px wide (similar to the contact panel width).
+
+**And** all form fields and information shall be visible without horizontal scrolling.
+
+**And** the same width shall apply to:
+
+- Vehicle detail panels
+- Quote detail panels
+- Driver assignment panels
+
+**Technical Notes:**
+
+- Modify Sheet/Drawer component width in dispatch components.
+- Use consistent width across all detail panels.
+- File: `apps/web/modules/saas/dispatch/components/`.
+
+**Prerequisites:** None.
+
+---
+
+### Story 19.10: Move UI Blocks for Better Quote Layout
+
+As an **operator**,  
+I want the quote detail layout to be better organized,  
+So that related information is grouped together.
+
+**Related FRs:** FR42 (UX).
+
+**Acceptance Criteria:**
+
+**Given** the quote creation form,  
+**When** displayed,  
+**Then** the "Véhicule & Capacité" section shall be positioned just above "Transparence du trajet".
+
+**Given** the quote detail view,  
+**When** displayed,  
+**Then** the "Détails du trajet" section shall be positioned below the "Tarification" section (where price and margins are shown).
+
+**And** the "Détail des coûts" section shall be positioned below "Activité" in the quote detail view.
+
+**Technical Notes:**
+
+- Reorder components in `CreateQuoteCockpit.tsx`.
+- Reorder components in quote detail page.
+- File: `apps/web/modules/saas/quotes/components/` and `apps/web/app/[locale]/(saas)/app/[slug]/quotes/[id]/page.tsx`.
+
+**Prerequisites:** None.
+
+---
+
+### Story 19.11: Add Address Field to Operating Base Form
+
+As an **administrator**,  
+I want to enter an address for operating bases instead of just GPS coordinates,  
+So that I can easily set up bases without looking up coordinates manually.
+
+**Related FRs:** FR17, FR37.
+
+**Acceptance Criteria:**
+
+**Given** the operating base creation/edit form,  
+**When** I enter an address in the address field,  
+**Then** the system shall:
+
+1. Autocomplete the address using Google Places API
+2. Automatically fill in the GPS coordinates (latitude/longitude)
+3. Automatically fill in the city and postal code
+
+**And** the GPS coordinates fields shall still be editable for fine-tuning.
+
+**Technical Notes:**
+
+- Add Google Places autocomplete to base form.
+- Auto-populate lat/lng from selected place.
+- File: `apps/web/modules/saas/fleet/components/` base form components.
+
+**Prerequisites:** Story 1.5 (Google Maps integration).
+
+---
+
+### Story 19.12: Display Driver Missions in Driver Calendar
+
+As a **dispatcher**,  
+I want to see driver missions in their calendar view,  
+So that I can see their complete schedule including assigned trips.
+
+**Related FRs:** FR50, FR51.
+
+**Acceptance Criteria:**
+
+**Given** a driver with assigned missions,  
+**When** I view their calendar,  
+**Then** I shall see:
+
+1. Manual calendar events (congé, maladie, formation, etc.)
+2. Assigned missions with:
+   - Date and time
+   - Pickup → Dropoff locations
+   - Client name
+   - Mission status (confirmed, in progress, completed)
+
+**And** missions shall be visually distinct from manual events (different color/icon).
+
+**And** clicking a mission shall open the mission/quote detail.
+
+**Technical Notes:**
+
+- Query quotes/missions assigned to the driver.
+- Add mission events to calendar component.
+- File: `apps/web/modules/saas/drivers/components/` calendar components.
+
+**Prerequisites:** Epic 5 (Fleet), Epic 8 (Dispatch).
+
+---
+
+### Story 19.13: Validate Zone Conflict Resolution for Concentric Circles
+
+As a **pricing engineer**,  
+I want the zone conflict resolution to work correctly with concentric circles,  
+So that overlapping zones (PARIS_0 inside PARIS_10 inside PARIS_20, etc.) are resolved properly.
+
+**Related FRs:** FR8, FR61-FR63.
+
+**Acceptance Criteria:**
+
+**Given** a point that falls within multiple concentric zones (e.g., Paris center is in PARIS_0, PARIS_10, PARIS_20, PARIS_30, PARIS_40, PARIS_60, PARIS_100),  
+**When** the zone resolution runs,  
+**Then** it shall select the MOST SPECIFIC zone (smallest radius that contains the point).
+
+**And** for a point in Paris center, it shall return PARIS_0 (5km radius), not PARIS_100 (100km radius).
+
+**And** special zones (CDG, ORLY, LA_DEFENSE) shall take priority over concentric circles when the point is within them.
+
+**And** the `zoneConflictStrategy` setting shall be respected:
+
+- `SMALLEST_RADIUS`: Select smallest zone (most specific)
+- `HIGHEST_MULTIPLIER`: Select zone with highest price multiplier
+- `PRIORITY`: Select zone with highest explicit priority
+
+**Technical Notes:**
+
+- Review `findZoneForPoint()` function.
+- Ensure zones are sorted by radius before selection.
+- Add priority field to zones if not present.
+- File: `packages/api/src/services/pricing-engine.ts` and `packages/api/src/lib/geo-utils.ts`.
+
+**Prerequisites:** None.
+
+---
+
+### Story 19.14: Add Comprehensive Pricing Tests
+
+As a **QA engineer**,  
+I want comprehensive tests for all pricing scenarios,  
+So that pricing bugs are caught before deployment.
+
+**Related FRs:** All pricing FRs.
+
+**Acceptance Criteria:**
+
+**Given** the pricing engine test suite,  
+**When** tests are run,  
+**Then** the following scenarios shall be covered:
+
+1. **Transfer Paris → Marseille (Berline):** Expected ~1,500-2,000€
+2. **Transfer Paris → Marseille (Autocar):** Expected ~2,500-4,000€
+3. **Excursion Paris → Versailles with return:** Expected > one-way transfer
+4. **DISPO 8 hours (Van Premium):** Expected ~500-800€
+5. **Night transfer (22:00-06:00):** Expected +25% vs day
+6. **Weekend transfer:** Expected +15% vs weekday
+7. **Long trip requiring double crew:** Expected to include 2nd driver cost
+8. **Zone multiplier application:** Verify correct zone selected
+
+**And** each test shall assert price is within expected range (±20%).
+
+**And** tests shall run in CI/CD pipeline.
+
+**Technical Notes:**
+
+- Add test file: `packages/api/src/services/__tests__/pricing-scenarios.test.ts`.
+- Use realistic distance/duration values from Google Maps.
+- Mock external APIs for deterministic tests.
+
+**Prerequisites:** Stories 19.1-19.4.
+
+---
+
+### Story 19.15: Decompose pricing-engine.ts into Modular Architecture
+
+As a **backend engineer**,  
+I want the pricing-engine.ts file (7300+ lines) to be decomposed into smaller, focused modules,  
+So that the codebase is maintainable, debuggable, and scalable.
+
+**Related FRs:** All pricing FRs (maintainability requirement).
+
+**Acceptance Criteria:**
+
+**Given** the current monolithic `pricing-engine.ts` file with 7300+ lines,  
+**When** the refactoring is complete,  
+**Then** the pricing engine shall be split into the following modules:
+
+1. **`pricing-engine/index.ts`** (~100 lines)
+
+   - Main entry point
+   - Exports public API: `calculatePrice()`, `PricingResult`, `PricingRequest`
+   - Orchestrates module calls
+
+2. **`pricing-engine/types.ts`** (~300 lines)
+
+   - All TypeScript interfaces and types
+   - `PricingRequest`, `PricingResult`, `TripAnalysis`, `AppliedRule`, etc.
+   - Enums: `PricingMode`, `TripType`, `StaffingMode`, `RateSource`
+
+3. **`pricing-engine/dynamic-pricing.ts`** (~400 lines)
+
+   - `calculateDynamicBasePrice()`
+   - `calculateDynamicPrice()`
+   - `buildDynamicResult()`
+   - Base price calculation logic
+
+4. **`pricing-engine/grid-pricing.ts`** (~300 lines)
+
+   - `matchZoneRoute()`
+   - `matchExcursionPackage()`
+   - `matchDispoPackage()`
+   - `buildGridResult()`
+   - Partner contract grid matching
+
+5. **`pricing-engine/multipliers.ts`** (~400 lines)
+
+   - `applyVehicleCategoryMultiplier()`
+   - `applyZoneMultiplier()`
+   - `applyAllMultipliers()`
+   - `applyRoundTripMultiplier()`
+   - `applyClientDifficultyMultiplier()`
+   - All multiplier application logic
+
+6. **`pricing-engine/trip-type-pricing.ts`** (~300 lines)
+
+   - `applyTripTypePricing()`
+   - `calculateDispoPrice()`
+   - `calculateExcursionPrice()`
+   - Trip-type specific pricing formulas
+
+7. **`pricing-engine/cost-calculation.ts`** (~400 lines)
+
+   - `calculateShadowSegments()`
+   - `calculateInternalCost()`
+   - `calculateCostBreakdown()`
+   - Fuel, tolls, wear, driver costs
+
+8. **`pricing-engine/zone-resolution.ts`** (~200 lines)
+
+   - `findZoneForPoint()` (move from geo-utils)
+   - `resolveZoneConflict()`
+   - `calculateZoneSurcharges()`
+   - Zone matching and conflict resolution
+
+9. **`pricing-engine/profitability.ts`** (~150 lines)
+
+   - `calculateProfitabilityIndicator()`
+   - `getProfitabilityIndicatorData()`
+   - `getThresholdsFromSettings()`
+   - Margin and profitability calculations
+
+10. **`pricing-engine/commission.ts`** (~150 lines)
+
+    - `calculateCommission()`
+    - `calculateEffectiveMargin()`
+    - `getCommissionData()`
+    - Partner commission logic
+
+11. **`pricing-engine/rse-staffing.ts`** (~250 lines)
+
+    - `detectRSEViolation()`
+    - `calculateStaffingOption()`
+    - `applyDoubleCrewCost()`
+    - RSE compliance and staffing automation
+
+12. **`pricing-engine/constants.ts`** (~100 lines)
+    - `DEFAULT_PRICING_SETTINGS`
+    - Default values and constants
+
+**And** all existing tests shall pass without modification (backward compatibility).
+
+**And** each module shall have its own test file in `__tests__/pricing-engine/`.
+
+**And** the main `calculatePrice()` function shall work exactly as before.
+
+**Technical Notes:**
+
+- Use barrel exports (`index.ts`) for clean imports.
+- Maintain backward compatibility: existing imports from `pricing-engine` must work.
+- Create folder: `packages/api/src/services/pricing-engine/`
+- Move current file to `pricing-engine.legacy.ts` temporarily during migration.
+- Each module should be independently testable.
+- Use dependency injection pattern where appropriate.
+
+**File Structure After Refactoring:**
+
+```
+packages/api/src/services/
+├── pricing-engine/
+│   ├── index.ts              # Main entry point
+│   ├── types.ts              # All types and interfaces
+│   ├── constants.ts          # Default values
+│   ├── dynamic-pricing.ts    # Dynamic pricing logic
+│   ├── grid-pricing.ts       # Partner grid matching
+│   ├── multipliers.ts        # All multipliers
+│   ├── trip-type-pricing.ts  # Trip type specific
+│   ├── cost-calculation.ts   # Internal cost
+│   ├── zone-resolution.ts    # Zone matching
+│   ├── profitability.ts      # Margin calculations
+│   ├── commission.ts         # Partner commissions
+│   ├── rse-staffing.ts       # RSE compliance
+│   └── __tests__/
+│       ├── dynamic-pricing.test.ts
+│       ├── grid-pricing.test.ts
+│       ├── multipliers.test.ts
+│       └── ...
+└── pricing-engine.ts         # Re-export for backward compat
+```
+
+**Prerequisites:** None (can be done in parallel with other stories).
+
+**Priority:** HIGH - Enables faster debugging and maintenance of all other pricing stories.
+
+---
+
+### Story 19.16: Implement Mandatory Testing Protocol for All Stories
+
+As a **QA engineer**,  
+I want every story implementation to include mandatory tests via cURL, Playwright, and database verification,  
+So that all features are validated before being marked complete.
+
+**Related FRs:** All FRs (quality assurance).
+
+**Acceptance Criteria:**
+
+**Given** any story in Epic 19 being implemented,  
+**When** the implementation is complete,  
+**Then** the following tests MUST be executed and documented:
+
+1. **cURL API Tests:**
+
+   - Test all affected API endpoints
+   - Verify response structure and values
+   - Test error cases and edge cases
+   - Document request/response in story artifact
+
+2. **Playwright MCP Tests:**
+
+   - Test UI interactions end-to-end
+   - Verify visual elements are correct
+   - Test user workflows (create quote, assign vehicle, etc.)
+   - Take screenshots of key states
+
+3. **Database Verification:**
+
+   - Query database after each API call
+   - Verify data is correctly persisted
+   - Check relationships and foreign keys
+   - Validate calculated fields
+
+4. **Unit Tests (Vitest):**
+   - Add/update unit tests for modified functions
+   - Ensure >80% coverage for new code
+   - Test edge cases and error handling
+
+**And** each story artifact shall include a "Test Results" section with:
+
+- cURL commands executed and responses
+- Playwright test results
+- Database query results
+- Unit test coverage report
+
+**Technical Notes:**
+
+- Use session cookie from user for authenticated requests:
+  ```
+  Cookie: better-auth.session_token=O90mxkdZ7xPfu8VV1j_6Mub5GwlbEgTo...
+  ```
+- Base URL: `http://localhost:3000`
+- Organization slug: `sixieme-etoile-vtc`
+- Use MCP postgres tool for DB verification
+- Use MCP playwright for UI tests
+
+**Prerequisites:** None.
+
+---
+
+### Summary
+
+Epic 19 addresses critical pricing and quote system issues:
+
+1. **Double pricing fix** (Story 19.1): Eliminate category rate + multiplier double application.
+2. **RSE staffing** (Story 19.2): Auto-add second driver instead of blocking.
+3. **Excursion pricing** (Story 19.3): Include return trip in excursion cost.
+4. **DISPO pricing** (Story 19.4): Fix hourly-based pricing formula.
+5. **OFF_GRID handling** (Story 19.5): Enable manual pricing mode.
+6. **Auto category selection** (Story 19.6): Match vehicle to passenger count.
+7. **Route trace** (Story 19.7): Display route on map.
+8. **Dispatch assignment** (Story 19.8): Fix vehicle/driver assignment.
+9. **Panel sizing** (Story 19.9): Enlarge detail panels.
+10. **Layout improvements** (Story 19.10): Reorganize quote UI blocks.
+11. **Base address** (Story 19.11): Add address autocomplete to bases.
+12. **Driver calendar** (Story 19.12): Show missions in driver calendar.
+13. **Zone resolution** (Story 19.13): Fix concentric circle conflicts.
+14. **Pricing tests** (Story 19.14): Comprehensive test coverage.
+15. **Modular architecture** (Story 19.15): Decompose pricing-engine.ts into 12 focused modules.
+16. **Testing protocol** (Story 19.16): Mandatory cURL, Playwright, DB verification for all stories.
+
+This epic is CRITICAL priority and should be completed before any new feature development.
+
+---
+
 ## Summary
 
-This document now defines the **18-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **19-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
 
-The 18 epics cover the complete VTC ERP system:
+The 19 epics cover the complete VTC ERP system:
 
 **Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
 **Pricing Engine (Epics 3-4, 14-18):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, and advanced geospatial/yield management  
 **Fleet & Operations (Epics 5-8):** Vehicle management, compliance, quotes lifecycle, and dispatch optimization
 **Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
 **Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
+**Critical Fixes (Epic 19):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization
 
 It is intended as the canonical epic and story breakdown for implementation and sprint planning, following the BMad `create-epics-and-stories` workflow.
