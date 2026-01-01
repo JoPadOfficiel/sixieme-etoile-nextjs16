@@ -125,6 +125,10 @@ export function CreateQuoteCockpit() {
     formData.passengerCount,
     formData.luggageCount,
     formData.tripType,
+    // Story 19.4: Add DISPO-specific fields to trigger recalculation
+    formData.durationHours,
+    formData.maxKilometers,
+    formData.isRoundTrip,
     // Note: calculate is NOT a dependency - we use ref to avoid infinite loops
   ]);
 

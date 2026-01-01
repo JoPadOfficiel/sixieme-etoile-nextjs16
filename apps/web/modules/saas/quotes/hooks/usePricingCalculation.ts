@@ -312,16 +312,26 @@ export function usePricingCalculation(
   }
 
   // Check if form data has required fields for pricing
+  // Story 19.4: DISPO trips don't require dropoff - only pickup and durationHours
   const canCalculate = useCallback((formData: CreateQuoteFormData): boolean => {
-    return Boolean(
+    const hasBasicFields = Boolean(
       formData.contactId &&
       formData.pickupAddress &&
       formData.pickupLatitude !== null &&
       formData.pickupLongitude !== null &&
+      formData.vehicleCategoryId
+    );
+
+    // Story 19.4: For DISPO, we need durationHours instead of dropoff
+    if (formData.tripType === "DISPO") {
+      return hasBasicFields && formData.durationHours !== null && formData.durationHours > 0;
+    }
+
+    // For other trip types, dropoff is required
+    return hasBasicFields && Boolean(
       formData.dropoffAddress &&
       formData.dropoffLatitude !== null &&
-      formData.dropoffLongitude !== null &&
-      formData.vehicleCategoryId
+      formData.dropoffLongitude !== null
     );
   }, []);
 

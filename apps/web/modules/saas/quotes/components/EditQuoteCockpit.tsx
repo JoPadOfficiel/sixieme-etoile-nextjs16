@@ -150,6 +150,10 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
     formData?.passengerCount,
     formData?.luggageCount,
     formData?.tripType,
+    // Story 19.4: Add DISPO-specific fields to trigger recalculation
+    formData?.durationHours,
+    formData?.maxKilometers,
+    formData?.isRoundTrip,
     // Note: calculate excluded to avoid infinite loops - it has internal debouncing
   ]);
 
