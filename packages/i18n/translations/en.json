@@ -2436,6 +2436,9 @@
 				"contractPriceTooltip": "This price is set by the partner contract and cannot be modified",
 				"contractPriceTooltipAdmin": "Click to override this contract price (admin only)",
 				"profitabilityTooltip": "Contract price - profitability cannot be adjusted",
+				"manualPricingMode": "Manual pricing",
+				"manualPricingHint": "This trip type requires manual pricing. Enter the price and justify it in the notes.",
+				"manualPricePlaceholder": "Enter price",
 				"overrideDialog": {
 					"title": "Override Contract Price?",
 					"message": "This is a contractually agreed price with {partnerName}. Modifying it may affect partner relations and requires justification.",
@@ -2452,7 +2455,8 @@
 				"dropoffRequired": "Please enter a dropoff address",
 				"dateTimeRequired": "Please select a pickup date and time",
 				"vehicleRequired": "Please select a vehicle category",
-				"priceRequired": "Please enter a final price"
+				"priceRequired": "Please enter a final price",
+				"notesRequiredOffGrid": "Notes are required for off-grid trips"
 			},
 			"tripTransparency": {
 				"title": "Trip Transparency",

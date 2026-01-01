@@ -127,6 +127,7 @@ export function QuoteBasicInfoPanel({
             <Label>{t("quotes.create.tripType")} *</Label>
             <Select
               value={formData.tripType}
+              data-testid="trip-type-select"
               onValueChange={(value) => onFormChange("tripType", value as TripType)}
               disabled={disabled}
             >
@@ -135,7 +136,7 @@ export function QuoteBasicInfoPanel({
               </SelectTrigger>
               <SelectContent>
                 {TRIP_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
+                  <SelectItem key={type} value={type} data-testid={`trip-type-option-${type.toLowerCase()}`}>
                     {t(`quotes.create.tripTypes.${type.toLowerCase()}`)}
                   </SelectItem>
                 ))}
