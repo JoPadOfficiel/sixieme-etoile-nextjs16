@@ -150,7 +150,7 @@ development_status:
   17-15-client-difficulty-score-patience-tax: done
   17-16-fr-group-9-settings-ui-integration: done
   epic-17-retrospective: optional
-  epic-18: in-progress
+  epic-18: done
   18-1-corridor-zone-type-highway-buffers: done
   18-2-automatic-transfer-to-mad-detection-dense-zone: done
   18-3-round-trip-to-mad-automatic-detection: done
@@ -163,3 +163,5 @@ development_status:
   18-10-hierarchical-pricing-algorithm-implementation: done
   18-11-configurable-transfer-to-mad-thresholds: done
   epic-18-retrospective: optional
+  epic-19: backlog
+  19-1-fix-double-category-pricing: done

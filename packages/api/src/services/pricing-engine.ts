@@ -701,11 +701,14 @@ export type RateSource = "CATEGORY" | "ORGANIZATION";
 
 /**
  * Story 15.4: Resolved rates with source information
+ * Story 19.1: Added usedCategoryRates flag to prevent double application
  */
 export interface ResolvedRates {
 	ratePerKm: number;
 	ratePerHour: number;
 	rateSource: RateSource;
+	/** Story 19.1: True if category-specific rates were used (premium already included) */
+	usedCategoryRates: boolean;
 }
 
 /**
@@ -725,18 +728,23 @@ export function resolveRates(
 		vehicleCategory?.defaultRatePerKm != null &&
 		vehicleCategory?.defaultRatePerHour != null
 	) {
+		// Story 19.1: Category rates already include the premium pricing
+		// The priceMultiplier should NOT be applied on top of these rates
 		return {
 			ratePerKm: vehicleCategory.defaultRatePerKm,
 			ratePerHour: vehicleCategory.defaultRatePerHour,
 			rateSource: "CATEGORY",
+			usedCategoryRates: true,
 		};
 	}
 
 	// Fallback to organization rates
+	// Story 19.1: When using org rates, the category multiplier SHOULD be applied
 	return {
 		ratePerKm: orgSettings.baseRatePerKm,
 		ratePerHour: orgSettings.baseRatePerHour,
 		rateSource: "ORGANIZATION",
+		usedCategoryRates: false,
 	};
 }
 
@@ -801,6 +809,7 @@ export function calculateFuelCost(
 
 /**
  * Story 15.3: Applied vehicle category multiplier rule for transparency
+ * Story 19.1: Added skippedReason field
  */
 export interface AppliedVehicleCategoryMultiplierRule extends AppliedRule {
 	type: "VEHICLE_CATEGORY_MULTIPLIER";
@@ -810,6 +819,8 @@ export interface AppliedVehicleCategoryMultiplierRule extends AppliedRule {
 	multiplier: number;
 	priceBefore: number;
 	priceAfter: number;
+	/** Story 19.1: Reason why multiplier was skipped (if applicable) */
+	skippedReason?: "CATEGORY_RATES_USED";
 }
 
 /**
@@ -3496,17 +3507,20 @@ export function applyRoundTripMultiplier(
 
 /**
  * Story 15.3: Apply vehicle category price multiplier
+ * Story 19.1: Skip multiplier if category-specific rates were already used
  * 
  * This function applies the category's priceMultiplier to the base price.
  * It returns the adjusted price and an optional rule if multiplier != 1.0.
  * 
  * @param basePrice - The price before category multiplier
  * @param vehicleCategory - The vehicle category info (optional)
+ * @param usedCategoryRates - Story 19.1: If true, skip multiplier (rates already include premium)
  * @returns Adjusted price and applied rule (if multiplier != 1.0)
  */
 export function applyVehicleCategoryMultiplier(
 	basePrice: number,
 	vehicleCategory: VehicleCategoryInfo | undefined,
+	usedCategoryRates: boolean = false,
 ): VehicleCategoryMultiplierResult {
 	// No category info - return unchanged
 	if (!vehicleCategory) {
@@ -3514,6 +3528,24 @@ export function applyVehicleCategoryMultiplier(
 	}
 
 	const multiplier = vehicleCategory.priceMultiplier;
+
+	// Story 19.1: Skip multiplier if category-specific rates were used
+	// Category rates (e.g., Autocar at 4.50€/km) already include the premium
+	// Applying the multiplier again would result in double pricing
+	if (usedCategoryRates) {
+		const appliedRule: AppliedVehicleCategoryMultiplierRule = {
+			type: "VEHICLE_CATEGORY_MULTIPLIER",
+			description: `Category multiplier skipped: ${vehicleCategory.name} uses category-specific rates (premium already included)`,
+			categoryId: vehicleCategory.id,
+			categoryCode: vehicleCategory.code,
+			categoryName: vehicleCategory.name,
+			multiplier: 1.0, // Effective multiplier is 1.0 (no change)
+			priceBefore: basePrice,
+			priceAfter: basePrice,
+			skippedReason: "CATEGORY_RATES_USED",
+		};
+		return { adjustedPrice: basePrice, appliedRule };
+	}
 
 	// Neutral multiplier (1.0) - no rule added
 	if (multiplier === 1.0) {
@@ -5829,8 +5861,14 @@ function buildDynamicResult(
 		appliedRules.push(tripTypePricingResult.rule);
 	}
 
-	// Story 15.3: Apply vehicle category multiplier FIRST (after base price, before zone)
-	const categoryMultiplierResult = applyVehicleCategoryMultiplier(price, vehicleCategory);
+	// Story 15.3 + 19.1: Apply vehicle category multiplier FIRST (after base price, before zone)
+	// Story 19.1: Pass usedCategoryRates flag to prevent double application
+	// If category-specific rates were used, the multiplier is skipped (premium already included)
+	const categoryMultiplierResult = applyVehicleCategoryMultiplier(
+		price, 
+		vehicleCategory,
+		resolvedRates.usedCategoryRates,
+	);
 	if (categoryMultiplierResult.appliedRule) {
 		price = categoryMultiplierResult.adjustedPrice;
 		appliedRules.push(categoryMultiplierResult.appliedRule);
