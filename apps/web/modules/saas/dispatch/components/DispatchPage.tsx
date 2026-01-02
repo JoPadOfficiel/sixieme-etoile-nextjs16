@@ -183,7 +183,7 @@ export function DispatchPage() {
 	return (
 		<div className="min-h-screen flex gap-4 p-4">
 			{/* Left Panel - Missions List */}
-			<div className="w-2/5 flex flex-col gap-4" data-testid="dispatch-left-panel">
+			<div className="w-1/3 flex flex-col gap-4" data-testid="dispatch-left-panel">
 				<div className="flex-shrink-0">
 					<h1 className="text-2xl font-bold tracking-tight mb-1">{t("title")}</h1>
 					<p className="text-sm text-muted-foreground">
@@ -212,9 +212,9 @@ export function DispatchPage() {
 			</div>
 
 			{/* Right Panel - Map + Transparency - sticky */}
-			<div className="w-3/5 sticky top-4 h-fit flex flex-col gap-4" data-testid="dispatch-right-panel">
+			<div className="w-2/3 sticky top-4 h-fit flex flex-col gap-4" data-testid="dispatch-right-panel">
 				{/* Map - fixed height */}
-				<div className="h-[350px]">
+				<div className="h-[400px]">
 					<DispatchMapGoogle
 						mission={selectedMission || null}
 						bases={bases}

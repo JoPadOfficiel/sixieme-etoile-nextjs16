@@ -172,7 +172,7 @@ development_status:
   19-6-implement-automatic-vehicle-category-selection-based-on-capacity: done
   19-7-fix-route-trace-display-on-quote-map: done
   19-8-fix-vehicle-driver-assignment-in-dispatch: done
-  19-9-enlarge-assignment-and-detail-panels-in-dispatch: backlog
+  19-9-enlarge-assignment-and-detail-panels-in-dispatch: done
   19-10-move-ui-blocks-for-better-quote-layout: backlog
   19-11-add-address-field-to-operating-base-form: backlog
   19-12-display-driver-missions-in-driver-calendar: backlog

@@ -198,7 +198,7 @@ export function AssignmentDrawer({
 	return (
 		<Sheet open={isOpen} onOpenChange={handleOpenChange}>
 			<SheetContent
-				className="w-[500px] sm:max-w-[500px] flex flex-col"
+				className="w-[650px] sm:max-w-[650px] flex flex-col"
 				data-testid="assignment-drawer"
 			>
 				<SheetHeader>
@@ -236,7 +236,7 @@ export function AssignmentDrawer({
 						selectedId={selectedCandidateId}
 						onSelect={setSelectedCandidateId}
 						isLoading={candidatesLoading}
-						className="flex-1 max-h-[calc(100vh-20rem)]"
+						className="flex-1 max-h-[calc(100vh-18rem)]"
 						onHoverStart={onCandidateHoverStart}
 						onHoverEnd={onCandidateHoverEnd}
 					/>
