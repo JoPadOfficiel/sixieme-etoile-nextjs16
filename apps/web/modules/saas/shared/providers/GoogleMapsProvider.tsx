@@ -38,8 +38,9 @@ const GoogleMapsContext = createContext<GoogleMapsContextValue>({
  * - places: For address autocomplete
  * - geometry: For distance calculations
  * - marker: For advanced markers
+ * - drawing: For map drawing tools
  */
-const GOOGLE_MAPS_LIBRARIES = ["places", "geometry", "marker", "drawing"];
+const GOOGLE_MAPS_LIBRARIES = ["places", "geometry", "marker", "drawing", "routes"];
 
 interface GoogleMapsProviderProps {
   children: ReactNode;

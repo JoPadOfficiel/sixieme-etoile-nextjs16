@@ -30,7 +30,7 @@ import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import { EditableCostRow } from "./EditableCostRow";
-import { RoutePreviewMap } from "./RoutePreviewMap";
+import { ModernRouteMap } from "./ModernRouteMap";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import type { PricingResult } from "../types";
 import { 
@@ -336,7 +336,7 @@ export function TripTransparencyPanel({
           {/* Route Map Preview - Story 19.7: Pass waypoints for excursions */}
           {routeCoordinates && (routeCoordinates.pickup || routeCoordinates.dropoff) && (
             <div className="mb-4">
-              <RoutePreviewMap
+              <ModernRouteMap
                 pickup={routeCoordinates.pickup}
                 dropoff={routeCoordinates.dropoff}
                 waypoints={routeCoordinates.waypoints}
