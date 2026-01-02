@@ -31,6 +31,7 @@ import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityInd
 import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import { EditableCostRow } from "./EditableCostRow";
 import { ModernRouteMap } from "./ModernRouteMap";
+import { PositioningCostsSection } from "./PositioningCostsSection";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import type { PricingResult } from "../types";
@@ -494,6 +495,12 @@ export function TripTransparencyPanel({
         {/* Costs Tab - Cost Breakdown */}
         {/* Story 6.8: Editable costs for authorized users */}
         <TabsContent value="costs" className="mt-4">
+          {/* Story 21.2: Detailed Positioning Costs Section (Approach/Return) */}
+          <PositioningCostsSection 
+            segments={tripAnalysis.segments} 
+            vehicleSelection={tripAnalysis.vehicleSelection} 
+          />
+          
           {/* Story 21.1: Ultra-Detailed Staffing Costs Section */}
           <StaffingCostsSection compliancePlan={tripAnalysis.compliancePlan} />
           

@@ -195,7 +195,7 @@ development_status:
   epic-20-retrospective: optional
   epic-21: in_progress
   21-1-ultra-detailed-staffing-costs-display-in-triptransparency: done
-  21-2-detailed-approach-fee-and-empty-return-display: backlog
+  21-2-detailed-approach-fee-and-empty-return-display: done
   21-3-ultra-detailed-travel-time-calculation-breakdown: backlog
   21-4-pricing-segments-and-traversed-zones-visualization: backlog
   21-5-rse-staffing-integration-in-dispatch: backlog

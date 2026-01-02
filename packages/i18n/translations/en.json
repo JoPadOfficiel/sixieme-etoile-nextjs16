@@ -2674,6 +2674,20 @@
 				"sourceDefault": "Default"
 			}
 		},
+		"positioning": {
+			"title": "Positioning Costs",
+			"deadhead": "Deadhead",
+			"approachFee": "Approach Fee",
+			"emptyReturn": "Empty Return",
+			"from": "From",
+			"to": "To",
+			"total": "Total Positioning Cost",
+			"segmentTotal": "Subtotal",
+			"sourceBase": "Base",
+			"unknownBase": "Unknown Base",
+			"estimated": "Estimated",
+			"info": "These costs represent the vehicle's empty trips: approach from the base to the pickup point, and return to the base after dropoff."
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trip Cannot Be Created",

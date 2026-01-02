@@ -2674,6 +2674,20 @@
 				"sourceDefault": "Défaut"
 			}
 		},
+		"positioning": {
+			"title": "Coûts de positionnement",
+			"deadhead": "À vide",
+			"approachFee": "Frais d'approche",
+			"emptyReturn": "Retour à vide",
+			"from": "Depuis",
+			"to": "Vers",
+			"total": "Total positionnement",
+			"segmentTotal": "Sous-total",
+			"sourceBase": "Base",
+			"unknownBase": "Base inconnue",
+			"estimated": "Estimé",
+			"info": "Ces coûts représentent les trajets à vide du véhicule : approche depuis la base vers le point de prise en charge, et retour vers la base après la dépose."
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trajet impossible",
