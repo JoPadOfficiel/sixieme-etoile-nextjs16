@@ -3724,6 +3724,144 @@ describe("Story 17.2: Zone Multiplier Aggregation Strategy", () => {
 			expect(result.appliedRule.priceAfter).toBe(120);
 		});
 	});
+
+	// Story 19-13: Concentric Circles Zone Multiplier Aggregation Tests
+	describe("Story 19-13: Concentric Circles Math.max() Aggregation", () => {
+		// Realistic zone data from seed-vtc-complete.ts
+		const bussy0Zone: ZoneData = {
+			id: "zone-bussy-0",
+			name: "Bussy-Saint-Martin",
+			code: "BUSSY_0",
+			zoneType: "RADIUS",
+			geometry: null,
+			centerLatitude: 48.8495,
+			centerLongitude: 2.6905,
+			radiusKm: 5.0,
+			isActive: true,
+			priceMultiplier: 0.8,
+		};
+
+		const paris20Zone: ZoneData = {
+			id: "zone-paris-20",
+			name: "Petite Couronne",
+			code: "PARIS_20",
+			zoneType: "RADIUS",
+			geometry: null,
+			centerLatitude: 48.8566,
+			centerLongitude: 2.3522,
+			radiusKm: 20.0,
+			isActive: true,
+			priceMultiplier: 1.1,
+		};
+
+		const cdgZone: ZoneData = {
+			id: "zone-cdg",
+			name: "Aéroport CDG",
+			code: "CDG",
+			zoneType: "RADIUS",
+			geometry: null,
+			centerLatitude: 49.0097,
+			centerLongitude: 2.5479,
+			radiusKm: 5.0,
+			isActive: true,
+			priceMultiplier: 1.2,
+			fixedAccessFee: 15.0,
+		};
+
+		const paris0Zone: ZoneData = {
+			id: "zone-paris-0",
+			name: "Paris Centre",
+			code: "PARIS_0",
+			zoneType: "RADIUS",
+			geometry: null,
+			centerLatitude: 48.8566,
+			centerLongitude: 2.3522,
+			radiusKm: 5.0,
+			isActive: true,
+			priceMultiplier: 1.0,
+		};
+
+		it("AC3: BUSSY_0 (0.8) → PARIS_20 (1.1) should use Math.max = 1.1", () => {
+			// Trip from Bussy garage to Petite Couronne
+			const result = applyZoneMultiplier(100, bussy0Zone, paris20Zone, "MAX");
+			
+			expect(result.appliedMultiplier).toBe(1.1);
+			expect(result.adjustedPrice).toBe(110);
+			expect(result.appliedRule.strategy).toBe("MAX");
+		});
+
+		it("AC3: PARIS_20 (1.1) → BUSSY_0 (0.8) should use Math.max = 1.1", () => {
+			// Reverse trip: Petite Couronne to Bussy garage
+			const result = applyZoneMultiplier(100, paris20Zone, bussy0Zone, "MAX");
+			
+			expect(result.appliedMultiplier).toBe(1.1);
+			expect(result.adjustedPrice).toBe(110);
+		});
+
+		it("CDG (1.2) → PARIS_0 (1.0) should use Math.max = 1.2", () => {
+			// Airport transfer to Paris center
+			const result = applyZoneMultiplier(100, cdgZone, paris0Zone, "MAX");
+			
+			expect(result.appliedMultiplier).toBe(1.2);
+			expect(result.adjustedPrice).toBe(120);
+		});
+
+		it("BUSSY_0 (0.8) → BUSSY_0 (0.8) should use 0.8 (same zone)", () => {
+			// Trip within Bussy zone
+			const result = applyZoneMultiplier(100, bussy0Zone, bussy0Zone, "MAX");
+			
+			expect(result.appliedMultiplier).toBe(0.8);
+			expect(result.adjustedPrice).toBe(80);
+		});
+
+		it("PARIS_0 (1.0) → PARIS_0 (1.0) should use 1.0 (no adjustment)", () => {
+			// Trip within Paris center
+			const result = applyZoneMultiplier(100, paris0Zone, paris0Zone, "MAX");
+			
+			expect(result.appliedMultiplier).toBe(1.0);
+			expect(result.adjustedPrice).toBe(100);
+		});
+
+		it("null strategy should default to MAX for backward compatibility", () => {
+			const result = applyZoneMultiplier(100, bussy0Zone, paris20Zone, null);
+			
+			expect(result.appliedMultiplier).toBe(1.1);
+			expect(result.adjustedPrice).toBe(110);
+		});
+
+		it("should preserve zone surcharges in the zone data", () => {
+			// CDG has fixedAccessFee that should be preserved
+			const result = applyZoneMultiplier(100, cdgZone, paris0Zone, "MAX");
+			
+			// The zone data should still have the surcharge info
+			expect(cdgZone.fixedAccessFee).toBe(15.0);
+			// The multiplier result should reflect CDG's higher multiplier
+			expect(result.appliedMultiplier).toBe(1.2);
+		});
+
+		it("calculateEffectiveZoneMultiplier: BUSSY (0.8) vs PARIS (1.1) with MAX", () => {
+			const result = calculateEffectiveZoneMultiplier(0.8, 1.1, "MAX");
+			
+			expect(result.multiplier).toBe(1.1);
+			expect(result.source).toBe("dropoff");
+		});
+
+		it("calculateEffectiveZoneMultiplier: BUSSY (0.8) vs PARIS (1.1) with AVERAGE", () => {
+			const result = calculateEffectiveZoneMultiplier(0.8, 1.1, "AVERAGE");
+			
+			// (0.8 + 1.1) / 2 = 0.95
+			expect(result.multiplier).toBe(0.95);
+			expect(result.source).toBe("both");
+		});
+
+		it("should handle edge case with very low Bussy multiplier", () => {
+			// Even with 0.8 multiplier, MAX should still work correctly
+			const result = calculateEffectiveZoneMultiplier(0.8, 0.85, "MAX");
+			
+			expect(result.multiplier).toBe(0.85);
+			expect(result.source).toBe("dropoff");
+		});
+	});
 });
 
 // ============================================================================
