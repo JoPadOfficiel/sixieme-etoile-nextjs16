@@ -3293,6 +3293,11 @@
 			"success": "Assignation confirmée avec succès",
 			"error": "Échec de l'assignation",
 			"noDriverAssigned": "Aucun chauffeur assigné",
+			"doubleCrewRequired": "Double Équipage Requis",
+			"selectSecondDriver": "Sélectionner le second chauffeur",
+			"selectSecondDriverPlaceholder": "Choisir un second chauffeur...",
+			"secondDriverWarning": "Un second chauffeur est requis pour cette mission RSE",
+			"secondDriver": "Second chauffeur",
 			"filters": {
 				"sortBy": "Trier par",
 				"score": "Score de flexibilité",

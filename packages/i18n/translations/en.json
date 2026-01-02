@@ -3293,6 +3293,11 @@
 			"success": "Assignment confirmed successfully",
 			"error": "Failed to assign mission",
 			"noDriverAssigned": "No driver assigned",
+			"doubleCrewRequired": "Double Crew Required",
+			"selectSecondDriver": "Select second driver",
+			"selectSecondDriverPlaceholder": "Choose a second driver...",
+			"secondDriverWarning": "A second driver is required for this RSE mission",
+			"secondDriver": "Second driver",
 			"filters": {
 				"sortBy": "Sort by",
 				"score": "Flexibility Score",

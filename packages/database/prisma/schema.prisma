@@ -831,6 +831,8 @@ model Driver {
   driverCalendarEvents DriverCalendarEvent[]
   complianceAuditLogs  ComplianceAuditLog[]
   assignedQuotes       Quote[]               @relation("AssignedDriver")
+  // Story 20.8: Second driver relation for RSE double crew missions
+  secondDriverQuotes   Quote[]               @relation("SecondDriver")
   quotes               Quote[]
 
   @@index([organizationId])
@@ -1605,6 +1607,9 @@ model Quote {
   assignedVehicle   Vehicle?  @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id])
   assignedDriverId  String?
   assignedDriver    Driver?   @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+  // Story 20.8: Second driver for RSE double crew missions
+  secondDriverId    String?
+  secondDriver      Driver?   @relation("SecondDriver", fields: [secondDriverId], references: [id])
   assignedAt        DateTime?
 
   // Chaining fields (Story 8.4)
@@ -1641,6 +1646,7 @@ model Quote {
   @@index([pickupAt])
   @@index([assignedVehicleId])
   @@index([assignedDriverId])
+  @@index([secondDriverId])
   @@index([chainId])
   @@index([isSubcontracted])
   @@index([subcontractorId])

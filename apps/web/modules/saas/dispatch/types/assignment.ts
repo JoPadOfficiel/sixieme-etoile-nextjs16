@@ -131,12 +131,16 @@ export interface AssignmentCandidatesResponse {
 		vehicleCategoryId: string;
 		passengerCount: number;
 		luggageCount: number;
+		// Story 20.8: Include tripAnalysis for double crew detection
+		tripAnalysis?: any;
 	};
 }
 
 export interface AssignMissionRequest {
 	vehicleId: string;
 	driverId?: string;
+	// Story 20.8: Second driver for RSE double crew missions
+	secondDriverId?: string;
 }
 
 export interface AssignMissionResponse {
@@ -154,6 +158,9 @@ export interface AssignMissionResponse {
 			baseName: string | null;
 			driverId: string | null;
 			driverName: string | null;
+			// Story 20.8: Second driver for RSE double crew missions
+			secondDriverId: string | null;
+			secondDriverName: string | null;
 		};
 		profitability: {
 			marginPercent: number | null;

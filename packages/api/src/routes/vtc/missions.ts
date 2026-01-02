@@ -83,6 +83,9 @@ interface MissionAssignment {
 	baseName: string | null;
 	driverId: string | null;
 	driverName: string | null;
+	// Story 20.8: Second driver for RSE double crew missions
+	secondDriverId: string | null;
+	secondDriverName: string | null;
 }
 
 interface MissionProfitability {
@@ -183,16 +186,22 @@ function getComplianceStatus(tripAnalysis: unknown): MissionCompliance {
 /**
  * Extract vehicle assignment from quote data
  * Story 8.2: Uses assignedVehicle/assignedDriver relations or tripAnalysis.assignment
+ * Story 20.8: Added secondDriver support for RSE double crew missions
  */
 function getAssignmentFromQuote(quote: {
 	assignedVehicleId: string | null;
 	assignedDriverId: string | null;
+	secondDriverId?: string | null;
 	assignedVehicle?: {
 		internalName: string | null;
 		registrationNumber: string;
 		operatingBase?: { name: string } | null;
 	} | null;
 	assignedDriver?: {
+		firstName: string;
+		lastName: string;
+	} | null;
+	secondDriver?: {
 		firstName: string;
 		lastName: string;
 	} | null;
@@ -209,6 +218,11 @@ function getAssignmentFromQuote(quote: {
 			driverName: quote.assignedDriver
 				? `${quote.assignedDriver.firstName} ${quote.assignedDriver.lastName}`
 				: null,
+			// Story 20.8: Second driver for RSE double crew
+			secondDriverId: quote.secondDriverId ?? null,
+			secondDriverName: quote.secondDriver
+				? `${quote.secondDriver.firstName} ${quote.secondDriver.lastName}`
+				: null,
 		};
 	}
 
@@ -224,6 +238,9 @@ function getAssignmentFromQuote(quote: {
 				baseName: (assignment.baseName as string) || null,
 				driverId: (assignment.driverId as string) || null,
 				driverName: (assignment.driverName as string) || null,
+				// Story 20.8: Second driver from tripAnalysis
+				secondDriverId: (assignment.secondDriverId as string) || null,
+				secondDriverName: (assignment.secondDriverName as string) || null,
 			};
 		}
 
@@ -237,6 +254,8 @@ function getAssignmentFromQuote(quote: {
 				baseName: (selected.baseName as string) || null,
 				driverId: null,
 				driverName: null,
+				secondDriverId: null,
+				secondDriverName: null,
 			};
 		}
 	}
@@ -315,6 +334,8 @@ export const missionsRouter = new Hono()
 							},
 						},
 						assignedDriver: true,
+						// Story 20.8: Include second driver for RSE double crew
+						secondDriver: true,
 					},
 				}),
 				db.quote.count({ where }),
@@ -404,6 +425,8 @@ export const missionsRouter = new Hono()
 						},
 					},
 					assignedDriver: true,
+					// Story 20.8: Include second driver for RSE double crew
+					secondDriver: true,
 				},
 			});
 
@@ -1049,6 +1072,8 @@ export const missionsRouter = new Hono()
 					vehicleCategoryId: quote.vehicleCategoryId,
 					passengerCount: quote.passengerCount,
 					luggageCount: quote.luggageCount,
+					// Story 20.8: Include tripAnalysis for double crew detection
+					tripAnalysis: quote.tripAnalysis,
 				},
 				// Story 18.9: Include Shadow Fleet metadata
 				shadowFleet: {
@@ -1060,7 +1085,7 @@ export const missionsRouter = new Hono()
 		},
 	)
 
-	// Assign vehicle/driver to mission (Story 8.2)
+	// Assign vehicle/driver to mission (Story 8.2, Story 20.8: Second driver support)
 	.post(
 		"/:id/assign",
 		validator(
@@ -1068,18 +1093,20 @@ export const missionsRouter = new Hono()
 			z.object({
 				vehicleId: z.string().min(1),
 				driverId: z.string().optional(),
+				// Story 20.8: Second driver for RSE double crew missions
+				secondDriverId: z.string().optional(),
 			}),
 		),
 		describeRoute({
 			summary: "Assign vehicle/driver to mission",
 			description:
-				"Assign a vehicle and optionally a driver to a mission, updating the quote record",
+				"Assign a vehicle and optionally a driver (and second driver for RSE) to a mission, updating the quote record",
 			tags: ["VTC - Dispatch"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const id = c.req.param("id");
-			const { vehicleId, driverId } = c.req.valid("json");
+			const { vehicleId, driverId, secondDriverId } = c.req.valid("json");
 
 			// Verify mission exists
 			const quote = await db.quote.findFirst({
@@ -1131,12 +1158,53 @@ export const missionsRouter = new Hono()
 				}
 			}
 
+			// Story 20.8: Verify second driver if provided
+			let secondDriver = null;
+			if (secondDriverId) {
+				// Check if mission requires double crew (from tripAnalysis.compliancePlan)
+				const tripAnalysis = quote.tripAnalysis as Record<string, unknown> | null;
+				const compliancePlan = tripAnalysis?.compliancePlan as Record<string, unknown> | null;
+				const planType = compliancePlan?.planType as string | null;
+
+				if (planType !== "DOUBLE_CREW") {
+					throw new HTTPException(400, {
+						message: "Second driver not required for this mission. Only DOUBLE_CREW missions require a second driver.",
+					});
+				}
+
+				// Validate that primary and secondary drivers are different
+				if (secondDriverId === driverId) {
+					throw new HTTPException(400, {
+						message: "Primary and secondary drivers must be different",
+					});
+				}
+
+				secondDriver = await db.driver.findFirst({
+					where: withTenantFilter({ id: secondDriverId }, organizationId),
+					include: {
+						driverLicenses: {
+							include: {
+								licenseCategory: true,
+							},
+						},
+					},
+				});
+
+				if (!secondDriver) {
+					throw new HTTPException(400, {
+						message: "Second driver not found",
+					});
+				}
+			}
+
 			// Update quote with assignment
 			const updatedQuote = await db.quote.update({
 				where: { id: quote.id },
 				data: {
 					assignedVehicleId: vehicleId,
 					assignedDriverId: driverId ?? null,
+					// Story 20.8: Persist second driver for RSE double crew
+					secondDriverId: secondDriverId ?? null,
 					assignedAt: new Date(),
 					// Update tripAnalysis with assignment info
 					tripAnalysis: {
@@ -1149,6 +1217,11 @@ export const missionsRouter = new Hono()
 							driverId: driver?.id ?? null,
 							driverName: driver
 								? `${driver.firstName} ${driver.lastName}`
+								: null,
+							// Story 20.8: Include second driver in assignment info
+							secondDriverId: secondDriver?.id ?? null,
+							secondDriverName: secondDriver
+								? `${secondDriver.firstName} ${secondDriver.lastName}`
 								: null,
 							assignedAt: new Date().toISOString(),
 						},
@@ -1163,18 +1236,24 @@ export const missionsRouter = new Hono()
 						},
 					},
 					assignedDriver: true,
+					// Story 20.8: Include second driver in response
+					secondDriver: true,
 				},
 			});
 
 			// Build response
+			// Story 20.8: Include second driver in assignment response
 			const assignment: MissionAssignment = {
 				vehicleId: updatedQuote.assignedVehicleId,
-				vehicleName: updatedQuote.assignedVehicle?.internalName ??
-					updatedQuote.assignedVehicle?.registrationNumber ?? null,
-				baseName: updatedQuote.assignedVehicle?.operatingBase.name ?? null,
+				vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
+				baseName: vehicle.operatingBase.name,
 				driverId: updatedQuote.assignedDriverId,
-				driverName: updatedQuote.assignedDriver
-					? `${updatedQuote.assignedDriver.firstName} ${updatedQuote.assignedDriver.lastName}`
+				driverName: driver
+					? `${driver.firstName} ${driver.lastName}`
+					: null,
+				secondDriverId: updatedQuote.secondDriverId,
+				secondDriverName: secondDriver
+					? `${secondDriver.firstName} ${secondDriver.lastName}`
 					: null,
 			};
 

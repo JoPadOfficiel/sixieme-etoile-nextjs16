@@ -10,7 +10,16 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@ui/components/sheet";
-import { MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { MapPin, ArrowRight, Loader2, Users, AlertTriangle } from "lucide-react";
+import { Badge } from "@ui/components/badge";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@ui/components/select";
+import { Label } from "@ui/components/label";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { useToast } from "@ui/hooks/use-toast";
@@ -75,6 +84,8 @@ export function AssignmentDrawer({
 	// Story 18.9: Fleet type filter state
 	const [fleetTypeFilter, setFleetTypeFilter] = useState<FleetTypeFilter>("all");
 	const [search, setSearch] = useState("");
+	// Story 20.8: Second driver for RSE double crew missions
+	const [secondDriverId, setSecondDriverId] = useState<string | null>(null);
 
 	// Story 8.3: Wrap setSelectedCandidateId to notify parent
 	const setSelectedCandidateId = useCallback((id: string | null) => {
@@ -167,7 +178,30 @@ export function AssignmentDrawer({
 		return candidates.find((c) => c.candidateId === selectedCandidateId) ?? null;
 	}, [selectedCandidateId, candidates]);
 
+	// Story 20.8: Check if mission requires double crew from tripAnalysis
+	const requiresDoubleCrew = useMemo(() => {
+		const mission = candidatesData?.mission;
+		if (!mission) return false;
+		// Check compliancePlan.planType from tripAnalysis
+		const tripAnalysis = mission.tripAnalysis as any;
+		return tripAnalysis?.compliancePlan?.planType === "DOUBLE_CREW";
+	}, [candidatesData]);
+
+	// Story 20.8: Get available drivers for second driver selection (excluding primary driver)
+	const availableSecondDrivers = useMemo(() => {
+		if (!candidates || !selectedCandidate) return [];
+		// Get unique drivers from candidates, excluding the selected primary driver
+		const driversMap = new Map<string, { id: string; name: string }>();
+		for (const c of candidates) {
+			if (c.driverId && c.driverId !== selectedCandidate.driverId && !c.isShadowFleet) {
+				driversMap.set(c.driverId, { id: c.driverId, name: c.driverName ?? "Unknown" });
+			}
+		}
+		return Array.from(driversMap.values());
+	}, [candidates, selectedCandidate]);
+
 	// Handle confirm assignment
+	// Story 20.8: Include secondDriverId for RSE double crew missions
 	const handleConfirmAssignment = useCallback(() => {
 		if (!missionId || !selectedCandidate) return;
 
@@ -175,14 +209,17 @@ export function AssignmentDrawer({
 			missionId,
 			vehicleId: selectedCandidate.vehicleId,
 			driverId: selectedCandidate.driverId ?? undefined,
+			// Story 20.8: Pass second driver if selected
+			secondDriverId: secondDriverId ?? undefined,
 		});
-	}, [missionId, selectedCandidate, assignMutation]);
+	}, [missionId, selectedCandidate, secondDriverId, assignMutation]);
 
 	// Reset state when drawer closes
 	const handleOpenChange = useCallback(
 		(open: boolean) => {
 			if (!open) {
 				setSelectedCandidateId(null);
+				setSecondDriverId(null);
 				setSearch("");
 				onClose();
 			}
@@ -202,7 +239,16 @@ export function AssignmentDrawer({
 				data-testid="assignment-drawer"
 			>
 				<SheetHeader>
-					<SheetTitle>{t("title")}</SheetTitle>
+					<div className="flex items-center gap-2">
+						<SheetTitle>{t("title")}</SheetTitle>
+						{/* Story 20.8: Show double crew badge if required */}
+						{requiresDoubleCrew && (
+							<Badge variant="warning" className="flex items-center gap-1">
+								<Users className="size-3" />
+								{t("doubleCrewRequired")}
+							</Badge>
+						)}
+					</div>
 					{missionSummary && (
 						<SheetDescription asChild>
 							<div className="space-y-1">
@@ -240,6 +286,39 @@ export function AssignmentDrawer({
 						onHoverStart={onCandidateHoverStart}
 						onHoverEnd={onCandidateHoverEnd}
 					/>
+
+					{/* Story 20.8: Second driver selection for double crew missions */}
+					{requiresDoubleCrew && selectedCandidate && (
+						<div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20">
+							<div className="flex items-center gap-2 mb-3">
+								<Users className="size-4 text-amber-600" />
+								<Label className="font-medium text-amber-800 dark:text-amber-200">
+									{t("selectSecondDriver")}
+								</Label>
+							</div>
+							<Select
+								value={secondDriverId ?? ""}
+								onValueChange={(value) => setSecondDriverId(value || null)}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder={t("selectSecondDriverPlaceholder")} />
+								</SelectTrigger>
+								<SelectContent>
+									{availableSecondDrivers.map((driver) => (
+										<SelectItem key={driver.id} value={driver.id}>
+											{driver.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{!secondDriverId && (
+								<p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+									<AlertTriangle className="size-3" />
+									{t("secondDriverWarning")}
+								</p>
+							)}
+						</div>
+					)}
 				</div>
 
 				<SheetFooter className="gap-2 sm:gap-2">
