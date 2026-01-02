@@ -116,21 +116,46 @@ export function BaseForm({ base, onSuccess, onCancel }: BaseFormProps) {
 
 	// Handle address autocomplete selection
 	const handleAddressChange = (result: { address: string; latitude: number | null; longitude: number | null }) => {
-		// Parse address components to fill individual fields
-		const addressParts = result.address.split(',');
-		const mainAddress = addressParts[0]?.trim() || "";
-		const cityPart = addressParts[addressParts.length - 1]?.trim() || "";
+		console.log("Address selected:", result); // Debug log
 		
-		// Extract postal code and city from the last part
+		// Parse address components more robustly
+		const addressParts = result.address.split(',');
+		let mainAddress = "";
 		let postalCode = "";
 		let city = "";
-		const cityMatch = cityPart.match(/(\d{5})\s+(.+)$/);
-		if (cityMatch) {
-			postalCode = cityMatch[1];
-			city = cityMatch[2];
+		
+		if (addressParts.length >= 2) {
+			// Take everything except the last part as the main address
+			mainAddress = addressParts.slice(0, -1).join(',').trim();
+			
+			// Parse the last part for postal code and city
+			const lastPart = addressParts[addressParts.length - 1].trim();
+			const postalCodeMatch = lastPart.match(/(\d{5})\s+(.+)$/);
+			
+			if (postalCodeMatch) {
+				postalCode = postalCodeMatch[1];
+				city = postalCodeMatch[2];
+			} else {
+				// Fallback: try to find postal code in any part
+				for (const part of addressParts) {
+					const match = part.trim().match(/(\d{5})\s*(.+)?$/);
+					if (match) {
+						postalCode = match[1];
+						if (match[2]) city = match[2].trim();
+						break;
+					}
+				}
+				// If still no city found, use the last part
+				if (!city && addressParts.length > 1) {
+					city = lastPart;
+				}
+			}
 		} else {
-			city = cityPart;
+			// Single part address
+			mainAddress = result.address;
 		}
+
+		console.log("Parsed:", { mainAddress, postalCode, city, lat: result.latitude, lng: result.longitude }); // Debug log
 
 		setFormData((prev) => ({
 			...prev,
@@ -170,45 +195,39 @@ export function BaseForm({ base, onSuccess, onCancel }: BaseFormProps) {
 					className="mb-4"
 				/>
 				
-				<div className="space-y-2">
-					<Label htmlFor="addressLine1">{t("fleet.bases.form.addressLine1")} *</Label>
-					<Input
-						id="addressLine1"
-						value={formData.addressLine1}
-						onChange={(e) => updateField("addressLine1", e.target.value)}
-						placeholder={t("fleet.bases.form.addressLine1Placeholder")}
-						required
-					/>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="addressLine2">{t("fleet.bases.form.addressLine2")}</Label>
-					<Input
-						id="addressLine2"
-						value={formData.addressLine2 || ""}
-						onChange={(e) => updateField("addressLine2", e.target.value || null)}
-						placeholder={t("fleet.bases.form.addressLine2Placeholder")}
-					/>
-				</div>
-				<div className="grid grid-cols-2 gap-4">
+				{/* Individual fields for manual editing */}
+				<div className="grid grid-cols-1 gap-4">
 					<div className="space-y-2">
-						<Label htmlFor="postalCode">{t("fleet.bases.form.postalCode")} *</Label>
+						<Label htmlFor="addressLine1">{t("fleet.bases.form.addressLine1")} *</Label>
 						<Input
-							id="postalCode"
-							value={formData.postalCode}
-							onChange={(e) => updateField("postalCode", e.target.value)}
-							placeholder="75001"
+							id="addressLine1"
+							value={formData.addressLine1}
+							onChange={(e) => updateField("addressLine1", e.target.value)}
+							placeholder={t("fleet.bases.form.addressLine1Placeholder")}
 							required
 						/>
 					</div>
-					<div className="space-y-2">
-						<Label htmlFor="city">{t("fleet.bases.form.city")} *</Label>
-						<Input
-							id="city"
-							value={formData.city}
-							onChange={(e) => updateField("city", e.target.value)}
-							placeholder="Paris"
-							required
-						/>
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="postalCode">{t("fleet.bases.form.postalCode")} *</Label>
+							<Input
+								id="postalCode"
+								value={formData.postalCode}
+								onChange={(e) => updateField("postalCode", e.target.value)}
+								placeholder="75001"
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="city">{t("fleet.bases.form.city")} *</Label>
+							<Input
+								id="city"
+								value={formData.city}
+								onChange={(e) => updateField("city", e.target.value)}
+								placeholder="Paris"
+								required
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
