@@ -961,6 +961,7 @@
 		"partnerAssignment": {
 			"button": "Partenaires",
 			"buttonTooltip": "Assigner à des partenaires",
+			"assignButton": "Assigner",
 			"dialogTitle": "Assigner aux partenaires",
 			"dialogDescription": "Sélectionnez les partenaires qui auront accès à cette route et définissez optionnellement un prix négocié.",
 			"searchPlaceholder": "Rechercher un partenaire...",
