@@ -2694,7 +2694,12 @@
 				"suggested": "Suggéré",
 				"passengers": "passagers",
 				"applySuggestion": "Appliquer la suggestion",
-				"noSuggestion": "Aucune catégorie de véhicule adaptée trouvée pour cette capacité."
+				"noSuggestion": "Aucune catégorie de véhicule adaptée trouvée pour cette capacité.",
+				"autoSelected": "Catégorie de véhicule mise à jour",
+				"autoSelectedDescription": "Passage de {from} à {to} pour accueillir les passagers",
+				"categorySelected": "Catégorie {category} sélectionnée automatiquement",
+				"noSuitableCategory": "Aucune catégorie adaptée",
+				"noSuitableCategoryDescription": "Aucune catégorie de véhicule ne peut accueillir {passengers} passagers"
 			}
 		}
 	},

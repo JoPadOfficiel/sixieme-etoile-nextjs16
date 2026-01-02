@@ -5,6 +5,7 @@ import type { VehicleCategory, CreateQuoteFormData } from "../types";
 
 // ============================================================================
 // Story 6.6: Scenario Helpers Hook
+// Story 19.6: Automatic Vehicle Category Selection Based on Capacity
 // Provides airport detection and capacity validation for quote creation
 // ============================================================================
 
@@ -83,6 +84,16 @@ export interface AutoApplyRules {
 }
 
 /**
+ * Story 19.6: Auto-selection result
+ */
+export interface AutoSelectResult {
+  shouldAutoSelect: boolean;
+  selectedCategory: VehicleCategory | null;
+  reason: "capacity_exceeded" | "no_change" | "no_suitable_category";
+  previousCategoryName?: string;
+}
+
+/**
  * Scenario helpers result
  */
 export interface ScenarioHelpersResult {
@@ -105,6 +116,19 @@ export interface ScenarioHelpersResult {
     categories: VehicleCategory[],
     currentCategory: VehicleCategory | null
   ) => VehicleCategory | null;
+  
+  // Story 19.6: Automatic category selection
+  findOptimalCategory: (
+    passengerCount: number,
+    luggageCount: number,
+    categories: VehicleCategory[]
+  ) => VehicleCategory | null;
+  getAutoSelectResult: (
+    passengerCount: number,
+    luggageCount: number,
+    currentCategory: VehicleCategory | null,
+    allCategories: VehicleCategory[]
+  ) => AutoSelectResult;
   
   // Fee helpers
   getApplicableFees: (
@@ -232,6 +256,116 @@ export function findSuitableCategory(
 }
 
 /**
+ * Story 19.6: Find the optimal (cheapest) category that meets capacity requirements
+ * Sorts by priceMultiplier to find the least expensive option
+ * 
+ * @param passengerCount - Number of passengers required
+ * @param luggageCount - Number of luggage items required
+ * @param categories - All available vehicle categories
+ * @returns The cheapest category that meets requirements, or null if none found
+ */
+export function findOptimalCategory(
+  passengerCount: number,
+  luggageCount: number,
+  categories: VehicleCategory[]
+): VehicleCategory | null {
+  const requiredLuggageVolume = luggageCount * LUGGAGE_VOLUME_LITERS;
+  
+  // Filter categories that meet capacity requirements
+  const suitableCategories = categories.filter(category => {
+    const meetsPassengerReq = category.maxPassengers >= passengerCount;
+    const meetsLuggageReq = !category.maxLuggageVolume || 
+      category.maxLuggageVolume >= requiredLuggageVolume;
+    return meetsPassengerReq && meetsLuggageReq;
+  });
+  
+  if (suitableCategories.length === 0) return null;
+  
+  // Sort by priceMultiplier ascending (cheapest first)
+  const sortedByPrice = [...suitableCategories].sort((a, b) => {
+    const multiplierA = typeof a.priceMultiplier === 'string' 
+      ? parseFloat(a.priceMultiplier) || 1 
+      : a.priceMultiplier || 1;
+    const multiplierB = typeof b.priceMultiplier === 'string' 
+      ? parseFloat(b.priceMultiplier) || 1 
+      : b.priceMultiplier || 1;
+    return multiplierA - multiplierB;
+  });
+  
+  return sortedByPrice[0];
+}
+
+/**
+ * Story 19.6: Determine if auto-selection should occur and which category to select
+ * Only triggers when current category is insufficient (no automatic downgrade)
+ * 
+ * @param passengerCount - Number of passengers required
+ * @param luggageCount - Number of luggage items required  
+ * @param currentCategory - Currently selected category (can be null)
+ * @param allCategories - All available vehicle categories
+ * @returns AutoSelectResult with selection decision and reason
+ */
+export function getAutoSelectResult(
+  passengerCount: number,
+  luggageCount: number,
+  currentCategory: VehicleCategory | null,
+  allCategories: VehicleCategory[]
+): AutoSelectResult {
+  // If no current category, find optimal
+  if (!currentCategory) {
+    const optimal = findOptimalCategory(passengerCount, luggageCount, allCategories);
+    if (optimal) {
+      return {
+        shouldAutoSelect: true,
+        selectedCategory: optimal,
+        reason: "capacity_exceeded",
+      };
+    }
+    return {
+      shouldAutoSelect: false,
+      selectedCategory: null,
+      reason: "no_suitable_category",
+    };
+  }
+  
+  const requiredLuggageVolume = luggageCount * LUGGAGE_VOLUME_LITERS;
+  
+  // Check if current category meets requirements
+  const meetsPassengerReq = currentCategory.maxPassengers >= passengerCount;
+  const meetsLuggageReq = !currentCategory.maxLuggageVolume || 
+    currentCategory.maxLuggageVolume >= requiredLuggageVolume;
+  
+  // If current category is sufficient, no change needed
+  if (meetsPassengerReq && meetsLuggageReq) {
+    return {
+      shouldAutoSelect: false,
+      selectedCategory: currentCategory,
+      reason: "no_change",
+    };
+  }
+  
+  // Current category is insufficient, find optimal replacement
+  const optimal = findOptimalCategory(passengerCount, luggageCount, allCategories);
+  
+  if (optimal) {
+    return {
+      shouldAutoSelect: true,
+      selectedCategory: optimal,
+      reason: "capacity_exceeded",
+      previousCategoryName: currentCategory.name,
+    };
+  }
+  
+  // No suitable category found
+  return {
+    shouldAutoSelect: false,
+    selectedCategory: null,
+    reason: "no_suitable_category",
+    previousCategoryName: currentCategory.name,
+  };
+}
+
+/**
  * Calculate price delta between two categories
  * Returns percentage difference based on priceMultiplier
  */
@@ -344,6 +478,27 @@ export function useScenarioHelpers(
     []
   );
   
+  // Story 19.6: Memoized optimal category finder
+  const memoizedFindOptimalCategory = useCallback(
+    (
+      passengerCount: number,
+      luggageCount: number,
+      categories: VehicleCategory[]
+    ) => findOptimalCategory(passengerCount, luggageCount, categories),
+    []
+  );
+  
+  // Story 19.6: Memoized auto-select result getter
+  const memoizedGetAutoSelectResult = useCallback(
+    (
+      passengerCount: number,
+      luggageCount: number,
+      currentCategory: VehicleCategory | null,
+      categories: VehicleCategory[]
+    ) => getAutoSelectResult(passengerCount, luggageCount, currentCategory, categories),
+    []
+  );
+  
   const memoizedGetApplicableFees = useCallback(
     (fees: OptionalFeeWithRules[], detection: AirportDetection) =>
       getApplicableFees(fees, detection),
@@ -357,6 +512,8 @@ export function useScenarioHelpers(
     capacityWarning,
     checkCapacity: memoizedCheckCapacity,
     findSuitableCategory: memoizedFindSuitableCategory,
+    findOptimalCategory: memoizedFindOptimalCategory,
+    getAutoSelectResult: memoizedGetAutoSelectResult,
     getApplicableFees: memoizedGetApplicableFees,
   };
 }
