@@ -284,6 +284,7 @@ export function CreateQuoteCockpit() {
           <QuoteBasicInfoPanel
             formData={formData}
             onFormChange={handleFormChange}
+            allCategories={allVehicleCategories}
             disabled={createQuoteMutation.isPending}
           />
 

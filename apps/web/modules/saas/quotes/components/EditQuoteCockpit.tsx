@@ -383,6 +383,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
           <QuoteBasicInfoPanel
             formData={formData}
             onFormChange={handleFormChange}
+            allCategories={allVehicleCategories}
             disabled={updateQuoteMutation.isPending}
           />
 

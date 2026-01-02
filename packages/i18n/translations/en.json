@@ -2694,7 +2694,12 @@
 				"suggested": "Suggested",
 				"passengers": "passengers",
 				"applySuggestion": "Apply Suggestion",
-				"noSuggestion": "No suitable vehicle category found for this capacity."
+				"noSuggestion": "No suitable vehicle category found for this capacity.",
+				"autoSelected": "Vehicle category updated",
+				"autoSelectedDescription": "Changed from {from} to {to} to accommodate passengers",
+				"categorySelected": "Category {category} automatically selected",
+				"noSuitableCategory": "No suitable category",
+				"noSuitableCategoryDescription": "No vehicle category can accommodate {passengers} passengers"
 			}
 		}
 	},

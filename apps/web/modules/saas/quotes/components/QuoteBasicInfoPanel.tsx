@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Input } from "@ui/components/input";
 import { Label } from "@ui/components/label";
+import { useToast } from "@ui/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -16,11 +17,13 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@ui/lib";
 import { AddressAutocomplete } from "@saas/shared/components/AddressAutocomplete";
 import { ContactSelector } from "./ContactSelector";
 import { VehicleCategorySelector } from "./VehicleCategorySelector";
 import { TripTypeFormFields } from "./TripTypeFormFields";
+import { getAutoSelectResult } from "../hooks/useScenarioHelpers";
 import type { CreateQuoteFormData, TripType, Contact, VehicleCategory, AddressWithCoordinates } from "../types";
 
 interface QuoteBasicInfoPanelProps {
@@ -29,6 +32,7 @@ interface QuoteBasicInfoPanelProps {
     field: K,
     value: CreateQuoteFormData[K]
   ) => void;
+  allCategories: VehicleCategory[];
   disabled?: boolean;
   className?: string;
 }
@@ -41,16 +45,27 @@ const TRIP_TYPES: TripType[] = ["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"];
  * Left column of the Create Quote cockpit.
  * Contains contact selector, trip type, addresses, datetime, vehicle category, and capacity.
  * 
+ * Story 19.6: Implements automatic vehicle category selection based on capacity.
+ * When passenger or luggage count exceeds current category capacity,
+ * automatically selects the cheapest suitable category.
+ * 
  * @see Story 6.2: Create Quote 3-Column Cockpit
+ * @see Story 19.6: Automatic Vehicle Category Selection
  * @see UX Spec 8.3.2 Create Quote - Left Column
  */
 export function QuoteBasicInfoPanel({
   formData,
   onFormChange,
+  allCategories,
   disabled = false,
   className,
 }: QuoteBasicInfoPanelProps) {
   const t = useTranslations();
+  const { toast } = useToast();
+  
+  // Story 19.6: Track previous values to detect changes
+  const prevPassengerCountRef = useRef(formData.passengerCount);
+  const prevLuggageCountRef = useRef(formData.luggageCount);
 
   const handleContactChange = (contact: Contact | null) => {
     onFormChange("contact", contact);
@@ -69,10 +84,72 @@ export function QuoteBasicInfoPanel({
     onFormChange("dropoffLongitude", result.longitude);
   };
 
-  const handleVehicleCategoryChange = (categoryId: string, category: VehicleCategory | null) => {
+  const handleVehicleCategoryChange = useCallback((categoryId: string, category: VehicleCategory | null) => {
     onFormChange("vehicleCategoryId", categoryId);
     onFormChange("vehicleCategory", category);
-  };
+  }, [onFormChange]);
+  
+  // Story 19.6: Auto-select vehicle category when capacity changes
+  useEffect(() => {
+    const passengerChanged = prevPassengerCountRef.current !== formData.passengerCount;
+    const luggageChanged = prevLuggageCountRef.current !== formData.luggageCount;
+    
+    // Update refs
+    prevPassengerCountRef.current = formData.passengerCount;
+    prevLuggageCountRef.current = formData.luggageCount;
+    
+    // Only auto-select if capacity actually changed and we have categories
+    if (!passengerChanged && !luggageChanged) return;
+    if (allCategories.length === 0) return;
+    
+    const result = getAutoSelectResult(
+      formData.passengerCount,
+      formData.luggageCount,
+      formData.vehicleCategory,
+      allCategories
+    );
+    
+    if (result.shouldAutoSelect && result.selectedCategory) {
+      // Auto-select the optimal category
+      onFormChange("vehicleCategoryId", result.selectedCategory.id);
+      onFormChange("vehicleCategory", result.selectedCategory);
+      
+      // Show toast notification
+      if (result.previousCategoryName) {
+        toast({
+          title: t("quotes.helpers.capacity.autoSelected"),
+          description: t("quotes.helpers.capacity.autoSelectedDescription", {
+            from: result.previousCategoryName,
+            to: result.selectedCategory.name,
+          }),
+        });
+      } else {
+        toast({
+          title: t("quotes.helpers.capacity.autoSelected"),
+          description: t("quotes.helpers.capacity.categorySelected", {
+            category: result.selectedCategory.name,
+          }),
+        });
+      }
+    } else if (result.reason === "no_suitable_category" && formData.vehicleCategory) {
+      // Show error toast when no category can accommodate (only if a category was already selected)
+      toast({
+        title: t("quotes.helpers.capacity.noSuitableCategory"),
+        description: t("quotes.helpers.capacity.noSuitableCategoryDescription", {
+          passengers: formData.passengerCount,
+        }),
+        variant: "error",
+      });
+    }
+  }, [
+    formData.passengerCount,
+    formData.luggageCount,
+    formData.vehicleCategory,
+    allCategories,
+    onFormChange,
+    toast,
+    t,
+  ]);
 
   const handleDateTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
