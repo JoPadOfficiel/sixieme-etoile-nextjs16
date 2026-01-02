@@ -4714,16 +4714,343 @@ This epic is CRITICAL priority and should be completed before any new feature de
 
 ---
 
+## Epic 20: Critical Bug Fixes, Google Maps Migration & Comprehensive Testing
+
+**Goal:** Fix critical runtime errors, migrate from legacy Google Maps DirectionsService to the new Routes API, correct pricing calculation bugs (RSE staffing costs, toll calculation, fixed Berline price), and implement comprehensive end-to-end testing across all quote types and dispatch scenarios.
+
+**Priority:** CRITICAL - Blocking production deployment
+
+**Related FRs:** FR17-FR24 (Routing & Shadow Calculation), FR25-FR30 (Fleet & Compliance), FR31-FR36 (Quote Lifecycle), FR47-FR49 (RSE Compliance), FR55-FR60 (Cost Components)
+
+### Problem Summary
+
+The following critical issues have been identified:
+
+1. **Runtime Error on Quote Detail** - `tripAnalysis.segments.approach` is undefined causing TypeError
+2. **Legacy Google Maps API** - DirectionsService triggers "LegacyApiNotActivatedMapError"
+3. **Toll Calculation Bug** - Tolls calculated by km×rate instead of real route data from Google Routes API
+4. **RSE Second Driver Cost Fixed at 123€** - Always shows 123€ regardless of actual calculation
+5. **CollectAPI Diesel Not Used** - Fuel price cache not integrated into cost calculations
+6. **Berline Price Fixed at 87€** - Vehicle category pricing not applied correctly
+7. **Route Map Not Displaying** - Itinerary not rendered on quote detail view
+8. **Dual Driver Assignment** - Cannot assign two drivers for RSE-required trips
+
+---
+
+### FR89: Fix TripTransparencyPanel Segments Null Safety
+
+**Description:** The TripTransparencyPanel crashes when `tripAnalysis.segments` is undefined or when accessing `segments.approach` on a trip that has no approach segment (e.g., excursions, DISPO).
+
+**Root Cause:** Line 437 in `TripTransparencyPanel.tsx` accesses `tripAnalysis.segments.approach` without checking if `segments` exists first.
+
+**Acceptance Criteria:**
+
+- **AC1:** Add null safety check for `tripAnalysis.segments` before accessing segment properties
+- **AC2:** Handle cases where segments structure differs by trip type (excursion legs vs standard segments)
+- **AC3:** No runtime TypeError when opening any quote detail page
+- **AC4:** Display appropriate fallback UI when segment data is unavailable
+
+**Technical Notes:**
+
+- File: `apps/web/modules/saas/quotes/components/TripTransparencyPanel.tsx`
+- Check `tripAnalysis?.segments` before accessing `segments.approach`, `segments.service`, `segments.return`
+- Excursion trips use `tripAnalysis.excursionLegs` instead of `segments`
+
+---
+
+### FR90: Migrate Google Maps from Legacy DirectionsService to Routes API
+
+**Description:** The application uses the deprecated `google.maps.DirectionsService` which triggers console errors about legacy API not being activated. Must migrate to the new Google Routes API (v2) with `computeRoutes`.
+
+**Root Cause:** `RoutePreviewMap.tsx` uses `new google.maps.DirectionsService()` which is the legacy API.
+
+**Acceptance Criteria:**
+
+- **AC1:** Replace all DirectionsService usage with Routes API `computeRoutes` method
+- **AC2:** Use `google.maps.importLibrary("routes")` to load the Routes library
+- **AC3:** Request `ComputeRoutesExtraComputation.TOLLS` for toll information
+- **AC4:** No console errors about legacy API
+- **AC5:** Route polyline displays correctly on map
+- **AC6:** Maintain fallback to simple polyline when API fails
+
+**Technical Notes:**
+
+- Files affected:
+  - `apps/web/modules/saas/quotes/components/RoutePreviewMap.tsx`
+  - `apps/web/modules/saas/quotes/components/ModernRouteMap.tsx`
+  - `apps/web/lib/google-routes-client.ts`
+- Use existing `computeRoutes` function from `google-routes-client.ts`
+- Add field mask for `routes.travelAdvisory.tollInfo` to get toll data
+
+---
+
+### FR91: Integrate Real Toll Costs from Google Routes API
+
+**Description:** Toll costs are currently calculated as `distanceKm × tollCostPerKm` (estimate) instead of using real toll data from Google Routes API.
+
+**Root Cause:** `calculateTollCost` in `cost-calculator.ts` uses a simple per-km rate. The `getTollCost` function exists but is not consistently called with proper route data.
+
+**Acceptance Criteria:**
+
+- **AC1:** Call Google Routes API with `TOLLS` extra computation for all route calculations
+- **AC2:** Extract `tollInfo` from Routes API response and use actual toll amounts
+- **AC3:** Fall back to per-km estimate only when API fails or returns no toll data
+- **AC4:** Display toll source in TripTransparency (GOOGLE_API vs ESTIMATE)
+- **AC5:** Cache toll results to avoid repeated API calls for same route
+
+**Technical Notes:**
+
+- Files affected:
+  - `packages/api/src/services/pricing/cost-calculator.ts`
+  - `packages/api/src/services/toll-service.ts`
+  - `packages/api/src/services/pricing-engine.ts`
+- Routes API toll response format: `routes[0].travelAdvisory.tollInfo.estimatedPrice`
+- Must pass vehicle emission type for accurate toll calculation (Class 1-5)
+
+---
+
+### FR92: Fix RSE Second Driver Cost Calculation
+
+**Description:** When RSE compliance requires a second driver (DOUBLE_CREW), the additional cost always shows 123€ instead of calculating based on actual driving hours and configured hourly rate.
+
+**Root Cause:** The `extraDriverCost` calculation in `compliance-validator.ts` uses `DEFAULT_ALTERNATIVE_COST_PARAMETERS.driverHourlyCost` (25€/h) but the organization's `secondDriverHourlyRate` setting is not being loaded correctly from the database.
+
+**Acceptance Criteria:**
+
+- **AC1:** Load `secondDriverHourlyRate` from `OrganizationPricingSettings` when calculating staffing costs
+- **AC2:** Calculate second driver cost as: `(totalDrivingHours / 2) × secondDriverHourlyRate`
+- **AC3:** Display correct cost breakdown in TripTransparency compliance section
+- **AC4:** If org setting is null, fall back to default (25€/h) but log a warning
+- **AC5:** Cost varies based on trip duration, not fixed amount
+
+**Technical Notes:**
+
+- Files affected:
+  - `packages/api/src/services/compliance-validator.ts` (lines 846-904)
+  - `packages/api/src/services/pricing-engine.ts` (lines 6150-6156)
+- Current formula: `extraDriverHours × costParameters.driverHourlyCost`
+- Issue: `costParameters` not populated from org settings, uses defaults
+- Function `buildCostParametersFromSettings` exists but may not be called with correct settings
+
+---
+
+### FR93: Integrate CollectAPI Diesel Price into Fuel Cost Calculation
+
+**Description:** The fuel price cache from CollectAPI is not being used in cost calculations. The system uses hardcoded `DEFAULT_FUEL_PRICES.DIESEL = 1.789€/L` instead of live prices.
+
+**Root Cause:** `FuelPriceCache` table exists but `calculateFuelCost` in `cost-calculator.ts` doesn't query it.
+
+**Acceptance Criteria:**
+
+- **AC1:** Query `FuelPriceCache` for current fuel price before calculating fuel cost
+- **AC2:** Use cached price if less than 24 hours old
+- **AC3:** Fall back to default price if cache is stale or empty
+- **AC4:** Display fuel price source in TripTransparency (COLLECTAPI vs DEFAULT)
+- **AC5:** Implement cache refresh mechanism (daily cron or on-demand)
+
+**Technical Notes:**
+
+- Files affected:
+  - `packages/api/src/services/pricing/cost-calculator.ts`
+  - `packages/api/src/services/fuel-price-service.ts`
+- CollectAPI endpoint: `https://api.collectapi.com/gasPrice/europeanCountries`
+- Cache table: `FuelPriceCache` with `fuelType`, `pricePerLiter`, `fetchedAt`, `organizationId`
+
+---
+
+### FR94: Fix Vehicle Category Price Multiplier Application
+
+**Description:** Berline category always shows 87€ regardless of trip distance/duration. The vehicle category `priceMultiplier` is not being applied correctly.
+
+**Root Cause:** When category-specific rates (`defaultRatePerKm`, `defaultRatePerHour`) are set, the `priceMultiplier` should NOT be applied (Story 19.1 fix). However, if rates are NOT set, the multiplier should be applied to org base rates. The logic may be inverted or not working.
+
+**Acceptance Criteria:**
+
+- **AC1:** If category has `defaultRatePerKm` AND `defaultRatePerHour` set → use those rates, skip multiplier
+- **AC2:** If category rates are null → use org rates × `priceMultiplier`
+- **AC3:** Price varies correctly based on distance/duration for all categories
+- **AC4:** Berline, Van, Minibus show different prices for same route
+- **AC5:** Add debug logging to trace rate resolution path
+
+**Technical Notes:**
+
+- Files affected:
+  - `packages/api/src/services/pricing-engine.ts` (function `resolveRates`)
+  - `packages/api/src/services/pricing/dynamic-pricing.ts`
+- Check `VehicleCategory.defaultRatePerKm` and `defaultRatePerHour` values in database
+- Verify `priceMultiplier` values: Berline=1.0, Van=1.2, Minibus=1.5, etc.
+
+---
+
+### FR95: Fix Route Display on Quote Detail Map
+
+**Description:** When viewing a quote detail, the map does not display the route itinerary. Only markers appear but no polyline connecting them.
+
+**Root Cause:** The DirectionsService request may be failing silently, or the DirectionsRenderer is not properly attached to the map after the API response.
+
+**Acceptance Criteria:**
+
+- **AC1:** Route polyline displays between pickup and dropoff markers
+- **AC2:** Waypoints (for excursions) are connected in order
+- **AC3:** Fallback polyline (straight lines) shows if API fails
+- **AC4:** Console logs indicate success or failure of route request
+- **AC5:** Map bounds adjust to fit entire route
+
+**Technical Notes:**
+
+- Files affected:
+  - `apps/web/modules/saas/quotes/components/RoutePreviewMap.tsx`
+  - `apps/web/modules/saas/quotes/components/ModernRouteMap.tsx`
+- Check `directionsRendererRef.current.setDirections(result)` is called
+- Verify `directionsRendererRef.current.setMap(map)` is called before setting directions
+- Add error handling for DirectionsStatus !== OK
+
+---
+
+### FR96: Implement Dual Driver Assignment for RSE Trips
+
+**Description:** When a trip requires two drivers (DOUBLE_CREW staffing plan), the dispatch assignment drawer should allow selecting two drivers for the same vehicle.
+
+**Root Cause:** Current assignment UI only supports single driver selection per mission.
+
+**Acceptance Criteria:**
+
+- **AC1:** Detect when mission has `compliancePlan.planType === "DOUBLE_CREW"`
+- **AC2:** Show "Second Driver" field in assignment drawer for DOUBLE_CREW missions
+- **AC3:** Both drivers must have valid licenses for the vehicle category
+- **AC4:** Both drivers added to mission record and their calendars
+- **AC5:** Validate no scheduling conflicts for either driver
+- **AC6:** Display both driver names in mission list and detail views
+
+**Technical Notes:**
+
+- Files affected:
+  - `apps/web/modules/saas/dispatch/components/AssignmentDrawer.tsx`
+  - `packages/api/src/routes/missions.ts`
+  - `packages/database/prisma/schema.prisma` (may need `secondDriverId` field)
+- Consider `MissionDriver` junction table for many-to-many relationship
+- Update driver calendar events to include both drivers
+
+---
+
+### FR97: Comprehensive End-to-End Testing Suite
+
+**Description:** Implement comprehensive E2E tests covering all quote types, pricing scenarios, dispatch operations, and report generation.
+
+**Test Scenarios Required:**
+
+1. **Quote Creation Tests:**
+
+   - Transfer (one-way) with dynamic pricing
+   - Transfer (round-trip) with grid pricing
+   - Excursion with multiple stops
+   - DISPO (mise à disposition) with hourly pricing
+   - OFF_GRID with manual pricing
+
+2. **Pricing Calculation Tests:**
+
+   - Zone multiplier application (PARIS_0 vs BUSSY_0)
+   - Vehicle category multiplier (Berline vs Van vs Minibus)
+   - Night rate application (22:00-06:00)
+   - Weekend rate application
+   - RSE staffing cost addition (DOUBLE_CREW, RELAY, MULTI_DAY)
+
+3. **Dispatch Tests:**
+
+   - Single driver assignment
+   - Dual driver assignment (RSE)
+   - Driver calendar conflict detection
+   - Vehicle availability check
+
+4. **Report Tests:**
+   - Daily revenue report accuracy
+   - Driver activity report
+   - Profitability by route report
+
+**Acceptance Criteria:**
+
+- **AC1:** Playwright test suite covers all scenarios above
+- **AC2:** Tests run against staging environment with test data
+- **AC3:** Test results documented with screenshots
+- **AC4:** CI/CD pipeline includes E2E test stage
+- **AC5:** Test coverage report generated
+
+**Technical Notes:**
+
+- Use MCP Playwright for browser automation
+- Use MCP Postgres for database verification
+- Create test fixtures for consistent test data
+- Implement test cleanup to reset state between runs
+
+---
+
+### FR98: Validate Reports Page Functionality
+
+**Description:** Verify that all reports on the Reports page function correctly with accurate data.
+
+**Reports to Validate:**
+
+1. Revenue by period (daily, weekly, monthly)
+2. Profitability by route/zone
+3. Driver utilization
+4. Vehicle utilization
+5. Quote conversion rate
+6. Partner commission summary
+
+**Acceptance Criteria:**
+
+- **AC1:** Each report loads without errors
+- **AC2:** Data matches database records (spot check)
+- **AC3:** Filters work correctly (date range, vehicle, driver)
+- **AC4:** Export to CSV/PDF functions
+- **AC5:** Charts render correctly
+
+---
+
+### Story Breakdown (Suggested)
+
+| Story | Title                                          | Priority | Effort |
+| ----- | ---------------------------------------------- | -------- | ------ |
+| 20.1  | Fix TripTransparencyPanel Segments Null Safety | CRITICAL | S      |
+| 20.2  | Migrate to Google Routes API                   | HIGH     | L      |
+| 20.3  | Integrate Real Toll Costs                      | HIGH     | M      |
+| 20.4  | Fix RSE Second Driver Cost Calculation         | CRITICAL | M      |
+| 20.5  | Integrate CollectAPI Diesel Price              | MEDIUM   | M      |
+| 20.6  | Fix Vehicle Category Price Multiplier          | CRITICAL | M      |
+| 20.7  | Fix Route Display on Quote Detail              | HIGH     | M      |
+| 20.8  | Implement Dual Driver Assignment               | HIGH     | L      |
+| 20.9  | Comprehensive E2E Testing Suite                | HIGH     | XL     |
+| 20.10 | Validate Reports Page                          | MEDIUM   | M      |
+
+---
+
+### Dependencies
+
+- **Epic 19** (RSE Compliance & Pricing Fixes) - Some fixes may overlap
+- **Epic 15** (Pricing Engine Accuracy) - Real cost integration
+- **Epic 17** (Compliance Integration) - Staffing cost parameters
+
+### Success Metrics
+
+- Zero runtime errors on quote detail pages
+- Toll costs within 10% of actual toll booth prices
+- RSE staffing costs vary by trip duration (not fixed)
+- All vehicle categories show different prices
+- Route displays on 100% of quote detail views
+- E2E test suite passes with >95% success rate
+
+---
+
 ## Summary
 
-This document now defines the **19-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **20-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
 
-The 19 epics cover the complete VTC ERP system:
+The 20 epics cover the complete VTC ERP system:
 
 **Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
 **Pricing Engine (Epics 3-4, 14-18):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, and advanced geospatial/yield management  
@@ -4731,5 +5058,6 @@ The 19 epics cover the complete VTC ERP system:
 **Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
 **Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
 **Critical Fixes (Epic 19):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization
+**Critical Bug Fixes & Testing (Epic 20):** Google Maps API migration, toll/fuel integration, RSE cost fixes, comprehensive E2E testing
 
 It is intended as the canonical epic and story breakdown for implementation and sprint planning, following the BMad `create-epics-and-stories` workflow.

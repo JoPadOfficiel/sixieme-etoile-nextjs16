@@ -598,5 +598,121 @@
         "title": "Configurable Transfer-to-MAD Thresholds"
       }
     ]
+  },
+  {
+    "epic": "19",
+    "title": "Critical Pricing Engine Bug Fixes & Quote System Stabilization",
+    "stories": [
+      {
+        "id": "19.1",
+        "title": "Fix Double Application of Category Pricing"
+      },
+      {
+        "id": "19.2",
+        "title": "Implement Automatic RSE-Compliant Staffing for Long Trips"
+      },
+      {
+        "id": "19.3",
+        "title": "Fix Excursion Pricing to Include Return Trip Cost"
+      },
+      {
+        "id": "19.4",
+        "title": "Fix DISPO (Mise à Disposition) Pricing Formula"
+      },
+      {
+        "id": "19.5",
+        "title": "Fix OFF_GRID Trip Type to Show Manual Pricing UI"
+      },
+      {
+        "id": "19.6",
+        "title": "Implement Automatic Vehicle Category Selection Based on Capacity"
+      },
+      {
+        "id": "19.7",
+        "title": "Fix Route Trace Display on Quote Map"
+      },
+      {
+        "id": "19.8",
+        "title": "Fix Vehicle/Driver Assignment in Dispatch"
+      },
+      {
+        "id": "19.9",
+        "title": "Enlarge Assignment and Detail Panels in Dispatch"
+      },
+      {
+        "id": "19.10",
+        "title": "Move UI Blocks for Better Quote Layout"
+      },
+      {
+        "id": "19.11",
+        "title": "Add Address Field to Operating Base Form"
+      },
+      {
+        "id": "19.12",
+        "title": "Display Driver Missions in Driver Calendar"
+      },
+      {
+        "id": "19.13",
+        "title": "Validate Zone Conflict Resolution for Concentric Circles"
+      },
+      {
+        "id": "19.14",
+        "title": "Add Comprehensive Pricing Tests"
+      },
+      {
+        "id": "19.15",
+        "title": "Decompose pricing-engine.ts into Modular Architecture"
+      },
+      {
+        "id": "19.16",
+        "title": "Implement Mandatory Testing Protocol for All Stories"
+      }
+    ]
+  },
+  {
+    "epic": "20",
+    "title": "Critical Bug Fixes, Google Maps Migration & Comprehensive Testing",
+    "stories": [
+      {
+        "id": "20.1",
+        "title": "Fix TripTransparencyPanel Segments Null Safety"
+      },
+      {
+        "id": "20.2",
+        "title": "Migrate to Google Routes API"
+      },
+      {
+        "id": "20.3",
+        "title": "Integrate Real Toll Costs from Routes API"
+      },
+      {
+        "id": "20.4",
+        "title": "Fix RSE Second Driver Cost Calculation"
+      },
+      {
+        "id": "20.5",
+        "title": "Integrate CollectAPI Diesel Price"
+      },
+      {
+        "id": "20.6",
+        "title": "Fix Vehicle Category Price Multiplier Application"
+      },
+      {
+        "id": "20.7",
+        "title": "Fix Route Display on Quote Detail Map"
+      },
+      {
+        "id": "20.8",
+        "title": "Implement Dual Driver Assignment for RSE Trips"
+      },
+      {
+        "id": "20.9",
+        "title": "Comprehensive End-to-End Testing Suite"
+      },
+      {
+        "id": "20.10",
+        "title": "Validate Reports Page Functionality"
+      }
+    ]
   }
 ]
