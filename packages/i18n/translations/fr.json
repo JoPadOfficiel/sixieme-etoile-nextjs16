@@ -2543,6 +2543,14 @@
 					"recommended": "Recommandé",
 					"bestValue": "Meilleure valeur",
 					"recommendedOption": "Option recommandée"
+				},
+				"routeMap": {
+					"pickup": "Départ",
+					"dropoff": "Arrivée",
+					"waypoint": "Arrêt",
+					"noCoordinates": "Aucune coordonnée de route disponible",
+					"loadError": "Impossible de charger la carte",
+					"routeEstimate": "Tracé estimé (ligne directe)"
 				}
 			},
 			"recomputeWarning": {

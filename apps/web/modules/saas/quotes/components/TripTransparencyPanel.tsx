@@ -46,6 +46,8 @@ import {
 interface RouteCoordinates {
   pickup?: { lat: number; lng: number; address: string };
   dropoff?: { lat: number; lng: number; address: string };
+  /** Story 19.7: Support for excursion waypoints */
+  waypoints?: Array<{ lat: number; lng: number; address: string }>;
 }
 
 interface TripTransparencyPanelProps {
@@ -328,12 +330,13 @@ export function TripTransparencyPanel({
 
         {/* Route Tab - Segments A/B/C or Excursion Legs */}
         <TabsContent value="route" className="mt-4">
-          {/* Route Map Preview */}
+          {/* Route Map Preview - Story 19.7: Pass waypoints for excursions */}
           {routeCoordinates && (routeCoordinates.pickup || routeCoordinates.dropoff) && (
             <div className="mb-4">
               <RoutePreviewMap
                 pickup={routeCoordinates.pickup}
                 dropoff={routeCoordinates.dropoff}
+                waypoints={routeCoordinates.waypoints}
               />
             </div>
           )}

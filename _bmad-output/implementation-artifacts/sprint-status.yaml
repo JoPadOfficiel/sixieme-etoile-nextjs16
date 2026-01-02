@@ -170,7 +170,7 @@ development_status:
   19-4-fix-dispo-pricing-formula: done
   19-5-fix-off-grid-trip-type-to-show-manual-pricing-ui: done
   19-6-implement-automatic-vehicle-category-selection-based-on-capacity: done
-  19-7-fix-route-trace-display-on-quote-map: backlog
+  19-7-fix-route-trace-display-on-quote-map: done
   19-8-fix-vehicle-driver-assignment-in-dispatch: backlog
   19-9-enlarge-assignment-and-detail-panels-in-dispatch: backlog
   19-10-move-ui-blocks-for-better-quote-layout: backlog

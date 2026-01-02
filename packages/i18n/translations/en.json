@@ -2543,6 +2543,14 @@
 					"recommended": "Recommended",
 					"bestValue": "Best value",
 					"recommendedOption": "Recommended option"
+				},
+				"routeMap": {
+					"pickup": "Pickup",
+					"dropoff": "Dropoff",
+					"waypoint": "Stop",
+					"noCoordinates": "No route coordinates available",
+					"loadError": "Unable to load map",
+					"routeEstimate": "Estimated route (direct line)"
 				}
 			},
 			"recomputeWarning": {
