@@ -2657,7 +2657,22 @@
 			"hotelCost": "Hotel",
 			"mealCost": "Meals",
 			"resolvedViolations": "Resolved Violations",
-			"capacityReduced": "Capacity reduced: seat occupied by 2nd driver"
+			"capacityReduced": "Capacity reduced: seat occupied by 2nd driver",
+			"detailedCosts": {
+				"title": "Staffing Costs (RSE)",
+				"secondDriver": "Second Driver Cost",
+				"hotel": "Hotel Cost",
+				"meals": "Meal Allowance",
+				"other": "Other Costs",
+				"total": "Total Staffing Cost",
+				"nights": "nights",
+				"night": "night",
+				"daysShort": "d",
+				"day": "day",
+				"driversShort": "drv.",
+				"sourceOrg": "Org",
+				"sourceDefault": "Default"
+			}
 		},
 		"compliance": {
 			"banner": {

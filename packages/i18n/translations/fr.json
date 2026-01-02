@@ -2657,7 +2657,22 @@
 			"hotelCost": "Hôtel",
 			"mealCost": "Repas",
 			"resolvedViolations": "Violations résolues",
-			"capacityReduced": "Capacité réduite : place occupée par le 2e chauffeur"
+			"capacityReduced": "Capacité réduite : place occupée par le 2e chauffeur",
+			"detailedCosts": {
+				"title": "Coûts de staffing (RSE)",
+				"secondDriver": "Coût second chauffeur",
+				"hotel": "Coût hôtel",
+				"meals": "Indemnité repas",
+				"other": "Autres coûts",
+				"total": "Total coûts staffing",
+				"nights": "nuits",
+				"night": "nuit",
+				"daysShort": "j",
+				"day": "jour",
+				"driversShort": "chauf.",
+				"sourceOrg": "Org",
+				"sourceDefault": "Défaut"
+			}
 		},
 		"compliance": {
 			"banner": {
