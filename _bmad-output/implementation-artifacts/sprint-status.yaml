@@ -184,7 +184,7 @@ development_status:
   epic-20: in-progress
   20-1-fix-triptransparencypanel-segments-null-safety: done
   20-2-migrate-to-google-routes-api: done
-  20-3-integrate-real-toll-costs-from-routes-api: backlog
+  20-3-integrate-real-toll-costs-from-routes-api: done
   20-4-fix-rse-second-driver-cost-calculation: backlog
   20-5-integrate-collectapi-diesel-price: backlog
   20-6-fix-vehicle-category-price-multiplier-application: backlog

@@ -22,7 +22,8 @@ import type {
 	DispoPackageAssignment,
 } from "./types";
 
-import { calculateCostBreakdown } from "./cost-calculator";
+import { calculateCostBreakdown, calculateCostBreakdownWithTolls } from "./cost-calculator";
+import type { TollConfig } from "./types";
 import { calculateDynamicBasePrice, resolveRates } from "./dynamic-pricing";
 import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMultiplier } from "./multiplier-engine";
 import { applyZoneMultiplier } from "./zone-resolver";
@@ -221,6 +222,235 @@ export function calculatePrice(
 		durationMinutes,
 		pricingSettings,
 	);
+	
+	// Get profitability thresholds
+	const thresholds = getThresholdsFromSettings(pricingSettings);
+	
+	// Calculate profitability
+	const margin = Math.round((price - internalCost) * 100) / 100;
+	const marginPercent = price > 0 ? Math.round((margin / price) * 100 * 100) / 100 : 0;
+	const profitabilityIndicator = calculateProfitabilityIndicator(marginPercent, thresholds);
+	const profitabilityData = getProfitabilityIndicatorData(marginPercent, thresholds);
+	
+	// Round price
+	price = Math.round(price * 100) / 100;
+	
+	return {
+		pricingMode,
+		price,
+		currency: "EUR",
+		internalCost,
+		margin,
+		marginPercent,
+		profitabilityIndicator,
+		profitabilityData,
+		matchedGrid,
+		appliedRules,
+		isContractPrice,
+		fallbackReason,
+		gridSearchDetails,
+		tripAnalysis,
+	};
+}
+
+// ============================================================================
+// Story 20.3: Async Pricing with Real Toll Costs
+// ============================================================================
+
+/**
+ * Calculate price with real toll costs from Google Routes API
+ * 
+ * This is an async version of calculatePrice that fetches real toll costs
+ * instead of using flat-rate estimates.
+ * 
+ * @param request - Pricing request with trip details
+ * @param context - Pricing engine context with settings and zones
+ * @param tollConfig - Optional toll configuration with API key
+ * @returns PricingResult with real toll costs and tollSource indicator
+ */
+export async function calculatePriceWithRealTolls(
+	request: PricingRequest,
+	context: PricingEngineContext,
+	tollConfig?: TollConfig,
+): Promise<PricingResult> {
+	const { contact, zones, pricingSettings, advancedRates, seasonalMultipliers, vehicleCategory } = context;
+	const appliedRules: AppliedRule[] = [];
+	
+	// Find pickup and dropoff zones
+	const pickupZone = findZoneForPoint(request.pickup, zones);
+	const dropoffZone = findZoneForPoint(request.dropoff, zones);
+	
+	// Initialize grid search details
+	const gridSearchDetails: GridSearchDetails = {
+		pickupZone: pickupZone ? { id: pickupZone.id, name: pickupZone.name, code: pickupZone.code } : null,
+		dropoffZone: dropoffZone ? { id: dropoffZone.id, name: dropoffZone.name, code: dropoffZone.code } : null,
+		vehicleCategoryId: request.vehicleCategoryId,
+		tripType: request.tripType,
+		routesChecked: [],
+		excursionsChecked: [],
+		disposChecked: [],
+	};
+	
+	// Try to match a grid for partner contracts
+	let matchedGrid: MatchedGrid | null = null;
+	let price = 0;
+	let pricingMode: "FIXED_GRID" | "DYNAMIC" = "DYNAMIC";
+	let fallbackReason: FallbackReason = null;
+	let isContractPrice = false;
+	
+	if (contact.isPartner && contact.partnerContract) {
+		const gridMatch = matchGrid(
+			request,
+			contact.partnerContract,
+			pickupZone,
+			dropoffZone,
+			gridSearchDetails,
+		);
+		
+		if (gridMatch) {
+			matchedGrid = gridMatch.matchedGrid;
+			price = gridMatch.price;
+			pricingMode = "FIXED_GRID";
+			isContractPrice = true;
+			
+			appliedRules.push({
+				type: "GRID_MATCH",
+				gridType: matchedGrid.type,
+				gridId: matchedGrid.id,
+				gridName: matchedGrid.name,
+				price,
+			});
+		} else {
+			fallbackReason = "NO_ROUTE_MATCH";
+		}
+	} else if (!contact.isPartner) {
+		fallbackReason = "PRIVATE_CLIENT";
+	} else {
+		fallbackReason = "NO_CONTRACT";
+	}
+	
+	// Calculate distance and duration
+	const distanceKm = request.estimatedDistanceKm ?? 10;
+	const durationMinutes = request.estimatedDurationMinutes ?? 30;
+	
+	// If no grid match, use dynamic pricing
+	if (pricingMode === "DYNAMIC") {
+		const rates = resolveRates(vehicleCategory, pricingSettings);
+		const dynamicResult = calculateDynamicBasePrice(
+			distanceKm,
+			durationMinutes,
+			pricingSettings,
+			rates.usedCategoryRates ? { ratePerKm: rates.ratePerKm, ratePerHour: rates.ratePerHour, rateSource: rates.rateSource } : null,
+		);
+		price = dynamicResult.priceWithMargin;
+		
+		appliedRules.push({
+			type: "DYNAMIC_BASE_CALCULATION",
+			description: `Dynamic pricing: ${dynamicResult.selectedMethod} method`,
+			inputs: dynamicResult.inputs,
+			calculation: {
+				distanceBasedPrice: dynamicResult.distanceBasedPrice,
+				durationBasedPrice: dynamicResult.durationBasedPrice,
+				selectedMethod: dynamicResult.selectedMethod,
+				basePrice: dynamicResult.basePrice,
+				priceWithMargin: dynamicResult.priceWithMargin,
+			},
+		});
+	}
+	
+	// Apply trip type specific pricing (excursion, dispo)
+	if (request.tripType !== "transfer") {
+		const ratePerHour = pricingSettings.baseRatePerHour;
+		const tripTypeResult = applyTripTypePricing(
+			request.tripType,
+			distanceKm,
+			durationMinutes,
+			ratePerHour,
+			price,
+			pricingSettings,
+			request.vehicleCategoryId,
+		);
+		price = tripTypeResult.price;
+		if (tripTypeResult.rule) {
+			appliedRules.push(tripTypeResult.rule);
+		}
+	}
+	
+	// Apply zone multiplier
+	if (pickupZone || dropoffZone) {
+		const zoneResult = applyZoneMultiplier(
+			price,
+			pickupZone,
+			dropoffZone,
+			pricingSettings.zoneMultiplierAggregationStrategy ?? "MAX",
+		);
+		price = zoneResult.adjustedPrice;
+		if (zoneResult.appliedRule) {
+			appliedRules.push(zoneResult.appliedRule);
+		}
+	}
+	
+	// Apply vehicle category multiplier
+	if (vehicleCategory && vehicleCategory.priceMultiplier !== 1.0) {
+		const categoryResult = applyVehicleCategoryMultiplier(price, vehicleCategory, false);
+		price = categoryResult.adjustedPrice;
+		if (categoryResult.appliedRule) {
+			appliedRules.push(categoryResult.appliedRule);
+		}
+	}
+	
+	// Apply advanced rates and seasonal multipliers
+	if ((advancedRates && advancedRates.length > 0) || (seasonalMultipliers && seasonalMultipliers.length > 0)) {
+		const pickupAt = request.pickupAt ? new Date(request.pickupAt) : null;
+		const multiplierResult = applyAllMultipliers(
+			price,
+			{
+				pickupAt,
+				estimatedEndAt: null,
+				distanceKm,
+				pickupZoneId: pickupZone?.id ?? null,
+				dropoffZoneId: dropoffZone?.id ?? null,
+			},
+			advancedRates ?? [],
+			seasonalMultipliers ?? [],
+		);
+		price = multiplierResult.adjustedPrice;
+		appliedRules.push(...multiplierResult.appliedRules);
+	}
+	
+	// Story 20.3: Calculate cost breakdown with real tolls (async)
+	const { breakdown: costBreakdown, tollSource } = await calculateCostBreakdownWithTolls(
+		distanceKm,
+		durationMinutes,
+		pricingSettings,
+		tollConfig,
+	);
+	
+	// Calculate internal cost
+	let internalCost = costBreakdown.total;
+	
+	// Apply round trip multiplier if applicable
+	if (request.isRoundTrip) {
+		const roundTripResult = applyRoundTripMultiplier(price, internalCost, true);
+		price = roundTripResult.adjustedPrice;
+		internalCost = roundTripResult.adjustedInternalCost;
+		if (roundTripResult.appliedRule) {
+			appliedRules.push(roundTripResult.appliedRule);
+		}
+	}
+	
+	// Calculate segments (shadow calculation)
+	const tripAnalysis = calculateShadowSegments(
+		null,
+		distanceKm,
+		durationMinutes,
+		pricingSettings,
+	);
+	
+	// Story 20.3: Add tollSource to tripAnalysis
+	tripAnalysis.tollSource = tollSource;
+	// Update costBreakdown with real toll data
+	tripAnalysis.costBreakdown = costBreakdown;
 	
 	// Get profitability thresholds
 	const thresholds = getThresholdsFromSettings(pricingSettings);

@@ -517,6 +517,7 @@ export function TripTransparencyPanel({
                   </TableRow>
                 </TableHeader>
                 <TableBody className="group">
+                  {tripAnalysis.costBreakdown?.fuel && (
                   <EditableCostRow
                     icon={FuelIcon}
                     label={t("quotes.create.tripTransparency.costs.fuel")}
@@ -529,18 +530,36 @@ export function TripTransparencyPanel({
                     isLoading={isCostUpdating}
                     onSave={handleCostSave}
                   />
+                  )}
+                  {tripAnalysis.costBreakdown?.tolls && (
                   <EditableCostRow
                     icon={RouteIcon}
                     label={t("quotes.create.tripTransparency.costs.tolls")}
                     amount={getEffectiveCost(tripAnalysis, 'tolls')}
                     originalAmount={getOriginalCost(tripAnalysis, 'tolls')}
-                    details={`${tripAnalysis.costBreakdown.tolls.distanceKm.toFixed(1)} km × ${formatPrice(tripAnalysis.costBreakdown.tolls.ratePerKm)}/km`}
+                    details={
+                      /* Story 20.3: Show toll source badge */
+                      tripAnalysis.tollSource === "GOOGLE_API" ? (
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 bg-green-600 hover:bg-green-700">
+                          API
+                        </Badge>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <span>{tripAnalysis.costBreakdown.tolls.distanceKm.toFixed(1)} km × {formatPrice(tripAnalysis.costBreakdown.tolls.ratePerKm)}/km</span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                            Estimé
+                          </Badge>
+                        </span>
+                      )
+                    }
                     componentName="tolls"
                     isEditable={canEditCosts}
                     isEdited={isCostOverridden(tripAnalysis, 'tolls')}
                     isLoading={isCostUpdating}
                     onSave={handleCostSave}
                   />
+                  )}
+                  {tripAnalysis.costBreakdown?.wear && (
                   <EditableCostRow
                     icon={TruckIcon}
                     label={t("quotes.create.tripTransparency.costs.wear")}
@@ -553,6 +572,8 @@ export function TripTransparencyPanel({
                     isLoading={isCostUpdating}
                     onSave={handleCostSave}
                   />
+                  )}
+                  {tripAnalysis.costBreakdown?.driver && (
                   <EditableCostRow
                     icon={ClockIcon}
                     label={t("quotes.create.tripTransparency.costs.driver")}
@@ -565,7 +586,8 @@ export function TripTransparencyPanel({
                     isLoading={isCostUpdating}
                     onSave={handleCostSave}
                   />
-                  {tripAnalysis.costBreakdown.parking.amount > 0 && (
+                  )}
+                  {tripAnalysis.costBreakdown?.parking && tripAnalysis.costBreakdown.parking.amount > 0 && (
                     <EditableCostRow
                       icon={MapIcon}
                       label={t("quotes.create.tripTransparency.costs.parking")}
@@ -586,7 +608,7 @@ export function TripTransparencyPanel({
                     </TableCell>
                     <TableCell className="text-right">
                       {formatPrice(
-                        tripAnalysis.effectiveCosts?.total ?? tripAnalysis.costBreakdown.total
+                        tripAnalysis.effectiveCosts?.total ?? tripAnalysis.costBreakdown?.total ?? 0
                       )}
                     </TableCell>
                     <TableCell />

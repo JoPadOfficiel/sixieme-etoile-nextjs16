@@ -33,7 +33,8 @@ export interface EditableCostRowProps {
   label: string;
   amount: number;
   originalAmount?: number;
-  details: string;
+  /** Story 20.3: Support ReactNode for toll source badge */
+  details: string | React.ReactNode;
   componentName: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking';
   isEditable: boolean;
   isEdited: boolean;

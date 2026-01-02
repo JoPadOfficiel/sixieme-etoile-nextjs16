@@ -597,6 +597,8 @@ export interface TripAnalysis {
   totalInternalCost: number;
   calculatedAt: string;
   routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
+  // Story 20.3: Toll source indicator
+  tollSource?: "GOOGLE_API" | "ESTIMATE";
   // Story 19.1: Compliance-driven staffing plan
   compliancePlan?: CompliancePlan | null;
 }
