@@ -1,6 +1,6 @@
 # Story 19.15: Decompose Pricing Engine into Modular Architecture
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
