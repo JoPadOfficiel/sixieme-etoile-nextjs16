@@ -124,11 +124,11 @@ function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
 			<PopoverContent className="w-auto p-0" align="start">
 				<div className="flex">
 					{/* Presets */}
-					<div className="border-r p-2 space-y-1">
+					<div className="border-r p-2 space-y-1 w-32">
 						<Button
 							variant="ghost"
 							size="sm"
-							className="w-full justify-start text-xs"
+							className="w-full justify-start text-xs h-7"
 							onClick={() => handlePreset("last7days")}
 						>
 							7 derniers jours
@@ -136,7 +136,7 @@ function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="w-full justify-start text-xs"
+							className="w-full justify-start text-xs h-7"
 							onClick={() => handlePreset("last30days")}
 						>
 							30 derniers jours
@@ -144,7 +144,7 @@ function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="w-full justify-start text-xs"
+							className="w-full justify-start text-xs h-7"
 							onClick={() => handlePreset("thisMonth")}
 						>
 							Ce mois
@@ -152,7 +152,7 @@ function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="w-full justify-start text-xs"
+							className="w-full justify-start text-xs h-7"
 							onClick={() => handlePreset("lastMonth")}
 						>
 							Mois dernier
@@ -166,6 +166,7 @@ function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
 							onSelect={handleSelect}
 							numberOfMonths={2}
 							locale={fr}
+							className="rounded-md border"
 						/>
 					</div>
 				</div>
