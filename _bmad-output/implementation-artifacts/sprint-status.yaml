@@ -178,6 +178,6 @@ development_status:
   19-12-display-driver-missions-in-driver-calendar: done
   19-13-validate-zone-conflict-resolution-for-concentric-circles: done
   19-14-add-comprehensive-pricing-tests: done
-  19-15-decompose-pricing-engine-into-modular-architecture: backlog
+  19-15-decompose-pricing-engine-into-modular-architecture: in-progress
   19-16-implement-mandatory-testing-protocol-for-all-stories: backlog
   epic-19-retrospective: optional
