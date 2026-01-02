@@ -47,6 +47,7 @@ const COLORS = {
  * Provides better performance and reliability.
  * 
  * Story 19.7: Modern map component with Routes API integration
+ * Story 20.7: Fix route display - always show polyline (API or fallback)
  */
 export function ModernRouteMap({ pickup, dropoff, waypoints, className }: ModernRouteMapProps) {
   const t = useTranslations("quotes.create.tripTransparency.routeMap");
@@ -94,6 +95,61 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
     };
   }, []);
 
+  // Story 20.7: Helper function to create fallback polyline
+  // Defined before useEffect to avoid "accessed before declaration" error
+  const createFallbackPolyline = useCallback((
+    map: google.maps.Map,
+    pickupPoint: { lat: number; lng: number },
+    dropoffPoint: { lat: number; lng: number },
+    waypointsList?: Array<{ lat: number; lng: number }>
+  ) => {
+    // Clear any existing polyline first
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+    }
+    
+    const path = [
+      { lat: pickupPoint.lat, lng: pickupPoint.lng },
+      ...(waypointsList?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
+      { lat: dropoffPoint.lat, lng: dropoffPoint.lng },
+    ];
+    
+    const polyline = new google.maps.Polyline({
+      map,
+      path,
+      strokeColor: COLORS.route,
+      strokeOpacity: 0,  // Hide the main line
+      strokeWeight: 3,
+      geodesic: true,
+      zIndex: 50,
+      icons: [
+        {
+          // Dashed line effect for fallback indication
+          icon: {
+            path: "M 0,-1 0,1",
+            strokeOpacity: 0.7,
+            strokeColor: COLORS.route,
+            scale: 3,
+          },
+          offset: "0",
+          repeat: "15px",
+        },
+        {
+          // Arrow at 50%
+          icon: {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 3,
+            strokeColor: COLORS.route,
+            fillColor: COLORS.route,
+            fillOpacity: 1,
+          },
+          offset: "50%",
+        },
+      ],
+    });
+    polylineRef.current = polyline;
+  }, []);
+
   // Initialize map
   useEffect(() => {
     if (!isMapReady || !mapContainerReady || !mapContainerRef.current || mapInstanceRef.current) {
@@ -118,9 +174,17 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
   // Update markers and route when coordinates change
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !isMapReady || !apiKey) return;
+    if (!map || !isMapReady) return;
 
     const currentRequestId = ++requestIdRef.current;
+    
+    // Story 20.7: Log debug info for troubleshooting
+    console.log("[ModernRouteMap] Updating route", { 
+      hasApiKey: !!apiKey, 
+      hasPickup: !!pickup, 
+      hasDropoff: !!dropoff,
+      waypointsCount: waypoints?.length ?? 0 
+    });
 
     // Clear existing markers and polyline
     markersRef.current.forEach((m) => m.setMap(null));
@@ -210,6 +274,16 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
 
     // Use Routes API for route rendering
     if (pickup && dropoff) {
+      // Story 20.7: Always create immediate fallback polyline for instant visual feedback
+      createFallbackPolyline(map, pickup, dropoff, waypoints);
+      console.log("[ModernRouteMap] Fallback polyline created for immediate display");
+      
+      // Story 20.7: Only attempt Routes API if we have an API key
+      if (!apiKey) {
+        console.warn("[ModernRouteMap] No API key available, keeping fallback polyline");
+        return;
+      }
+      
       const routesRequest: RoutesRequest = {
         origin: toRoutesWaypoint(pickup.lat, pickup.lng, pickup.address),
         destination: toRoutesWaypoint(dropoff.lat, dropoff.lng, dropoff.address),
@@ -224,10 +298,9 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
       // Add timeout to prevent hanging requests
       timeoutIdRef.current = setTimeout(() => {
         if (currentRequestId === requestIdRef.current) {
-          console.warn("[ModernRouteMap] Routes request timed out, using fallback polyline");
-          createFallbackPolyline(map, pickup, dropoff, waypoints);
+          console.warn("[ModernRouteMap] Routes request timed out, keeping fallback polyline");
         }
-      }, 3000); // 3 second timeout
+      }, 5000); // 5 second timeout (increased from 3s)
 
       computeRoutesWithFallback(apiKey, routesRequest)
         .then((result: RoutesApiResponse) => {
@@ -239,9 +312,14 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
           }
 
           if (result.success && result.data) {
-            // Use Routes API result
+            // Use Routes API result - replace fallback with real route
             const route = result.data.routes[0];
-            if (route && route.overview_path) {
+            if (route && route.overview_path && route.overview_path.length > 0) {
+              // Clear fallback polyline
+              if (polylineRef.current) {
+                polylineRef.current.setMap(null);
+              }
+              
               const polyline = new google.maps.Polyline({
                 map,
                 path: route.overview_path,
@@ -252,53 +330,30 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
                 zIndex: 50,
               });
               polylineRef.current = polyline;
+              
+              // Story 20.7: Fit bounds to the actual route
+              const routeBounds = new google.maps.LatLngBounds();
+              route.overview_path.forEach((point: { lat: number; lng: number }) => {
+                routeBounds.extend(point);
+              });
+              map.fitBounds(routeBounds, 40);
+              
+              console.log("[ModernRouteMap] Routes API successful - route displayed with", route.overview_path.length, "points");
+            } else {
+              console.warn("[ModernRouteMap] Routes API returned empty path, keeping fallback");
             }
           } else {
-            // Use fallback
-            createFallbackPolyline(map, pickup, dropoff, waypoints);
+            // Keep fallback polyline (already displayed)
+            console.warn("[ModernRouteMap] Routes API failed, keeping fallback polyline");
           }
         })
         .catch((error: RoutesApiError) => {
           console.error("[ModernRouteMap] Routes API error:", error);
-          if (currentRequestId === requestIdRef.current) {
-            createFallbackPolyline(map, pickup, dropoff, waypoints);
-          }
+          // Keep fallback polyline (already displayed)
         });
     }
 
-    // Helper function to create fallback polyline
-    function createFallbackPolyline(
-      map: google.maps.Map,
-      pickup: { lat: number; lng: number },
-      dropoff: { lat: number; lng: number },
-      waypoints?: Array<{ lat: number; lng: number }>
-    ) {
-      const path = [
-        { lat: pickup.lat, lng: pickup.lng },
-        ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
-        { lat: dropoff.lat, lng: dropoff.lng },
-      ];
-      
-      const polyline = new google.maps.Polyline({
-        map,
-        path,
-        strokeColor: COLORS.route,
-        strokeOpacity: 0.7,
-        strokeWeight: 3,
-        geodesic: true,
-        zIndex: 50,
-        icons: [{
-          icon: {
-            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            scale: 3,
-            strokeColor: COLORS.route,
-          },
-          offset: "50%",
-        }],
-      });
-      polylineRef.current = polyline;
-    }
-  }, [pickup, dropoff, waypoints, isMapReady, apiKey]);
+  }, [pickup, dropoff, waypoints, isMapReady, apiKey, createFallbackPolyline]);
 
   // No coordinates
   if (!pickup && !dropoff) {
