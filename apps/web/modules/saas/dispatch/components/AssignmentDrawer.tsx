@@ -188,13 +188,25 @@ export function AssignmentDrawer({
 	}, [candidatesData]);
 
 	// Story 20.8: Get available drivers for second driver selection (excluding primary driver)
+	// FIXED: Filter by required license for the selected vehicle
 	const availableSecondDrivers = useMemo(() => {
 		if (!candidates || !selectedCandidate) return [];
+		
+		// Get the required license from the selected candidate's vehicle
+		const requiredLicenses = selectedCandidate.driverLicenses || [];
+		
 		// Get unique drivers from candidates, excluding the selected primary driver
+		// IMPORTANT: Only show drivers who have the required license for this vehicle
 		const driversMap = new Map<string, { id: string; name: string }>();
 		for (const c of candidates) {
 			if (c.driverId && c.driverId !== selectedCandidate.driverId && !c.isShadowFleet) {
-				driversMap.set(c.driverId, { id: c.driverId, name: c.driverName ?? "Unknown" });
+				// Check if this driver has the required license
+				const hasRequiredLicense = requiredLicenses.length === 0 || 
+					c.driverLicenses.some(license => requiredLicenses.includes(license));
+				
+				if (hasRequiredLicense) {
+					driversMap.set(c.driverId, { id: c.driverId, name: c.driverName ?? "Unknown" });
+				}
 			}
 		}
 		return Array.from(driversMap.values());

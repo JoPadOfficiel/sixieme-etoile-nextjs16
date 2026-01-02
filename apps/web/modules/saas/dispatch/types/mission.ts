@@ -13,6 +13,9 @@ export interface MissionAssignment {
 	baseName: string | null;
 	driverId: string | null;
 	driverName: string | null;
+	// Story 20.8: Second driver for RSE double crew missions
+	secondDriverId: string | null;
+	secondDriverName: string | null;
 }
 
 export interface MissionProfitability {

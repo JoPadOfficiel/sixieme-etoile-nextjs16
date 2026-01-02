@@ -1325,7 +1325,36 @@ export function integrateComplianceInPricing(
 	complianceResult: ComplianceValidationResult;
 	staffingSelection: AutomaticStaffingSelectionResult;
 } {
-	// Step 1: Validate compliance
+	// Step 0: Skip compliance validation for LIGHT vehicles - RSE only applies to HEAVY vehicles
+	if (input.regulatoryCategory === "LIGHT") {
+		return {
+			complianceResult: {
+				isCompliant: true,
+				regulatoryCategory: "LIGHT",
+				violations: [],
+				warnings: [],
+				adjustedDurations: {
+					totalDrivingMinutes: input.tripAnalysis.totalDurationMinutes,
+					totalAmplitudeMinutes: input.tripAnalysis.totalDurationMinutes + 60, // Add 1h for breaks estimate
+					originalDrivingMinutes: input.tripAnalysis.totalDurationMinutes,
+					originalAmplitudeMinutes: input.tripAnalysis.totalDurationMinutes + 60,
+					injectedBreakMinutes: 0,
+					cappedSpeedApplied: false,
+				},
+				rulesApplied: [],
+				rulesUsed: null, // No RSE rules used for LIGHT vehicles
+			},
+			staffingSelection: {
+				selectedPlan: null,
+				isRequired: false,
+				selectionReason: "No RSE compliance required for LIGHT vehicles",
+				alternativesConsidered: [],
+				originalViolations: [],
+			},
+		};
+	}
+
+	// Step 1: Validate compliance (only for HEAVY vehicles)
 	const complianceResult = validateHeavyVehicleCompliance(input, rules);
 
 	// Step 2: If compliant, no staffing needed

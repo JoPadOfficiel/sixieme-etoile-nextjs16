@@ -9,6 +9,7 @@ import { QuoteCommercialSummary } from "./QuoteCommercialSummary";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
 import { QuoteActivityLog } from "./QuoteActivityLog";
 import { CostBreakdownDisplay } from "./CostBreakdownDisplay";
+import { QuoteAssignmentInfo } from "./QuoteAssignmentInfo";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
@@ -226,8 +227,10 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
           />
         </div>
 
-        {/* Right Column - Activity & Notes */}
-        <div className="lg:col-span-3">
+        {/* Right Column - Assignment Info & Activity */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Story 20.8: Display assignment info in quote details */}
+          <QuoteAssignmentInfo quote={data} />
           <QuoteActivityLog
             quote={data}
             onUpdateNotes={handleUpdateNotes}

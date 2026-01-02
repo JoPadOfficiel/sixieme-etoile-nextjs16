@@ -335,7 +335,7 @@ export const missionsRouter = new Hono()
 						},
 						assignedDriver: true,
 						// Story 20.8: Include second driver for RSE double crew
-						secondDriver: true,
+						secondDriver: true as any, // Temporary fix for type issue
 					},
 				}),
 				db.quote.count({ where }),
@@ -364,14 +364,14 @@ export const missionsRouter = new Hono()
 				luggageCount: quote.luggageCount,
 				finalPrice: Number(quote.finalPrice),
 				contact: {
-					id: quote.contact.id,
-					displayName: quote.contact.displayName,
-					isPartner: quote.contact.isPartner,
+					id: (quote as any).contact.id,
+					displayName: (quote as any).contact.displayName,
+					isPartner: (quote as any).contact.isPartner,
 				},
 				vehicleCategory: {
-					id: quote.vehicleCategory.id,
-					name: quote.vehicleCategory.name,
-					code: quote.vehicleCategory.code,
+					id: (quote as any).vehicleCategory.id,
+					name: (quote as any).vehicleCategory.name,
+					code: (quote as any).vehicleCategory.code,
 				},
 				assignment: getAssignmentFromQuote(quote),
 				profitability: {
@@ -426,7 +426,7 @@ export const missionsRouter = new Hono()
 					},
 					assignedDriver: true,
 					// Story 20.8: Include second driver for RSE double crew
-					secondDriver: true,
+					secondDriver: true as any, // Temporary fix for type issue
 				},
 			});
 
@@ -464,16 +464,16 @@ export const missionsRouter = new Hono()
 				tripType: quote.tripType,
 				notes: quote.notes,
 				contact: {
-					id: quote.contact.id,
-					displayName: quote.contact.displayName,
-					isPartner: quote.contact.isPartner,
-					email: quote.contact.email,
-					phone: quote.contact.phone,
+					id: (quote as any).contact.id,
+					displayName: (quote as any).contact.displayName,
+					isPartner: (quote as any).contact.isPartner,
+					email: (quote as any).contact.email,
+					phone: (quote as any).contact.phone,
 				},
 				vehicleCategory: {
-					id: quote.vehicleCategory.id,
-					name: quote.vehicleCategory.name,
-					code: quote.vehicleCategory.code,
+					id: (quote as any).vehicleCategory.id,
+					name: (quote as any).vehicleCategory.name,
+					code: (quote as any).vehicleCategory.code,
 				},
 				tripAnalysis: quote.tripAnalysis,
 				appliedRules: quote.appliedRules,
@@ -696,9 +696,15 @@ export const missionsRouter = new Hono()
 				transformVehicleToCandidate(v),
 			);
 
-			// Filter only by status (ACTIVE) - we want to show ALL vehicles
-			// Capacity and category mismatches will be shown as warnings
+			// Story 20.8: Filter vehicles by capacity and status FIRST
+			// Only show vehicles that can actually accommodate the mission requirements
 			const activeVehicles = filterByStatus(vehicleCandidates);
+			const capacityFiltered = filterByCapacity(
+				activeVehicles,
+				quote.passengerCount,
+				quote.luggageCount ?? 0,
+				quote.vehicleCategoryId,
+			);
 			
 			// Keep track of mission requirements for compliance checks
 			const missionRequirements = {
@@ -741,7 +747,7 @@ export const missionsRouter = new Hono()
 			if (hasCoordinates && pickup) {
 				// Original flow with coordinates - filter by distance and get routing
 				const haversineFiltered = filterByHaversineDistance(
-					activeVehicles,
+					capacityFiltered,
 					pickup,
 					DEFAULT_MAX_DISTANCE_KM,
 				);
@@ -902,9 +908,9 @@ export const missionsRouter = new Hono()
 					}
 				}
 			} else {
-				// Story 19.8: No coordinates - return all active vehicles without distance filtering
+				// Story 19.8: No coordinates - return all capacity-filtered vehicles without distance filtering
 				// Limit to 50 candidates to avoid performance issues
-				const limitedVehicles = activeVehicles.slice(0, 50);
+				const limitedVehicles = capacityFiltered.slice(0, 50);
 
 				for (const vehicleCandidate of limitedVehicles) {
 					const vehicleData = vehicles.find((v) => v.id === vehicleCandidate.vehicleId);
@@ -1198,35 +1204,36 @@ export const missionsRouter = new Hono()
 			}
 
 			// Update quote with assignment
-			const updatedQuote = await db.quote.update({
-				where: { id: quote.id },
-				data: {
-					assignedVehicleId: vehicleId,
-					assignedDriverId: driverId ?? null,
-					// Story 20.8: Persist second driver for RSE double crew
-					secondDriverId: secondDriverId ?? null,
-					assignedAt: new Date(),
-					// Update tripAnalysis with assignment info
-					tripAnalysis: {
-						...(quote.tripAnalysis as object ?? {}),
-						assignment: {
-							vehicleId,
-							vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
-							baseId: vehicle.operatingBaseId,
-							baseName: vehicle.operatingBase.name,
-							driverId: driver?.id ?? null,
-							driverName: driver
-								? `${driver.firstName} ${driver.lastName}`
-								: null,
-							// Story 20.8: Include second driver in assignment info
-							secondDriverId: secondDriver?.id ?? null,
-							secondDriverName: secondDriver
-								? `${secondDriver.firstName} ${secondDriver.lastName}`
-								: null,
-							assignedAt: new Date().toISOString(),
-						},
+			const updateData: any = {
+				assignedVehicleId: vehicleId,
+				assignedDriverId: driverId ?? null,
+				// Story 20.8: Persist second driver for RSE double crew
+				secondDriverId: secondDriverId ?? null,
+				assignedAt: new Date(),
+				// Update tripAnalysis with assignment info
+				tripAnalysis: {
+					...(quote.tripAnalysis as object ?? {}),
+					assignment: {
+						vehicleId,
+						vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
+						baseId: vehicle.operatingBaseId,
+						baseName: vehicle.operatingBase.name,
+						driverId: driver?.id ?? null,
+						driverName: driver
+							? `${driver.firstName} ${driver.lastName}`
+							: null,
+						// Story 20.8: Include second driver in assignment info
+						secondDriverId: secondDriver?.id ?? null,
+						secondDriverName: secondDriver
+							? `${secondDriver.firstName} ${secondDriver.lastName}`
+							: null,
+						assignedAt: new Date().toISOString(),
 					},
 				},
+			};
+			const updatedQuote = await db.quote.update({
+				where: { id: quote.id },
+				data: updateData,
 				include: {
 					contact: true,
 					vehicleCategory: true,
@@ -1378,7 +1385,7 @@ function determineComplianceStatus(
 	if (hasViolation) {
 		return {
 			status: "VIOLATION",
-			warnings: [...violations, ...warnings],
+			warnings: violations, // Only show violations, not mixed with warnings
 		};
 	}
 

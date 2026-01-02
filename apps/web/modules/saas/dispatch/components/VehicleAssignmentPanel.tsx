@@ -83,6 +83,12 @@ export function VehicleAssignmentPanel({
 								<div className="text-sm text-muted-foreground">
 									{assignment.driverName || t("unassigned")}
 								</div>
+								{/* Story 20.8: Display second driver if assigned */}
+								{assignment.secondDriverName && (
+									<div className="text-sm text-muted-foreground mt-1">
+										{t("secondDriver")}: {assignment.secondDriverName}
+									</div>
+								)}
 							</div>
 						</div>
 
