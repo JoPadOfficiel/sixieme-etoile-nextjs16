@@ -110,9 +110,11 @@ export function calculatePrice(
 	const distanceKm = request.estimatedDistanceKm ?? 10;
 	const durationMinutes = request.estimatedDurationMinutes ?? 30;
 	
+	// Story 20.6: Resolve rates once for use in dynamic pricing and category multiplier check
+	const rates = resolveRates(vehicleCategory, pricingSettings);
+	
 	// If no grid match, use dynamic pricing
 	if (pricingMode === "DYNAMIC") {
-		const rates = resolveRates(vehicleCategory, pricingSettings);
 		const dynamicResult = calculateDynamicBasePrice(
 			distanceKm,
 			durationMinutes,
@@ -168,8 +170,9 @@ export function calculatePrice(
 	}
 	
 	// Apply vehicle category multiplier
+	// Story 20.6: Pass usedCategoryRates to skip multiplier when category rates already include premium
 	if (vehicleCategory && vehicleCategory.priceMultiplier !== 1.0) {
-		const categoryResult = applyVehicleCategoryMultiplier(price, vehicleCategory, false);
+		const categoryResult = applyVehicleCategoryMultiplier(price, vehicleCategory, rates.usedCategoryRates);
 		price = categoryResult.adjustedPrice;
 		if (categoryResult.appliedRule) {
 			appliedRules.push(categoryResult.appliedRule);
@@ -333,9 +336,11 @@ export async function calculatePriceWithRealTolls(
 	const distanceKm = request.estimatedDistanceKm ?? 10;
 	const durationMinutes = request.estimatedDurationMinutes ?? 30;
 	
+	// Story 20.6: Resolve rates once for use in dynamic pricing and category multiplier check
+	const rates = resolveRates(vehicleCategory, pricingSettings);
+	
 	// If no grid match, use dynamic pricing
 	if (pricingMode === "DYNAMIC") {
-		const rates = resolveRates(vehicleCategory, pricingSettings);
 		const dynamicResult = calculateDynamicBasePrice(
 			distanceKm,
 			durationMinutes,
@@ -391,8 +396,9 @@ export async function calculatePriceWithRealTolls(
 	}
 	
 	// Apply vehicle category multiplier
+	// Story 20.6: Pass usedCategoryRates to skip multiplier when category rates already include premium
 	if (vehicleCategory && vehicleCategory.priceMultiplier !== 1.0) {
-		const categoryResult = applyVehicleCategoryMultiplier(price, vehicleCategory, false);
+		const categoryResult = applyVehicleCategoryMultiplier(price, vehicleCategory, rates.usedCategoryRates);
 		price = categoryResult.adjustedPrice;
 		if (categoryResult.appliedRule) {
 			appliedRules.push(categoryResult.appliedRule);
