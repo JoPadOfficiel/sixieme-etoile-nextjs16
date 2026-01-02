@@ -186,7 +186,7 @@ development_status:
   20-2-migrate-to-google-routes-api: done
   20-3-integrate-real-toll-costs-from-routes-api: done
   20-4-fix-rse-second-driver-cost-calculation: done
-  20-5-integrate-collectapi-diesel-price: backlog
+  20-5-integrate-collectapi-diesel-price: done
   20-6-fix-vehicle-category-price-multiplier-application: backlog
   20-7-fix-route-display-on-quote-detail-map: backlog
   20-8-implement-dual-driver-assignment-for-rse-trips: backlog

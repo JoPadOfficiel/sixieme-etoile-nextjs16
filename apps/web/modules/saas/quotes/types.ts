@@ -561,6 +561,27 @@ export interface CompliancePlan {
 }
 
 /**
+ * Story 20.5: Fuel price source information for transparency
+ */
+export type FuelPriceSource = "REALTIME" | "CACHE" | "DEFAULT";
+
+export interface FuelPriceSourceInfo {
+  pricePerLitre: number;
+  currency: "EUR";
+  source: FuelPriceSource;
+  fetchedAt: string | null;
+  isStale: boolean;
+  fuelType: string;
+  countryCode: string;
+  countriesOnRoute?: string[];
+  routePrices?: Array<{
+    point: "pickup" | "dropoff" | "stop";
+    country: string;
+    pricePerLitre: number;
+  }>;
+}
+
+/**
  * Trip analysis from shadow calculation
  */
 export interface TripAnalysis {
@@ -599,6 +620,8 @@ export interface TripAnalysis {
   routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
   // Story 20.3: Toll source indicator
   tollSource?: "GOOGLE_API" | "ESTIMATE";
+  // Story 20.5: Fuel price source information for transparency
+  fuelPriceSource?: FuelPriceSourceInfo;
   // Story 19.1: Compliance-driven staffing plan
   compliancePlan?: CompliancePlan | null;
 }

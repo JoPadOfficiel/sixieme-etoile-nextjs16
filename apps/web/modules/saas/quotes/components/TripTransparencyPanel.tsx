@@ -523,7 +523,25 @@ export function TripTransparencyPanel({
                     label={t("quotes.create.tripTransparency.costs.fuel")}
                     amount={getEffectiveCost(tripAnalysis, 'fuel')}
                     originalAmount={getOriginalCost(tripAnalysis, 'fuel')}
-                    details={`${tripAnalysis.costBreakdown.fuel.distanceKm.toFixed(1)} km × ${tripAnalysis.costBreakdown.fuel.consumptionL100km} L/100km × ${formatPrice(tripAnalysis.costBreakdown.fuel.pricePerLiter)}/L`}
+                    details={
+                      /* Story 20.5: Show fuel price source badge */
+                      <span className="flex items-center gap-2">
+                        <span>{tripAnalysis.costBreakdown.fuel.distanceKm.toFixed(1)} km × {tripAnalysis.costBreakdown.fuel.consumptionL100km} L/100km × {formatPrice(tripAnalysis.costBreakdown.fuel.pricePerLiter)}/L</span>
+                        {tripAnalysis.fuelPriceSource?.source === "REALTIME" ? (
+                          <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 bg-green-600 hover:bg-green-700">
+                            API
+                          </Badge>
+                        ) : tripAnalysis.fuelPriceSource?.source === "CACHE" ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                            Cache
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                            Défaut
+                          </Badge>
+                        )}
+                      </span>
+                    }
                     componentName="fuel"
                     isEditable={canEditCosts}
                     isEdited={isCostOverridden(tripAnalysis, 'fuel')}

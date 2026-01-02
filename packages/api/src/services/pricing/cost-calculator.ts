@@ -31,6 +31,8 @@ import type {
 	FuelConsumptionSource,
 	FuelConsumptionResolution,
 	ZoneData,
+	GeoPoint,
+	FuelPriceSourceInfo,
 } from "./types";
 import { DEFAULT_COST_PARAMETERS, DEFAULT_FUEL_PRICES } from "./constants";
 import { getTollCost, calculateFallbackToll, type TollSource } from "../toll-service";
@@ -42,6 +44,7 @@ import {
 	type VehicleForTco,
 	type VehicleCategoryForTco,
 } from "../tco-calculator";
+import { getFuelPrice as getFuelPriceFromService, type FuelPriceResult } from "../fuel-price-service";
 
 // ============================================================================
 // Fuel Price Functions
@@ -320,6 +323,189 @@ export async function calculateCostBreakdownWithTolls(
 			total,
 		},
 		tollSource,
+	};
+}
+
+// ============================================================================
+// Story 20.5: Real Fuel Price Integration
+// ============================================================================
+
+/**
+ * Configuration for real cost calculation with fuel and tolls
+ */
+export interface RealCostConfig {
+	pickup?: GeoPoint;
+	dropoff?: GeoPoint;
+	stops?: GeoPoint[];
+	organizationId?: string;
+	tollApiKey?: string;
+}
+
+/**
+ * Result of cost breakdown with real fuel prices
+ */
+export interface CostBreakdownWithRealCostsResult {
+	breakdown: CostBreakdown;
+	tollSource: TollSource;
+	fuelPriceSource: FuelPriceSourceInfo;
+}
+
+/**
+ * Story 20.5: Calculate cost breakdown with real fuel prices from CollectAPI
+ * 
+ * This function fetches real-time fuel prices based on route coordinates
+ * and combines them with real toll costs from Google Routes API.
+ * 
+ * Fallback chain for fuel prices:
+ * 1. REALTIME: CollectAPI based on pickup/dropoff coordinates
+ * 2. CACHE: Database cache (FuelPriceCache table)
+ * 3. DEFAULT: Hardcoded DEFAULT_FUEL_PRICES
+ * 
+ * @param distanceKm - Trip distance in kilometers
+ * @param durationMinutes - Trip duration in minutes
+ * @param settings - Organization pricing settings
+ * @param config - Real cost configuration with coordinates and API keys
+ * @param parkingCost - Optional parking cost
+ * @param parkingDescription - Optional parking description
+ * @param fuelType - Fuel type (default: DIESEL)
+ * @returns Cost breakdown with fuel and toll sources
+ */
+export async function calculateCostBreakdownWithRealCosts(
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	config?: RealCostConfig,
+	parkingCost: number = 0,
+	parkingDescription: string = "",
+	fuelType: FuelType = "DIESEL",
+): Promise<CostBreakdownWithRealCostsResult> {
+	const fuelConsumptionL100km = settings.fuelConsumptionL100km ?? DEFAULT_COST_PARAMETERS.fuelConsumptionL100km;
+	const tollCostPerKm = settings.tollCostPerKm ?? DEFAULT_COST_PARAMETERS.tollCostPerKm;
+	const wearCostPerKm = settings.wearCostPerKm ?? DEFAULT_COST_PARAMETERS.wearCostPerKm;
+	const driverHourlyCost = settings.driverHourlyCost ?? DEFAULT_COST_PARAMETERS.driverHourlyCost;
+
+	// Fetch real fuel price from CollectAPI
+	// Note: ELECTRIC is not supported by CollectAPI, fallback to default for electric vehicles
+	let fuelPriceResult: FuelPriceResult;
+	
+	if (fuelType === "ELECTRIC") {
+		// Electric vehicles use default price (no API support)
+		fuelPriceResult = {
+			pricePerLitre: DEFAULT_FUEL_PRICES.ELECTRIC,
+			currency: "EUR",
+			source: "DEFAULT",
+			fetchedAt: null,
+			isStale: false,
+			fuelType: "DIESEL", // Prisma type doesn't have ELECTRIC
+			countryCode: "FR",
+		};
+	} else {
+		try {
+			fuelPriceResult = await getFuelPriceFromService({
+				pickup: config?.pickup,
+				dropoff: config?.dropoff,
+				stops: config?.stops,
+				organizationId: config?.organizationId,
+				fuelType: fuelType as "DIESEL" | "GASOLINE" | "LPG",
+			});
+		} catch (error) {
+			console.error(`[CostCalculator] Failed to fetch fuel price: ${error}`);
+			// Fallback to default
+			fuelPriceResult = {
+				pricePerLitre: DEFAULT_FUEL_PRICES[fuelType],
+				currency: "EUR",
+				source: "DEFAULT",
+				fetchedAt: null,
+				isStale: false,
+				fuelType: fuelType as "DIESEL" | "GASOLINE" | "LPG",
+				countryCode: "FR",
+			};
+		}
+	}
+
+	// Calculate fuel cost with real price
+	const fuel = calculateFuelCost(distanceKm, fuelConsumptionL100km, fuelType, {
+		[fuelType]: fuelPriceResult.pricePerLitre,
+	});
+
+	// Calculate wear cost
+	const wear = calculateWearCost(distanceKm, wearCostPerKm);
+	
+	// Calculate driver cost
+	const driver = calculateDriverCost(durationMinutes, driverHourlyCost);
+	
+	// Parking
+	const parking: ParkingCostComponent = {
+		amount: parkingCost,
+		description: parkingDescription,
+	};
+
+	// Calculate tolls (real or estimate)
+	let tolls: TollCostComponent;
+	let tollSource: TollSource = "ESTIMATE";
+
+	if (config?.pickup && config?.dropoff && config?.tollApiKey) {
+		const tollResult = await getTollCost(config.pickup, config.dropoff, {
+			apiKey: config.tollApiKey,
+			fallbackRatePerKm: tollCostPerKm,
+		});
+
+		if (tollResult.amount >= 0) {
+			tolls = {
+				amount: tollResult.amount,
+				distanceKm,
+				ratePerKm: 0,
+				source: tollResult.source,
+				isFromCache: tollResult.isFromCache,
+			};
+			tollSource = tollResult.source;
+		} else {
+			tolls = {
+				amount: calculateFallbackToll(distanceKm, tollCostPerKm),
+				distanceKm,
+				ratePerKm: tollCostPerKm,
+				source: "ESTIMATE",
+				isFromCache: false,
+			};
+		}
+	} else {
+		tolls = {
+			amount: Math.round(distanceKm * tollCostPerKm * 100) / 100,
+			distanceKm,
+			ratePerKm: tollCostPerKm,
+			source: "ESTIMATE",
+			isFromCache: false,
+		};
+	}
+
+	const total = Math.round(
+		(fuel.amount + tolls.amount + wear.amount + driver.amount + parking.amount) * 100
+	) / 100;
+
+	// Build fuel price source info for tripAnalysis
+	const fuelPriceSource: FuelPriceSourceInfo = {
+		pricePerLitre: fuelPriceResult.pricePerLitre,
+		currency: "EUR",
+		source: fuelPriceResult.source,
+		fetchedAt: fuelPriceResult.fetchedAt?.toISOString() ?? null,
+		isStale: fuelPriceResult.isStale,
+		fuelType: fuelPriceResult.fuelType,
+		countryCode: fuelPriceResult.countryCode,
+		countriesOnRoute: fuelPriceResult.countriesOnRoute,
+		routePrices: fuelPriceResult.routePrices,
+	};
+
+	return {
+		breakdown: {
+			fuel,
+			tolls,
+			wear,
+			driver,
+			parking,
+			total,
+		},
+		tollSource,
+		fuelPriceSource,
 	};
 }
 

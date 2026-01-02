@@ -35,6 +35,32 @@ export type FuelType = "DIESEL" | "GASOLINE" | "LPG" | "ELECTRIC";
 export type TollSource = "GOOGLE_API" | "ESTIMATE";
 
 /**
+ * Fuel price source for transparency
+ * Story 20.5: Track fuel price data source
+ */
+export type FuelPriceSource = "REALTIME" | "CACHE" | "DEFAULT";
+
+/**
+ * Fuel price source information
+ * Story 20.5: Full fuel price source details for transparency
+ */
+export interface FuelPriceSourceInfo {
+  pricePerLitre: number;
+  currency: "EUR";
+  source: FuelPriceSource;
+  fetchedAt: string | null;
+  isStale: boolean;
+  fuelType: string;
+  countryCode: string;
+  countriesOnRoute?: string[];
+  routePrices?: Array<{
+    point: "pickup" | "dropoff" | "stop";
+    country: string;
+    pricePerLitre: number;
+  }>;
+}
+
+/**
  * Fuel cost breakdown
  * Story 15.6: Extended with fuelType
  */
@@ -174,6 +200,7 @@ export type RoutingSource = "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELEC
  * Contains segment breakdown, cost components, and vehicle selection
  * 
  * @see FR21-FR23: Shadow calculation segments A/B/C
+ * @see Story 20.5: Added fuelPriceSource for fuel price transparency
  */
 export interface TripAnalysis {
   costBreakdown: CostBreakdown;
@@ -184,6 +211,10 @@ export interface TripAnalysis {
   totalInternalCost: number;
   calculatedAt: string;
   routingSource: RoutingSource;
+  /** Story 20.3: Toll data source (GOOGLE_API or ESTIMATE) */
+  tollSource?: TollSource;
+  /** Story 20.5: Fuel price source information for transparency */
+  fuelPriceSource?: FuelPriceSourceInfo;
 }
 
 // ============================================================================

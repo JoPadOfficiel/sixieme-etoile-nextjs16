@@ -43,11 +43,14 @@ export {
 	calculateZoneSurcharges,
 	calculateCostBreakdown,
 	calculateCostBreakdownWithTolls,
+	calculateCostBreakdownWithRealCosts,
 	calculateCostBreakdownWithTco,
 	createTcoAppliedRule,
 	calculateInternalCost,
 	estimateInternalCost,
 	combineCostBreakdowns,
+	type RealCostConfig,
+	type CostBreakdownWithRealCostsResult,
 } from "./cost-calculator";
 
 // ============================================================================

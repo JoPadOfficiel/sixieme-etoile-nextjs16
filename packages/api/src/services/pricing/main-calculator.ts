@@ -22,8 +22,8 @@ import type {
 	DispoPackageAssignment,
 } from "./types";
 
-import { calculateCostBreakdown, calculateCostBreakdownWithTolls } from "./cost-calculator";
-import type { TollConfig } from "./types";
+import { calculateCostBreakdown, calculateCostBreakdownWithTolls, calculateCostBreakdownWithRealCosts, type RealCostConfig } from "./cost-calculator";
+import type { TollConfig, FuelPriceSourceInfo } from "./types";
 import { calculateDynamicBasePrice, resolveRates } from "./dynamic-pricing";
 import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMultiplier } from "./multiplier-engine";
 import { applyZoneMultiplier } from "./zone-resolver";
@@ -418,12 +418,25 @@ export async function calculatePriceWithRealTolls(
 		appliedRules.push(...multiplierResult.appliedRules);
 	}
 	
-	// Story 20.3: Calculate cost breakdown with real tolls (async)
-	const { breakdown: costBreakdown, tollSource } = await calculateCostBreakdownWithTolls(
+	// Story 20.5: Calculate cost breakdown with real fuel prices AND real tolls (async)
+	const realCostConfig: RealCostConfig = {
+		pickup: request.pickup,
+		dropoff: request.dropoff,
+		organizationId: pricingSettings.organizationId,
+		tollApiKey: tollConfig?.apiKey,
+	};
+	
+	// Get fuel type from vehicle category if available
+	const fuelType = vehicleCategory?.fuelType ?? "DIESEL";
+	
+	const { breakdown: costBreakdown, tollSource, fuelPriceSource } = await calculateCostBreakdownWithRealCosts(
 		distanceKm,
 		durationMinutes,
 		pricingSettings,
-		tollConfig,
+		realCostConfig,
+		0, // parkingCost
+		"", // parkingDescription
+		fuelType,
 	);
 	
 	// Calculate internal cost
@@ -449,7 +462,9 @@ export async function calculatePriceWithRealTolls(
 	
 	// Story 20.3: Add tollSource to tripAnalysis
 	tripAnalysis.tollSource = tollSource;
-	// Update costBreakdown with real toll data
+	// Story 20.5: Add fuelPriceSource to tripAnalysis
+	tripAnalysis.fuelPriceSource = fuelPriceSource;
+	// Update costBreakdown with real cost data
 	tripAnalysis.costBreakdown = costBreakdown;
 	
 	// Get profitability thresholds
