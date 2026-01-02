@@ -163,7 +163,7 @@ development_status:
   18-10-hierarchical-pricing-algorithm-implementation: done
   18-11-configurable-transfer-to-mad-thresholds: done
   epic-18-retrospective: optional
-  epic-19: in-progress
+  epic-19: done
   19-1-fix-double-category-pricing: done
   19-2-implement-automatic-rse-compliant-staffing-for-long-trips: done
   19-3-fix-excursion-pricing-to-include-return-trip-cost: done
@@ -179,7 +179,7 @@ development_status:
   19-13-validate-zone-conflict-resolution-for-concentric-circles: done
   19-14-add-comprehensive-pricing-tests: done
   19-15-decompose-pricing-engine-into-modular-architecture: done
-  19-16-implement-mandatory-testing-protocol-for-all-stories: backlog
+  19-16-implement-mandatory-testing-protocol-for-all-stories: done
   epic-19-retrospective: optional
   epic-20: done
   20-1-fix-triptransparencypanel-segments-null-safety: done
@@ -193,3 +193,14 @@ development_status:
   20-9-comprehensive-end-to-end-testing-suite: done
   20-10-validate-reports-page-functionality: done
   epic-20-retrospective: optional
+  epic-21: backlog
+  21-1-ultra-detailed-staffing-costs-display-in-triptransparency: backlog
+  21-2-detailed-approach-fee-and-empty-return-display: backlog
+  21-3-ultra-detailed-travel-time-calculation-breakdown: backlog
+  21-4-pricing-segments-and-traversed-zones-visualization: backlog
+  21-5-rse-staffing-integration-in-dispatch: backlog
+  21-6-automatic-empty-return-and-availability-calculation: backlog
+  21-7-enhanced-triptransparency-interface-with-detailed-calculation: backlog
+  21-8-zone-based-cost-transparency-enhancement: backlog
+  21-9-real-time-cost-calculation-validation: backlog
+  epic-21-retrospective: optional

@@ -67,6 +67,9 @@ This document decomposes the VTC ERP PRD into **18 functional epics**, aligned w
 - **Epic 18 – Advanced Geospatial, Route Optimization & Yield Management**  
   Implement corridor zones, automatic transfer-to-MAD switching, loss of exploitation calculation, multi-scenario route optimization, transversal trip decomposition, shadow fleet integration, fixed temporal vectors, and hierarchical pricing algorithm.
 
+- **Epic 21 – Complete Pricing System Refactor with Full Transparency**  
+  Refactor the entire pricing calculation system to display ultra-detailed cost breakdown, complete calculation transparency, and full integration of RSE/staffing information in quotes and dispatch.
+
 ---
 
 ## Functional Requirements Inventory (Summary)
@@ -96,6 +99,15 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
 
 - **FR Group 8 – Strategic Optimisation, Yield & Advanced Pricing:** FR47–FR60.  
   Heavy-vehicle compliance validator, alternative staffing options, RSE counters, driver flexibility scoring, multi-base optimisation, chaining, empty legs, subcontracting, Trip Transparency editing, optional fees, promotions, advanced modifiers, seasonal multipliers, vehicle category multipliers.
+
+- **FR Group 9 – Advanced Zone Resolution, Compliance Integration & Driver Availability:** FR61–FR77.  
+  Configurable zone conflict resolution, automatic compliance-driven staffing integration, driver calendar/availability model, weighted day/night rates, time buckets, zone surcharges, route segmentation, and TCO enrichment.
+
+- **FR Group 10 – Advanced Geospatial, Route Optimization & Yield Management:** FR78–FR88.  
+  Corridor zones, automatic transfer-to-MAD switching, loss of exploitation calculation, multi-scenario route optimization, transversal trip decomposition, shadow fleet integration, fixed temporal vectors, and hierarchical pricing algorithm.
+
+- **FR Group 11 – Complete Pricing System Refactor with Full Transparency:** FR89–FR110.  
+  Ultra-detailed cost breakdown display, staffing costs transparency, detailed time calculation analysis, pricing segments visualization, dispatch staffing integration, automatic empty return calculation, enhanced TripTransparency interface, automated testing and validation, documentation and training, and production deployment with monitoring.
 
 ---
 
@@ -147,8 +159,13 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
   - Secondary epics: **Epic 3 – Zone Engine & Fixed Grids**, **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 5 – Fleet & RSE Compliance Engine**, **Epic 8 – Dispatch & Strategic Optimisation**
 
 - **FR Group 10 (FR78–FR88) – Advanced Geospatial, Route Optimization & Yield Management**
+
   - Primary epic: **Epic 18 – Advanced Geospatial, Route Optimization & Yield Management**
   - Secondary epics: **Epic 3 – Zone Engine & Fixed Grids**, **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 8 – Dispatch & Strategic Optimisation**, **Epic 14 – Flexible Route Pricing**, **Epic 17 – Advanced Zone Resolution**
+
+- **FR Group 11 (FR89–FR110) – Complete Pricing System Refactor with Full Transparency**
+  - Primary epic: **Epic 21 – Complete Pricing System Refactor with Full Transparency**
+  - Secondary epics: **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 8 – Dispatch & Strategic Optimisation**, **Epic 17 – Advanced Zone Resolution**, **Epic 20 – Critical Bug Fixes & Testing**
 
 ---
 
@@ -5041,23 +5058,364 @@ The following critical issues have been identified:
 
 ---
 
+## Epic 21: Complete Pricing System Refactor with Full Transparency
+
+**Goal:** Refactor the entire pricing calculation system to display ultra-detailed cost breakdown, complete calculation transparency, and full integration of RSE/staffing information in quotes and dispatch.
+
+**Related FRs:** FR89–FR110.
+
+**Dependencies:** Epic 4 (Dynamic Pricing), Epic 6 (Quotes & Operator Cockpit), Epic 8 (Dispatch & Strategic Optimisation), Epic 17 (Advanced Zone Resolution), Epic 20 (Critical Bug Fixes & Testing).
+
+---
+
+### Story 21.1: Ultra-Detailed Staffing Costs Display in TripTransparency
+
+**As an** operator,  
+**I want** to see the complete staffing cost breakdown in quotes,  
+**So that** I can understand and validate each pricing component.
+
+**Related FRs:** FR89, FR90.
+
+**Acceptance Criteria:**
+
+**Given** a quote with RSE staffing (double driver, hotel, meals),  
+**When** I display the TripTransparency panel,  
+**Then** I see a "Staffing Costs" section with:
+
+- **Second Driver Cost**: Hourly rate × hours worked
+- **Hotel Cost**: Price per night × number of nights × number of drivers
+- **Meal Costs**:
+  - Driver 1 meals: Count × unit price
+  - Driver 2 meals: Count × unit price (if applicable)
+  - Total meals
+- **Daily Breakdown**: Day-by-day breakdown for long trips
+
+**And** each cost displays:
+
+- Explicit icon (👥 for driver, 🏨 for hotel, 🍽️ for meals)
+- Detailed calculation (ex: "2 drivers × 85€/night × 2 nights = 340€")
+- Source of parameter (org config, vehicle, etc.)
+
+**Prerequisites:** Epic 17 (staffing integration), Epic 5 (fleet models).
+
+---
+
+### Story 21.2: Detailed Approach Fee and Empty Return Display
+
+**As an** operator,  
+**I want** to see detailed approach and empty return costs in quotes,  
+**So that** I understand how the total price is constructed.
+
+**Related FRs:** FR91, FR92.
+
+**Acceptance Criteria:**
+
+**Given** a quote with approach fee from garage,  
+**When** I display TripTransparency,  
+**Then** I see a "Positioning Costs" section:
+
+- **Approach Fee**: Distance garage → departure × rate/km + time × rate/h
+- **Empty Return**: Distance arrival → garage × rate/km (if applicable)
+- **Availability Fee**: Hourly cost × waiting hours (if applicable)
+
+**And** each element displays:
+
+- Calculated distance and duration
+- Applied rates
+- Map visualization of approach route
+
+**Prerequisites:** Epic 4 (shadow calculation), Epic 8 (dispatch).
+
+---
+
+### Story 21.3: Ultra-Detailed Travel Time Calculation Breakdown
+
+**As an** operator,  
+**I want** to understand how travel time is calculated,  
+**So that** I can explain differences with Google Maps and validate estimates.
+
+**Related FRs:** FR93, FR94.
+
+**Acceptance Criteria:**
+
+**Given** a travel time calculation (ex: Paris-Nice = 17h34),  
+**When** I display TripTransparency,  
+**Then** I see a "Time Analysis" section:
+
+- **Base Google Maps Time**: 10h00 (reference)
+- **Vehicle Surcharge**: +40% (coach vs car)
+- **Traffic Surcharge**: +15% (rush hour)
+- **Pause Conduite**: +2h30 (mandatory breaks)
+- **Temps Total**: 17h34
+
+**And** each component displays:
+
+- Percentage and hour value
+- Applied calculation rule
+- Source (vehicle config, regulation, etc.)
+
+**Prerequisites:** Epic 4 (dynamic pricing), Epic 20 (Google Routes API).
+
+---
+
+### Story 21.4: Pricing Segments and Traversed Zones Visualization
+
+**As an** operator,  
+**I want** to see trip breakdown by segments and zones,  
+**So that** I understand how each zone impacts the price.
+
+**Related FRs:** FR95, FR96.
+
+**Acceptance Criteria:**
+
+**Given** a multi-zone trip (ex: Paris → Lyon → Marseille),  
+**When** I display TripTransparency,  
+**Then** I see a "Pricing Segments" section:
+
+- **Segment 1**: Paris → Lyon (120km, 1h30, zones: PARIS_20 → LYON_0)
+  - Distance: 120km
+  - Time: 1h30
+  - Traversed zones: PARIS_20, PARIS_40, LYON_0
+  - Segment cost: 145€
+- **Segment 2**: Lyon → Marseille (320km, 3h15, zones: LYON_0 → MARSEILLE_0)
+  - Distance: 320km
+  - Time: 3h15
+  - Traversed zones: LYON_0, MARSEILLE_10, MARSEILLE_0
+  - Segment cost: 380€
+
+**And** each segment displays:
+
+- Map visualization
+- Applied zone multipliers
+- Detailed segment cost
+
+**Prerequisites:** Epic 3 (zone engine), Epic 14 (flexible routes).
+
+---
+
+### Story 21.5: RSE Staffing Integration in Dispatch
+
+**As a** dispatcher,  
+**I want** to see all RSE staffing information in the dispatch screen,  
+**So that** I can assign drivers and see associated costs.
+
+**Related FRs:** FR97, FR98.
+
+**Acceptance Criteria:**
+
+**Given** a mission with RSE staffing in dispatch screen,  
+**When** I display mission details,  
+**Then** I see:
+
+- **Staffing Section**:
+  - Icon 👥 with required driver count
+  - Detail: "2 drivers (RSE 13h amplitude)"
+  - Total staffing cost: 450€
+- **Hotel Section**:
+  - Icon 🏨 with night count
+  - Detail: "2 nights × 2 drivers × 85€ = 340€"
+- **Meals Section**:
+  - Icon 🍽️ with meal count
+  - Detail: "4 meals × 25€ = 100€"
+
+**And** each information is:
+
+- Clickable for detail view
+- Colored by status (green/red)
+- Integrated in dispatch interface
+
+**Prerequisites:** Epic 8 (dispatch), Epic 17 (staffing integration).
+
+---
+
+### Story 21.6: Automatic Empty Return and Availability Calculation
+
+**As an** operator,  
+**I want** the system to automatically calculate empty return and availability,  
+**So that** the final price includes all operational costs.
+
+**Related FRs:** FR99, FR100.
+
+**Acceptance Criteria:**
+
+**Given** a created quote,  
+**When** the pricing engine calculates the price,  
+**Then** it automatically determines:
+
+- **Empty Return Required**: Yes/No based on trip type
+- **Empty Return Cost**: Distance × rate/km if applicable
+- **Availability**: Waiting hours × rate/h if applicable
+- **Approach Fee**: Distance garage → departure × rate/km
+
+**And** these costs are:
+
+- Added to total price
+- Displayed in TripTransparency
+- Included in profitability calculations
+
+**Prerequisites:** Epic 4 (pricing engine), Epic 8 (dispatch).
+
+---
+
+### Story 21.7: Enhanced TripTransparency Interface with Detailed Calculation
+
+**As an** operator,  
+**I want** a completely redesigned TripTransparency interface,  
+**So that** I can see all pricing information clearly and structured.
+
+**Related FRs:** FR101, FR102.
+
+**Acceptance Criteria:**
+
+**Given** the new TripTransparency component,  
+**When** I display a quote,  
+**Then** I see organized sections:
+
+1. **Trip Summary**: Distance, duration, total price, margin
+2. **Price Breakdown**:
+   - Base price
+   - Surcharges (zones, night, weekend)
+   - Staffing costs
+   - Positioning costs
+3. **Time Analysis**: Detailed time calculation
+4. **Pricing Segments**: Segment/zone breakdown
+5. **Operational Costs**: Vehicle, fuel, tolls detail
+6. **RSE Compliance**: Staffing plan and associated costs
+
+**And** each section is:
+
+- Collapsible/expandable
+- With consistent icons and colors
+- PDF exportable for customer
+
+**Prerequisites:** Stories 21.1-21.6.
+
+---
+
+### Story 21.8: Automated Testing and API Validation
+
+**As a** developer,  
+**I want** comprehensive tests to validate all pricing calculations,  
+**So that** I ensure the system works correctly.
+
+**Related FRs:** FR103, FR104.
+
+**Acceptance Criteria:**
+
+**Given** the automated test suite,  
+**When** I execute tests,  
+**Then** they validate:
+
+- **Unit Tests**: Each calculation function
+- **Integration Tests**: Complete pricing API
+- **E2E Tests**: Visual interface + Curl API
+- **Database Tests**: Correct persistence
+
+**And** tests cover:
+
+- Paris-Nice (long trip with staffing)
+- Paris-CDG (short with approach fee)
+- Excursion multi-stops
+- Availability
+- All vehicle types
+
+**Prerequisites:** Stories 21.1-21.7.
+
+---
+
+### Story 21.8: Zone-Based Cost Transparency Enhancement
+
+**As an** operator,  
+**I want** to see exactly how zones affect pricing calculations,  
+**So that** I can explain zone-based pricing to clients.
+
+**Related FRs:** FR109.
+
+**Acceptance Criteria:**
+
+**Given** a trip crossing multiple zones,  
+**When** I view TripTransparency,  
+**Then** I see:
+
+- **Zone Detection Logic**: Which algorithm selected pickup/dropoff zones
+- **Zone Priority Rules**: How conflicts were resolved
+- **Zone Multiplier Application**: Exact multiplier applied and why
+- **Zone Surcharges**: Any fixed fees per zone
+
+**And** each zone decision shows:
+
+- Geographic coordinates used
+- Zone boundaries considered
+- Alternative zones that were rejected
+- Business rule applied
+
+**Prerequisites:** Story 17.1 (zone conflict resolution), Story 21.4.
+
+---
+
+### Story 21.9: Real-Time Cost Calculation Validation
+
+**As an** operator,  
+**I want** to validate pricing calculations in real-time,  
+**So that** I can catch errors before sending quotes to clients.
+
+**Related FRs:** FR110.
+
+**Acceptance Criteria:**
+
+**Given** any quote in creation or edit mode,  
+**When** pricing parameters change,  
+**Then** the system shows:
+
+- **Calculation Validation**: Green check if calculations are consistent
+- **Error Detection**: Red alert if calculations don't match expected ranges
+- **Recalculation Button**: Manual trigger to recalculate all costs
+- **Audit Trail**: Log of all calculation changes with timestamps
+
+**And** validation includes:
+
+- Internal cost vs selling price sanity checks
+- Zone multiplier consistency
+- Staffing cost reasonableness
+- Time calculation plausibility
+
+**Prerequisites:** Stories 21.1-21.8.
+
+---
+
+### Summary
+
+Epic 21 addresses the complete transparency and detail requirements for the pricing system:
+
+1. **Staffing Cost Transparency** (Stories 21.1-21.2): Ultra-detailed breakdown of all staffing-related costs with icons and calculations.
+2. **Time Calculation Analysis** (Story 21.3): Complete explanation of how travel time is calculated vs Google Maps.
+3. **Zone and Segment Transparency** (Story 21.4): Visual breakdown of pricing by segments and zones traversed.
+4. **Dispatch Integration** (Story 21.5): Full staffing information displayed in dispatch interface.
+5. **Automated Calculations** (Story 21.6): Automatic determination of positioning costs.
+6. **Enhanced Interface** (Story 21.7): Completely redesigned TripTransparency with organized sections.
+7. **Quality Assurance** (Story 21.8): Comprehensive testing and validation.
+8. **Advanced Features** (Stories 21.9): Zone transparency and real-time validation.
+
+This epic ensures that operators can see and understand every component of pricing calculations, addressing the core business need for complete transparency in the VTC pricing system.
+
+---
+
 ## Summary
 
-This document now defines the **20-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **21-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
 
-The 20 epics cover the complete VTC ERP system:
+The 21 epics cover the complete VTC ERP system:
 
 **Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
-**Pricing Engine (Epics 3-4, 14-18):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, and advanced geospatial/yield management  
+**Pricing Engine (Epics 3-4, 14-18, 21):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, advanced geospatial/yield management, and complete pricing transparency refactor  
 **Fleet & Operations (Epics 5-8):** Vehicle management, compliance, quotes lifecycle, and dispatch optimization
 **Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
 **Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
-**Critical Fixes (Epic 19):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization
-**Critical Bug Fixes & Testing (Epic 20):** Google Maps API migration, toll/fuel integration, RSE cost fixes, comprehensive E2E testing
+**Critical Fixes (Epics 19-20):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization, Google Maps API migration, toll/fuel integration, comprehensive E2E testing
 
 It is intended as the canonical epic and story breakdown for implementation and sprint planning, following the BMad `create-epics-and-stories` workflow.
