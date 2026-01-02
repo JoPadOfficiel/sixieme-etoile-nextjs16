@@ -571,3 +571,59 @@ export interface CalendarEventFormData {
 	startAt: Date;
 	endAt: Date;
 }
+
+// ============================================================================
+// Driver Missions (Story 19.12)
+// ============================================================================
+
+export type QuoteStatus = "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+export type TripType = "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID";
+
+export interface DriverMission {
+	id: string;
+	pickupAt: string;
+	estimatedEndAt: string | null;
+	pickupAddress: string;
+	dropoffAddress: string | null;
+	status: QuoteStatus;
+	tripType: TripType;
+	contact: {
+		id: string;
+		name: string;
+	};
+	vehicleCategory: {
+		id: string;
+		name: string;
+	};
+}
+
+export interface DriverMissionsResponse {
+	data: DriverMission[];
+	meta: {
+		count: number;
+		limit: number;
+	};
+}
+
+// Unified calendar item for displaying both events and missions
+export type CalendarItemType = "event" | "mission";
+
+export interface CalendarItem {
+	type: CalendarItemType;
+	id: string;
+	startAt: string;
+	endAt: string;
+	title: string;
+	subtitle?: string;
+	// For events
+	eventType?: CalendarEventType;
+	notes?: string | null;
+	// For missions
+	quoteId?: string;
+	status?: QuoteStatus;
+	tripType?: TripType;
+	pickupAddress?: string;
+	dropoffAddress?: string | null;
+	contactName?: string;
+	vehicleCategoryName?: string;
+}

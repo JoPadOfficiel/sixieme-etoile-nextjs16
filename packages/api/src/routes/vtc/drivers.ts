@@ -983,4 +983,123 @@ export const driversRouter = new Hono()
 
 			return c.json({ success: true });
 		}
+	)
+
+	// ============================================================================
+	// Driver Missions Endpoints (Story 19.12)
+	// ============================================================================
+
+	// List missions (assigned quotes) for a driver
+	.get(
+		"/:id/missions",
+		validator(
+			"query",
+			z.object({
+				startDate: z.string().optional(),
+				endDate: z.string().optional(),
+				limit: z.coerce.number().int().positive().max(100).default(50),
+			})
+		),
+		describeRoute({
+			summary: "List driver missions",
+			description:
+				"Get assigned missions (quotes with ACCEPTED/CONFIRMED status) for a driver with optional date range filter",
+			tags: ["VTC - Fleet", "VTC - Calendar"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const driverId = c.req.param("id");
+			const { startDate, endDate, limit } = c.req.valid("query");
+
+			// Verify driver exists and belongs to this organization
+			const driver = await db.driver.findFirst({
+				where: withTenantId(driverId, organizationId),
+			});
+
+			if (!driver) {
+				throw new HTTPException(404, {
+					message: "Driver not found",
+				});
+			}
+
+			// Build where clause for missions
+			const where: Record<string, unknown> = {
+				organizationId,
+				// Check both assignedDriverId and driverId
+				OR: [
+					{ assignedDriverId: driverId },
+					{ driverId: driverId },
+				],
+				// Only active mission statuses
+				status: { in: ["ACCEPTED"] },
+			};
+
+			// Date range filter on pickupAt
+			if (startDate || endDate) {
+				const pickupAtFilter: Record<string, Date> = {};
+				if (startDate) {
+					pickupAtFilter.gte = new Date(startDate);
+				}
+				if (endDate) {
+					pickupAtFilter.lte = new Date(endDate);
+				}
+				where.pickupAt = pickupAtFilter;
+			}
+
+			const missions = await db.quote.findMany({
+				where,
+				take: limit,
+				orderBy: { pickupAt: "asc" },
+				select: {
+					id: true,
+					pickupAt: true,
+					estimatedEndAt: true,
+					pickupAddress: true,
+					dropoffAddress: true,
+					status: true,
+					tripType: true,
+					contactId: true,
+					contact: {
+						select: {
+							id: true,
+							displayName: true,
+						},
+					},
+					vehicleCategoryId: true,
+					vehicleCategory: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+				},
+			});
+
+			// Transform to ensure contact and vehicleCategory are always present with expected shape
+			const transformedMissions = missions.map((mission) => ({
+				id: mission.id,
+				pickupAt: mission.pickupAt,
+				estimatedEndAt: mission.estimatedEndAt,
+				pickupAddress: mission.pickupAddress,
+				dropoffAddress: mission.dropoffAddress,
+				status: mission.status,
+				tripType: mission.tripType,
+				contact: {
+					id: mission.contact?.id || mission.contactId || "",
+					name: mission.contact?.displayName || "Client",
+				},
+				vehicleCategory: {
+					id: mission.vehicleCategory?.id || mission.vehicleCategoryId || "",
+					name: mission.vehicleCategory?.name || "Standard",
+				},
+			}));
+
+			return c.json({
+				data: transformedMissions,
+				meta: {
+					count: transformedMissions.length,
+					limit,
+				},
+			});
+		}
 	);
