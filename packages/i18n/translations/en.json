@@ -3286,6 +3286,8 @@
 				"distance": "Distance",
 				"licenses": "Licenses",
 				"noDriverAssigned": "No driver assigned",
+				"noDistance": "Distance N/A",
+				"noCost": "Cost N/A",
 				"shadowFleet": "Shadow Fleet",
 				"marginIfSubcontracted": "Margin: €{margin} ({percent}%)",
 				"availability": {

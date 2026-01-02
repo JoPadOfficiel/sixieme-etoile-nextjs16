@@ -142,24 +142,31 @@ export function useRouteVisualization({
 
 /**
  * Get the best candidate (lowest cost) from a list
+ * Story 19.8: Handle null costs when GPS coordinates are not available
  */
 export function getBestCandidate(
 	candidates: AssignmentCandidate[],
 ): AssignmentCandidate | null {
 	if (candidates.length === 0) return null;
-	return candidates.reduce((best, current) =>
-		current.estimatedCost.total < best.estimatedCost.total ? current : best,
+	// Filter candidates with valid costs first
+	const candidatesWithCost = candidates.filter((c) => c.estimatedCost.total !== null);
+	if (candidatesWithCost.length === 0) return null;
+	return candidatesWithCost.reduce((best, current) =>
+		(current.estimatedCost.total ?? Infinity) < (best.estimatedCost.total ?? Infinity) ? current : best,
 	);
 }
 
 /**
  * Calculate cost difference from best option
+ * Story 19.8: Handle null costs when GPS coordinates are not available
  */
 export function getCostDifference(
 	candidate: AssignmentCandidate,
 	bestCandidate: AssignmentCandidate | null,
 ): number {
 	if (!bestCandidate) return 0;
+	// If either cost is null, return 0 (no comparison possible)
+	if (candidate.estimatedCost.total === null || bestCandidate.estimatedCost.total === null) return 0;
 	return candidate.estimatedCost.total - bestCandidate.estimatedCost.total;
 }
 

@@ -177,8 +177,17 @@ export function CandidateRow({
 							<div className="flex items-center gap-2 text-xs text-muted-foreground">
 								<MapPin className="size-3 flex-shrink-0" />
 								<span className="truncate">{candidate.baseName}</span>
-								<span>•</span>
-								<span>{candidate.baseDistanceKm.toFixed(1)} km</span>
+								{candidate.baseDistanceKm !== null ? (
+									<>
+										<span>•</span>
+										<span>{candidate.baseDistanceKm.toFixed(1)} km</span>
+									</>
+								) : (
+									<>
+										<span>•</span>
+										<span className="italic">{t("noDistance")}</span>
+									</>
+								)}
 							</div>
 						</>
 					)}
@@ -218,46 +227,53 @@ export function CandidateRow({
 					</TooltipProvider>
 
 					{/* Estimated Cost */}
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<div className="flex flex-col items-end gap-0.5">
-									<div className="flex items-center gap-1 text-sm font-medium">
-										<Euro className="size-3.5 text-muted-foreground" />
-										<span>{candidate.estimatedCost.total.toFixed(2)}</span>
+					{candidate.estimatedCost.total !== null ? (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div className="flex flex-col items-end gap-0.5">
+										<div className="flex items-center gap-1 text-sm font-medium">
+											<Euro className="size-3.5 text-muted-foreground" />
+											<span>{candidate.estimatedCost.total.toFixed(2)}</span>
+										</div>
+										{/* Story 8.3: Cost comparison indicator */}
+										{isBestOption && (
+											<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400">
+												{t("costComparison.best")}
+											</Badge>
+										)}
+										{!isBestOption && costDifference !== undefined && costDifference > 0 && (
+											<span className="text-[10px] text-muted-foreground">
+												+€{costDifference.toFixed(2)}
+											</span>
+										)}
 									</div>
-									{/* Story 8.3: Cost comparison indicator */}
-									{isBestOption && (
-										<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400">
-											{t("costComparison.best")}
-										</Badge>
-									)}
-									{!isBestOption && costDifference !== undefined && costDifference > 0 && (
-										<span className="text-[10px] text-muted-foreground">
-											+€{costDifference.toFixed(2)}
-										</span>
-									)}
-								</div>
-							</TooltipTrigger>
-							<TooltipContent side="left">
-								<div className="space-y-1 text-xs">
-									<p className="font-semibold">{t("costBreakdown.title")}</p>
-									<div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-										<span className="text-muted-foreground">{t("costBreakdown.approach")}</span>
-										<span className="text-right">€{candidate.estimatedCost.approach.toFixed(2)}</span>
-										<span className="text-muted-foreground">{t("costBreakdown.service")}</span>
-										<span className="text-right">€{candidate.estimatedCost.service.toFixed(2)}</span>
-										<span className="text-muted-foreground">{t("costBreakdown.return")}</span>
-										<span className="text-right">€{candidate.estimatedCost.return.toFixed(2)}</span>
+								</TooltipTrigger>
+								<TooltipContent side="left">
+									<div className="space-y-1 text-xs">
+										<p className="font-semibold">{t("costBreakdown.title")}</p>
+										<div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+											<span className="text-muted-foreground">{t("costBreakdown.approach")}</span>
+											<span className="text-right">€{candidate.estimatedCost.approach?.toFixed(2) ?? "-"}</span>
+											<span className="text-muted-foreground">{t("costBreakdown.service")}</span>
+											<span className="text-right">€{candidate.estimatedCost.service?.toFixed(2) ?? "-"}</span>
+											<span className="text-muted-foreground">{t("costBreakdown.return")}</span>
+											<span className="text-right">€{candidate.estimatedCost.return?.toFixed(2) ?? "-"}</span>
+										</div>
+										<div className="pt-1 border-t grid grid-cols-2 gap-x-4 font-semibold">
+											<span>{t("costBreakdown.total")}</span>
+											<span className="text-right">€{candidate.estimatedCost.total.toFixed(2)}</span>
+										</div>
 									</div>
-									<div className="pt-1 border-t grid grid-cols-2 gap-x-4 font-semibold">
-										<span>{t("costBreakdown.total")}</span>
-										<span className="text-right">€{candidate.estimatedCost.total.toFixed(2)}</span>
-									</div>
-								</div>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					) : (
+						<div className="flex items-center gap-1 text-sm text-muted-foreground italic">
+							<Euro className="size-3.5" />
+							<span>{t("noCost")}</span>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

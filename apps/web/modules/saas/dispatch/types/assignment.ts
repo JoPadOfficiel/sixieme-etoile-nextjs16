@@ -18,19 +18,21 @@ export interface CandidateCompliance {
 	warnings: string[];
 }
 
+// Story 19.8: Cost values can be null when no GPS coordinates are available
 export interface CandidateCost {
-	approach: number;
-	service: number;
-	return: number;
-	total: number;
+	approach: number | null;
+	service: number | null;
+	return: number | null;
+	total: number | null;
 }
 
 /**
  * Story 8.3: Route segment details for visualization
  */
+// Story 19.8: Segment values can be null when no GPS coordinates are available
 export interface RouteSegment {
-	distanceKm: number;
-	durationMinutes: number;
+	distanceKm: number | null;
+	durationMinutes: number | null;
 	polyline?: string; // Encoded polyline (optional, for Google API routes)
 }
 
@@ -75,7 +77,7 @@ export interface AssignmentCandidate {
 	};
 	baseId: string;
 	baseName: string;
-	baseDistanceKm: number;
+	baseDistanceKm: number | null; // Story 19.8: Can be null when no GPS coordinates
 	// Story 8.3: Base coordinates for map visualization
 	baseLatitude: number;
 	baseLongitude: number;
@@ -86,7 +88,7 @@ export interface AssignmentCandidate {
 	scoreBreakdown: ScoreBreakdown;
 	compliance: CandidateCompliance;
 	estimatedCost: CandidateCost;
-	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "SHADOW_FLEET";
+	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "SHADOW_FLEET" | "NO_COORDINATES"; // Story 19.8: Added NO_COORDINATES
 	// Story 8.3: Segment details for route visualization
 	segments: CandidateSegments;
 	// Story 18.9: Shadow Fleet fields
@@ -115,7 +117,7 @@ export interface CandidateBase {
 	longitude: number;
 	isSelected: boolean;
 	isHovered: boolean;
-	estimatedCost: number;
+	estimatedCost: number | null; // Story 19.8: Can be null when no GPS coordinates
 	segments: CandidateSegments;
 }
 
