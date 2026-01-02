@@ -34,7 +34,7 @@ import type { TripAnalysis, SegmentAnalysis, CostBreakdown } from "../pricing-en
 // ============================================================================
 
 const createCostBreakdown = (total: number = 0): CostBreakdown => ({
-	fuel: { amount: 0, distanceKm: 0, consumptionL100km: 8, pricePerLiter: 1.8 },
+	fuel: { amount: 0, distanceKm: 0, consumptionL100km: 8, pricePerLiter: 1.8, fuelType: "DIESEL" },
 	tolls: { amount: 0, distanceKm: 0, ratePerKm: 0.15 },
 	wear: { amount: 0, distanceKm: 0, ratePerKm: 0.1 },
 	driver: { amount: 0, durationMinutes: 0, hourlyRate: 25 },

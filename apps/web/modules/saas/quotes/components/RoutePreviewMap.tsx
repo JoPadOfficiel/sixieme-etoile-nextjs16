@@ -44,6 +44,8 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
   const isUsingFallbackRef = useRef(false);
   // Story 19.7: Track request ID to prevent race conditions
   const requestIdRef = useRef(0);
+  // Story 19.7: Track timeout ID for cleanup
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
   // Callback ref for container
   const mapRef = useCallback((node: HTMLDivElement | null) => {
@@ -61,6 +63,10 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       if (directionsRendererRef.current) {
         directionsRendererRef.current.setMap(null);
         directionsRendererRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
       }
       mapInstanceRef.current = null;
       mapContainerRef.current = null;
@@ -81,6 +87,10 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       if (directionsRendererRef.current) {
         directionsRendererRef.current.setMap(null);
         directionsRendererRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
       }
     };
   }, []);
@@ -235,6 +245,84 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
         stopover: true,
       })) ?? [];
 
+      // Check for legacy API issues by monitoring console errors
+      const originalError = console.error;
+      console.error = (...args) => {
+        const message = args.join(' ');
+        if (message.includes('Directions Service') && message.includes('legacy API')) {
+          // Legacy API error detected, use fallback immediately
+          if (currentRequestId === requestIdRef.current && !isUsingFallbackRef.current) {
+            console.warn("[RoutePreviewMap] Legacy API detected, using fallback polyline immediately");
+            isUsingFallbackRef.current = true;
+            
+            // Build path including waypoints
+            const path = [
+              { lat: pickup.lat, lng: pickup.lng },
+              ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
+              { lat: dropoff.lat, lng: dropoff.lng },
+            ];
+            
+            const polyline = new google.maps.Polyline({
+              map,
+              path,
+              strokeColor: COLORS.route,
+              strokeOpacity: 0.7,
+              strokeWeight: 3,
+              geodesic: true,
+              zIndex: 50,
+              icons: [{
+                icon: {
+                  path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                  scale: 3,
+                  strokeColor: COLORS.route,
+                },
+                offset: "50%",
+              }],
+            });
+            polylineRef.current = polyline;
+          }
+        }
+        originalError.apply(console, args);
+      };
+
+      // Add timeout to prevent hanging requests
+      timeoutIdRef.current = setTimeout(() => {
+        // Check if this is still the current request
+        if (currentRequestId === requestIdRef.current) {
+          console.warn("[RoutePreviewMap] Directions request timed out, using fallback polyline");
+          isUsingFallbackRef.current = true;
+          
+          // Build path including waypoints
+          const path = [
+            { lat: pickup.lat, lng: pickup.lng },
+            ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
+            { lat: dropoff.lat, lng: dropoff.lng },
+          ];
+          
+          const polyline = new google.maps.Polyline({
+            map,
+            path,
+            strokeColor: COLORS.route,
+            strokeOpacity: 0.7,
+            strokeWeight: 3,
+            geodesic: true,
+            zIndex: 50,
+            icons: [{
+              icon: {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 3,
+                strokeColor: COLORS.route,
+              },
+              offset: "50%",
+            }],
+          });
+          polylineRef.current = polyline;
+          
+          // Restore console.error
+          console.error = originalError;
+        }
+      }, 3000); // Reduced timeout to 3 seconds for faster fallback
+
       directionsService.route(
         {
           origin: { lat: pickup.lat, lng: pickup.lng },
@@ -243,6 +331,15 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
           travelMode: google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
+          // Restore console.error
+          console.error = originalError;
+          
+          // Clear timeout since we got a response
+          if (timeoutIdRef.current) {
+            clearTimeout(timeoutIdRef.current);
+            timeoutIdRef.current = null;
+          }
+          
           // Story 19.7: Check if this is still the current request (prevent race conditions)
           if (currentRequestId !== requestIdRef.current) {
             return;
