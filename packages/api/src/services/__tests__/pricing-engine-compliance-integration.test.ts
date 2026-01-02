@@ -68,7 +68,41 @@ describe("Story 17.3: Pricing Engine Compliance Integration", () => {
 		});
 
 		it("should return NONE plan for compliant heavy vehicle trips", () => {
-			const tripAnalysis = createMinimalTripAnalysis();
+			// Create a trip that is within RSE limits (8h = 480 minutes, under 9h limit)
+			const tripAnalysis: TripAnalysis = {
+				costBreakdown: {
+					fuel: { amount: 40, distanceKm: 80, consumptionL100km: 8, pricePerLiter: 1.8, fuelType: "DIESEL" },
+					tolls: { amount: 8, distanceKm: 80, ratePerKm: 0.1 },
+					wear: { amount: 8, distanceKm: 80, ratePerKm: 0.1 },
+					driver: { amount: 80, durationMinutes: 480, hourlyRate: 10 },
+					parking: { amount: 0, description: "No parking" },
+					total: 136,
+				},
+				segments: {
+					approach: null,
+					service: {
+						name: "service",
+						description: "Main service segment",
+						distanceKm: 80,
+						durationMinutes: 480, // 8 hours - within 9h limit
+						cost: {
+							fuel: { amount: 40, distanceKm: 80, consumptionL100km: 8, pricePerLiter: 1.8, fuelType: "DIESEL" },
+							tolls: { amount: 8, distanceKm: 80, ratePerKm: 0.1 },
+							wear: { amount: 8, distanceKm: 80, ratePerKm: 0.1 },
+							driver: { amount: 80, durationMinutes: 480, hourlyRate: 10 },
+							parking: { amount: 0, description: "No parking" },
+							total: 136,
+						},
+						isEstimated: true,
+					},
+					return: null,
+				},
+				totalDistanceKm: 80,
+				totalDurationMinutes: 480, // 8 hours - within RSE limits
+				totalInternalCost: 136,
+				calculatedAt: new Date().toISOString(),
+				routingSource: "HAVERSINE_ESTIMATE",
+			};
 
 			const result = integrateComplianceIntoPricing({
 				organizationId: "org-1",
