@@ -416,7 +416,7 @@ export function TripTransparencyPanel({
                     </TableBody>
                   </Table>
                 </>
-              ) : (
+              ) : tripAnalysis.segments && tripAnalysis.segments.service ? (
                 /* Standard Transfer/Dispo segments */
                 <Table>
                   <TableHeader>
@@ -471,6 +471,9 @@ export function TripTransparencyPanel({
                     </TableRow>
                   </TableBody>
                 </Table>
+              ) : (
+                /* Story 20.1: Segments not available - graceful fallback */
+                <NoSegmentsMessage t={t} tripAnalysis={tripAnalysis} />
               )}
 
               {/* Routing Source */}
@@ -673,6 +676,77 @@ function SegmentRow({ segment, label, description, isMain = false }: SegmentRowP
 }
 
 // Note: CostRow component moved to EditableCostRow.tsx
+
+/**
+ * Story 20.1: NoSegmentsMessage Component
+ * 
+ * Displays a graceful fallback when segment data is not available.
+ * This can happen for:
+ * - Quotes in progress of creation
+ * - Legacy quotes without tripAnalysis segments
+ * - Edge cases where pricing engine returns partial data
+ */
+interface NoSegmentsMessageProps {
+  t: ReturnType<typeof useTranslations>;
+  tripAnalysis: {
+    totalDistanceKm: number;
+    totalDurationMinutes: number;
+    totalInternalCost: number;
+  };
+}
+
+function NoSegmentsMessage({ t, tripAnalysis }: NoSegmentsMessageProps) {
+  return (
+    <div className="space-y-4">
+      {/* Info message */}
+      <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+        <RouteIcon className="size-5 text-muted-foreground flex-shrink-0" />
+        <div>
+          <p className="font-medium text-sm">
+            {t("quotes.create.tripTransparency.segments.notAvailable")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("quotes.create.tripTransparency.segments.notAvailableDesc")}
+          </p>
+        </div>
+      </div>
+      
+      {/* Summary totals table - always show totals if available */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("quotes.create.tripTransparency.segment")}</TableHead>
+            <TableHead className="text-right">
+              {t("quotes.create.tripTransparency.distance")}
+            </TableHead>
+            <TableHead className="text-right">
+              {t("quotes.create.tripTransparency.duration")}
+            </TableHead>
+            <TableHead className="text-right">
+              {t("quotes.create.tripTransparency.cost")}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow className="font-medium bg-muted/50">
+            <TableCell>
+              {t("quotes.create.tripTransparency.total")}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatDistance(tripAnalysis.totalDistanceKm)}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatDuration(tripAnalysis.totalDurationMinutes)}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatPrice(tripAnalysis.totalInternalCost)}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
 
 function TripTransparencySkeleton() {
   return (

@@ -2492,7 +2492,9 @@
 					"service": "Service",
 					"serviceDesc": "Pickup → Dropoff (client trip)",
 					"return": "Return",
-					"returnDesc": "Dropoff → Base (deadhead)"
+					"returnDesc": "Dropoff → Base (deadhead)",
+					"notAvailable": "Segment data not available",
+					"notAvailableDesc": "Segment details will be displayed once route calculation is complete"
 				},
 				"routingSource": "Routing source",
 				"vehicleSelection": "Vehicle Selection",

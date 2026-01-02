@@ -2492,7 +2492,9 @@
 					"service": "Service",
 					"serviceDesc": "Prise en charge → Destination (client)",
 					"return": "Retour",
-					"returnDesc": "Destination → Base (à vide)"
+					"returnDesc": "Destination → Base (à vide)",
+					"notAvailable": "Données de segments non disponibles",
+					"notAvailableDesc": "Les détails des segments seront affichés une fois le calcul d'itinéraire terminé"
 				},
 				"routingSource": "Source de l'itinéraire",
 				"vehicleSelection": "Sélection du véhicule",
