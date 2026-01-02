@@ -190,6 +190,6 @@ development_status:
   20-6-fix-vehicle-category-price-multiplier-application: done
   20-7-fix-route-display-on-quote-detail-map: done
   20-8-implement-dual-driver-assignment-for-rse-trips: done
-  20-9-comprehensive-end-to-end-testing-suite: backlog
+  20-9-comprehensive-end-to-end-testing-suite: done
   20-10-validate-reports-page-functionality: backlog
   epic-20-retrospective: optional
