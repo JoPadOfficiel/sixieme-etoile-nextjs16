@@ -2720,6 +2720,16 @@
 			"cannotCreate": "Cannot Create Quote",
 			"resolveViolations": "Please resolve the compliance violations before creating this quote."
 		},
+		"assignment": {
+			"title": "Assignment",
+			"unassigned": "Unassigned",
+			"unassignedDescription": "This quote has not yet been assigned to a vehicle or driver.",
+			"vehicle": "Vehicle",
+			"driver": "Driver",
+			"secondDriver": "Second Driver",
+			"base": "Base",
+			"unknownVehicle": "Unknown vehicle"
+		},
 		"helpers": {
 			"airport": {
 				"detected": "Airport Transfer Detected",

@@ -2720,6 +2720,16 @@
 			"cannotCreate": "Impossible de créer le devis",
 			"resolveViolations": "Veuillez résoudre les violations de conformité avant de créer ce devis."
 		},
+		"assignment": {
+			"title": "Affectation",
+			"unassigned": "Non affecté",
+			"unassignedDescription": "Ce devis n'a pas encore été affecté à un véhicule ou un chauffeur.",
+			"vehicle": "Véhicule",
+			"driver": "Chauffeur",
+			"secondDriver": "Second chauffeur",
+			"base": "Base",
+			"unknownVehicle": "Véhicule inconnu"
+		},
 		"helpers": {
 			"airport": {
 				"detected": "Transfert aéroport détecté",

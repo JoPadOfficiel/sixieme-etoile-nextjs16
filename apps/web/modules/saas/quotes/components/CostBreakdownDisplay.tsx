@@ -156,6 +156,7 @@ export function CostBreakdownDisplay({
       </CardHeader>
       <CardContent className={`space-y-1 ${compact ? "py-2" : ""}`}>
         {/* Fuel */}
+        {fuel && (
         <CostRow
           icon={Fuel}
           iconColor="text-orange-500"
@@ -163,8 +164,10 @@ export function CostBreakdownDisplay({
           amount={fuel.amount}
           details={`${fuel.distanceKm.toFixed(0)} km × ${fuel.consumptionL100km} L/100km × ${fuel.pricePerLiter.toFixed(3)}€/L`}
         />
+        )}
 
         {/* Tolls */}
+        {tolls && (
         <CostRow
           icon={Car}
           iconColor="text-blue-500"
@@ -176,8 +179,10 @@ export function CostBreakdownDisplay({
             : `Estimation: ${tolls.distanceKm.toFixed(0)} km × ${tolls.ratePerKm.toFixed(3)}€/km`
           }
         />
+        )}
 
         {/* Driver */}
+        {driver && (
         <CostRow
           icon={User}
           iconColor="text-green-500"
@@ -185,8 +190,10 @@ export function CostBreakdownDisplay({
           amount={driver.amount}
           details={`${Math.round(driver.durationMinutes / 60 * 10) / 10}h × ${driver.hourlyRate.toFixed(2)}€/h`}
         />
+        )}
 
         {/* Wear */}
+        {wear && (
         <CostRow
           icon={Wrench}
           iconColor="text-gray-500"
@@ -194,9 +201,10 @@ export function CostBreakdownDisplay({
           amount={wear.amount}
           details={`${wear.distanceKm.toFixed(0)} km × ${wear.ratePerKm.toFixed(3)}€/km`}
         />
+        )}
 
         {/* Parking (only if > 0) */}
-        {parking.amount > 0 && (
+        {parking && parking.amount > 0 && (
           <CostRow
             icon={ParkingCircle}
             iconColor="text-purple-500"
