@@ -221,6 +221,12 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
 
     // Use Directions API for real route rendering
     if (pickup && dropoff) {
+      // Clear any existing polyline first
+      if (polylineRef.current) {
+        (polylineRef.current as google.maps.Polyline).setMap(null);
+        polylineRef.current = null;
+      }
+
       // Initialize DirectionsRenderer if needed
       if (!directionsRendererRef.current) {
         directionsRendererRef.current = new google.maps.DirectionsRenderer({
@@ -245,40 +251,40 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
         stopover: true,
       })) ?? [];
 
+      // Create immediate fallback polyline while waiting for Directions API
+      const path = [
+        { lat: pickup.lat, lng: pickup.lng },
+        ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
+        { lat: dropoff.lat, lng: dropoff.lng },
+      ];
+      
+      const fallbackPolyline = new google.maps.Polyline({
+        map,
+        path,
+        strokeColor: COLORS.route,
+        strokeOpacity: 0.7,
+        strokeWeight: 3,
+        geodesic: true,
+        zIndex: 50,
+        icons: [{
+          icon: {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 3,
+            strokeColor: COLORS.route,
+          },
+          offset: "50%",
+        }],
+      });
+      polylineRef.current = fallbackPolyline;
+      isUsingFallbackRef.current = true;
+
       // Add timeout to prevent hanging requests
       timeoutIdRef.current = setTimeout(() => {
         // Check if this is still the current request
         if (currentRequestId === requestIdRef.current) {
-          console.warn("[RoutePreviewMap] Directions request timed out, using fallback polyline");
-          isUsingFallbackRef.current = true;
-          
-          // Build path including waypoints
-          const path = [
-            { lat: pickup.lat, lng: pickup.lng },
-            ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
-            { lat: dropoff.lat, lng: dropoff.lng },
-          ];
-          
-          const polyline = new google.maps.Polyline({
-            map,
-            path,
-            strokeColor: COLORS.route,
-            strokeOpacity: 0.7,
-            strokeWeight: 3,
-            geodesic: true,
-            zIndex: 50,
-            icons: [{
-              icon: {
-                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                scale: 3,
-                strokeColor: COLORS.route,
-              },
-              offset: "50%",
-            }],
-          });
-          polylineRef.current = polyline;
+          console.warn("[RoutePreviewMap] Directions request timed out, keeping fallback polyline");
         }
-      }, 2000); // Reduced timeout to 2 seconds for faster fallback
+      }, 5000); // 5 second timeout
 
       directionsService.route(
         {
@@ -300,42 +306,20 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
           }
           
           if (status === google.maps.DirectionsStatus.OK && result) {
+            // Clear fallback polyline
+            if (polylineRef.current) {
+              (polylineRef.current as google.maps.Polyline).setMap(null);
+              polylineRef.current = null;
+            }
+            
+            // Use Directions API result
             directionsRendererRef.current?.setDirections(result);
             isUsingFallbackRef.current = false;
+            console.log("[RoutePreviewMap] Directions API successful - route displayed");
           } else {
-            // Fallback to simple polyline if directions fail
-            const reason = status === google.maps.DirectionsStatus.REQUEST_DENIED 
-              ? "API not available (legacy API disabled)" 
-              : `Directions failed (${status})`;
-            
-            console.warn(`[RoutePreviewMap] ${reason}, using fallback polyline`);
+            // Keep fallback polyline if directions fail
+            console.warn("[RoutePreviewMap] Directions request failed, keeping fallback polyline:", status);
             isUsingFallbackRef.current = true;
-            
-            // Build path including waypoints
-            const path = [
-              { lat: pickup.lat, lng: pickup.lng },
-              ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
-              { lat: dropoff.lat, lng: dropoff.lng },
-            ];
-            
-            const polyline = new google.maps.Polyline({
-              map,
-              path,
-              strokeColor: COLORS.route,
-              strokeOpacity: 0.7,
-              strokeWeight: 3,
-              geodesic: true,
-              zIndex: 50,
-              icons: [{
-                icon: {
-                  path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                  scale: 3,
-                  strokeColor: COLORS.route,
-                },
-                offset: "50%",
-              }],
-            });
-            polylineRef.current = polyline;
           }
         }
       );
