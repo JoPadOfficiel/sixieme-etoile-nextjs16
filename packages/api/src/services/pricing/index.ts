@@ -8,77 +8,72 @@
  * Architecture:
  * - types.ts: All type definitions and interfaces
  * - constants.ts: All constants and default values
- * - ../pricing-engine.ts: All functions (to be extracted into separate modules)
- * 
- * Future modules (to be extracted):
  * - cost-calculator.ts: Cost calculation functions
  * - zone-resolver.ts: Zone resolution and multiplier logic
- * - grid-matcher.ts: Grid matching (ZoneRoute, Excursion, Dispo)
  * - dynamic-pricing.ts: Dynamic pricing calculation
  * - multiplier-engine.ts: Multiplier application
- * - shadow-calculator.ts: Shadow calculation (segments A/B/C)
  * - profitability.ts: Profitability indicators
+ * - shadow-calculator.ts: Shadow calculation (segments A/B/C)
  * - trip-type-pricing.ts: Trip type specific pricing
- * - main-engine.ts: Main calculatePrice function
  */
 
 // ============================================================================
-// Types - Extracted to separate module
+// Types
 // ============================================================================
 
 export * from "./types";
 
 // ============================================================================
-// Constants - Extracted to separate module
+// Constants
 // ============================================================================
 
 export * from "./constants";
 
 // ============================================================================
-// Functions - Re-exported from original pricing-engine.ts
-// These will be progressively extracted into separate modules
+// Cost Calculator Module
 // ============================================================================
 
-// Re-export all functions from the original pricing-engine.ts
-// This maintains backward compatibility while we transition to modular architecture
 export {
-	// Cost calculation functions
+	getFuelPrice,
+	resolveFuelConsumption,
 	calculateFuelCost,
 	calculateTollCost,
 	calculateWearCost,
 	calculateDriverCost,
+	calculateZoneSurcharges,
 	calculateCostBreakdown,
 	calculateCostBreakdownWithTolls,
 	calculateCostBreakdownWithTco,
+	createTcoAppliedRule,
 	calculateInternalCost,
 	estimateInternalCost,
-	calculateZoneSurcharges,
-	createTcoAppliedRule,
-	
-	// Zone functions
-	applyZoneMultiplier,
+	combineCostBreakdowns,
+} from "./cost-calculator";
+
+// ============================================================================
+// Zone Resolver Module
+// ============================================================================
+
+export {
 	calculateEffectiveZoneMultiplier,
-	
-	// Dynamic pricing functions
-	calculateDynamicBasePrice,
+	applyZoneMultiplier,
+} from "./zone-resolver";
+
+// ============================================================================
+// Dynamic Pricing Module
+// ============================================================================
+
+export {
 	resolveRates,
 	resolveFuelType,
-	getFuelPrice,
-	resolveFuelConsumption,
-	
-	// Multiplier functions
-	applyAllMultipliers,
-	evaluateAdvancedRates,
-	evaluateSeasonalMultipliers,
-	applyAdvancedRateAdjustment,
-	evaluateAdvancedRate,
-	applySeasonalMultiplier,
-	evaluateSeasonalMultiplier,
-	applyVehicleCategoryMultiplier,
-	applyClientDifficultyMultiplier,
-	applyRoundTripMultiplier,
-	
-	// Time/date functions
+	calculateDynamicBasePrice,
+} from "./dynamic-pricing";
+
+// ============================================================================
+// Multiplier Engine Module
+// ============================================================================
+
+export {
 	isTimeInRange,
 	isDayInRange,
 	isNightTime,
@@ -87,34 +82,63 @@ export {
 	isWithinDateRange,
 	calculateNightOverlapMinutes,
 	calculateWeightedNightRate,
-	
-	// Shadow calculation functions
+	evaluateAdvancedRate,
+	applyAdvancedRateAdjustment,
+	evaluateAdvancedRates,
+	evaluateSeasonalMultiplier,
+	applySeasonalMultiplier,
+	evaluateSeasonalMultipliers,
+	applyAllMultipliers,
+	applyVehicleCategoryMultiplier,
+	applyClientDifficultyMultiplier,
+	applyRoundTripMultiplier,
+} from "./multiplier-engine";
+
+// ============================================================================
+// Profitability Module
+// ============================================================================
+
+export {
+	getProfitabilityLabel,
+	getProfitabilityDescription,
+	calculateProfitabilityIndicator,
+	getProfitabilityIndicatorData,
+	getThresholdsFromSettings,
+	calculateProfitabilityWithCommission,
+} from "./profitability";
+
+// ============================================================================
+// Shadow Calculator Module
+// ============================================================================
+
+export {
 	calculateShadowSegments,
 	buildShadowInputFromVehicleSelection,
-	
-	// Excursion functions
-	calculateExcursionLegs,
-	buildExcursionTripAnalysis,
-	
-	// Trip type pricing functions
-	applyTripTypePricing,
+	calculateEstimatedEndAt,
+} from "./shadow-calculator";
+
+// ============================================================================
+// Trip Type Pricing Module
+// ============================================================================
+
+export {
 	calculateExcursionPrice,
 	calculateExcursionReturnCost,
 	calculateDispoPrice,
 	calculateDispoPriceWithBuckets,
 	calculateSmartDispoPrice,
-	
-	// Profitability functions
-	calculateProfitabilityIndicator,
-	getProfitabilityIndicatorData,
-	getProfitabilityLabel,
-	getProfitabilityDescription,
-	getThresholdsFromSettings,
-	calculateProfitabilityWithCommission,
-	
-	// Compliance functions
+	applyTripTypePricing,
+	calculateExcursionLegs,
+	buildExcursionTripAnalysis,
+} from "./trip-type-pricing";
+
+// ============================================================================
+// Re-exports from original pricing-engine.ts (functions not yet extracted)
+// ============================================================================
+
+export {
+	// Compliance functions (still in pricing-engine.ts)
 	integrateComplianceIntoPricing,
-	calculateEstimatedEndAt,
 	
 	// Commission re-exports
 	calculateCommission,
