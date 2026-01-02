@@ -310,7 +310,7 @@ export async function computeRoutes(
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.staticDuration,routes.polyline,routes.description,routes.legs",
+        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.staticDuration,routes.polyline,routes.description,routes.legs,routes.travelAdvisory.tollInfo",
       },
       body: JSON.stringify(request),
       signal: controller.signal,

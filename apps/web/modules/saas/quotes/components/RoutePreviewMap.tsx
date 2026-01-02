@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @deprecated Story 20.2: This component uses the legacy Google Maps DirectionsService API.
+ * Use ModernRouteMap instead, which uses the new Google Routes API.
+ * This file is kept for reference but should not be used in new code.
+ */
+
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Loader2, MapIcon } from "lucide-react";
 import { cn } from "@ui/lib";
