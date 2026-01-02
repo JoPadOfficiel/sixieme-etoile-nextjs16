@@ -151,3 +151,31 @@ export {
 export {
 	integrateComplianceInPricing,
 } from "../compliance-validator";
+
+// ============================================================================
+// Main Calculator Module
+// ============================================================================
+
+export {
+	calculatePrice,
+	applyPriceOverride,
+	type ApplyPriceOverrideResult,
+} from "./main-calculator";
+
+// ============================================================================
+// Dense Zone Detector Module (Story 18.2 & 18.3)
+// ============================================================================
+
+export {
+	detectDenseZone,
+	calculateMadSuggestion,
+	buildAutoSwitchedToMadRule,
+	detectRoundTripBlocked,
+	calculateRoundTripMadSuggestion,
+	buildAutoSwitchedRoundTripToMadRule,
+	DEFAULT_DENSE_ZONE_SPEED_THRESHOLD,
+	DEFAULT_DENSE_ZONE_CODES,
+	DEFAULT_MIN_WAITING_TIME_FOR_SEPARATE_TRANSFERS,
+	DEFAULT_MAX_RETURN_DISTANCE_KM,
+	DEFAULT_ROUND_TRIP_BUFFER,
+} from "./dense-zone-detector";

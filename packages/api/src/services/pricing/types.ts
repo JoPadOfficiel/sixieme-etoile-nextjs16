@@ -891,10 +891,13 @@ export interface MadSuggestion {
 
 export interface RoundTripDetection {
 	isRoundTripBlocked: boolean;
+	isDriverBlocked: boolean;
 	waitingTimeMinutes: number;
 	minWaitingTimeForSeparateTransfers: number;
 	maxReturnDistanceKm: number;
 	returnDistanceKm: number;
+	returnToBaseMinutes: number;
+	exceedsMaxReturnDistance: boolean;
 	reason: string;
 }
 

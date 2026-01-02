@@ -706,7 +706,10 @@ export function getEffectiveCost(
     return override.editedValue;
   }
   
-  // Return original value
+  // Return original value (with null safety)
+  if (!tripAnalysis.costBreakdown || !tripAnalysis.costBreakdown[component]) {
+    return 0;
+  }
   return tripAnalysis.costBreakdown[component].amount;
 }
 
@@ -717,6 +720,10 @@ export function getOriginalCost(
   tripAnalysis: TripAnalysis,
   component: 'fuel' | 'tolls' | 'wear' | 'driver' | 'parking'
 ): number {
+  // Null safety check
+  if (!tripAnalysis.costBreakdown || !tripAnalysis.costBreakdown[component]) {
+    return 0;
+  }
   return tripAnalysis.costBreakdown[component].amount;
 }
 
