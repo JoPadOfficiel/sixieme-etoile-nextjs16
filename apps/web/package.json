@@ -94,7 +94,7 @@
     "eslint-config-next": "16.0.8",
     "markdown-toc": "^1.2.0",
     "mdx": "^0.3.1",
-    "postcss": "8.4.49",
+    "postcss": "8.5.6",
     "rehype-img-size": "^1.0.1",
     "start-server-and-test": "^2.0.8",
     "tailwindcss": "3.4.15"
