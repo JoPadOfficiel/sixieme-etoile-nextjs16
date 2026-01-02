@@ -2327,8 +2327,11 @@
 			"sections": {
 				"client": "Client",
 				"trip": "Détails du trajet",
+				"tripAndVehicle": "Trajet & Véhicule",
 				"vehicle": "Véhicule & Capacité",
 				"pricing": "Tarification",
+				"notes": "Notes",
+				"notesRequired": "Notes (Obligatoire)",
 				"options": "Options"
 			},
 			"contact": "Contact",
@@ -2386,6 +2389,8 @@
 			"validUntil": "Valide jusqu'au",
 			"notes": "Notes",
 			"notesPlaceholder": "Ajouter des notes pour ce devis...",
+			"notesPlaceholderOffGrid": "Décrivez le trajet hors grille : destination, exigences particulières, raison du prix manuel...",
+			"notesRequiredHint": "Les notes sont obligatoires pour les trajets hors grille afin de justifier le prix manuel.",
 			"optionalFees": {
 				"title": "Frais optionnels",
 				"selected": "sélectionnés",

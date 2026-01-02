@@ -364,14 +364,52 @@ export function QuotePricingPanel({
         </CardContent>
       </Card>
 
-      {/* Options (placeholder for future optional fees & promotions) */}
+      {/* Story 19.10: Notes in separate prominent card */}
+      <Card className={cn(
+        isManualPricingMode && "border-amber-400 dark:border-amber-600"
+      )}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            {isManualPricingMode 
+              ? t("quotes.create.sections.notesRequired")
+              : t("quotes.create.sections.notes")
+            }
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Textarea
+              id="notes"
+              data-testid="quote-notes"
+              value={formData.notes}
+              onChange={(e) => onFormChange("notes", e.target.value)}
+              disabled={isSubmitting}
+              rows={4}
+              placeholder={isManualPricingMode
+                ? t("quotes.create.notesPlaceholderOffGrid")
+                : t("quotes.create.notesPlaceholder")
+              }
+              className={cn(
+                isManualPricingMode && "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+              )}
+            />
+            {isManualPricingMode && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {t("quotes.create.notesRequiredHint")}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Options - Story 19.10: Simplified to only validity date */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
             {t("quotes.create.sections.options")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {/* Validity Date */}
           <div className="space-y-2">
             <Label htmlFor="validUntil">
@@ -389,20 +427,6 @@ export function QuotePricingPanel({
               />
             </div>
           </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">{t("quotes.create.notes")}</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => onFormChange("notes", e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-              placeholder={t("quotes.create.notesPlaceholder")}
-            />
-          </div>
-
         </CardContent>
       </Card>
 

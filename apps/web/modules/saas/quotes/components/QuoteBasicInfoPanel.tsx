@@ -191,11 +191,11 @@ export function QuoteBasicInfoPanel({
         </CardContent>
       </Card>
 
-      {/* Trip Details */}
+      {/* Trip & Vehicle Details - Story 19.10: Merged cards */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            {t("quotes.create.sections.trip")}
+            {t("quotes.create.sections.tripAndVehicle")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -278,18 +278,11 @@ export function QuoteBasicInfoPanel({
               {t("quotes.create.pickupDateTimeHint")}
             </p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Vehicle & Capacity */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {t("quotes.create.sections.vehicle")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Vehicle Category */}
+          {/* Story 19.10: Visual separator between trip and vehicle sections */}
+          <hr className="my-4 border-border" />
+
+          {/* Vehicle Category - Story 19.10: Moved from separate card */}
           <VehicleCategorySelector
             value={formData.vehicleCategoryId}
             onChange={handleVehicleCategoryChange}

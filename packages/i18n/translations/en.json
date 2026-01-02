@@ -2327,8 +2327,11 @@
 			"sections": {
 				"client": "Client",
 				"trip": "Trip Details",
+				"tripAndVehicle": "Trip & Vehicle",
 				"vehicle": "Vehicle & Capacity",
 				"pricing": "Pricing",
+				"notes": "Notes",
+				"notesRequired": "Notes (Required)",
 				"options": "Options"
 			},
 			"contact": "Contact",
@@ -2386,6 +2389,8 @@
 			"validUntil": "Valid Until",
 			"notes": "Notes",
 			"notesPlaceholder": "Add any notes for this quote...",
+			"notesPlaceholderOffGrid": "Describe the off-grid trip: destination, special requirements, reason for manual pricing...",
+			"notesRequiredHint": "Notes are required for off-grid trips to justify the manual price.",
 			"optionalFees": {
 				"title": "Optional Fees",
 				"selected": "selected",
