@@ -31,6 +31,7 @@ import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityInd
 import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import { EditableCostRow } from "./EditableCostRow";
 import { RoutePreviewMap } from "./RoutePreviewMap";
+import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import type { PricingResult } from "../types";
 import { 
   formatPrice, 
@@ -170,6 +171,8 @@ export function TripTransparencyPanel({
               {t("quotes.create.tripTransparency.roundTrip")}
             </Badge>
           )}
+          {/* Story 19.1: Staffing Plan Badge */}
+          <StaffingPlanBadge compliancePlan={tripAnalysis.compliancePlan} />
         </div>
       </div>
 

@@ -44,10 +44,11 @@ export interface RSERules {
 /**
  * Default RSE rules for heavy vehicles (used when no org-specific rules exist)
  * These are based on EU RSE regulations
+ * Story 19.1: Fixed maxDailyDrivingHours to 9h (standard limit, 10h allowed 2x/week)
  */
 export const DEFAULT_HEAVY_VEHICLE_RSE_RULES: Omit<RSERules, "licenseCategoryId" | "licenseCategoryCode"> = {
-	maxDailyDrivingHours: 10,
-	maxDailyAmplitudeHours: 14,
+	maxDailyDrivingHours: 9, // Standard limit is 9h, can be extended to 10h twice per week
+	maxDailyAmplitudeHours: 13, // Standard amplitude is 13h (not 14h)
 	breakMinutesPerDrivingBlock: 45,
 	drivingBlockHoursForBreak: 4.5,
 	cappedAverageSpeedKmh: 85,
@@ -795,70 +796,107 @@ export interface AlternativesGenerationResult {
 // ============================================================================
 
 /**
- * Generate DOUBLE_CREW alternative for amplitude violations
- * Double crew extends the amplitude limit from 14h to 18h
+ * Story 19.1: Generate DOUBLE_CREW alternative for driving time AND amplitude violations
+ * Double crew allows:
+ * - Each driver can drive up to the limit (9h), so total driving can be 2x limit (18h)
+ * - Amplitude limit extends from 13h to 21h (with proper rest management)
+ * 
+ * This is the PRIMARY solution for long trips like Paris → Lyon (10h32)
  */
 export function generateDoubleCrewAlternative(
 	complianceResult: ComplianceValidationResult,
 	costParameters: AlternativeCostParameters,
 	rules: RSERules | null,
 ): AlternativeOption | null {
-	// Only applicable for HEAVY vehicles with amplitude violations
+	// Only applicable for HEAVY vehicles with violations
 	if (complianceResult.regulatoryCategory !== "HEAVY") {
 		return null;
 	}
 
+	// Check for any violation that double crew can solve
+	const drivingViolation = complianceResult.violations.find(
+		v => v.type === "DRIVING_TIME_EXCEEDED"
+	);
 	const amplitudeViolation = complianceResult.violations.find(
 		v => v.type === "AMPLITUDE_EXCEEDED"
 	);
 
-	if (!amplitudeViolation) {
+	// Double crew can solve BOTH driving time AND amplitude violations
+	if (!drivingViolation && !amplitudeViolation) {
 		return null;
 	}
 
-	const actualAmplitudeHours = amplitudeViolation.actual;
-	const doubleCrewLimit = ALTERNATIVE_RSE_LIMITS.DOUBLE_CREW_AMPLITUDE_HOURS;
+	const maxDrivingHours = rules?.maxDailyDrivingHours ?? 9;
+	const maxAmplitudeHours = rules?.maxDailyAmplitudeHours ?? 13;
+	const doubleCrewAmplitudeLimit = ALTERNATIVE_RSE_LIMITS.DOUBLE_CREW_AMPLITUDE_HOURS; // 18h
+	
+	// With double crew, each driver can drive up to the limit
+	// So total driving capacity is 2 × maxDrivingHours
+	const doubleCrewDrivingLimit = maxDrivingHours * 2; // 18h with 9h limit
+
+	const actualDrivingHours = minutesToHours(complianceResult.adjustedDurations.totalDrivingMinutes);
+	const actualAmplitudeHours = minutesToHours(complianceResult.adjustedDurations.totalAmplitudeMinutes);
 
 	// Check if double crew would solve the problem
-	const isFeasible = actualAmplitudeHours <= doubleCrewLimit;
+	const drivingFeasible = actualDrivingHours <= doubleCrewDrivingLimit;
+	const amplitudeFeasible = actualAmplitudeHours <= doubleCrewAmplitudeLimit;
+	const isFeasible = drivingFeasible && amplitudeFeasible;
 
 	// Calculate extra driver cost
-	// Second driver works the hours beyond standard work day
-	const standardWorkDay = ALTERNATIVE_RSE_LIMITS.STANDARD_WORK_DAY_HOURS;
-	const extraDriverHours = Math.max(0, actualAmplitudeHours - standardWorkDay);
+	// Second driver works the same hours as the first driver (they alternate)
+	// Cost = total driving hours (both drivers share the driving)
+	const extraDriverHours = actualDrivingHours / 2; // Second driver does half the driving
 	const extraDriverCost = extraDriverHours * costParameters.driverHourlyCost;
 
 	// Check remaining violations if double crew is applied
 	const remainingViolations: ComplianceViolation[] = [];
 	
-	// Check driving time - double crew doesn't help with driving time
-	const drivingViolation = complianceResult.violations.find(
-		v => v.type === "DRIVING_TIME_EXCEEDED"
-	);
-	if (drivingViolation) {
-		remainingViolations.push(drivingViolation);
-	}
-
-	// If amplitude still exceeds 18h, add violation
-	if (!isFeasible) {
+	// With double crew, driving time per driver = total / 2
+	const drivingPerDriver = actualDrivingHours / 2;
+	if (drivingPerDriver > maxDrivingHours) {
 		remainingViolations.push({
-			type: "AMPLITUDE_EXCEEDED",
-			message: `Amplitude (${actualAmplitudeHours}h) exceeds double crew limit (${doubleCrewLimit}h)`,
-			actual: actualAmplitudeHours,
-			limit: doubleCrewLimit,
+			type: "DRIVING_TIME_EXCEEDED",
+			message: `Temps de conduite par chauffeur (${drivingPerDriver.toFixed(1)}h) dépasse la limite de ${maxDrivingHours}h`,
+			actual: drivingPerDriver,
+			limit: maxDrivingHours,
 			unit: "hours",
 			severity: "BLOCKING",
 		});
 	}
 
+	// If amplitude still exceeds 18h, add violation
+	if (!amplitudeFeasible) {
+		remainingViolations.push({
+			type: "AMPLITUDE_EXCEEDED",
+			message: `Amplitude (${actualAmplitudeHours.toFixed(1)}h) dépasse la limite double équipage de ${doubleCrewAmplitudeLimit}h`,
+			actual: actualAmplitudeHours,
+			limit: doubleCrewAmplitudeLimit,
+			unit: "hours",
+			severity: "BLOCKING",
+		});
+	}
+
+	// Build description based on what violations are being solved
+	let description = "Ajouter un second chauffeur pour ";
+	const solutions: string[] = [];
+	if (drivingViolation) {
+		solutions.push(`partager le temps de conduite (${(actualDrivingHours/2).toFixed(1)}h chacun)`);
+	}
+	if (amplitudeViolation) {
+		solutions.push(`étendre l'amplitude à ${doubleCrewAmplitudeLimit}h`);
+	}
+	description += solutions.join(" et ");
+
 	return {
 		type: "DOUBLE_CREW",
-		title: "Double Crew",
-		description: `Add a second driver to extend amplitude limit from ${rules?.maxDailyAmplitudeHours ?? 14}h to ${doubleCrewLimit}h`,
+		title: "Double Équipage",
+		description,
 		isFeasible,
 		feasibilityReason: isFeasible 
 			? undefined 
-			: `Amplitude (${actualAmplitudeHours}h) exceeds ${doubleCrewLimit}h limit even with double crew`,
+			: !drivingFeasible 
+				? `Temps de conduite (${actualDrivingHours.toFixed(1)}h) dépasse ${doubleCrewDrivingLimit}h même avec double équipage`
+				: `Amplitude (${actualAmplitudeHours.toFixed(1)}h) dépasse ${doubleCrewAmplitudeLimit}h même avec double équipage`,
 		additionalCost: {
 			total: Math.round(extraDriverCost * 100) / 100,
 			currency: "EUR",

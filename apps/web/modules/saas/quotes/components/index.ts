@@ -19,6 +19,9 @@ export { QuoteActivityLog } from "./QuoteActivityLog";
 export { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 export { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 
+// Story 19.1: Staffing Plan Badge
+export { StaffingPlanBadge } from "./StaffingPlanBadge";
+
 // Story 6.6: Scenario Helpers
 export { AirportHelperPanel } from "./AirportHelperPanel";
 export { CapacityWarningAlert } from "./CapacityWarningAlert";

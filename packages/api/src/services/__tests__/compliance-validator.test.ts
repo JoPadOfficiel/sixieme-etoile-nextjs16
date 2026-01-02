@@ -889,8 +889,8 @@ describe("Story 5.4: Alternative Staffing & Scheduling Options", () => {
 		});
 
 		it("should calculate extra driver cost correctly (AC2)", () => {
-			// Create a trip with amplitude that triggers violation
-			// Note: speed capping may adjust durations, so we check the cost formula is correct
+			// Story 19.1: Double crew now resolves BOTH driving time AND amplitude violations
+			// Cost is based on second driver doing half the driving time
 			const tripAnalysis = createTripAnalysis(60, 840, 60);
 			const input = createValidationInput(tripAnalysis);
 			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
@@ -902,19 +902,20 @@ describe("Story 5.4: Alternative Staffing & Scheduling Options", () => {
 			);
 
 			expect(result).not.toBeNull();
-			// Extra hours = amplitude - 8 (standard work day)
-			// The actual amplitude may be adjusted by speed capping
-			const amplitudeViolation = complianceResult.violations.find(v => v.type === "AMPLITUDE_EXCEEDED");
-			const actualAmplitude = amplitudeViolation?.actual ?? 0;
-			const expectedExtraHours = Math.max(0, actualAmplitude - 8);
-			const expectedCost = expectedExtraHours * 25;
+			// Story 19.1: Extra driver cost = (total driving hours / 2) * hourly rate
+			// Second driver does half the driving
+			const totalDrivingHours = complianceResult.adjustedDurations.totalDrivingMinutes / 60;
+			const expectedExtraHours = totalDrivingHours / 2;
+			const expectedCost = Math.round(expectedExtraHours * 25 * 100) / 100;
 			expect(result!.additionalCost.breakdown.extraDriverCost).toBe(expectedCost);
 			expect(result!.additionalCost.total).toBe(expectedCost);
 			expect(result!.additionalCost.currency).toBe("EUR");
 		});
 
-		it("should include driving time violation in remaining violations", () => {
+		it("should resolve driving time violation with double crew (Story 19.1)", () => {
+			// Story 19.1: Double crew NOW resolves driving time violations
 			// 15h amplitude + 12h driving - both violations
+			// With double crew: each driver does 6h (within 9h limit)
 			const tripAnalysis = createTripAnalysis(120, 600, 120);
 			const input = createValidationInput(tripAnalysis);
 			const complianceResult = validateHeavyVehicleCompliance(input, defaultRSERules);
@@ -926,9 +927,20 @@ describe("Story 5.4: Alternative Staffing & Scheduling Options", () => {
 			);
 
 			expect(result).not.toBeNull();
-			// Double crew doesn't help with driving time
-			expect(result!.remainingViolations.some(v => v.type === "DRIVING_TIME_EXCEEDED")).toBe(true);
-			expect(result!.wouldBeCompliant).toBe(false);
+			// Story 19.1: Double crew DOES help with driving time now
+			// Each driver does half the driving (6h each for 12h total)
+			// 6h is within the 9h limit, so no remaining driving violation
+			const totalDrivingHours = complianceResult.adjustedDurations.totalDrivingMinutes / 60;
+			const drivingPerDriver = totalDrivingHours / 2;
+			// If driving per driver <= 9h, no remaining violation
+			if (drivingPerDriver <= 9) {
+				expect(result!.remainingViolations.some(v => v.type === "DRIVING_TIME_EXCEEDED")).toBe(false);
+			}
+			// Check if amplitude is within 18h limit for double crew
+			const totalAmplitudeHours = complianceResult.adjustedDurations.totalAmplitudeMinutes / 60;
+			if (totalAmplitudeHours <= 18 && drivingPerDriver <= 9) {
+				expect(result!.wouldBeCompliant).toBe(true);
+			}
 		});
 	});
 

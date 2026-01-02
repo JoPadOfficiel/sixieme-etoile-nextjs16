@@ -85,11 +85,32 @@ export interface ComplianceValidationResult {
 }
 
 /**
- * Check if there are any blocking violations
+ * Story 19.1: Check if there are any blocking violations that cannot be resolved by staffing
+ * 
+ * A trip is ONLY blocked if:
+ * 1. There are violations AND
+ * 2. No staffing plan was selected to resolve them (compliancePlan is null or planType is NONE with violations)
+ * 
+ * If a staffing plan exists (DOUBLE_CREW, RELAY_DRIVER, MULTI_DAY), the trip is NOT blocked
+ * because the system has automatically selected a solution.
  */
-export function hasBlockingViolations(result: ComplianceValidationResult | null): boolean {
+export function hasBlockingViolations(
+  result: ComplianceValidationResult | null,
+  compliancePlan?: CompliancePlan | null
+): boolean {
   if (!result) return false;
-  return result.violations.length > 0;
+  
+  // No violations = no blocking
+  if (result.violations.length === 0) return false;
+  
+  // Story 19.1: If a staffing plan was selected (not NONE), the violations are resolved
+  // The trip should NOT be blocked because we have an automatic solution
+  if (compliancePlan && compliancePlan.planType !== "NONE" && compliancePlan.isRequired) {
+    return false; // Staffing plan resolves the violations
+  }
+  
+  // Violations exist and no staffing plan to resolve them = blocked
+  return true;
 }
 
 /**
@@ -507,6 +528,39 @@ export interface ExcursionLeg {
 }
 
 /**
+ * Story 19.1: Staffing plan type for RSE compliance
+ */
+export type StaffingPlanType = "NONE" | "DOUBLE_CREW" | "RELAY_DRIVER" | "MULTI_DAY";
+
+/**
+ * Story 19.1: Compliance plan from automatic staffing selection
+ * Stored in tripAnalysis.compliancePlan
+ */
+export interface CompliancePlan {
+  planType: StaffingPlanType;
+  isRequired: boolean;
+  additionalCost: number;
+  costBreakdown: {
+    extraDriverCost: number;
+    hotelCost: number;
+    mealAllowance: number;
+    otherCosts: number;
+  };
+  adjustedSchedule: {
+    daysRequired: number;
+    driversRequired: number;
+    hotelNightsRequired: number;
+  };
+  originalViolations: Array<{
+    type: string;
+    message: string;
+    actual: number;
+    limit: number;
+  }>;
+  selectedReason: string;
+}
+
+/**
  * Trip analysis from shadow calculation
  */
 export interface TripAnalysis {
@@ -543,6 +597,8 @@ export interface TripAnalysis {
   totalInternalCost: number;
   calculatedAt: string;
   routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION";
+  // Story 19.1: Compliance-driven staffing plan
+  compliancePlan?: CompliancePlan | null;
 }
 
 /**

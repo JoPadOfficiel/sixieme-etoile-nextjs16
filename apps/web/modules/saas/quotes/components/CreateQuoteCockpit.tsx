@@ -251,8 +251,12 @@ export function CreateQuoteCockpit() {
     },
   });
 
-  // Story 6.5: Check for blocking violations
-  const hasViolations = hasBlockingViolations(pricingResult?.complianceResult ?? null);
+  // Story 6.5 + 19.1: Check for blocking violations (considering staffing plan)
+  // If a staffing plan exists (DOUBLE_CREW, etc.), violations are resolved and trip is NOT blocked
+  const hasViolations = hasBlockingViolations(
+    pricingResult?.complianceResult ?? null,
+    pricingResult?.tripAnalysis?.compliancePlan
+  );
 
   const handleSubmit = () => {
     // Story 6.5: Prevent submission if there are blocking violations

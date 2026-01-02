@@ -2642,6 +2642,20 @@
 			"notEditable": "Quote Not Editable",
 			"notEditableDescription": "Only draft quotes can be edited."
 		},
+		"staffing": {
+			"doubleCrew": "Double Crew",
+			"relayDriver": "Relay Driver",
+			"multiDay": "Multi-Day Mission",
+			"drivers": "drivers",
+			"days": "days",
+			"nights": "hotel nights",
+			"costBreakdown": "Cost Breakdown",
+			"driverCost": "Driver",
+			"hotelCost": "Hotel",
+			"mealCost": "Meals",
+			"resolvedViolations": "Resolved Violations",
+			"capacityReduced": "Capacity reduced: seat occupied by 2nd driver"
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trip Cannot Be Created",

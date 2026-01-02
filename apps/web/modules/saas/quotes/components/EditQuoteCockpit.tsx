@@ -157,9 +157,13 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
     // Note: calculate excluded to avoid infinite loops - it has internal debouncing
   ]);
 
-  // Check for blocking violations
+  // Story 6.5 + 19.1: Check for blocking violations (considering staffing plan)
+  // If a staffing plan exists (DOUBLE_CREW, etc.), violations are resolved and trip is NOT blocked
   const hasViolations = pricingResult?.complianceResult
-    ? hasBlockingViolations(pricingResult.complianceResult)
+    ? hasBlockingViolations(
+        pricingResult.complianceResult,
+        pricingResult?.tripAnalysis?.compliancePlan
+      )
     : false;
 
   // Update quote mutation

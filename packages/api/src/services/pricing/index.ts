@@ -133,17 +133,21 @@ export {
 } from "./trip-type-pricing";
 
 // ============================================================================
-// Re-exports from original pricing-engine.ts (functions not yet extracted)
+// Commission Service Re-exports
 // ============================================================================
 
 export {
-	// Compliance functions (still in pricing-engine.ts)
-	integrateComplianceIntoPricing,
-	
-	// Commission re-exports
 	calculateCommission,
 	calculateEffectiveMargin,
 	getCommissionData,
 	hasCommission,
 	getCommissionPercent,
-} from "../pricing-engine";
+} from "../commission-service";
+
+// ============================================================================
+// Compliance Integration Re-exports
+// ============================================================================
+
+export {
+	integrateComplianceInPricing,
+} from "../compliance-validator";

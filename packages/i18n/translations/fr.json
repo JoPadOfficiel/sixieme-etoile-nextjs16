@@ -2642,6 +2642,20 @@
 			"notEditable": "Devis non modifiable",
 			"notEditableDescription": "Seuls les devis en brouillon peuvent être modifiés."
 		},
+		"staffing": {
+			"doubleCrew": "Double équipage",
+			"relayDriver": "Chauffeur relais",
+			"multiDay": "Mission multi-jours",
+			"drivers": "chauffeurs",
+			"days": "jours",
+			"nights": "nuits d'hôtel",
+			"costBreakdown": "Détail des coûts",
+			"driverCost": "Chauffeur",
+			"hotelCost": "Hôtel",
+			"mealCost": "Repas",
+			"resolvedViolations": "Violations résolues",
+			"capacityReduced": "Capacité réduite : place occupée par le 2e chauffeur"
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trajet impossible",

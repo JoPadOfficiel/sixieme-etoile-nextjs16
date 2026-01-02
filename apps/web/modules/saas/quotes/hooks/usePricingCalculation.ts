@@ -89,62 +89,8 @@ interface PricingApiResponse {
   tripAnalysis: TripAnalysis;
 }
 
-/**
- * Story 6.5: Compliance validation input
- */
-interface ComplianceValidationInput {
-  vehicleCategoryId: string;
-  regulatoryCategory: RegulatoryCategory;
-  tripAnalysis: {
-    segments: {
-      approach?: { durationMinutes: number; distanceKm?: number } | null;
-      service: { durationMinutes: number; distanceKm?: number };
-      return?: { durationMinutes: number; distanceKm?: number } | null;
-    };
-    totalDurationMinutes?: number;
-  };
-  pickupAt: string;
-  estimatedDropoffAt?: string;
-}
-
-/**
- * Story 6.5: Compliance API response
- */
-interface ComplianceApiResponse {
-  isCompliant: boolean;
-  regulatoryCategory: RegulatoryCategory;
-  violations: Array<{
-    type: string;
-    message: string;
-    actual: number;
-    limit: number;
-    unit: "hours" | "minutes" | "km/h";
-    severity: "BLOCKING";
-  }>;
-  warnings: Array<{
-    type: string;
-    message: string;
-    actual: number;
-    limit: number;
-    percentOfLimit: number;
-  }>;
-  adjustedDurations: {
-    totalDrivingMinutes: number;
-    totalAmplitudeMinutes: number;
-    injectedBreakMinutes: number;
-    cappedSpeedApplied: boolean;
-    originalDrivingMinutes: number;
-    originalAmplitudeMinutes: number;
-  };
-  rulesApplied: Array<{
-    ruleId: string;
-    ruleName: string;
-    threshold: number;
-    unit: string;
-    result: "PASS" | "FAIL" | "WARNING";
-    actualValue?: number;
-  }>;
-}
+// Story 19.1: Removed ComplianceValidationInput and ComplianceApiResponse
+// Now using compliancePlan from tripAnalysis instead of separate API call
 
 /**
  * Hook options
@@ -205,41 +151,43 @@ export function usePricingCalculation(
       return response.json() as Promise<PricingApiResponse>;
     },
     onSuccess: async (data) => {
-      // Story 6.5: Run compliance validation for HEAVY vehicles
+      // Story 19.1: Use compliancePlan from tripAnalysis instead of separate API call
+      // The pricing API now returns compliancePlan with automatic staffing selection
+      // This ensures violations are resolved by staffing plans (DOUBLE_CREW, etc.)
       let complianceResult: ComplianceValidationResult | null = null;
       
+      // Story 19.1: Build complianceResult from tripAnalysis.compliancePlan
+      // If a staffing plan was selected, the violations are resolved
       if (
         vehicleCategoryRef.current?.regulatoryCategory === "HEAVY" &&
-        data.tripAnalysis &&
-        pickupAtRef.current
+        data.tripAnalysis
       ) {
-        try {
-          complianceResult = await validateCompliance({
-            vehicleCategoryId: vehicleCategoryRef.current.id,
-            regulatoryCategory: "HEAVY",
-            tripAnalysis: {
-              segments: {
-                approach: data.tripAnalysis.segments.approach ? {
-                  durationMinutes: data.tripAnalysis.segments.approach.durationMinutes,
-                  distanceKm: data.tripAnalysis.segments.approach.distanceKm,
-                } : null,
-                service: {
-                  durationMinutes: data.tripAnalysis.segments.service.durationMinutes,
-                  distanceKm: data.tripAnalysis.segments.service.distanceKm,
-                },
-                return: data.tripAnalysis.segments.return ? {
-                  durationMinutes: data.tripAnalysis.segments.return.durationMinutes,
-                  distanceKm: data.tripAnalysis.segments.return.distanceKm,
-                } : null,
-              },
-              totalDurationMinutes: data.tripAnalysis.totalDurationMinutes,
-            },
-            pickupAt: pickupAtRef.current,
-          });
-        } catch (complianceError) {
-          console.error("Compliance validation failed:", complianceError);
-          // Don't block pricing if compliance check fails
-        }
+        const compliancePlan = data.tripAnalysis.compliancePlan;
+        
+        // Build compliance result from the compliancePlan
+        // If a staffing plan is required and selected, violations are considered resolved
+        complianceResult = {
+          isCompliant: !compliancePlan?.isRequired || compliancePlan?.planType !== "NONE",
+          regulatoryCategory: "HEAVY",
+          violations: compliancePlan?.originalViolations?.map(v => ({
+            type: v.type as ComplianceValidationResult["violations"][0]["type"],
+            message: v.message,
+            actual: v.actual,
+            limit: v.limit,
+            unit: "hours" as const,
+            severity: "BLOCKING" as const,
+          })) ?? [],
+          warnings: [],
+          adjustedDurations: {
+            totalDrivingMinutes: data.tripAnalysis.totalDurationMinutes ?? 0,
+            totalAmplitudeMinutes: data.tripAnalysis.totalDurationMinutes ?? 0,
+            injectedBreakMinutes: 0,
+            cappedSpeedApplied: false,
+            originalDrivingMinutes: data.tripAnalysis.totalDurationMinutes ?? 0,
+            originalAmplitudeMinutes: data.tripAnalysis.totalDurationMinutes ?? 0,
+          },
+          rulesApplied: [],
+        };
       }
 
       // Transform API response to PricingResult
@@ -266,50 +214,8 @@ export function usePricingCalculation(
     },
   });
 
-  /**
-   * Story 6.5: Call compliance validation API
-   */
-  async function validateCompliance(
-    input: ComplianceValidationInput
-  ): Promise<ComplianceValidationResult | null> {
-    try {
-      const response = await apiClient.vtc.compliance.validate.$post({
-        json: input,
-      });
-
-      if (!response.ok) {
-        console.error("Compliance API error:", response.status);
-        return null;
-      }
-
-      const data = await response.json() as ComplianceApiResponse;
-      
-      return {
-        isCompliant: data.isCompliant,
-        regulatoryCategory: data.regulatoryCategory,
-        violations: data.violations.map(v => ({
-          type: v.type as ComplianceValidationResult["violations"][0]["type"],
-          message: v.message,
-          actual: v.actual,
-          limit: v.limit,
-          unit: v.unit,
-          severity: v.severity,
-        })),
-        warnings: data.warnings.map(w => ({
-          type: w.type as ComplianceValidationResult["warnings"][0]["type"],
-          message: w.message,
-          actual: w.actual,
-          limit: w.limit,
-          percentOfLimit: w.percentOfLimit,
-        })),
-        adjustedDurations: data.adjustedDurations,
-        rulesApplied: data.rulesApplied,
-      };
-    } catch (err) {
-      console.error("Compliance validation error:", err);
-      return null;
-    }
-  }
+  // Story 19.1: Removed validateCompliance function - now using compliancePlan from tripAnalysis
+  // The pricing API returns compliancePlan with automatic staffing selection
 
   // Check if form data has required fields for pricing
   // Story 19.4: DISPO trips don't require dropoff - only pickup and durationHours
