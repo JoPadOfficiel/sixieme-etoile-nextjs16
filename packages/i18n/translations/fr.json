@@ -2843,6 +2843,8 @@
 				"name": "Nom de la base",
 				"namePlaceholder": "ex: Garage Paris CDG",
 				"addressSection": "Adresse",
+				"addressAutocomplete": "Recherche d'adresse",
+				"addressAutocompletePlaceholder": "Tapez une adresse pour rechercher...",
 				"addressLine1": "Adresse ligne 1",
 				"addressLine1Placeholder": "Adresse de rue",
 				"addressLine2": "Adresse ligne 2",

@@ -174,7 +174,7 @@ development_status:
   19-8-fix-vehicle-driver-assignment-in-dispatch: done
   19-9-enlarge-assignment-and-detail-panels-in-dispatch: done
   19-10-move-ui-blocks-for-better-quote-layout: done
-  19-11-add-address-field-to-operating-base-form: backlog
+  19-11-add-address-field-to-operating-base-form: done
   19-12-display-driver-missions-in-driver-calendar: backlog
   19-13-validate-zone-conflict-resolution-for-concentric-circles: backlog
   19-14-add-comprehensive-pricing-tests: backlog

@@ -2843,6 +2843,8 @@
 				"name": "Base Name",
 				"namePlaceholder": "e.g., Paris CDG Garage",
 				"addressSection": "Address",
+				"addressAutocomplete": "Address Search",
+				"addressAutocompletePlaceholder": "Type an address to search...",
 				"addressLine1": "Address Line 1",
 				"addressLine1Placeholder": "Street address",
 				"addressLine2": "Address Line 2",

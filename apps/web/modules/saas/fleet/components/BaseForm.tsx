@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { useToast } from "@ui/hooks/use-toast";
 import type { OperatingBaseWithCount, OperatingBaseFormData } from "../types";
+import { AddressAutocomplete } from "@saas/shared/components/AddressAutocomplete";
 
 interface BaseFormProps {
 	base?: OperatingBaseWithCount | null;
@@ -113,6 +114,34 @@ export function BaseForm({ base, onSuccess, onCancel }: BaseFormProps) {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
+	// Handle address autocomplete selection
+	const handleAddressChange = (result: { address: string; latitude: number | null; longitude: number | null }) => {
+		// Parse address components to fill individual fields
+		const addressParts = result.address.split(',');
+		const mainAddress = addressParts[0]?.trim() || "";
+		const cityPart = addressParts[addressParts.length - 1]?.trim() || "";
+		
+		// Extract postal code and city from the last part
+		let postalCode = "";
+		let city = "";
+		const cityMatch = cityPart.match(/(\d{5})\s+(.+)$/);
+		if (cityMatch) {
+			postalCode = cityMatch[1];
+			city = cityMatch[2];
+		} else {
+			city = cityPart;
+		}
+
+		setFormData((prev) => ({
+			...prev,
+			addressLine1: mainAddress,
+			city,
+			postalCode,
+			latitude: result.latitude ?? 48.8566, // Default to Paris if null
+			longitude: result.longitude ?? 2.3522, // Default to Paris if null
+		}));
+	};
+
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
 			{/* Name */}
@@ -130,6 +159,17 @@ export function BaseForm({ base, onSuccess, onCancel }: BaseFormProps) {
 			{/* Address */}
 			<div className="space-y-4">
 				<h3 className="text-sm font-medium">{t("fleet.bases.form.addressSection")}</h3>
+				
+				{/* Address Autocomplete */}
+				<AddressAutocomplete
+					id="baseAddress"
+					label={t("fleet.bases.form.addressAutocomplete")}
+					value={`${formData.addressLine1}, ${formData.postalCode} ${formData.city}`}
+					onChange={handleAddressChange}
+					placeholder={t("fleet.bases.form.addressAutocompletePlaceholder")}
+					className="mb-4"
+				/>
+				
 				<div className="space-y-2">
 					<Label htmlFor="addressLine1">{t("fleet.bases.form.addressLine1")} *</Label>
 					<Input
