@@ -369,77 +369,77 @@ export interface CreateStayQuoteFormData
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Update Type Definitions (AC: #1, #9)
+- [x] Task 1: Update Type Definitions (AC: #1, #9)
 
-  - [ ] Add STAY to TripType enum
-  - [ ] Add StayServiceType type
-  - [ ] Add StayService interface
-  - [ ] Add StayDay interface
-  - [ ] Add StayQuote interface
-  - [ ] Add form data interfaces
+  - [x] Add STAY to TripType enum
+  - [x] Add StayServiceType type
+  - [x] Add StayService interface
+  - [x] Add StayDay interface
+  - [x] Add StayQuote interface
+  - [x] Add form data interfaces
 
-- [ ] Task 2: Create StayServiceForm Component (AC: #4)
+- [x] Task 2: Create StayServiceForm Component (AC: #4)
 
-  - [ ] Create component file
-  - [ ] Implement service type selector
-  - [ ] Implement TRANSFER fields
-  - [ ] Implement DISPO fields
-  - [ ] Implement EXCURSION fields with stops
-  - [ ] Add validation
+  - [x] Create component file
+  - [x] Implement service type selector
+  - [x] Implement TRANSFER fields
+  - [x] Implement DISPO fields
+  - [x] Implement EXCURSION fields with stops
+  - [x] Add validation
 
-- [ ] Task 3: Create StayDayCard Component (AC: #3)
+- [x] Task 3: Create StayDayCard Component (AC: #3)
 
-  - [ ] Create component file
-  - [ ] Implement day header with date picker
-  - [ ] Implement staffing controls (hotel, meals, drivers)
-  - [ ] Implement services list management
-  - [ ] Implement day notes
-  - [ ] Add day cost summary
+  - [x] Create component file
+  - [x] Implement day header with date picker
+  - [x] Implement staffing controls (hotel, meals, drivers)
+  - [x] Implement services list management
+  - [x] Implement day notes
+  - [x] Add day cost summary
 
-- [ ] Task 4: Create StayFormFields Component (AC: #2)
+- [x] Task 4: Create StayFormFields Component (AC: #2)
 
-  - [ ] Create component file
-  - [ ] Implement days management (add/remove)
-  - [ ] Integrate StayDayCard components
-  - [ ] Handle form state
+  - [x] Create component file
+  - [x] Implement days management (add/remove)
+  - [x] Integrate StayDayCard components
+  - [x] Handle form state
 
-- [ ] Task 5: Create StayQuoteSummary Component (AC: #5)
+- [x] Task 5: Create StayQuoteSummary Component (AC: #5)
 
-  - [ ] Create component file
-  - [ ] Display date range
-  - [ ] Display day-by-day breakdown
-  - [ ] Display staffing costs
-  - [ ] Display total costs
+  - [x] Create component file
+  - [x] Display date range
+  - [x] Display day-by-day breakdown
+  - [x] Display staffing costs
+  - [x] Display total costs
 
-- [ ] Task 6: Integrate into Quote Creation Flow (AC: #1, #7)
+- [x] Task 6: Integrate into Quote Creation Flow (AC: #1, #7)
 
-  - [ ] Add STAY to TRIP_TYPES in QuoteBasicInfoPanel
-  - [ ] Add STAY case in TripTypeFormFields
-  - [ ] Update CreateQuoteCockpit for STAY submission
-  - [ ] Connect to stay-quotes API
+  - [x] Add STAY to TRIP_TYPES in QuoteBasicInfoPanel
+  - [x] Add STAY case in TripTypeFormFields
+  - [x] Update CreateQuoteCockpit for STAY submission
+  - [x] Connect to stay-quotes API
 
-- [ ] Task 7: Create StayQuoteDetailView Component (AC: #8)
+- [x] Task 7: Create StayQuoteDetailView Component (AC: #8)
 
-  - [ ] Create component file
-  - [ ] Display stay summary
-  - [ ] Display expandable day cards
-  - [ ] Integrate with TripTransparency
+  - [x] Create component file
+  - [x] Display stay summary
+  - [x] Display expandable day cards
+  - [x] Integrate with TripTransparency
 
-- [ ] Task 8: Add Translations (AC: #9)
+- [x] Task 8: Add Translations (AC: #9)
 
-  - [ ] Add English translations
-  - [ ] Add French translations
+  - [x] Add English translations
+  - [x] Add French translations
 
-- [ ] Task 9: Implement Responsive Design (AC: #10)
+- [x] Task 9: Implement Responsive Design (AC: #10)
 
-  - [ ] Desktop layout
-  - [ ] Tablet layout
-  - [ ] Mobile layout
+  - [x] Desktop layout
+  - [x] Tablet layout
+  - [x] Mobile layout
 
-- [ ] Task 10: Add Form Validation (AC: #6)
-  - [ ] Validate required fields
-  - [ ] Validate service-specific requirements
-  - [ ] Display validation errors
+- [x] Task 10: Add Form Validation (AC: #6)
+  - [x] Validate required fields
+  - [x] Validate service-specific requirements
+  - [x] Display validation errors
 
 ---
 
