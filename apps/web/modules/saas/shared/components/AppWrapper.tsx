@@ -60,7 +60,7 @@ function AppWrapperContent({ children }: PropsWithChildren) {
 				{useSidebarLayout && <ContentHeader className="hidden md:block" />}
 				
 				<main
-					className={cn("max-w-full overflow-x-auto px-4 py-6 lg:px-6", [
+					className={cn("max-w-full overflow-x-auto px-1 py-1 lg:px-2", [
 						useSidebarLayout ? "" : "",
 					])}
 				>

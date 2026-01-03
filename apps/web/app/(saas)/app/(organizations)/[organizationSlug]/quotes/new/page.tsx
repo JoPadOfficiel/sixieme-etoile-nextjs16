@@ -23,7 +23,7 @@ export default function CreateQuotePage() {
   const { activeOrganization } = useActiveOrganization();
 
   return (
-    <div className="container py-8">
+    <div className="py-4">
       {/* Header with back link */}
       <div className="mb-8">
         <Link href={`/app/${activeOrganization?.slug}/quotes`}>

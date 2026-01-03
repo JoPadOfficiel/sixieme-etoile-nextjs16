@@ -20,7 +20,7 @@ export default async function ReportsPage() {
 	const t = await getTranslations("reports");
 
 	return (
-		<div className="container py-6 space-y-6">
+		<div className="py-4 space-y-6">
 			<div>
 				<h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
 				<p className="text-muted-foreground">{t("description")}</p>

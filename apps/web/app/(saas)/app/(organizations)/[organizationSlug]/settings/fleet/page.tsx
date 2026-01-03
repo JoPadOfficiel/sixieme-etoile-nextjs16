@@ -89,7 +89,7 @@ export default function SettingsFleetPage() {
 	};
 
 	return (
-		<div className="container py-8">
+		<div className="py-8">
 			<div className="mb-8">
 				<h1 className="text-3xl font-bold tracking-tight">
 					{t("fleet.settings.title")}

@@ -19,7 +19,7 @@ export default async function DocumentsPage() {
 	const t = await getTranslations();
 
 	return (
-		<div className="container py-6 space-y-6">
+		<div className="py-4 space-y-6">
 			{/* Header */}
 			<div>
 				<h1 className="text-2xl font-bold">{t("documents.title")}</h1>

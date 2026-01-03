@@ -29,7 +29,7 @@ export default async function InvoiceDetailRoute({ params }: InvoiceDetailPagePr
   const { id } = await params;
 
   return (
-    <div className="container py-8">
+    <div className="py-4">
       <InvoiceDetail invoiceId={id} />
     </div>
   );

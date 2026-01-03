@@ -299,7 +299,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
   // Error state
   if (quoteError || !quote) {
     return (
-      <div className="container py-8">
+      <div className="py-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive">
             {t("quotes.detail.notFound")}
@@ -315,7 +315,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
   // Check if quote is editable (only DRAFT)
   if (quote.status !== "DRAFT") {
     return (
-      <div className="container py-8">
+      <div className="py-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive">
             {t("quotes.edit.notEditable")}
@@ -466,7 +466,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
  */
 function EditQuoteSkeleton() {
   return (
-    <div className="container py-6 space-y-6">
+    <div className="py-4 space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-8 w-64" />

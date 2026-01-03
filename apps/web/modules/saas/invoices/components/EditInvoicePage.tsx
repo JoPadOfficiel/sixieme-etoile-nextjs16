@@ -108,7 +108,7 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
   // Error state
   if (error || !invoice) {
     return (
-      <div className="container py-8">
+      <div className="py-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive">
             {t("invoices.notFound")}
@@ -121,7 +121,7 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
   // Check if invoice is editable
   if (invoice.status !== "DRAFT") {
     return (
-      <div className="container py-8">
+      <div className="py-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive">
             {t("invoices.edit.notEditable")}
@@ -249,7 +249,7 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
  */
 function EditInvoiceSkeleton() {
   return (
-    <div className="container py-6 space-y-6">
+    <div className="py-4 space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-8 w-64" />

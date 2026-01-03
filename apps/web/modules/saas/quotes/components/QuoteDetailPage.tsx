@@ -162,7 +162,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   // Error state
   if (error || !quote) {
     return (
-      <div className="container py-8">
+      <div className="py-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive">
             {t("quotes.detail.notFound")}
@@ -179,7 +179,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   const pricingResult = transformToPricingResult(data.tripAnalysis, data);
 
   return (
-    <div className="container py-6 space-y-6">
+    <div className="py-4 space-y-6">
       {/* Header */}
       <QuoteHeader
         quote={data}
@@ -247,7 +247,7 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
  */
 function QuoteDetailSkeleton() {
   return (
-    <div className="container py-6 space-y-6">
+    <div className="py-4 space-y-6">
       {/* Header skeleton */}
       <div className="space-y-2">
         <Skeleton className="h-4 w-32" />
