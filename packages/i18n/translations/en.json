@@ -3629,6 +3629,35 @@
 				"approaching_limit": "Approaching Limit",
 				"break_recommended": "Break Recommended"
 			}
+		},
+		"staffing": {
+			"title": "Staffing Costs",
+			"standardStaffing": "Standard staffing - 1 driver",
+			"driverCount": "{count, plural, one {# driver} other {# drivers}} required",
+			"planType": "Staffing Plan",
+			"planTypes": {
+				"SINGLE_DRIVER": "Single Driver",
+				"DOUBLE_CREW": "Double Crew (RSE)",
+				"RELAY": "Relay Driver",
+				"MULTI_DAY": "Multi-Day Mission"
+			},
+			"totalDriving": "Total Driving Time",
+			"totalAmplitude": "Total Amplitude",
+			"secondDriverCost": "Second Driver Cost",
+			"secondDriverSummary": "{hours}h of work",
+			"workingHours": "Working Hours",
+			"hourlyRate": "Hourly Rate",
+			"hotelCosts": "Hotel Costs",
+			"hotelSummary": "{nights, plural, one {# night} other {# nights}} × {drivers, plural, one {# driver} other {# drivers}}",
+			"nightCount": "Number of Nights",
+			"driversCount": "Drivers Requiring Hotel",
+			"ratePerNight": "Rate per Night",
+			"mealCosts": "Meal Allowances",
+			"mealSummary": "{count, plural, one {# meal} other {# meals}}",
+			"mealCount": "Number of Meals",
+			"ratePerMeal": "Rate per Meal",
+			"calculation": "Calculation",
+			"rseInfo": "RSE (European Social Regulation) requires additional staffing for trips exceeding driving time or amplitude limits."
 		}
 	},
 	"documents": {

@@ -3629,6 +3629,35 @@
 				"approaching_limit": "Approche de la limite",
 				"break_recommended": "Pause recommandée"
 			}
+		},
+		"staffing": {
+			"title": "Coûts de personnel",
+			"standardStaffing": "Personnel standard - 1 conducteur",
+			"driverCount": "{count, plural, one {# conducteur} other {# conducteurs}} requis",
+			"planType": "Plan de personnel",
+			"planTypes": {
+				"SINGLE_DRIVER": "Conducteur unique",
+				"DOUBLE_CREW": "Double équipage (RSE)",
+				"RELAY": "Conducteur relais",
+				"MULTI_DAY": "Mission multi-jours"
+			},
+			"totalDriving": "Temps de conduite total",
+			"totalAmplitude": "Amplitude totale",
+			"secondDriverCost": "Coût du second conducteur",
+			"secondDriverSummary": "{hours}h de travail",
+			"workingHours": "Heures de travail",
+			"hourlyRate": "Taux horaire",
+			"hotelCosts": "Frais d'hôtel",
+			"hotelSummary": "{nights, plural, one {# nuit} other {# nuits}} × {drivers, plural, one {# conducteur} other {# conducteurs}}",
+			"nightCount": "Nombre de nuits",
+			"driversCount": "Conducteurs nécessitant l'hôtel",
+			"ratePerNight": "Tarif par nuit",
+			"mealCosts": "Indemnités repas",
+			"mealSummary": "{count, plural, one {# repas} other {# repas}}",
+			"mealCount": "Nombre de repas",
+			"ratePerMeal": "Tarif par repas",
+			"calculation": "Calcul",
+			"rseInfo": "La RSE (Réglementation Sociale Européenne) impose un personnel supplémentaire pour les trajets dépassant les limites de temps de conduite ou d'amplitude."
 		}
 	},
 	"documents": {

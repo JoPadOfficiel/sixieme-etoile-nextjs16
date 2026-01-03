@@ -13,6 +13,7 @@ import { AssignmentDrawer } from "./AssignmentDrawer";
 import { EmptyLegsList } from "./EmptyLegsList";
 import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { MissionComplianceDetails } from "./MissionComplianceDetails";
+import { StaffingCostsSection } from "./StaffingCostsSection";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
@@ -234,12 +235,19 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Transparency + Compliance + Assignment - no internal scroll */}
+				{/* Transparency + Staffing + Compliance + Assignment - no internal scroll */}
 				<div className="flex flex-col gap-4">
 					<TripTransparencyPanel
 						pricingResult={pricingResult}
 						isLoading={missionDetailLoading}
 					/>
+					{/* Story 21.5: RSE Staffing Costs Section */}
+					{selectedMissionId && (
+						<StaffingCostsSection
+							tripAnalysis={selectedMission?.tripAnalysis ?? null}
+							isLoading={missionDetailLoading}
+						/>
+					)}
 					{/* Story 5.6: Compliance Details */}
 					{selectedMissionId && (
 						<MissionComplianceDetails
