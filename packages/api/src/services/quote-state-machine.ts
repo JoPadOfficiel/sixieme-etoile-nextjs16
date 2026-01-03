@@ -329,6 +329,15 @@ export class QuoteStateMachine {
 	}
 
 	/**
+	 * Story 22.3: Check if notes can be edited on a quote
+	 * Notes are editable for all statuses except EXPIRED
+	 * This allows operators to add driver instructions after sending
+	 */
+	static isNotesEditable(status: QuoteStatus): boolean {
+		return status !== "EXPIRED";
+	}
+
+	/**
 	 * Check if a quote can be converted to an invoice
 	 * Only ACCEPTED quotes can be converted
 	 */

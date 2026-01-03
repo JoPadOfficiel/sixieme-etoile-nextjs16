@@ -52,7 +52,8 @@ export function QuoteActivityLog({
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState(quote.notes || "");
 
-  const isDraft = quote.status === "DRAFT";
+  // Story 22.3: Notes are editable for all statuses except EXPIRED
+  const canEditNotes = quote.status !== "EXPIRED";
 
   // Build activity events from quote data
   const events: ActivityEvent[] = [];
@@ -202,7 +203,8 @@ export function QuoteActivityLog({
             <CardTitle className="text-base">
               {t("quotes.detail.notes.title")}
             </CardTitle>
-            {isDraft && !isEditingNotes && (
+            {/* Story 22.3: Notes editable for all statuses except EXPIRED */}
+            {canEditNotes && !isEditingNotes && (
               <Button
                 variant="ghost"
                 size="sm"

@@ -531,13 +531,36 @@ export const quotesRouter = new Hono()
 				});
 			}
 
-			// Story 6.4: Block notes changes for non-DRAFT quotes (except internal notes)
+			// Story 22.3: Allow notes changes for non-EXPIRED quotes
+			// Notes are editable for operational purposes (driver instructions) even after sending
 			if (
 				data.notes !== undefined &&
-				!QuoteStateMachine.isEditable(existing.status)
+				!QuoteStateMachine.isNotesEditable(existing.status)
 			) {
 				throw new HTTPException(400, {
-					message: "Cannot modify notes for non-DRAFT quotes.",
+					message: "Cannot modify notes for EXPIRED quotes.",
+				});
+			}
+
+			// Story 22.3: Create audit log for notes changes on non-DRAFT quotes
+			if (
+				data.notes !== undefined &&
+				data.notes !== existing.notes &&
+				!QuoteStateMachine.isEditable(existing.status)
+			) {
+				const sessionData = c.get("session");
+				const auditUserId =
+					typeof sessionData === "object" && sessionData?.userId
+						? sessionData.userId
+						: null;
+				await db.quoteNotesAuditLog.create({
+					data: {
+						organizationId,
+						quoteId: id,
+						previousNotes: existing.notes,
+						newNotes: data.notes,
+						userId: auditUserId,
+					},
 				});
 			}
 

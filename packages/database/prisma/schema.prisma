@@ -150,6 +150,7 @@ model Organization {
   driverCalendarEvents        DriverCalendarEvent[]
   complianceAuditLogs         ComplianceAuditLog[]
   quoteStatusAuditLogs        QuoteStatusAuditLog[]
+  quoteNotesAuditLogs         QuoteNotesAuditLog[]
 
   @@unique([slug])
   @@map("organization")
@@ -1637,13 +1638,14 @@ model Quote {
   updatedAt DateTime @updatedAt
 
   // Relations
-  invoice         Invoice?
-  statusAuditLogs QuoteStatusAuditLog[]
-  documents       Document[]
-  vehicle         Vehicle?              @relation(fields: [vehicleId], references: [id])
-  vehicleId       String?
-  driver          Driver?               @relation(fields: [driverId], references: [id])
-  driverId        String?
+  invoice             Invoice?
+  statusAuditLogs     QuoteStatusAuditLog[]
+  documents           Document[]
+  vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id])
+  vehicleId           String?
+  driver              Driver?               @relation(fields: [driverId], references: [id])
+  driverId            String?
+  quoteNotesAuditLogs QuoteNotesAuditLog[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1946,6 +1948,35 @@ model QuoteStatusAuditLog {
   @@index([quoteId])
   @@index([timestamp])
   @@map("quote_status_audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// QUOTE NOTES AUDIT LOG (Story 22.3)
+// ----------------------------------------------------------------------------
+
+/// QuoteNotesAuditLog - Tracks quote notes changes for audit purposes
+/// Story 22.3: Enable Quote Notes Modification After Sending
+model QuoteNotesAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quoteId        String
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Notes change details
+  previousNotes String? @db.Text
+  newNotes      String? @db.Text
+
+  // Actor
+  userId String?
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@index([timestamp])
+  @@map("quote_notes_audit_log")
 }
 
 // ----------------------------------------------------------------------------

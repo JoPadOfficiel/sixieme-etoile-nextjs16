@@ -15,11 +15,26 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { randomUUID } from "crypto";
-import { auth } from "@repo/auth";
+import { randomUUID, scryptSync, randomBytes } from "crypto";
 
 const prisma = new PrismaClient();
-const authContextPromise = auth.$context;
+
+// Better Auth compatible password hashing
+// Uses the EXACT same parameters as Better Auth's default scrypt implementation:
+// N: 16384, r: 16, p: 1, dkLen: 64
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  // Normalize password like Better Auth does
+  const normalizedPassword = password.normalize("NFKC");
+  // Use same scrypt parameters as Better Auth: N=16384, r=16, p=1
+  const derivedKey = scryptSync(normalizedPassword, salt, 64, {
+    N: 16384,
+    r: 16,
+    p: 1,
+    maxmem: 128 * 16384 * 16 * 2,
+  });
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
 
 // Configuration from .env with defaults
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
@@ -165,9 +180,8 @@ async function createAdminUser() {
   });
   ADMIN_USER_ID = user.id;
 
-  // Hash password using Better Auth context for perfect compatibility
-  const authContext = await authContextPromise;
-  const hashedPassword = await authContext.password.hash(ADMIN_PASSWORD);
+  // Hash password using native crypto
+  const hashedPassword = hashPassword(ADMIN_PASSWORD);
   
   await prisma.account.create({
     data: {

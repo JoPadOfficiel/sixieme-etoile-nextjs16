@@ -178,6 +178,8 @@ export const ComplianceAuditLogScalarFieldEnumSchema = z.enum(['id','organizatio
 
 export const QuoteStatusAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousStatus','newStatus','userId','timestamp','reason']);
 
+export const QuoteNotesAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousNotes','newNotes','userId','timestamp']);
+
 export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destinationHash','tollAmount','currency','encodedPolyline','source','fetchedAt','expiresAt']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
@@ -1495,6 +1497,26 @@ export const QuoteStatusAuditLogSchema = z.object({
 })
 
 export type QuoteStatusAuditLog = z.infer<typeof QuoteStatusAuditLogSchema>
+
+/////////////////////////////////////////
+// QUOTE NOTES AUDIT LOG SCHEMA
+/////////////////////////////////////////
+
+/**
+ * QuoteNotesAuditLog - Tracks quote notes changes for audit purposes
+ * Story 22.3: Enable Quote Notes Modification After Sending
+ */
+export const QuoteNotesAuditLogSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  quoteId: z.string(),
+  previousNotes: z.string().nullable(),
+  newNotes: z.string().nullable(),
+  userId: z.string().nullable(),
+  timestamp: z.coerce.date(),
+})
+
+export type QuoteNotesAuditLog = z.infer<typeof QuoteNotesAuditLogSchema>
 
 /////////////////////////////////////////
 // TOLL CACHE SCHEMA
