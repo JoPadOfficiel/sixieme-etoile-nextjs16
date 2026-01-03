@@ -120,6 +120,9 @@ export {
 	calculateEstimatedEndAt,
 	calculateTimeAnalysis,
 	calculatePositioningCosts,
+	calculateRoundTripSegments,
+	extendTripAnalysisForRoundTrip,
+	DEFAULT_WAIT_ON_SITE_THRESHOLD_MINUTES,
 	type PositioningCostsOptions,
 } from "./shadow-calculator";
 

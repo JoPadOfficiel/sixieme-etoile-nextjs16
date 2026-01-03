@@ -24,6 +24,11 @@ import type {
 	PositioningCostItem,
 	AvailabilityFeeItem,
 	TripType,
+	RoundTripMode,
+	RoundTripSegmentAnalysis,
+	RoundTripSegmentBreakdown,
+	AppliedRoundTripSegmentsRule,
+	RoundTripSegmentsResult,
 } from "./types";
 import { calculateCostBreakdown, combineCostBreakdowns } from "./cost-calculator";
 
@@ -547,4 +552,261 @@ function getEmptyReturnReason(tripType: TripType): string {
 		default:
 			return "Empty return to base";
 	}
+}
+
+// ============================================================================
+// Story 22.1: Round Trip Segment Calculation
+// ============================================================================
+
+/**
+ * Default threshold for wait-on-site mode (in minutes)
+ * If waiting time between legs is less than this, driver waits on-site
+ */
+export const DEFAULT_WAIT_ON_SITE_THRESHOLD_MINUTES = 120; // 2 hours
+
+/**
+ * Story 22.1: Calculate round trip segments with proper segment-based pricing
+ * 
+ * Instead of applying a simple ×2 multiplier, this function calculates
+ * each segment individually for accurate operational cost:
+ * 
+ * - Segment A: Base → Pickup (initial positioning)
+ * - Segment B: Pickup → Dropoff (outbound service)
+ * - Segment C: Dropoff → Base (empty return after outbound) - 0 for WAIT_ON_SITE
+ * - Segment D: Base → Pickup (repositioning for return) - 0 for WAIT_ON_SITE
+ * - Segment E: Dropoff → Pickup (return service = inverse of B)
+ * - Segment F: Pickup → Base (final empty return)
+ * 
+ * @param singleLegPrice - The price for a single leg (A + B + C)
+ * @param singleLegInternalCost - The internal cost for a single leg
+ * @param tripAnalysis - The trip analysis from single leg calculation
+ * @param settings - Organization pricing settings
+ * @param waitingTimeMinutes - Optional waiting time between legs (for mode detection)
+ * @param waitOnSiteThresholdMinutes - Optional threshold for wait-on-site mode
+ * @returns RoundTripSegmentsResult with segment breakdown and applied rule
+ */
+export function calculateRoundTripSegments(
+	singleLegPrice: number,
+	singleLegInternalCost: number,
+	tripAnalysis: TripAnalysis,
+	settings: OrganizationPricingSettings,
+	waitingTimeMinutes?: number,
+	waitOnSiteThresholdMinutes?: number,
+): RoundTripSegmentsResult {
+	const threshold = waitOnSiteThresholdMinutes ?? DEFAULT_WAIT_ON_SITE_THRESHOLD_MINUTES;
+	
+	// Determine round trip mode based on waiting time
+	// If waiting time is short (< threshold), driver waits on-site
+	// If waiting time is long or unknown, driver returns to base between legs
+	const roundTripMode: RoundTripMode = 
+		waitingTimeMinutes !== undefined && waitingTimeMinutes < threshold
+			? "WAIT_ON_SITE"
+			: "RETURN_BETWEEN_LEGS";
+
+	// Get existing segments from trip analysis
+	const segmentA = tripAnalysis.segments.approach;
+	const segmentB = tripAnalysis.segments.service;
+	const segmentC = tripAnalysis.segments.return;
+
+	// Calculate segment costs
+	const costA = segmentA?.cost.total ?? 0;
+	const costB = segmentB.cost.total;
+	const costC = segmentC?.cost.total ?? 0;
+
+	let costD = 0;
+	let costE = 0;
+	let costF = 0;
+	let segmentD: SegmentAnalysis | null = null;
+	let segmentE: SegmentAnalysis | null = null;
+	let segmentF: SegmentAnalysis | null = null;
+
+	if (roundTripMode === "WAIT_ON_SITE") {
+		// Driver waits on-site: C and D are 0
+		// E = inverse of B (same distance/duration)
+		// F = same as A (return to base from pickup)
+		
+		segmentE = createSegmentAnalysisForRoundTrip(
+			"returnService",
+			"Dropoff → Pickup (return service)",
+			segmentB.distanceKm,
+			segmentB.durationMinutes,
+			settings,
+			segmentB.isEstimated,
+		);
+		costE = segmentE.cost.total;
+
+		// F is the same as A but from pickup to base
+		if (segmentA) {
+			segmentF = createSegmentAnalysisForRoundTrip(
+				"finalReturn",
+				"Pickup → Base (final return)",
+				segmentA.distanceKm,
+				segmentA.durationMinutes,
+				settings,
+				segmentA.isEstimated,
+			);
+			costF = segmentF.cost.total;
+		}
+	} else {
+		// Driver returns to base between legs
+		// C = empty return after outbound (already calculated)
+		// D = same as A (repositioning from base to pickup)
+		// E = inverse of B
+		// F = same as C (final return from pickup to base)
+
+		if (segmentA) {
+			segmentD = createSegmentAnalysisForRoundTrip(
+				"returnApproach",
+				"Base → Pickup (return leg positioning)",
+				segmentA.distanceKm,
+				segmentA.durationMinutes,
+				settings,
+				segmentA.isEstimated,
+			);
+			costD = segmentD.cost.total;
+		}
+
+		segmentE = createSegmentAnalysisForRoundTrip(
+			"returnService",
+			"Dropoff → Pickup (return service)",
+			segmentB.distanceKm,
+			segmentB.durationMinutes,
+			settings,
+			segmentB.isEstimated,
+		);
+		costE = segmentE.cost.total;
+
+		if (segmentC) {
+			segmentF = createSegmentAnalysisForRoundTrip(
+				"finalReturn",
+				"Pickup → Base (final return)",
+				segmentC.distanceKm,
+				segmentC.durationMinutes,
+				settings,
+				segmentC.isEstimated,
+			);
+			costF = segmentF.cost.total;
+		}
+	}
+
+	// Calculate total internal cost for round trip
+	const totalInternalCost = roundTripMode === "WAIT_ON_SITE"
+		? costA + costB + costE + costF  // C and D are 0
+		: costA + costB + costC + costD + costE + costF;
+
+	// Calculate segment breakdown
+	const segmentBreakdown: RoundTripSegmentBreakdown = {
+		segmentA: Math.round(costA * 100) / 100,
+		segmentB: Math.round(costB * 100) / 100,
+		segmentC: roundTripMode === "WAIT_ON_SITE" ? 0 : Math.round(costC * 100) / 100,
+		segmentD: Math.round(costD * 100) / 100,
+		segmentE: Math.round(costE * 100) / 100,
+		segmentF: Math.round(costF * 100) / 100,
+		total: Math.round(totalInternalCost * 100) / 100,
+	};
+
+	// Calculate price based on margin preservation
+	// We apply the same margin ratio from single leg to round trip
+	const singleLegMarginRatio = singleLegInternalCost > 0 
+		? singleLegPrice / singleLegInternalCost 
+		: 1;
+	const adjustedPrice = Math.round(totalInternalCost * singleLegMarginRatio * 100) / 100;
+
+	// Build segments object
+	const segments: RoundTripSegmentAnalysis = {
+		approach: segmentA,
+		service: segmentB,
+		return: roundTripMode === "WAIT_ON_SITE" ? null : segmentC,
+		returnApproach: segmentD,
+		returnService: segmentE,
+		finalReturn: segmentF,
+	};
+
+	// Build applied rule
+	const appliedRule: AppliedRoundTripSegmentsRule = {
+		type: "ROUND_TRIP_SEGMENTS",
+		description: roundTripMode === "WAIT_ON_SITE"
+			? "Round trip with driver waiting on-site (segments A+B+E+F)"
+			: "Round trip with driver returning to base between legs (segments A+B+C+D+E+F)",
+		roundTripMode,
+		segmentBreakdown,
+		totalBeforeRoundTrip: Math.round(singleLegPrice * 100) / 100,
+		totalAfterRoundTrip: adjustedPrice,
+		internalCostBeforeRoundTrip: Math.round(singleLegInternalCost * 100) / 100,
+		internalCostAfterRoundTrip: Math.round(totalInternalCost * 100) / 100,
+		waitingTimeMinutes,
+		waitOnSiteThresholdMinutes: threshold,
+	};
+
+	return {
+		adjustedPrice,
+		adjustedInternalCost: Math.round(totalInternalCost * 100) / 100,
+		segments,
+		roundTripMode,
+		appliedRule,
+	};
+}
+
+/**
+ * Helper to create a segment analysis for round trip segments
+ */
+function createSegmentAnalysisForRoundTrip(
+	name: "returnApproach" | "returnService" | "finalReturn",
+	description: string,
+	distanceKm: number,
+	durationMinutes: number,
+	settings: OrganizationPricingSettings,
+	isEstimated: boolean,
+): SegmentAnalysis {
+	const cost = calculateCostBreakdown(distanceKm, durationMinutes, settings);
+	return {
+		name: name as "approach" | "service" | "return", // Type compatibility
+		description,
+		distanceKm: Math.round(distanceKm * 100) / 100,
+		durationMinutes: Math.round(durationMinutes * 100) / 100,
+		cost,
+		isEstimated,
+	};
+}
+
+/**
+ * Story 22.1: Extend trip analysis with round trip segments
+ * 
+ * Takes an existing TripAnalysis and adds round trip segment information
+ */
+export function extendTripAnalysisForRoundTrip(
+	tripAnalysis: TripAnalysis,
+	roundTripResult: RoundTripSegmentsResult,
+): TripAnalysis {
+	// Combine all segment costs for the cost breakdown
+	const allSegments = [
+		roundTripResult.segments.approach,
+		roundTripResult.segments.service,
+		roundTripResult.segments.return,
+		roundTripResult.segments.returnApproach,
+		roundTripResult.segments.returnService,
+		roundTripResult.segments.finalReturn,
+	].filter((s): s is SegmentAnalysis => s !== null);
+
+	const costBreakdown = combineCostBreakdowns(allSegments.map(s => s.cost));
+	const totalDistanceKm = allSegments.reduce((sum, s) => sum + s.distanceKm, 0);
+	const totalDurationMinutes = allSegments.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+	return {
+		...tripAnalysis,
+		costBreakdown,
+		segments: {
+			approach: roundTripResult.segments.approach,
+			service: roundTripResult.segments.service,
+			return: roundTripResult.segments.return,
+			returnApproach: roundTripResult.segments.returnApproach,
+			returnService: roundTripResult.segments.returnService,
+			finalReturn: roundTripResult.segments.finalReturn,
+		},
+		isRoundTrip: true,
+		roundTripMode: roundTripResult.roundTripMode,
+		totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+		totalDurationMinutes: Math.round(totalDurationMinutes * 100) / 100,
+		totalInternalCost: roundTripResult.adjustedInternalCost,
+	};
 }

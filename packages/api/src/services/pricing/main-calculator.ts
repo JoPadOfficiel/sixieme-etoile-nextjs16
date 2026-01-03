@@ -29,7 +29,7 @@ import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMult
 import { applyZoneMultiplier, buildZoneTransparencyInfo } from "./zone-resolver";
 import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThresholdsFromSettings } from "./profitability";
 import { applyTripTypePricing } from "./trip-type-pricing";
-import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts } from "./shadow-calculator";
+import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts, calculateRoundTripSegments, extendTripAnalysisForRoundTrip } from "./shadow-calculator";
 import { isPointInZone, findZonesForPoint, resolveZoneConflict } from "../../lib/geo-utils";
 import { validatePricingResult } from "./validation";
 
@@ -215,24 +215,32 @@ export function calculatePrice(
 	// Calculate internal cost
 	let internalCost = costBreakdown.total;
 	
-	// Apply round trip multiplier if applicable
-	if (request.isRoundTrip) {
-		const roundTripResult = applyRoundTripMultiplier(price, internalCost, true);
-		price = roundTripResult.adjustedPrice;
-		internalCost = roundTripResult.adjustedInternalCost;
-		if (roundTripResult.appliedRule) {
-			appliedRules.push(roundTripResult.appliedRule);
-		}
-	}
-	
 	// Calculate segments (shadow calculation)
 	// Story 21.6: Use vehicle selection input if available for accurate positioning costs
-	const tripAnalysis = calculateShadowSegments(
+	let tripAnalysis = calculateShadowSegments(
 		context.vehicleSelectionInput ?? null,
 		distanceKm,
 		durationMinutes,
 		pricingSettings,
 	);
+	
+	// Story 22.1: Apply round trip segment-based calculation if applicable
+	if (request.isRoundTrip) {
+		const roundTripResult = calculateRoundTripSegments(
+			price,
+			internalCost,
+			tripAnalysis,
+			pricingSettings,
+			undefined, // waitingTimeMinutes - could be passed from request in future
+			undefined, // waitOnSiteThresholdMinutes - uses default
+		);
+		price = roundTripResult.adjustedPrice;
+		internalCost = roundTripResult.adjustedInternalCost;
+		appliedRules.push(roundTripResult.appliedRule);
+		
+		// Extend trip analysis with round trip segments
+		tripAnalysis = extendTripAnalysisForRoundTrip(tripAnalysis, roundTripResult);
+	}
 	
 	// Story 21.3: Calculate time analysis breakdown
 	const pickupAtDate = request.pickupAt ? new Date(request.pickupAt) : null;
@@ -504,19 +512,9 @@ export async function calculatePriceWithRealTolls(
 	// Calculate internal cost
 	let internalCost = costBreakdown.total;
 	
-	// Apply round trip multiplier if applicable
-	if (request.isRoundTrip) {
-		const roundTripResult = applyRoundTripMultiplier(price, internalCost, true);
-		price = roundTripResult.adjustedPrice;
-		internalCost = roundTripResult.adjustedInternalCost;
-		if (roundTripResult.appliedRule) {
-			appliedRules.push(roundTripResult.appliedRule);
-		}
-	}
-	
 	// Calculate segments (shadow calculation)
 	// Story 21.6: Use vehicle selection input if available for accurate positioning costs
-	const tripAnalysis = calculateShadowSegments(
+	let tripAnalysis = calculateShadowSegments(
 		context.vehicleSelectionInput ?? null,
 		distanceKm,
 		durationMinutes,
@@ -529,6 +527,27 @@ export async function calculatePriceWithRealTolls(
 	tripAnalysis.fuelPriceSource = fuelPriceSource;
 	// Update costBreakdown with real cost data
 	tripAnalysis.costBreakdown = costBreakdown;
+	
+	// Story 22.1: Apply round trip segment-based calculation if applicable
+	if (request.isRoundTrip) {
+		const roundTripResult = calculateRoundTripSegments(
+			price,
+			internalCost,
+			tripAnalysis,
+			pricingSettings,
+			undefined, // waitingTimeMinutes - could be passed from request in future
+			undefined, // waitOnSiteThresholdMinutes - uses default
+		);
+		price = roundTripResult.adjustedPrice;
+		internalCost = roundTripResult.adjustedInternalCost;
+		appliedRules.push(roundTripResult.appliedRule);
+		
+		// Extend trip analysis with round trip segments
+		tripAnalysis = extendTripAnalysisForRoundTrip(tripAnalysis, roundTripResult);
+		// Preserve toll and fuel sources after extension
+		tripAnalysis.tollSource = tollSource;
+		tripAnalysis.fuelPriceSource = fuelPriceSource;
+	}
 	
 	// Story 21.3: Calculate time analysis breakdown
 	const pickupAtDate = request.pickupAt ? new Date(request.pickupAt) : null;

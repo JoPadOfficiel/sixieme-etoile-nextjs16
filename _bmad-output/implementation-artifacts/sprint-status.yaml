@@ -204,8 +204,8 @@ development_status:
   21-8-zone-based-cost-transparency-enhancement: done
   21-9-real-time-cost-calculation-validation: done
   epic-21-retrospective: optional
-  epic-22: backlog
-  22-1-fix-round-trip-pricing-calculation: backlog
+  epic-22: in_progress
+  22-1-fix-round-trip-pricing-calculation: done
   22-2-display-staffing-costs-in-quote-creation: backlog
   22-3-enable-quote-notes-modification-after-sending: backlog
   22-4-implement-complete-subcontracting-system: backlog

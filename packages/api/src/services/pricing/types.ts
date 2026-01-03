@@ -460,6 +460,76 @@ export interface ZoneMultiplierResult {
 // Round Trip Interfaces
 // ============================================================================
 
+/**
+ * Story 22.1: Round trip calculation mode
+ * - WAIT_ON_SITE: Driver waits at dropoff, no return/repositioning between legs
+ * - RETURN_BETWEEN_LEGS: Driver returns to base between outbound and return legs
+ */
+export type RoundTripMode = "WAIT_ON_SITE" | "RETURN_BETWEEN_LEGS";
+
+/**
+ * Story 22.1: Extended segment analysis for round trips
+ * Adds return leg segments (D, E, F) to the standard A, B, C
+ */
+export interface RoundTripSegmentAnalysis {
+	/** Segment A: Base → Pickup (initial positioning) */
+	approach: SegmentAnalysis | null;
+	/** Segment B: Pickup → Dropoff (outbound service) */
+	service: SegmentAnalysis;
+	/** Segment C: Dropoff → Base (empty return after outbound) - null for WAIT_ON_SITE */
+	return: SegmentAnalysis | null;
+	/** Segment D: Base → Pickup (repositioning for return leg) - null for WAIT_ON_SITE */
+	returnApproach: SegmentAnalysis | null;
+	/** Segment E: Dropoff → Pickup (return service = inverse of B) */
+	returnService: SegmentAnalysis | null;
+	/** Segment F: Pickup → Base (final empty return) */
+	finalReturn: SegmentAnalysis | null;
+}
+
+/**
+ * Story 22.1: Cost breakdown per segment for round trips
+ */
+export interface RoundTripSegmentBreakdown {
+	segmentA: number;
+	segmentB: number;
+	segmentC: number;
+	segmentD: number;
+	segmentE: number;
+	segmentF: number;
+	total: number;
+}
+
+/**
+ * Story 22.1: Applied rule for segment-based round trip calculation
+ */
+export interface AppliedRoundTripSegmentsRule extends AppliedRule {
+	type: "ROUND_TRIP_SEGMENTS";
+	description: string;
+	roundTripMode: RoundTripMode;
+	segmentBreakdown: RoundTripSegmentBreakdown;
+	totalBeforeRoundTrip: number;
+	totalAfterRoundTrip: number;
+	internalCostBeforeRoundTrip: number;
+	internalCostAfterRoundTrip: number;
+	waitingTimeMinutes?: number;
+	waitOnSiteThresholdMinutes?: number;
+}
+
+/**
+ * Story 22.1: Result of segment-based round trip calculation
+ */
+export interface RoundTripSegmentsResult {
+	adjustedPrice: number;
+	adjustedInternalCost: number;
+	segments: RoundTripSegmentAnalysis;
+	roundTripMode: RoundTripMode;
+	appliedRule: AppliedRoundTripSegmentsRule;
+}
+
+/**
+ * @deprecated Use AppliedRoundTripSegmentsRule instead (Story 22.1)
+ * Kept for backward compatibility with existing quotes
+ */
 export interface AppliedRoundTripRule extends AppliedRule {
 	type: "ROUND_TRIP";
 	description: string;
@@ -470,6 +540,10 @@ export interface AppliedRoundTripRule extends AppliedRule {
 	internalCostAfterRoundTrip: number;
 }
 
+/**
+ * @deprecated Use RoundTripSegmentsResult instead (Story 22.1)
+ * Kept for backward compatibility
+ */
 export interface RoundTripMultiplierResult {
 	adjustedPrice: number;
 	adjustedInternalCost: number;
@@ -1258,7 +1332,15 @@ export interface TripAnalysis {
 		approach: SegmentAnalysis | null;
 		service: SegmentAnalysis;
 		return: SegmentAnalysis | null;
+		/** Story 22.1: Round trip return leg segments */
+		returnApproach?: SegmentAnalysis | null;
+		returnService?: SegmentAnalysis | null;
+		finalReturn?: SegmentAnalysis | null;
 	};
+	/** Story 22.1: Flag indicating this is a round trip */
+	isRoundTrip?: boolean;
+	/** Story 22.1: Round trip calculation mode */
+	roundTripMode?: RoundTripMode;
 	excursionLegs?: ExcursionLeg[];
 	isMultiDay?: boolean;
 	totalStops?: number;

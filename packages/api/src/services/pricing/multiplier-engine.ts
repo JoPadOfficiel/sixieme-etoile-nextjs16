@@ -587,6 +587,12 @@ export function applyClientDifficultyMultiplier(
 // ============================================================================
 
 /**
+ * @deprecated Story 22.1: Use calculateRoundTripSegments from shadow-calculator instead
+ * This function applies a simple ×2 multiplier which doesn't accurately reflect
+ * operational costs. The new segment-based calculation is more accurate.
+ * 
+ * Kept for backward compatibility with existing quotes.
+ * 
  * Story 16.6: Apply round trip multiplier (×2) for transfer quotes
  */
 export function applyRoundTripMultiplier(
@@ -607,7 +613,7 @@ export function applyRoundTripMultiplier(
 
 	const appliedRule: AppliedRoundTripRule = {
 		type: "ROUND_TRIP",
-		description: "Round trip multiplier applied (×2)",
+		description: "Round trip multiplier applied (×2) [DEPRECATED: use segment-based calculation]",
 		multiplier: 2,
 		priceBeforeRoundTrip: price,
 		priceAfterRoundTrip: adjustedPrice,
