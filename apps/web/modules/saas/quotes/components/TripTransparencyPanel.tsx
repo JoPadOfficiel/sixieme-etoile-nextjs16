@@ -67,6 +67,8 @@ interface TripTransparencyPanelProps {
   isCostUpdating?: boolean;
   // Story 10.1: Route visualization
   routeCoordinates?: RouteCoordinates;
+  // Story 21.9: Encoded polyline for route display
+  encodedPolyline?: string | null;
   // Story 21.9: Validation props
   onRecalculate?: () => Promise<void>;
   isRecalculating?: boolean;
@@ -96,6 +98,7 @@ export function TripTransparencyPanel({
   onCostUpdate,
   isCostUpdating = false,
   routeCoordinates,
+  encodedPolyline,
   onRecalculate,
   isRecalculating = false,
   auditLog = [],
@@ -367,7 +370,7 @@ export function TripTransparencyPanel({
                 pickup={routeCoordinates.pickup}
                 dropoff={routeCoordinates.dropoff}
                 waypoints={routeCoordinates.waypoints}
-                encodedPolyline={tripAnalysis.encodedPolyline}
+                encodedPolyline={encodedPolyline || tripAnalysis.encodedPolyline}
               />
             </div>
           )}

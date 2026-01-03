@@ -341,6 +341,7 @@ export function CreateQuoteCockpit() {
                 ? { lat: formData.dropoffLatitude, lng: formData.dropoffLongitude, address: formData.dropoffAddress }
                 : undefined,
             }}
+            encodedPolyline={pricingResult?.tripAnalysis?.encodedPolyline}
           />
         </div>
 
