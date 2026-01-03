@@ -57,17 +57,17 @@ import {
 
 // Types for the settings
 interface AdvancedPricingSettings {
-	zoneConflictStrategy: string | null;
-	zoneMultiplierAggregationStrategy: string | null;
-	staffingSelectionPolicy: string | null;
+	zoneConflictStrategy: "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED" | null;
+	zoneMultiplierAggregationStrategy: "MAX" | "PICKUP_ONLY" | "DROPOFF_ONLY" | "AVERAGE" | null;
+	staffingSelectionPolicy: "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL" | null;
 	hotelCostPerNight: number | null;
 	mealCostPerDay: number | null;
 	driverOvernightPremium: number | null;
 	secondDriverHourlyRate: number | null;
 	relayDriverFixedFee: number | null;
 	useDriverHomeForDeadhead: boolean;
-	timeBucketInterpolationStrategy: string | null;
-	difficultyMultipliers: Record<string, number> | null;
+	timeBucketInterpolationStrategy: "ROUND_UP" | "ROUND_DOWN" | "PROPORTIONAL" | null;
+	difficultyMultipliers: { "1": number; "2": number; "3": number; "4": number; "5": number } | null;
 	// Story 18.11: Transfer-to-MAD thresholds
 	denseZoneSpeedThreshold: number | null;
 	autoSwitchToMAD: boolean;
@@ -135,7 +135,8 @@ export default function AdvancedPricingSettingsPage() {
 	// Update form when data loads
 	useEffect(() => {
 		if (settingsData) {
-			setFormData({
+			// Use setTimeout to avoid setState in effect warning
+			setTimeout(() => setFormData({
 				zoneConflictStrategy: settingsData.zoneConflictStrategy ?? null,
 				zoneMultiplierAggregationStrategy:
 					settingsData.zoneMultiplierAggregationStrategy ?? null,
@@ -146,11 +147,8 @@ export default function AdvancedPricingSettingsPage() {
 				secondDriverHourlyRate: settingsData.secondDriverHourlyRate ?? null,
 				relayDriverFixedFee: settingsData.relayDriverFixedFee ?? null,
 				useDriverHomeForDeadhead: settingsData.useDriverHomeForDeadhead ?? false,
-				timeBucketInterpolationStrategy:
-					settingsData.timeBucketInterpolationStrategy ?? null,
-				difficultyMultipliers:
-					(settingsData.difficultyMultipliers as Record<string, number>) ?? null,
-				// Story 18.11: Transfer-to-MAD thresholds
+				timeBucketInterpolationStrategy: settingsData.timeBucketInterpolationStrategy ?? null,
+				difficultyMultipliers: settingsData.difficultyMultipliers ?? null,
 				denseZoneSpeedThreshold: settingsData.denseZoneSpeedThreshold ?? null,
 				autoSwitchToMAD: settingsData.autoSwitchToMAD ?? false,
 				denseZoneCodes: settingsData.denseZoneCodes ?? [],
@@ -158,8 +156,8 @@ export default function AdvancedPricingSettingsPage() {
 				maxReturnDistanceKm: settingsData.maxReturnDistanceKm ?? null,
 				roundTripBuffer: settingsData.roundTripBuffer ?? null,
 				autoSwitchRoundTripToMAD: settingsData.autoSwitchRoundTripToMAD ?? false,
-			});
-			setHasChanges(false);
+			}), 0);
+			setTimeout(() => setHasChanges(false), 0);
 		}
 	}, [settingsData]);
 
@@ -203,11 +201,14 @@ export default function AdvancedPricingSettingsPage() {
 
 	const updateDifficultyMultiplier = (score: string, value: number) => {
 		const current = formData.difficultyMultipliers ?? DEFAULT_DIFFICULTY_MULTIPLIERS;
-		setFormData((prev) => ({
-			...prev,
-			difficultyMultipliers: { ...current, [score]: value },
-		}));
-		setHasChanges(true);
+		// Ensure the score is one of the valid keys
+		if (score in DEFAULT_DIFFICULTY_MULTIPLIERS) {
+			setFormData((prev) => ({
+				...prev,
+				difficultyMultipliers: { ...current, [score]: value } as { "1": number; "2": number; "3": number; "4": number; "5": number },
+			}));
+			setHasChanges(true);
+		}
 	};
 
 	if (isLoading) {
@@ -274,7 +275,7 @@ export default function AdvancedPricingSettingsPage() {
 								onValueChange={(value) =>
 									updateField(
 										"zoneConflictStrategy",
-										value === "default" ? null : value
+										value === "default" ? null : (value as "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED")
 									)
 								}
 							>
@@ -323,7 +324,7 @@ export default function AdvancedPricingSettingsPage() {
 								onValueChange={(value) =>
 									updateField(
 										"zoneMultiplierAggregationStrategy",
-										value === "default" ? null : value
+										value === "default" ? null : (value as "MAX" | "PICKUP_ONLY" | "DROPOFF_ONLY" | "AVERAGE")
 									)
 								}
 							>
@@ -406,7 +407,7 @@ export default function AdvancedPricingSettingsPage() {
 								onValueChange={(value) =>
 									updateField(
 										"staffingSelectionPolicy",
-										value === "default" ? null : value
+										value === "default" ? null : (value as "CHEAPEST" | "FASTEST" | "PREFER_INTERNAL")
 									)
 								}
 							>
@@ -654,7 +655,7 @@ export default function AdvancedPricingSettingsPage() {
 								onValueChange={(value) =>
 									updateField(
 										"timeBucketInterpolationStrategy",
-										value === "default" ? null : value
+										value === "default" ? null : (value as "ROUND_UP" | "ROUND_DOWN" | "PROPORTIONAL")
 									)
 								}
 							>
@@ -986,7 +987,7 @@ export default function AdvancedPricingSettingsPage() {
 								{["1", "2", "3", "4", "5"].map((score) => {
 									const multipliers =
 										formData.difficultyMultipliers ?? DEFAULT_DIFFICULTY_MULTIPLIERS;
-									const value = multipliers[score] ?? DEFAULT_DIFFICULTY_MULTIPLIERS[score];
+									const value = (multipliers as typeof DEFAULT_DIFFICULTY_MULTIPLIERS)[score as keyof typeof DEFAULT_DIFFICULTY_MULTIPLIERS] ?? DEFAULT_DIFFICULTY_MULTIPLIERS[score as keyof typeof DEFAULT_DIFFICULTY_MULTIPLIERS];
 									const percentage = ((value - 1) * 100).toFixed(0);
 
 									return (

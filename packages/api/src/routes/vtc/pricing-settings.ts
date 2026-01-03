@@ -236,9 +236,16 @@ export const pricingSettingsRouter = new Hono()
 
 			if (existing) {
 				// Update existing settings
+				const updateData: any = {
+					...data,
+				};
+				// Convert difficultyMultipliers to JSON for database
+				if (data.difficultyMultipliers) {
+					updateData.difficultyMultipliers = JSON.stringify(data.difficultyMultipliers);
+				}
 				settings = await db.organizationPricingSettings.update({
 					where: { organizationId },
-					data,
+					data: updateData,
 				});
 			} else {
 				// Create new settings with defaults for required fields

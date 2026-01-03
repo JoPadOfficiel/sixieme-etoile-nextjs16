@@ -218,8 +218,8 @@ export function DispatchMap({
 										<CandidateBaseMarker
 											key={candidate.candidateId}
 											baseName={candidate.baseName}
-											baseDistanceKm={candidate.segments.approach.distanceKm}
-											estimatedCost={candidate.estimatedCost}
+											baseDistanceKm={candidate.segments.approach.distanceKm ?? 0}
+											estimatedCost={candidate.estimatedCost ?? undefined}
 											state={state}
 											onClick={() => onCandidateSelect?.(candidate.candidateId)}
 											onMouseEnter={() => onCandidateHoverStart?.(candidate.candidateId)}

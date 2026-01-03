@@ -161,9 +161,9 @@ export function AssignmentDrawer({
 				case "score":
 					return b.flexibilityScore - a.flexibilityScore;
 				case "cost":
-					return a.estimatedCost.total - b.estimatedCost.total;
+					return (a.estimatedCost?.total ?? 0) - (b.estimatedCost?.total ?? 0);
 				case "distance":
-					return a.baseDistanceKm - b.baseDistanceKm;
+					return (a.baseDistanceKm ?? 0) - (b.baseDistanceKm ?? 0);
 				default:
 					return 0;
 			}
@@ -183,7 +183,7 @@ export function AssignmentDrawer({
 		const mission = candidatesData?.mission;
 		if (!mission) return false;
 		// Check compliancePlan.planType from tripAnalysis
-		const tripAnalysis = mission.tripAnalysis as any;
+		const tripAnalysis = mission.tripAnalysis;
 		return tripAnalysis?.compliancePlan?.planType === "DOUBLE_CREW";
 	}, [candidatesData]);
 

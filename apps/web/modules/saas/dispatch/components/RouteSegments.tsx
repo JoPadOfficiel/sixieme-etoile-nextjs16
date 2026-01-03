@@ -74,8 +74,8 @@ export function RouteSegments({
 					fromIcon={<Building2 className="size-3.5" />}
 					toLabel={t("pickup")}
 					toIcon={<MapPin className="size-3.5 text-green-600" />}
-					distanceKm={segments?.approach.distanceKm}
-					durationMinutes={segments?.approach.durationMinutes}
+					distanceKm={segments?.approach.distanceKm ?? undefined}
+					durationMinutes={segments?.approach.durationMinutes ?? undefined}
 					data-testid="approach-route"
 				/>
 			)}
@@ -87,8 +87,8 @@ export function RouteSegments({
 				fromIcon={<MapPin className="size-3.5 text-green-600" />}
 				toLabel={t("dropoff")}
 				toIcon={<MapPin className="size-3.5 text-red-600" />}
-				distanceKm={segments?.service.distanceKm}
-				durationMinutes={segments?.service.durationMinutes}
+				distanceKm={segments?.service.distanceKm ?? undefined}
+				durationMinutes={segments?.service.durationMinutes ?? undefined}
 				data-testid="service-route"
 			/>
 
@@ -100,8 +100,8 @@ export function RouteSegments({
 					fromIcon={<MapPin className="size-3.5 text-red-600" />}
 					toLabel={baseName || t("base")}
 					toIcon={<Building2 className="size-3.5" />}
-					distanceKm={segments?.return.distanceKm}
-					durationMinutes={segments?.return.durationMinutes}
+					distanceKm={segments?.return.distanceKm ?? undefined}
+					durationMinutes={segments?.return.durationMinutes ?? undefined}
 					data-testid="return-route"
 				/>
 			)}
@@ -206,18 +206,18 @@ export function RouteSegmentsSummary({
 	const t = useTranslations("dispatch.assignment.costComparison.segments");
 
 	const totalDistance = useMemo(() => {
-		let total = segments.service.distanceKm;
-		if (showApproach) total += segments.approach.distanceKm;
-		if (showReturn) total += segments.return.distanceKm;
-		return total;
-	}, [segments, showApproach, showReturn]);
+		const approachDistance = segments?.approach.distanceKm ?? 0;
+		const serviceDistance = segments?.service.distanceKm ?? 0;
+		const returnDistance = segments?.return.distanceKm ?? 0;
+		return approachDistance + serviceDistance + returnDistance;
+	}, [segments]);
 
 	const totalDuration = useMemo(() => {
-		let total = segments.service.durationMinutes;
-		if (showApproach) total += segments.approach.durationMinutes;
-		if (showReturn) total += segments.return.durationMinutes;
-		return total;
-	}, [segments, showApproach, showReturn]);
+		const approachDuration = segments?.approach.durationMinutes ?? 0;
+		const serviceDuration = segments?.service.durationMinutes ?? 0;
+		const returnDuration = segments?.return.durationMinutes ?? 0;
+		return approachDuration + serviceDuration + returnDuration;
+	}, [segments]);
 
 	return (
 		<div className={cn("text-xs space-y-1", className)}>
@@ -225,24 +225,24 @@ export function RouteSegmentsSummary({
 				<div className="flex justify-between text-muted-foreground">
 					<span>{t("approach")}</span>
 					<span>
-						{segments.approach.distanceKm.toFixed(1)} km ·{" "}
-						{Math.round(segments.approach.durationMinutes)} min
+						{(segments?.approach.distanceKm ?? 0).toFixed(1)} km ·{" "}
+						{Math.round(segments?.approach.durationMinutes ?? 0)} min
 					</span>
 				</div>
 			)}
 			<div className="flex justify-between">
 				<span className="text-blue-600 font-medium">{t("service")}</span>
 				<span className="text-blue-600">
-					{segments.service.distanceKm.toFixed(1)} km ·{" "}
-					{Math.round(segments.service.durationMinutes)} min
+					{(segments.service.distanceKm ?? 0).toFixed(1)} km ·{" "}
+					{Math.round(segments.service.durationMinutes ?? 0)} min
 				</span>
 			</div>
 			{showReturn && (
 				<div className="flex justify-between text-muted-foreground">
 					<span>{t("return")}</span>
 					<span>
-						{segments.return.distanceKm.toFixed(1)} km ·{" "}
-						{Math.round(segments.return.durationMinutes)} min
+						{(segments?.return.distanceKm ?? 0).toFixed(1)} km ·{" "}
+						{Math.round(segments?.return.durationMinutes ?? 0)} min
 					</span>
 				</div>
 			)}
