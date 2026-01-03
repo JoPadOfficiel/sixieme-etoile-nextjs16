@@ -2256,6 +2256,50 @@
 		"title": "Quotes",
 		"description": "Manage your quotes and pricing.",
 		"search": "Search quotes...",
+		"zoneTransparency": {
+			"title": "Zone Transparency",
+			"conflictsResolved": "Conflicts resolved",
+			"zoneDetection": "Zone Detection",
+			"pickup": "Pickup",
+			"dropoff": "Dropoff",
+			"conflictResolution": "Conflict Resolution",
+			"strategyUsed": "Strategy used: {strategy}",
+			"pickupCandidates": "{count} candidate zones",
+			"dropoffCandidates": "{count} candidate zones",
+			"multiplierApplication": "Multiplier Application",
+			"pickupMultiplier": "Pickup Multiplier",
+			"dropoffMultiplier": "Dropoff Multiplier",
+			"aggregationStrategy": "Aggregation Strategy",
+			"effectiveMultiplier": "Effective Multiplier ({source})",
+			"source": {
+				"pickup": "pickup",
+				"dropoff": "dropoff",
+				"both": "both"
+			},
+			"priceBefore": "Price before multiplier",
+			"priceAfter": "Price after multiplier",
+			"candidates": "candidate zones",
+			"conflictTooltip": "Zone conflicts detected and resolved according to configured strategy",
+			"noZoneDetected": "No zone detected",
+			"zone": "Zone",
+			"type": "Type",
+			"multiplier": "Multiplier",
+			"priority": "Priority",
+			"rejectionReason": "Rejection Reason",
+			"rejectionReasons": {
+				"lowerPriority": "Lower priority",
+				"lessSpecificType": "Less specific zone type",
+				"conflictResolved": "Conflict resolved",
+				"notSelected": "Not selected"
+			},
+			"surcharges": {
+				"title": "Zone Surcharges",
+				"parking": "Parking",
+				"access": "Access",
+				"noSurcharges": "No zone surcharges",
+				"totalSurcharges": "Total surcharges"
+			}
+		},
 		"addQuote": "Add Quote",
 		"empty": "No quotes yet. Create your first quote to get started.",
 		"noResults": "No quotes found matching your filters.",
@@ -2469,6 +2513,50 @@
 				"empty": {
 					"title": "No pricing data yet",
 					"description": "Fill in the trip details to calculate pricing"
+				},
+				"zoneTransparency": {
+					"title": "Zone Transparency",
+					"conflictsResolved": "Conflicts resolved",
+					"zoneDetection": "Zone Detection",
+					"pickup": "Pickup",
+					"dropoff": "Dropoff",
+					"conflictResolution": "Conflict Resolution",
+					"strategyUsed": "Strategy used: {strategy}",
+					"pickupCandidates": "{count} candidate zones",
+					"dropoffCandidates": "{count} candidate zones",
+					"multiplierApplication": "Multiplier Application",
+					"pickupMultiplier": "Pickup Multiplier",
+					"dropoffMultiplier": "Dropoff Multiplier",
+					"aggregationStrategy": "Aggregation Strategy",
+					"effectiveMultiplier": "Effective Multiplier ({source})",
+					"source": {
+						"pickup": "pickup",
+						"dropoff": "dropoff",
+						"both": "both"
+					},
+					"priceBefore": "Price before multiplier",
+					"priceAfter": "Price after multiplier",
+					"candidates": "candidate zones",
+					"conflictTooltip": "Zone conflicts detected and resolved according to configured strategy",
+					"noZoneDetected": "No zone detected",
+					"zone": "Zone",
+					"type": "Type",
+					"multiplier": "Multiplier",
+					"priority": "Priority",
+					"rejectionReason": "Rejection Reason",
+					"rejectionReasons": {
+						"lowerPriority": "Lower priority",
+						"lessSpecificType": "Less specific zone type",
+						"conflictResolved": "Conflict resolved",
+						"notSelected": "Not selected"
+					},
+					"surcharges": {
+						"title": "Zone Surcharges",
+						"parking": "Parking",
+						"access": "Access",
+						"noSurcharges": "No zone surcharges",
+						"totalSurcharges": "Total surcharges"
+					}
 				},
 				"distance": "Distance",
 				"duration": "Duration",

@@ -2256,6 +2256,50 @@
 		"title": "Devis",
 		"description": "Gérez vos devis et tarifications.",
 		"search": "Rechercher des devis...",
+		"zoneTransparency": {
+			"title": "Transparence des zones",
+			"conflictsResolved": "Conflits résolus",
+			"zoneDetection": "Détection de zones",
+			"pickup": "Prise en charge",
+			"dropoff": "Destination",
+			"conflictResolution": "Résolution des conflits",
+			"strategyUsed": "Stratégie utilisée: {strategy}",
+			"pickupCandidates": "{count} zones candidates",
+			"dropoffCandidates": "{count} zones candidates",
+			"multiplierApplication": "Application du multiplicateur",
+			"pickupMultiplier": "Multiplicateur prise en charge",
+			"dropoffMultiplier": "Multiplicateur destination",
+			"aggregationStrategy": "Stratégie d'agrégation",
+			"effectiveMultiplier": "Multiplicateur effectif ({source})",
+			"source": {
+				"pickup": "prise en charge",
+				"dropoff": "destination",
+				"both": "les deux"
+			},
+			"priceBefore": "Prix avant multiplicateur",
+			"priceAfter": "Prix après multiplicateur",
+			"candidates": "zones candidates",
+			"conflictTooltip": "Conflits de zones détectés et résolus selon la stratégie configurée",
+			"noZoneDetected": "Aucune zone détectée",
+			"zone": "Zone",
+			"type": "Type",
+			"multiplier": "Multiplicateur",
+			"priority": "Priorité",
+			"rejectionReason": "Raison de rejet",
+			"rejectionReasons": {
+				"lowerPriority": "Priorité inférieure",
+				"lessSpecificType": "Type de zone moins spécifique",
+				"conflictResolved": "Conflit résolu",
+				"notSelected": "Non sélectionné"
+			},
+			"surcharges": {
+				"title": "Frais de zone",
+				"parking": "Parking",
+				"access": "Accès",
+				"noSurcharges": "Aucun frais de zone",
+				"totalSurcharges": "Total des frais"
+			}
+		},
 		"addQuote": "Nouveau devis",
 		"empty": "Aucun devis. Créez votre premier devis pour commencer.",
 		"noResults": "Aucun devis trouvé correspondant à vos filtres.",
@@ -2469,6 +2513,50 @@
 				"empty": {
 					"title": "Pas encore de données tarifaires",
 					"description": "Remplissez les détails du trajet pour calculer le tarif"
+				},
+				"zoneTransparency": {
+					"title": "Transparence des zones",
+					"conflictsResolved": "Conflits résolus",
+					"zoneDetection": "Détection de zones",
+					"pickup": "Prise en charge",
+					"dropoff": "Destination",
+					"conflictResolution": "Résolution des conflits",
+					"strategyUsed": "Stratégie utilisée: {strategy}",
+					"pickupCandidates": "{count} zones candidates",
+					"dropoffCandidates": "{count} zones candidates",
+					"multiplierApplication": "Application du multiplicateur",
+					"pickupMultiplier": "Multiplicateur prise en charge",
+					"dropoffMultiplier": "Multiplicateur destination",
+					"aggregationStrategy": "Stratégie d'agrégation",
+					"effectiveMultiplier": "Multiplicateur effectif ({source})",
+					"source": {
+						"pickup": "prise en charge",
+						"dropoff": "destination",
+						"both": "les deux"
+					},
+					"priceBefore": "Prix avant multiplicateur",
+					"priceAfter": "Prix après multiplicateur",
+					"candidates": "zones candidates",
+					"conflictTooltip": "Conflits de zones détectés et résolus selon la stratégie configurée",
+					"noZoneDetected": "Aucune zone détectée",
+					"zone": "Zone",
+					"type": "Type",
+					"multiplier": "Multiplicateur",
+					"priority": "Priorité",
+					"rejectionReason": "Raison de rejet",
+					"rejectionReasons": {
+						"lowerPriority": "Priorité inférieure",
+						"lessSpecificType": "Type de zone moins spécifique",
+						"conflictResolved": "Conflit résolu",
+						"notSelected": "Non sélectionné"
+					},
+					"surcharges": {
+						"title": "Frais de zone",
+						"parking": "Parking",
+						"access": "Accès",
+						"noSurcharges": "Aucun frais de zone",
+						"totalSurcharges": "Total des frais"
+					}
 				},
 				"distance": "Distance",
 				"duration": "Durée",
