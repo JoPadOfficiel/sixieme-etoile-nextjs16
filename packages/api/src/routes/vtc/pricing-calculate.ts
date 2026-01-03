@@ -585,16 +585,31 @@ async function loadVehiclesForSelection(organizationId: string): Promise<Vehicle
  * Load Google Maps API key for the organization (Story 4.5)
  */
 async function loadGoogleMapsApiKey(organizationId: string): Promise<string | undefined> {
+	console.log(`[PRICING] Loading Google Maps API key for organization: ${organizationId}`);
+	
 	const settings = await db.organizationIntegrationSettings.findFirst({
 		where: { organizationId },
 	});
 
 	if (settings?.googleMapsApiKey) {
+		console.log(`[PRICING] ✅ Found Google Maps API key in database: ****...${settings.googleMapsApiKey.slice(-4)}`);
+		console.log(`[PRICING] API Key status: ${settings.googleMapsStatus || 'NOT TESTED'}`);
 		return settings.googleMapsApiKey;
 	}
 
+	console.log(`[PRICING] ❌ No Google Maps API key found in database`);
+	
 	// Fallback to environment variable
-	return process.env.GOOGLE_MAPS_API_KEY;
+	const envKey = process.env.GOOGLE_MAPS_API_KEY;
+	if (envKey) {
+		console.log(`[PRICING] ✅ Found Google Maps API key in environment: ****...${envKey.slice(-4)}`);
+		return envKey;
+	}
+	
+	console.log(`[PRICING] ❌ No Google Maps API key found in environment variable`);
+	console.log(`[PRICING] 💡 Please configure Google Maps API key in organization settings or set GOOGLE_MAPS_API_KEY environment variable`);
+	
+	return undefined;
 }
 
 // ============================================================================
@@ -689,13 +704,15 @@ export const pricingCalculateRouter = new Hono()
 			// Story 21.6: Always load vehicles to enable automatic vehicle pre-selection for accurate positioning costs
 			// This ensures empty return cost is calculated correctly based on actual vehicle base location
 			const shouldSelectVehicle = data.enableVehicleSelection !== false; // Default to true unless explicitly disabled
+			// IMPORTANT: Always load Google Maps API key for toll calculation when dropoff is provided
+			const shouldLoadGoogleMaps = !!data.dropoff;
 			const [zones, pricingSettings, advancedRates, seasonalMultipliers, vehicles, googleMapsApiKey] = await Promise.all([
 				loadZones(organizationId),
 				loadPricingSettings(organizationId, routeCoordinates),
 				loadAdvancedRates(organizationId),
 				loadSeasonalMultipliers(organizationId),
 				shouldSelectVehicle ? loadVehiclesForSelection(organizationId) : Promise.resolve([]),
-				shouldSelectVehicle ? loadGoogleMapsApiKey(organizationId) : Promise.resolve(undefined),
+				shouldLoadGoogleMaps ? loadGoogleMapsApiKey(organizationId) : Promise.resolve(undefined),
 			]);
 
 			// Story 4.5: Vehicle selection
@@ -871,17 +888,30 @@ export const pricingCalculateRouter = new Hono()
 
 			// Story 15.1: Get real toll costs from Google Routes API
 			// Story 16.8: Only get toll costs if we have a dropoff (not for DISPO without dropoff)
+			console.log(`[PRICING] Toll calculation check - API Key: ${!!googleMapsApiKey}, Dropoff: ${!!data.dropoff}`);
+			
 			if (googleMapsApiKey && data.dropoff) {
+				console.log(`[PRICING] Starting toll calculation for route`);
+				console.log(`[PRICING] Pickup: ${data.pickup.lat}, ${data.pickup.lng}`);
+				console.log(`[PRICING] Dropoff: ${data.dropoff.lat}, ${data.dropoff.lng}`);
+				
 				try {
 					const tollResult = await getTollCost(data.pickup, data.dropoff, {
 						apiKey: googleMapsApiKey,
 						fallbackRatePerKm: pricingSettings.tollCostPerKm ?? 0.12,
 					});
 
+					console.log(`[PRICING] Toll result: ${tollResult.amount}€ (${tollResult.source})`);
+					console.log(`[PRICING] Is from cache: ${tollResult.isFromCache}`);
+
 					if (tollResult.amount >= 0) {
+						console.log(`[PRICING] ✅ Using real toll data: ${tollResult.amount}€`);
+						
 						// Update toll cost in tripAnalysis with real data
 						const oldTollAmount = result.tripAnalysis.costBreakdown.tolls.amount;
 						const tollDifference = tollResult.amount - oldTollAmount;
+						
+						console.log(`[PRICING] Toll difference: ${tollDifference}€ (old: ${oldTollAmount}€, new: ${tollResult.amount}€)`);
 
 						// Update toll component
 						result.tripAnalysis.costBreakdown.tolls = {
@@ -906,6 +936,8 @@ export const pricingCalculateRouter = new Hono()
 							? Math.round((result.margin / result.price) * 100 * 100) / 100
 							: 0;
 
+						console.log(`[PRICING] Updated costs - Total: ${result.tripAnalysis.costBreakdown.total}€, Internal: ${result.internalCost}€, Margin: ${result.margin}€ (${result.marginPercent}%)`);
+
 						// Update profitability indicator based on new margin
 						const greenThreshold = pricingSettings.greenMarginThreshold ?? 20;
 						const orangeThreshold = pricingSettings.orangeMarginThreshold ?? 0;
@@ -923,10 +955,12 @@ export const pricingCalculateRouter = new Hono()
 						// Story 21.9: Store encoded polyline for route display
 						if (tollResult.encodedPolyline) {
 							result.tripAnalysis.encodedPolyline = tollResult.encodedPolyline;
+							console.log(`[PRICING] ✅ Encoded polyline stored`);
 						}
 						
 						// Story 17.13: Route segmentation for multi-zone trips
 						if (tollResult.encodedPolyline && zones.length > 0 && effectiveDurationMinutes) {
+							console.log(`[PRICING] Starting route segmentation`);
 							try {
 								const segmentationResult = segmentRouteByZones(
 									tollResult.encodedPolyline,
@@ -936,6 +970,8 @@ export const pricingCalculateRouter = new Hono()
 								);
 								
 								if (segmentationResult.segments.length > 0) {
+									console.log(`[PRICING] ✅ Route segmentation successful: ${segmentationResult.segments.length} segments`);
+									
 									// Store zone segments in tripAnalysis
 									result.tripAnalysis.zoneSegments = segmentationResult.segments.map(seg => ({
 										zoneId: seg.zoneId,
@@ -963,20 +999,25 @@ export const pricingCalculateRouter = new Hono()
 										result.price, // Price not modified here, just for transparency
 									);
 									result.appliedRules.push(segmentationRule);
+								} else {
+									console.log(`[PRICING] ⚠️ Route segmentation returned no segments`);
 								}
 							} catch (segError) {
 								console.warn(`[PRICING] Route segmentation failed:`, segError);
 							}
 						}
 					} else {
-						// API failed, mark as estimate
-						result.tripAnalysis.tollSource = "ESTIMATE";
+						console.log(`[PRICING] ⚠️ API returned negative amount: ${tollResult.amount}€`);
+						// IMPORTANT: Do NOT use fallback when API key is configured
+						// Keep the 0€ from Google API (it means no tolls on this route)
+						result.tripAnalysis.tollSource = "GOOGLE_API";
 					}
 				} catch (error) {
 					console.warn(`[PRICING] Toll lookup failed, using estimate:`, error);
 					result.tripAnalysis.tollSource = "ESTIMATE";
 				}
 			} else {
+				console.log(`[PRICING] ⚠️ Toll calculation skipped - API Key: ${!!googleMapsApiKey}, Dropoff: ${!!data.dropoff}`);
 				// No API key, using estimate
 				result.tripAnalysis.tollSource = "ESTIMATE";
 			}

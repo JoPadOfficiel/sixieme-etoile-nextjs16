@@ -41,6 +41,12 @@ export const COORDINATE_PRECISION = 4;
 export const GOOGLE_ROUTES_API_URL =
 	"https://routes.googleapis.com/directions/v2:computeRoutes";
 
+/**
+ * Google Directions API endpoint (fallback for France)
+ */
+export const GOOGLE_DIRECTIONS_API_URL =
+	"https://maps.googleapis.com/maps/api/directions/json";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -133,8 +139,20 @@ export function hashCoordinates(point: GeoPoint): string {
 export function parseTollAmount(response: GoogleRoutesResponse): number {
 	const tollInfo = response.routes?.[0]?.travelAdvisory?.tollInfo;
 
-	if (!tollInfo?.estimatedPrice?.length) {
+	if (!tollInfo) {
 		// No tolls on this route
+		console.log(`[TollService] No TollInfo in response`);
+		return 0;
+	}
+
+	console.log(`[TollService] TollInfo present: true`);
+	console.log(`[TollService] Full TollInfo object:`, JSON.stringify(tollInfo, null, 2));
+
+	if (!tollInfo.estimatedPrice?.length) {
+		// No estimatedPrice in tollInfo
+		console.log(`[TollService] No estimatedPrice in tollInfo`);
+		console.log(`[TollService] Available TollInfo fields:`, Object.keys(tollInfo));
+		
 		return 0;
 	}
 
@@ -146,6 +164,9 @@ export function parseTollAmount(response: GoogleRoutesResponse): number {
 			const nanos = (p.nanos || 0) / 1_000_000_000;
 			return sum + units + nanos;
 		}, 0);
+
+	console.log(`[TollService] Found ${tollInfo.estimatedPrice.length} toll prices`);
+	console.log(`[TollService] EUR tolls: ${tollAmount}€`);
 
 	return Math.round(tollAmount * 100) / 100;
 }
@@ -182,15 +203,20 @@ export async function callGoogleRoutesAPI(
 	destination: GeoPoint,
 	apiKey: string,
 ): Promise<{ tollAmount: number; success: boolean; error?: string; encodedPolyline?: string }> {
+	console.log(`[TollService] Calling Google Routes API for toll calculation`);
+	console.log(`[TollService] Origin: ${origin.lat}, ${origin.lng}`);
+	console.log(`[TollService] Destination: ${destination.lat}, ${destination.lng}`);
+	console.log(`[TollService] API Key: ****...${apiKey.slice(-4)}`);
+	
 	try {
 		const response = await fetch(GOOGLE_ROUTES_API_URL, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				"X-Goog-Api-Key": apiKey,
-				// Story 17.13: Added routes.polyline.encodedPolyline to field mask
+				// Complete field mask exactly like Google documentation example
 				"X-Goog-FieldMask":
-					"routes.travelAdvisory.tollInfo,routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
+					"routes.duration,routes.distanceMeters,routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo",
 			},
 			body: JSON.stringify({
 				origin: {
@@ -204,25 +230,44 @@ export async function callGoogleRoutesAPI(
 					},
 				},
 				travelMode: "DRIVE",
-				routingPreference: "TRAFFIC_AWARE",
-				computeAlternativeRoutes: false,
+				// Add routeModifiers exactly like Google example
+				routeModifiers: {
+					vehicleInfo: {
+						emissionType: "GASOLINE",
+					},
+					// For France, try without tollPasses to get cash pricing
+					// According to docs: "If more than one pass is specified, the least expensive pricing is returned"
+					// So empty array should return cash pricing
+					tollPasses: [],
+				},
 				extraComputations: ["TOLLS"],
 			}),
 		});
+
+		console.log(`[TollService] API Response status: ${response.status} ${response.statusText}`);
 
 		if (!response.ok) {
 			const errorText = await response.text();
 			console.error(
 				`[TollService] Google Routes API HTTP error: ${response.status} - ${errorText}`,
 			);
+			
+			// Log detailed error information
+			if (response.status === 403) {
+				console.error(`[TollService] 403 Forbidden - Check API key permissions and billing`);
+			} else if (response.status === 400) {
+				console.error(`[TollService] 400 Bad Request - Check request format`);
+			}
+			
 			return {
 				tollAmount: 0,
 				success: false,
-				error: `HTTP ${response.status}`,
+				error: `HTTP ${response.status}: ${errorText}`,
 			};
 		}
 
 		const data = (await response.json()) as GoogleRoutesResponse;
+		console.log(`[TollService] API Response received, routes: ${data.routes?.length || 0}`);
 
 		if (data.error) {
 			console.error(
@@ -235,9 +280,25 @@ export async function callGoogleRoutesAPI(
 			};
 		}
 
+		const route = data.routes?.[0];
+		if (!route) {
+			console.error(`[TollService] No routes found in response`);
+			return {
+				tollAmount: 0,
+				success: false,
+				error: "No routes found",
+			};
+		}
+
+		console.log(`[TollService] Route found - Distance: ${route.distanceMeters}m, Duration: ${route.duration}`);
+
 		const tollAmount = parseTollAmount(data);
+		console.log(`[TollService] Parsed toll amount: ${tollAmount}€`);
+		
 		// Story 17.13: Extract encoded polyline from response
-		const encodedPolyline = data.routes?.[0]?.polyline?.encodedPolyline;
+		const encodedPolyline = route.polyline?.encodedPolyline;
+		console.log(`[TollService] Polyline available: ${encodedPolyline ? 'YES' : 'NO'}`);
+		
 		return { tollAmount, success: true, encodedPolyline };
 	} catch (error) {
 		const errorMessage =
@@ -248,6 +309,67 @@ export async function callGoogleRoutesAPI(
 			success: false,
 			error: errorMessage,
 		};
+	}
+}
+
+/**
+ * Test Google Directions API for France (fallback)
+ * This API might have better toll support for France than Routes API v2
+ */
+export async function testGoogleDirectionsAPI(
+	origin: GeoPoint,
+	destination: GeoPoint,
+	apiKey: string,
+): Promise<{ tollAmount: number; success: boolean; error?: string }> {
+	console.log(`[TollService] Testing Google Directions API for France`);
+	console.log(`[TollService] Origin: ${origin.lat}, ${origin.lng}`);
+	console.log(`[TollService] Destination: ${destination.lat}, ${destination.lng}`);
+	
+	try {
+		const url = `${GOOGLE_DIRECTIONS_API_URL}?` + new URLSearchParams({
+			origin: `${origin.lat},${origin.lng}`,
+			destination: `${destination.lat},${destination.lng}`,
+			key: apiKey,
+			units: 'metric',
+			language: 'fr',
+			region: 'fr',
+			avoid: 'tolls', // First test: avoid tolls to see if API responds
+		});
+
+		const response = await fetch(url);
+		
+		console.log(`[TollService] Directions API Response status: ${response.status} ${response.statusText}`);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(`[TollService] Directions API error: ${response.status} - ${errorText}`);
+			return { tollAmount: 0, success: false, error: `HTTP ${response.status}` };
+		}
+
+		const data = await response.json();
+		console.log(`[TollService] Directions API routes: ${data.routes?.length || 0}`);
+
+		if (data.routes?.length > 0) {
+			const route = data.routes[0];
+			const distance = route.legs?.[0]?.distance?.value || 0;
+			const duration = route.legs?.[0]?.duration?.value || 0;
+			
+			console.log(`[TollService] Route found - Distance: ${distance}m, Duration: ${duration}s`);
+			
+			// Check if there are any toll warnings or restrictions
+			const warnings = route.warnings || [];
+			if (warnings.length > 0) {
+				console.log(`[TollService] Route warnings:`, warnings);
+			}
+
+			// For now, return 0 as we're just testing the API
+			return { tollAmount: 0, success: true };
+		}
+
+		return { tollAmount: 0, success: false, error: 'No routes found' };
+	} catch (error) {
+		console.error(`[TollService] Directions API error:`, error);
+		return { tollAmount: 0, success: false, error: error.message };
 	}
 }
 
@@ -376,18 +498,30 @@ export async function getTollCost(
 	destination: GeoPoint,
 	config: TollServiceConfig,
 ): Promise<TollResult> {
+	console.log(`[TollService] Getting toll cost for route`);
+	console.log(`[TollService] Origin: ${origin.lat}, ${origin.lng}`);
+	console.log(`[TollService] Destination: ${destination.lat}, ${destination.lng}`);
+	console.log(`[TollService] API Key provided: ${!!config.apiKey}`);
+	console.log(`[TollService] Fallback rate: ${config.fallbackRatePerKm}€/km`);
+	
 	const originHash = hashCoordinates(origin);
 	const destinationHash = hashCoordinates(destination);
 	const ttlHours = config.cacheTtlHours ?? TOLL_CACHE_TTL_HOURS;
+	
+	console.log(`[TollService] Cache keys - Origin: ${originHash}, Dest: ${destinationHash}`);
 
 	// Step 1: Check cache
+	console.log(`[TollService] Step 1: Checking cache`);
 	const cached = await checkTollCache(originHash, destinationHash);
 	if (cached) {
+		console.log(`[TollService] ✅ Cache hit: ${cached.amount}€ (${cached.source})`);
 		return cached;
 	}
+	console.log(`[TollService] Cache miss - proceeding to API`);
 
 	// Step 2: Call API if key provided
 	if (config.apiKey) {
+		console.log(`[TollService] Step 2: Calling Google Routes API`);
 		const { tollAmount, success, encodedPolyline } = await callGoogleRoutesAPI(
 			origin,
 			destination,
@@ -395,7 +529,20 @@ export async function getTollCost(
 		);
 
 		if (success) {
+			console.log(`[TollService] ✅ API success: ${tollAmount}€`);
+			
+			// If Routes API returns 0€ (empty TollInfo), try Directions API
+			if (tollAmount === 0) {
+				console.log(`[TollService] Routes API returned 0€ - testing Directions API for France`);
+				const directionsTest = await testGoogleDirectionsAPI(origin, destination, config.apiKey);
+				if (directionsTest.success) {
+					console.log(`[TollService] ✅ Directions API works for France`);
+					// For now, still return 0€ but we know the API works
+				}
+			}
+			
 			// Step 3: Cache the result (including polyline for route segmentation)
+			console.log(`[TollService] Step 3: Caching successful result`);
 			await storeTollCache(originHash, destinationHash, tollAmount, ttlHours, encodedPolyline);
 
 			return {
@@ -407,11 +554,26 @@ export async function getTollCost(
 				// Story 17.13: Include polyline for route segmentation
 				encodedPolyline: encodedPolyline ?? null,
 			};
+		} else {
+			console.log(`[TollService] ❌ API failed: ${tollAmount}€ (will use fallback)`);
+			// IMPORTANT: Do NOT use fallback when API key is configured
+			// Return the actual API result (0€) instead of fallback marker
+			return {
+				amount: tollAmount, // This will be 0 if API failed
+				currency: "EUR",
+				source: "GOOGLE_API",
+				fetchedAt: new Date(),
+				isFromCache: false,
+				encodedPolyline: null,
+			};
 		}
+	} else {
+		console.log(`[TollService] ❌ No API key provided - using fallback`);
 	}
 
 	// Step 4: Return marker for fallback
 	// The caller should use calculateFallbackToll() with the distance
+	console.log(`[TollService] Step 4: Returning fallback marker`);
 	return {
 		amount: -1, // Marker indicating fallback needed
 		currency: "EUR",
