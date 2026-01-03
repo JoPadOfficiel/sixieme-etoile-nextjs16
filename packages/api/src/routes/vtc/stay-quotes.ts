@@ -18,9 +18,15 @@ import {
 import { organizationMiddleware } from "../../middleware/organization";
 import {
 	calculateStayPricing,
+	calculateEnhancedStayPricing,
 	type StayDayInput,
 	type OrganizationPricingSettings,
+	type EnhancedStayPricingOptions,
+	type SeasonalMultiplierData,
+	type AdvancedRateData,
+	type ZoneData,
 } from "../../services/pricing";
+import { findZoneForPoint } from "../../lib/geo-utils";
 
 // ============================================================================
 // Validation Schemas
@@ -112,19 +118,152 @@ async function getOrganizationPricingSettings(organizationId: string): Promise<O
 	};
 }
 
-async function getVehicleCategoryRates(categoryId: string): Promise<{ ratePerKm: number; ratePerHour: number }> {
+async function getVehicleCategoryRates(categoryId: string): Promise<{ ratePerKm: number; ratePerHour: number; priceMultiplier: number }> {
 	const category = await db.vehicleCategory.findUnique({
 		where: { id: categoryId },
 	});
 
 	if (!category) {
-		return { ratePerKm: 2.5, ratePerHour: 50 };
+		return { ratePerKm: 2.5, ratePerHour: 50, priceMultiplier: 1.0 };
 	}
 
 	return {
 		ratePerKm: category.defaultRatePerKm ? Number(category.defaultRatePerKm) : 2.5,
 		ratePerHour: category.defaultRatePerHour ? Number(category.defaultRatePerHour) : 50,
+		priceMultiplier: category.priceMultiplier ? Number(category.priceMultiplier) : 1.0,
 	};
+}
+
+/**
+ * Story 22.7: Get seasonal multipliers for organization
+ */
+async function getSeasonalMultipliers(organizationId: string): Promise<SeasonalMultiplierData[]> {
+	const multipliers = await db.seasonalMultiplier.findMany({
+		where: {
+			organizationId,
+			isActive: true,
+		},
+		orderBy: { priority: "desc" },
+	});
+
+	return multipliers.map(m => ({
+		id: m.id,
+		name: m.name,
+		description: m.description,
+		startDate: m.startDate,
+		endDate: m.endDate,
+		multiplier: Number(m.multiplier),
+		priority: m.priority,
+		isActive: m.isActive,
+	}));
+}
+
+/**
+ * Story 22.7: Get advanced rates for organization
+ */
+async function getAdvancedRates(organizationId: string): Promise<AdvancedRateData[]> {
+	const rates = await db.advancedRate.findMany({
+		where: {
+			organizationId,
+			isActive: true,
+		},
+		orderBy: { priority: "desc" },
+	});
+
+	return rates.map(r => ({
+		id: r.id,
+		name: r.name,
+		appliesTo: r.appliesTo as "NIGHT" | "WEEKEND",
+		adjustmentType: r.adjustmentType as "PERCENTAGE" | "FIXED_AMOUNT",
+		value: Number(r.value),
+		startTime: r.startTime,
+		endTime: r.endTime,
+		daysOfWeek: r.daysOfWeek,
+		minDistanceKm: r.minDistanceKm ? Number(r.minDistanceKm) : null,
+		maxDistanceKm: r.maxDistanceKm ? Number(r.maxDistanceKm) : null,
+		zoneId: r.zoneId,
+		priority: r.priority,
+		isActive: r.isActive,
+	}));
+}
+
+/**
+ * Story 22.7: Get zones for service coordinates
+ */
+async function getZonesForServices(
+	organizationId: string,
+	stayDays: Array<{
+		date: string;
+		services: Array<{
+			pickupLatitude?: number | null;
+			pickupLongitude?: number | null;
+			dropoffLatitude?: number | null;
+			dropoffLongitude?: number | null;
+		}>;
+	}>,
+): Promise<{ pickupZones: Map<string, ZoneData | null>; dropoffZones: Map<string, ZoneData | null> }> {
+	const pickupZones = new Map<string, ZoneData | null>();
+	const dropoffZones = new Map<string, ZoneData | null>();
+
+	// Get all zones for the organization
+	const zones = await db.pricingZone.findMany({
+		where: {
+			organizationId,
+			isActive: true,
+		},
+	});
+
+	// Convert to ZoneData format
+	const zoneDataList: ZoneData[] = zones.map(z => ({
+		id: z.id,
+		code: z.code,
+		name: z.name,
+		zoneType: z.zoneType,
+		priceMultiplier: z.priceMultiplier ? Number(z.priceMultiplier) : 1.0,
+		priority: z.priority ?? 0,
+		centerLatitude: z.centerLatitude ? Number(z.centerLatitude) : null,
+		centerLongitude: z.centerLongitude ? Number(z.centerLongitude) : null,
+		radiusKm: z.radiusKm ? Number(z.radiusKm) : null,
+		geometry: z.geometry as ZoneData["geometry"],
+		fixedParkingSurcharge: z.fixedParkingSurcharge ? Number(z.fixedParkingSurcharge) : null,
+		fixedAccessFee: z.fixedAccessFee ? Number(z.fixedAccessFee) : null,
+		surchargeDescription: z.surchargeDescription,
+		isActive: z.isActive,
+	}));
+
+	// Find zones for each service
+	for (const day of stayDays) {
+		for (let i = 0; i < day.services.length; i++) {
+			const service = day.services[i];
+			const serviceId = `${day.date}-${i}`;
+
+			// Find pickup zone
+			if (service.pickupLatitude != null && service.pickupLongitude != null) {
+				const pickupZone = findZoneForPoint(
+					{ lat: service.pickupLatitude, lng: service.pickupLongitude },
+					zoneDataList,
+					null, // Use default conflict strategy
+				);
+				pickupZones.set(serviceId, pickupZone);
+			} else {
+				pickupZones.set(serviceId, null);
+			}
+
+			// Find dropoff zone
+			if (service.dropoffLatitude != null && service.dropoffLongitude != null) {
+				const dropoffZone = findZoneForPoint(
+					{ lat: service.dropoffLatitude, lng: service.dropoffLongitude },
+					zoneDataList,
+					null,
+				);
+				dropoffZones.set(serviceId, dropoffZone);
+			} else {
+				dropoffZones.set(serviceId, null);
+			}
+		}
+	}
+
+	return { pickupZones, dropoffZones };
 }
 
 // ============================================================================
@@ -170,6 +309,11 @@ export const stayQuotesRouter = new Hono()
 			const settings = await getOrganizationPricingSettings(organizationId);
 			const rates = await getVehicleCategoryRates(data.vehicleCategoryId);
 
+			// Story 22.7: Get zones, seasonal multipliers, and advanced rates for enhanced pricing
+			const { pickupZones, dropoffZones } = await getZonesForServices(organizationId, data.stayDays);
+			const seasonalMultipliers = await getSeasonalMultipliers(organizationId);
+			const advancedRates = await getAdvancedRates(organizationId);
+
 			// Convert stayDays to pricing input format
 			const stayDaysInput: StayDayInput[] = data.stayDays.map(day => ({
 				date: day.date,
@@ -194,8 +338,18 @@ export const stayQuotesRouter = new Hono()
 				})),
 			}));
 
-			// Calculate pricing
-			const pricingResult = calculateStayPricing(
+			// Story 22.7: Build enhanced pricing options
+			const enhancedOptions: EnhancedStayPricingOptions = {
+				pickupZones,
+				dropoffZones,
+				seasonalMultipliers,
+				advancedRates,
+				vehicleCategoryMultiplier: rates.priceMultiplier !== 1.0 ? rates.priceMultiplier : undefined,
+				zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy ?? "MAX",
+			};
+
+			// Calculate enhanced pricing with zones and multipliers
+			const pricingResult = calculateEnhancedStayPricing(
 				{
 					vehicleCategoryId: data.vehicleCategoryId,
 					passengerCount: data.passengerCount,
@@ -204,6 +358,7 @@ export const stayQuotesRouter = new Hono()
 				settings,
 				rates.ratePerKm,
 				rates.ratePerHour,
+				enhancedOptions,
 			);
 
 			// Get first service pickup for quote pickupAt
@@ -398,6 +553,11 @@ export const stayQuotesRouter = new Hono()
 				const settings = await getOrganizationPricingSettings(organizationId);
 				const rates = await getVehicleCategoryRates(existing.vehicleCategoryId);
 
+				// Story 22.7: Get zones, seasonal multipliers, and advanced rates for enhanced pricing
+				const { pickupZones, dropoffZones } = await getZonesForServices(organizationId, data.stayDays);
+				const seasonalMultipliers = await getSeasonalMultipliers(organizationId);
+				const advancedRates = await getAdvancedRates(organizationId);
+
 				const stayDaysInput: StayDayInput[] = data.stayDays.map(day => ({
 					date: day.date,
 					hotelRequired: day.hotelRequired,
@@ -421,7 +581,17 @@ export const stayQuotesRouter = new Hono()
 					})),
 				}));
 
-				const pricingResult = calculateStayPricing(
+				// Story 22.7: Build enhanced pricing options
+				const enhancedOptions: EnhancedStayPricingOptions = {
+					pickupZones,
+					dropoffZones,
+					seasonalMultipliers,
+					advancedRates,
+					vehicleCategoryMultiplier: rates.priceMultiplier !== 1.0 ? rates.priceMultiplier : undefined,
+					zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy ?? "MAX",
+				};
+
+				const pricingResult = calculateEnhancedStayPricing(
 					{
 						vehicleCategoryId: existing.vehicleCategoryId,
 						passengerCount: data.passengerCount ?? existing.passengerCount,
@@ -430,6 +600,7 @@ export const stayQuotesRouter = new Hono()
 					settings,
 					rates.ratePerKm,
 					rates.ratePerHour,
+					enhancedOptions,
 				);
 
 				// Update in transaction
