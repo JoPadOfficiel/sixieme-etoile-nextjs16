@@ -2562,6 +2562,7 @@
 				"duration": "Duration",
 				"internalCost": "Internal Cost",
 				"margin": "Margin",
+				"staffingCost": "Staffing Cost",
 				"suggestedPrice": "Suggested Price",
 				"grossMargin": "Gross Margin",
 				"from": "from",
