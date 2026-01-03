@@ -29,7 +29,7 @@ import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMult
 import { applyZoneMultiplier } from "./zone-resolver";
 import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThresholdsFromSettings } from "./profitability";
 import { applyTripTypePricing } from "./trip-type-pricing";
-import { calculateShadowSegments, calculateTimeAnalysis } from "./shadow-calculator";
+import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts } from "./shadow-calculator";
 import { isPointInZone } from "../../lib/geo-utils";
 
 // ============================================================================
@@ -234,6 +234,15 @@ export function calculatePrice(
 		vehicleCategory?.regulatoryCategory ?? null,
 		vehicleCategory?.name ?? null,
 		pickupAtDate,
+	);
+	
+	// Story 21.6: Calculate positioning costs
+	tripAnalysis.positioningCosts = calculatePositioningCosts(
+		request.tripType,
+		tripAnalysis.segments,
+		request.durationHours,
+		pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
+		pricingSettings.baseRatePerHour,
 	);
 	
 	// Get profitability thresholds
@@ -491,6 +500,15 @@ export async function calculatePriceWithRealTolls(
 		vehicleCategory?.regulatoryCategory ?? null,
 		vehicleCategory?.name ?? null,
 		pickupAtDate,
+	);
+	
+	// Story 21.6: Calculate positioning costs
+	tripAnalysis.positioningCosts = calculatePositioningCosts(
+		request.tripType,
+		tripAnalysis.segments,
+		request.durationHours,
+		pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
+		pricingSettings.baseRatePerHour,
 	);
 	
 	// Get profitability thresholds

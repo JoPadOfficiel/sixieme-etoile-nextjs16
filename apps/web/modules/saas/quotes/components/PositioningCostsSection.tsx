@@ -6,14 +6,16 @@ import {
   RotateCcwIcon,
   HomeIcon,
   InfoIcon,
+  ClockIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
-import type { SegmentAnalysis, TripAnalysis } from "../types";
+import type { SegmentAnalysis, TripAnalysis, PositioningCosts, PositioningCostItem as PositioningCostItemType, AvailabilityFeeItem as AvailabilityFeeItemType } from "../types";
 
 interface PositioningCostsSectionProps {
   segments: TripAnalysis["segments"] | null | undefined;
   vehicleSelection: TripAnalysis["vehicleSelection"] | null | undefined;
+  positioningCosts?: PositioningCosts | null;
   className?: string;
 }
 
@@ -48,38 +50,38 @@ function formatDurationHours(minutes: number): string {
  * PositioningCostsSection Component
  * 
  * Story 21.2: Displays ultra-detailed positioning cost breakdown in TripTransparency.
+ * Story 21.6: Enhanced with automatic positioning costs calculation.
  * Shows explicit calculations for:
  * - Approach fee (base → pickup deadhead)
  * - Empty return (dropoff → base deadhead)
+ * - Availability fee (for dispo trips with extra hours)
  * 
  * @see Story 21.2: Detailed Approach Fee and Empty Return Display
- * @see FR91, FR92: Display detailed positioning cost breakdown
+ * @see Story 21.6: Automatic Empty Return and Availability Calculation
+ * @see FR91, FR92, FR99, FR100: Display detailed positioning cost breakdown
  */
 export function PositioningCostsSection({
   segments,
   vehicleSelection,
+  positioningCosts,
   className,
 }: PositioningCostsSectionProps) {
   const t = useTranslations();
 
-  // Don't render if no segments
-  if (!segments) {
+  // Don't render if no segments and no positioning costs
+  if (!segments && !positioningCosts) {
     return null;
   }
 
-  const { approach, return: returnSegment } = segments;
+  const { approach, return: returnSegment } = segments ?? { approach: null, return: null };
 
-  // Don't render if no approach and no return segments
-  if (!approach && !returnSegment) {
-    return null;
-  }
+  // Use positioningCosts if available, otherwise fall back to segment costs
+  const approachCost = positioningCosts?.approachFee?.cost ?? approach?.cost?.total ?? 0;
+  const returnCost = positioningCosts?.emptyReturn?.cost ?? returnSegment?.cost?.total ?? 0;
+  const totalPositioningCost = positioningCosts?.totalPositioningCost ?? (approachCost + returnCost);
 
-  // Don't render if both segments have 0 cost
-  const approachCost = approach?.cost?.total ?? 0;
-  const returnCost = returnSegment?.cost?.total ?? 0;
-  const totalPositioningCost = approachCost + returnCost;
-
-  if (totalPositioningCost <= 0) {
+  // Don't render if no positioning costs
+  if (totalPositioningCost <= 0 && !positioningCosts) {
     return null;
   }
 
@@ -108,25 +110,35 @@ export function PositioningCostsSection({
       {/* Cost Items */}
       <div className="space-y-4">
         {/* Approach Fee */}
-        {approach && approach.cost.total > 0 && (
+        {(approach && approach.cost.total > 0) || (positioningCosts?.approachFee?.required) ? (
           <PositioningCostItem
             icon={CarIcon}
             label={t("quotes.positioning.approachFee")}
             segment={approach}
+            positioningItem={positioningCosts?.approachFee}
             locationLabel={t("quotes.positioning.from")}
             locationName={baseName}
             t={t}
           />
-        )}
+        ) : null}
 
         {/* Empty Return */}
-        {returnSegment && returnSegment.cost.total > 0 && (
+        {(returnSegment && returnSegment.cost.total > 0) || (positioningCosts?.emptyReturn?.required) ? (
           <PositioningCostItem
             icon={RotateCcwIcon}
             label={t("quotes.positioning.emptyReturn")}
             segment={returnSegment}
+            positioningItem={positioningCosts?.emptyReturn}
             locationLabel={t("quotes.positioning.to")}
             locationName={baseName}
+            t={t}
+          />
+        ) : null}
+
+        {/* Availability Fee (Story 21.6) */}
+        {positioningCosts?.availabilityFee?.required && (
+          <AvailabilityFeeItem
+            availabilityFee={positioningCosts.availabilityFee}
             t={t}
           />
         )}
@@ -158,11 +170,13 @@ export function PositioningCostsSection({
 
 /**
  * Individual positioning cost item component
+ * Story 21.6: Enhanced to support both segment data and positioningCosts data
  */
 interface PositioningCostItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  segment: SegmentAnalysis;
+  segment: SegmentAnalysis | null;
+  positioningItem?: PositioningCostItemType;
   locationLabel: string;
   locationName: string;
   t: ReturnType<typeof useTranslations>;
@@ -172,22 +186,28 @@ function PositioningCostItem({
   icon: Icon,
   label,
   segment,
+  positioningItem,
   locationLabel,
   locationName,
   t,
 }: PositioningCostItemProps) {
-  const { distanceKm, durationMinutes, cost } = segment;
+  // Use positioningItem if available, otherwise fall back to segment
+  const distanceKm = positioningItem?.distanceKm ?? segment?.distanceKm ?? 0;
+  const durationMinutes = positioningItem?.durationMinutes ?? segment?.durationMinutes ?? 0;
+  const totalCost = positioningItem?.cost ?? segment?.cost?.total ?? 0;
+  const reason = positioningItem?.reason;
+  const cost = segment?.cost;
 
-  // Extract rates from cost breakdown
-  const fuelCost = cost.fuel?.amount ?? 0;
-  const tollsCost = cost.tolls?.amount ?? 0;
-  const wearCost = cost.wear?.amount ?? 0;
-  const driverCost = cost.driver?.amount ?? 0;
+  // Extract rates from cost breakdown (if segment available)
+  const fuelCost = cost?.fuel?.amount ?? 0;
+  const tollsCost = cost?.tolls?.amount ?? 0;
+  const wearCost = cost?.wear?.amount ?? 0;
+  const driverCost = cost?.driver?.amount ?? 0;
   
   // Calculate effective rates for display
   const distanceBasedCost = fuelCost + tollsCost + wearCost;
   const effectiveRatePerKm = distanceKm > 0 ? distanceBasedCost / distanceKm : 0;
-  const effectiveHourlyRate = cost.driver?.hourlyRate ?? 25;
+  const effectiveHourlyRate = cost?.driver?.hourlyRate ?? 25;
 
   return (
     <div className="space-y-2">
@@ -212,19 +232,28 @@ function PositioningCostItem({
           </div>
         </div>
         <span className="font-semibold text-sm text-amber-800 dark:text-amber-200 flex-shrink-0">
-          {formatPrice(cost.total)}
+          {formatPrice(totalCost)}
         </span>
       </div>
 
       {/* Calculation details */}
       <div className="ml-6 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+        {/* Reason from positioningCosts (Story 21.6) */}
+        {reason && (
+          <div className="text-amber-600 dark:text-amber-400 italic mb-1">
+            {reason}
+          </div>
+        )}
+
         {/* Distance-based costs */}
-        <div className="flex items-center justify-between">
-          <span>
-            {formatDistance(distanceKm)} × {formatPrice(effectiveRatePerKm)}/km
-          </span>
-          <span>{formatPrice(distanceBasedCost)}</span>
-        </div>
+        {distanceKm > 0 && (
+          <div className="flex items-center justify-between">
+            <span>
+              {formatDistance(distanceKm)} × {formatPrice(effectiveRatePerKm)}/km
+            </span>
+            <span>{formatPrice(distanceBasedCost)}</span>
+          </div>
+        )}
         
         {/* Time-based costs (driver) */}
         {driverCost > 0 && (
@@ -239,18 +268,66 @@ function PositioningCostItem({
         {/* Segment total */}
         <div className="flex items-center justify-between font-medium pt-1 border-t border-amber-200 dark:border-amber-700">
           <span>{t("quotes.positioning.segmentTotal")}</span>
-          <span>{formatPrice(cost.total)}</span>
+          <span>{formatPrice(totalCost)}</span>
         </div>
       </div>
 
       {/* Estimated badge if applicable */}
-      {segment.isEstimated && (
+      {segment?.isEstimated && (
         <div className="ml-6">
           <Badge variant="secondary" className="text-[10px]">
             {t("quotes.positioning.estimated")}
           </Badge>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Availability Fee Item Component (Story 21.6)
+ * Displays extra waiting time costs for dispo trips
+ */
+interface AvailabilityFeeItemComponentProps {
+  availabilityFee: AvailabilityFeeItemType;
+  t: ReturnType<typeof useTranslations>;
+}
+
+function AvailabilityFeeItem({
+  availabilityFee,
+  t,
+}: AvailabilityFeeItemComponentProps) {
+  const { waitingHours, ratePerHour, cost, reason } = availabilityFee;
+
+  return (
+    <div className="space-y-2">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <ClockIcon className="size-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm text-amber-800 dark:text-amber-200">
+              {t("quotes.positioning.availabilityFee")}
+            </div>
+            <div className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 italic">
+              {reason}
+            </div>
+          </div>
+        </div>
+        <span className="font-semibold text-sm text-amber-800 dark:text-amber-200 flex-shrink-0">
+          {formatPrice(cost)}
+        </span>
+      </div>
+
+      {/* Calculation details */}
+      <div className="ml-6 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+        <div className="flex items-center justify-between">
+          <span>
+            {waitingHours.toFixed(1)}h × {formatPrice(ratePerHour)}/h
+          </span>
+          <span>{formatPrice(cost)}</span>
+        </div>
+      </div>
     </div>
   );
 }

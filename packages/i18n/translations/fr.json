@@ -2679,6 +2679,7 @@
 			"deadhead": "À vide",
 			"approachFee": "Frais d'approche",
 			"emptyReturn": "Retour à vide",
+			"availabilityFee": "Frais de disponibilité",
 			"from": "Depuis",
 			"to": "Vers",
 			"total": "Total positionnement",
@@ -2686,7 +2687,7 @@
 			"sourceBase": "Base",
 			"unknownBase": "Base inconnue",
 			"estimated": "Estimé",
-			"info": "Ces coûts représentent les trajets à vide du véhicule : approche depuis la base vers le point de prise en charge, et retour vers la base après la dépose."
+			"info": "Ces coûts représentent les trajets à vide du véhicule : approche depuis la base vers le point de prise en charge, et retour vers la base après la dépose. Pour les mises à disposition, des frais de disponibilité s'appliquent pour les heures au-delà du temps inclus."
 		},
 		"timeAnalysis": {
 			"title": "Analyse du temps",

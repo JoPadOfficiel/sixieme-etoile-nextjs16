@@ -20,6 +20,10 @@ import type {
 	TimeAnalysisVehicleAdjustment,
 	TimeAnalysisTrafficAdjustment,
 	TimeAnalysisMandatoryBreaks,
+	PositioningCosts,
+	PositioningCostItem,
+	AvailabilityFeeItem,
+	TripType,
 } from "./types";
 import { calculateCostBreakdown, combineCostBreakdowns } from "./cost-calculator";
 
@@ -395,4 +399,115 @@ export function calculateEstimatedEndAt(
 	const endAt = new Date(pickupAt);
 	endAt.setMinutes(endAt.getMinutes() + totalMinutes);
 	return endAt;
+}
+
+// ============================================================================
+// Story 21.6: Positioning Costs Calculation
+// ============================================================================
+
+/**
+ * Calculate positioning costs for a trip (Story 21.6)
+ * 
+ * This function determines and calculates:
+ * - Approach fee: Cost of vehicle traveling from base to pickup
+ * - Empty return: Cost of vehicle returning to base after dropoff
+ * - Availability fee: Extra waiting time cost for dispo trips
+ * 
+ * @param tripType - Type of trip (transfer, excursion, dispo)
+ * @param segments - Trip segments from shadow calculation
+ * @param durationHours - Total trip duration in hours (for dispo)
+ * @param includedHours - Included hours in dispo package
+ * @param availabilityRatePerHour - Hourly rate for availability fee
+ * @returns PositioningCosts object with all positioning cost details
+ */
+export function calculatePositioningCosts(
+	tripType: TripType,
+	segments: TripAnalysis["segments"],
+	durationHours?: number,
+	includedHours?: number,
+	availabilityRatePerHour?: number,
+): PositioningCosts {
+	// Approach fee - from segment A (approach) if available
+	const approachFee: PositioningCostItem = segments.approach
+		? {
+				required: true,
+				distanceKm: segments.approach.distanceKm,
+				durationMinutes: segments.approach.durationMinutes,
+				cost: segments.approach.cost.total,
+				reason: "Vehicle positioning from base to pickup",
+			}
+		: {
+				required: false,
+				distanceKm: 0,
+				durationMinutes: 0,
+				cost: 0,
+				reason: "No vehicle selected - approach cost estimated in base price",
+			};
+
+	// Empty return - from segment C (return) if available
+	// All trip types require empty return (vehicle must return to base)
+	const emptyReturn: PositioningCostItem = segments.return
+		? {
+				required: true,
+				distanceKm: segments.return.distanceKm,
+				durationMinutes: segments.return.durationMinutes,
+				cost: segments.return.cost.total,
+				reason: getEmptyReturnReason(tripType),
+			}
+		: {
+				required: tripType !== "dispo", // Dispo may not need explicit return if staying on-site
+				distanceKm: 0,
+				durationMinutes: 0,
+				cost: 0,
+				reason: "No vehicle selected - return cost estimated in base price",
+			};
+
+	// Availability fee - only for dispo trips with extra hours
+	let availabilityFee: AvailabilityFeeItem | null = null;
+	if (tripType === "dispo") {
+		const effectiveDurationHours = durationHours ?? 0;
+		const effectiveIncludedHours = includedHours ?? 4; // Default 4 hours included
+		const effectiveRate = availabilityRatePerHour ?? 50; // Default 50€/hour
+		
+		const extraHours = Math.max(0, effectiveDurationHours - effectiveIncludedHours);
+		const extraCost = Math.round(extraHours * effectiveRate * 100) / 100;
+		
+		availabilityFee = {
+			required: extraHours > 0,
+			waitingHours: extraHours,
+			ratePerHour: effectiveRate,
+			cost: extraCost,
+			reason: extraHours > 0
+				? `${extraHours.toFixed(1)}h beyond ${effectiveIncludedHours}h included`
+				: `Within ${effectiveIncludedHours}h included hours`,
+		};
+	}
+
+	// Calculate total positioning cost
+	const totalPositioningCost = Math.round(
+		(approachFee.cost + emptyReturn.cost + (availabilityFee?.cost ?? 0)) * 100
+	) / 100;
+
+	return {
+		approachFee,
+		emptyReturn,
+		availabilityFee,
+		totalPositioningCost,
+	};
+}
+
+/**
+ * Get the reason string for empty return based on trip type
+ */
+function getEmptyReturnReason(tripType: TripType): string {
+	switch (tripType) {
+		case "transfer":
+			return "Empty return to base after transfer";
+		case "excursion":
+			return "Empty return to base after excursion";
+		case "dispo":
+			return "Empty return to base after mise à disposition";
+		default:
+			return "Empty return to base";
+	}
 }

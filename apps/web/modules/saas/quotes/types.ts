@@ -623,6 +623,33 @@ export interface TimeAnalysis {
 }
 
 // ============================================================================
+// Story 21.6: Positioning Costs Types
+// ============================================================================
+
+export interface PositioningCostItem {
+  required: boolean;
+  distanceKm: number;
+  durationMinutes: number;
+  cost: number;
+  reason: string;
+}
+
+export interface AvailabilityFeeItem {
+  required: boolean;
+  waitingHours: number;
+  ratePerHour: number;
+  cost: number;
+  reason: string;
+}
+
+export interface PositioningCosts {
+  approachFee: PositioningCostItem;
+  emptyReturn: PositioningCostItem;
+  availabilityFee: AvailabilityFeeItem | null;
+  totalPositioningCost: number;
+}
+
+// ============================================================================
 // Story 21.4: Zone Segment Types for Pricing Transparency
 // ============================================================================
 
@@ -701,6 +728,8 @@ export interface TripAnalysis {
   // Story 21.4: Zone segments and route segmentation for pricing transparency
   zoneSegments?: ZoneSegmentInfo[] | null;
   routeSegmentation?: RouteSegmentation | null;
+  // Story 21.6: Positioning costs
+  positioningCosts?: PositioningCosts | null;
 }
 
 /**

@@ -508,9 +508,11 @@ export function TripTransparencyPanel({
         {/* Story 6.8: Editable costs for authorized users */}
         <TabsContent value="costs" className="mt-4">
           {/* Story 21.2: Detailed Positioning Costs Section (Approach/Return) */}
+          {/* Story 21.6: Enhanced with automatic positioning costs */}
           <PositioningCostsSection 
             segments={tripAnalysis.segments} 
-            vehicleSelection={tripAnalysis.vehicleSelection} 
+            vehicleSelection={tripAnalysis.vehicleSelection}
+            positioningCosts={tripAnalysis.positioningCosts}
           />
           
           {/* Story 21.1: Ultra-Detailed Staffing Costs Section */}

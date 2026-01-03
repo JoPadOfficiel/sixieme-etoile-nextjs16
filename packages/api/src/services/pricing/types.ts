@@ -1149,6 +1149,33 @@ export interface TimeAnalysis {
 }
 
 // ============================================================================
+// Story 21.6: Positioning Costs Interfaces
+// ============================================================================
+
+export interface PositioningCostItem {
+	required: boolean;
+	distanceKm: number;
+	durationMinutes: number;
+	cost: number;
+	reason: string;
+}
+
+export interface AvailabilityFeeItem {
+	required: boolean;
+	waitingHours: number;
+	ratePerHour: number;
+	cost: number;
+	reason: string;
+}
+
+export interface PositioningCosts {
+	approachFee: PositioningCostItem;
+	emptyReturn: PositioningCostItem;
+	availabilityFee: AvailabilityFeeItem | null;
+	totalPositioningCost: number;
+}
+
+// ============================================================================
 // Trip Analysis Interface (Main)
 // ============================================================================
 
@@ -1190,6 +1217,7 @@ export interface TripAnalysis {
 	transversalDecomposition?: unknown;
 	temporalVector?: TemporalVectorResult | null;
 	timeAnalysis?: TimeAnalysis | null;
+	positioningCosts?: PositioningCosts | null;
 }
 
 // ============================================================================

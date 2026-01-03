@@ -2679,6 +2679,7 @@
 			"deadhead": "Deadhead",
 			"approachFee": "Approach Fee",
 			"emptyReturn": "Empty Return",
+			"availabilityFee": "Availability Fee",
 			"from": "From",
 			"to": "To",
 			"total": "Total Positioning Cost",
@@ -2686,7 +2687,7 @@
 			"sourceBase": "Base",
 			"unknownBase": "Unknown Base",
 			"estimated": "Estimated",
-			"info": "These costs represent the vehicle's empty trips: approach from the base to the pickup point, and return to the base after dropoff."
+			"info": "These costs represent the vehicle's empty trips: approach from the base to the pickup point, and return to the base after dropoff. For mise à disposition, availability fees apply for hours beyond the included time."
 		},
 		"timeAnalysis": {
 			"title": "Time Analysis",
