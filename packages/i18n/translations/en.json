@@ -2722,6 +2722,24 @@
 			"methodFallbackTooltip": "Estimated segmentation from pickup/dropoff zones only (no polyline available)",
 			"fallbackWarning": "Segmentation is estimated because route polyline was not available. Per-zone distances are approximate."
 		},
+		"tripTransparency": {
+			"enhanced": {
+				"exportPdf": "Export PDF",
+				"exportPdfLoading": "Generating PDF...",
+				"sections": {
+					"priceBreakdown": "Price Breakdown",
+					"timeAnalysis": "Time Analysis",
+					"pricingSegments": "Pricing Segments",
+					"positioningCosts": "Positioning Costs",
+					"operationalCosts": "Operational Costs",
+					"staffing": "RSE Staffing"
+				},
+				"badges": {
+					"noStaffing": "No staffing required",
+					"zonesTraversed": "{count} zones"
+				}
+			}
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trip Cannot Be Created",

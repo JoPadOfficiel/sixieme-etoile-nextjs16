@@ -32,3 +32,10 @@ export { AddedFeesList } from "./AddedFeesList";
 
 // Story 15.7: Cost Breakdown Display
 export { CostBreakdownDisplay } from "./CostBreakdownDisplay";
+
+// Story 21-7: Enhanced TripTransparency Interface
+export { EnhancedTripTransparencyPanel } from "./EnhancedTripTransparencyPanel";
+export { TripSummaryHeader } from "./TripSummaryHeader";
+export { CollapsibleSection } from "./CollapsibleSection";
+export { PriceBreakdownContent } from "./PriceBreakdownContent";
+export { OperationalCostsContent } from "./OperationalCostsContent";

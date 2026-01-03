@@ -2722,6 +2722,24 @@
 			"methodFallbackTooltip": "Segmentation estimée à partir des zones de départ et d'arrivée uniquement (pas de tracé disponible)",
 			"fallbackWarning": "La segmentation est estimée car le tracé de l'itinéraire n'était pas disponible. Les distances par zone sont approximatives."
 		},
+		"tripTransparency": {
+			"enhanced": {
+				"exportPdf": "Exporter PDF",
+				"exportPdfLoading": "Génération du PDF...",
+				"sections": {
+					"priceBreakdown": "Détail du prix",
+					"timeAnalysis": "Analyse du temps",
+					"pricingSegments": "Segments de tarification",
+					"positioningCosts": "Coûts de positionnement",
+					"operationalCosts": "Coûts opérationnels",
+					"staffing": "Staffing RSE"
+				},
+				"badges": {
+					"noStaffing": "Pas de staffing requis",
+					"zonesTraversed": "{count} zones"
+				}
+			}
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trajet impossible",
