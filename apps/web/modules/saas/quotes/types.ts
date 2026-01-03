@@ -581,6 +581,47 @@ export interface FuelPriceSourceInfo {
   }>;
 }
 
+// ============================================================================
+// Story 21.3: Time Analysis Types
+// ============================================================================
+
+export interface TimeAnalysisBaseTime {
+  durationMinutes: number;
+  source: "GOOGLE_API" | "ESTIMATE";
+  fetchedAt?: string;
+}
+
+export interface TimeAnalysisVehicleAdjustment {
+  percentage: number;
+  additionalMinutes: number;
+  reason: string;
+  vehicleCategoryName: string;
+}
+
+export interface TimeAnalysisTrafficAdjustment {
+  percentage: number;
+  additionalMinutes: number;
+  reason: string;
+  appliedRule: string;
+}
+
+export interface TimeAnalysisMandatoryBreaks {
+  breakCount: number;
+  breakDurationMinutes: number;
+  totalBreakMinutes: number;
+  regulationReference: string;
+  isHeavyVehicle: boolean;
+}
+
+export interface TimeAnalysis {
+  baseGoogleTime: TimeAnalysisBaseTime;
+  vehicleAdjustment: TimeAnalysisVehicleAdjustment | null;
+  trafficAdjustment: TimeAnalysisTrafficAdjustment | null;
+  mandatoryBreaks: TimeAnalysisMandatoryBreaks | null;
+  totalDurationMinutes: number;
+  differenceFromGoogle: number;
+}
+
 /**
  * Trip analysis from shadow calculation
  */
@@ -624,6 +665,8 @@ export interface TripAnalysis {
   fuelPriceSource?: FuelPriceSourceInfo;
   // Story 19.1: Compliance-driven staffing plan
   compliancePlan?: CompliancePlan | null;
+  // Story 21.3: Time analysis breakdown
+  timeAnalysis?: TimeAnalysis | null;
 }
 
 /**

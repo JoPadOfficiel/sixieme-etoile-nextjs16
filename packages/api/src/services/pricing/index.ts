@@ -118,6 +118,7 @@ export {
 	calculateShadowSegments,
 	buildShadowInputFromVehicleSelection,
 	calculateEstimatedEndAt,
+	calculateTimeAnalysis,
 } from "./shadow-calculator";
 
 // ============================================================================

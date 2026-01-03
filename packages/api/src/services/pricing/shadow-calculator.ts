@@ -15,8 +15,156 @@ import type {
 	ShadowCalculationInput,
 	VehicleSelectionInfo,
 	CostBreakdown,
+	TimeAnalysis,
+	TimeAnalysisBaseTime,
+	TimeAnalysisVehicleAdjustment,
+	TimeAnalysisTrafficAdjustment,
+	TimeAnalysisMandatoryBreaks,
 } from "./types";
 import { calculateCostBreakdown, combineCostBreakdowns } from "./cost-calculator";
+
+// ============================================================================
+// Time Analysis Calculation (Story 21.3)
+// ============================================================================
+
+/**
+ * Vehicle type speed adjustment percentages
+ * Heavy vehicles (coaches, minibuses) travel slower than cars
+ */
+const VEHICLE_SPEED_ADJUSTMENTS: Record<string, { percentage: number; reason: string }> = {
+	HEAVY: { percentage: 40, reason: "Coach average speed 70km/h vs car 100km/h" },
+	LIGHT: { percentage: 0, reason: "Standard vehicle speed" },
+};
+
+/**
+ * Traffic adjustment rules based on departure time
+ */
+interface TrafficRule {
+	name: string;
+	startHour: number;
+	endHour: number;
+	percentage: number;
+	reason: string;
+}
+
+const TRAFFIC_RULES: TrafficRule[] = [
+	{ name: "RUSH_HOUR_MORNING", startHour: 7, endHour: 9, percentage: 15, reason: "Rush hour morning" },
+	{ name: "RUSH_HOUR_EVENING", startHour: 17, endHour: 19, percentage: 15, reason: "Rush hour evening" },
+	{ name: "NIGHT", startHour: 22, endHour: 6, percentage: -10, reason: "Night travel (less traffic)" },
+];
+
+/**
+ * RSE mandatory break constants
+ */
+const RSE_BREAK_CONSTANTS = {
+	maxContinuousDrivingMinutes: 270, // 4.5 hours
+	breakDurationMinutes: 45,
+	regulationReference: "RSE Art. 561-2",
+};
+
+/**
+ * Calculate time analysis breakdown (Story 21.3)
+ * 
+ * @param baseGoogleDurationMinutes - Base duration from Google Routes API
+ * @param routingSource - Source of the routing data
+ * @param regulatoryCategory - Vehicle regulatory category (LIGHT/HEAVY)
+ * @param vehicleCategoryName - Name of the vehicle category
+ * @param pickupAt - Pickup time for traffic adjustment calculation
+ * @returns TimeAnalysis object with all breakdown components
+ */
+export function calculateTimeAnalysis(
+	baseGoogleDurationMinutes: number,
+	routingSource: "GOOGLE_API" | "HAVERSINE_ESTIMATE" | "VEHICLE_SELECTION",
+	regulatoryCategory: "LIGHT" | "HEAVY" | null,
+	vehicleCategoryName: string | null,
+	pickupAt: Date | null,
+): TimeAnalysis {
+	// Base Google time
+	const baseGoogleTime: TimeAnalysisBaseTime = {
+		durationMinutes: Math.round(baseGoogleDurationMinutes),
+		source: routingSource === "GOOGLE_API" ? "GOOGLE_API" : "ESTIMATE",
+		fetchedAt: new Date().toISOString(),
+	};
+
+	let totalDurationMinutes = baseGoogleDurationMinutes;
+
+	// Vehicle type adjustment (for HEAVY vehicles)
+	let vehicleAdjustment: TimeAnalysisVehicleAdjustment | null = null;
+	if (regulatoryCategory === "HEAVY") {
+		const adjustment = VEHICLE_SPEED_ADJUSTMENTS.HEAVY;
+		const additionalMinutes = Math.round(baseGoogleDurationMinutes * (adjustment.percentage / 100));
+		vehicleAdjustment = {
+			percentage: adjustment.percentage,
+			additionalMinutes,
+			reason: adjustment.reason,
+			vehicleCategoryName: vehicleCategoryName ?? "Heavy Vehicle",
+		};
+		totalDurationMinutes += additionalMinutes;
+	}
+
+	// Traffic adjustment based on pickup time
+	let trafficAdjustment: TimeAnalysisTrafficAdjustment | null = null;
+	if (pickupAt) {
+		const hour = pickupAt.getHours();
+		
+		for (const rule of TRAFFIC_RULES) {
+			let isInRange = false;
+			
+			// Handle overnight ranges (e.g., 22:00 - 06:00)
+			if (rule.startHour > rule.endHour) {
+				isInRange = hour >= rule.startHour || hour < rule.endHour;
+			} else {
+				isInRange = hour >= rule.startHour && hour < rule.endHour;
+			}
+			
+			if (isInRange) {
+				const additionalMinutes = Math.round(baseGoogleDurationMinutes * (rule.percentage / 100));
+				trafficAdjustment = {
+					percentage: rule.percentage,
+					additionalMinutes,
+					reason: rule.reason,
+					appliedRule: rule.name,
+				};
+				totalDurationMinutes += additionalMinutes;
+				break; // Apply only the first matching rule
+			}
+		}
+	}
+
+	// Mandatory breaks for HEAVY vehicles (RSE regulation)
+	let mandatoryBreaks: TimeAnalysisMandatoryBreaks | null = null;
+	if (regulatoryCategory === "HEAVY") {
+		// Calculate driving time (excluding breaks already added)
+		const drivingMinutes = baseGoogleDurationMinutes + (vehicleAdjustment?.additionalMinutes ?? 0);
+		
+		// Calculate number of required breaks
+		const breakCount = Math.floor(drivingMinutes / RSE_BREAK_CONSTANTS.maxContinuousDrivingMinutes);
+		
+		if (breakCount > 0) {
+			const totalBreakMinutes = breakCount * RSE_BREAK_CONSTANTS.breakDurationMinutes;
+			mandatoryBreaks = {
+				breakCount,
+				breakDurationMinutes: RSE_BREAK_CONSTANTS.breakDurationMinutes,
+				totalBreakMinutes,
+				regulationReference: RSE_BREAK_CONSTANTS.regulationReference,
+				isHeavyVehicle: true,
+			};
+			totalDurationMinutes += totalBreakMinutes;
+		}
+	}
+
+	// Calculate difference from Google Maps
+	const differenceFromGoogle = Math.round(totalDurationMinutes - baseGoogleDurationMinutes);
+
+	return {
+		baseGoogleTime,
+		vehicleAdjustment,
+		trafficAdjustment,
+		mandatoryBreaks,
+		totalDurationMinutes: Math.round(totalDurationMinutes),
+		differenceFromGoogle,
+	};
+}
 
 // ============================================================================
 // Segment Analysis Creation

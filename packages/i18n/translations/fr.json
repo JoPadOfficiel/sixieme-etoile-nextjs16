@@ -2688,6 +2688,22 @@
 			"estimated": "Estimé",
 			"info": "Ces coûts représentent les trajets à vide du véhicule : approche depuis la base vers le point de prise en charge, et retour vers la base après la dépose."
 		},
+		"timeAnalysis": {
+			"title": "Analyse du temps",
+			"baseGoogleTime": "Temps Google Maps de base",
+			"baseGoogleTimeDesc": "Temps de trajet de référence",
+			"vehicleAdjustment": "Ajustement type de véhicule",
+			"trafficAdjustment": "Ajustement trafic",
+			"mandatoryBreaks": "Pauses de conduite obligatoires",
+			"breaks": "pauses",
+			"totalTime": "Temps total estimé",
+			"differenceExplanation": "La différence avec Google Maps est due à la vitesse du véhicule, aux conditions de trafic et/ou aux pauses de conduite obligatoires pour les véhicules lourds.",
+			"sourceGoogle": "API Google",
+			"sourceEstimate": "Estimé",
+			"sourceVehicle": "Véhicule",
+			"sourceOrg": "Config Org",
+			"sourceRSE": "Réglementation RSE"
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trajet impossible",

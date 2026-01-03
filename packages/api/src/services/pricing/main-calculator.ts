@@ -29,7 +29,7 @@ import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMult
 import { applyZoneMultiplier } from "./zone-resolver";
 import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThresholdsFromSettings } from "./profitability";
 import { applyTripTypePricing } from "./trip-type-pricing";
-import { calculateShadowSegments } from "./shadow-calculator";
+import { calculateShadowSegments, calculateTimeAnalysis } from "./shadow-calculator";
 import { isPointInZone } from "../../lib/geo-utils";
 
 // ============================================================================
@@ -224,6 +224,16 @@ export function calculatePrice(
 		distanceKm,
 		durationMinutes,
 		pricingSettings,
+	);
+	
+	// Story 21.3: Calculate time analysis breakdown
+	const pickupAtDate = request.pickupAt ? new Date(request.pickupAt) : null;
+	tripAnalysis.timeAnalysis = calculateTimeAnalysis(
+		durationMinutes,
+		tripAnalysis.routingSource,
+		vehicleCategory?.regulatoryCategory ?? null,
+		vehicleCategory?.name ?? null,
+		pickupAtDate,
 	);
 	
 	// Get profitability thresholds
@@ -472,6 +482,16 @@ export async function calculatePriceWithRealTolls(
 	tripAnalysis.fuelPriceSource = fuelPriceSource;
 	// Update costBreakdown with real cost data
 	tripAnalysis.costBreakdown = costBreakdown;
+	
+	// Story 21.3: Calculate time analysis breakdown
+	const pickupAtDate = request.pickupAt ? new Date(request.pickupAt) : null;
+	tripAnalysis.timeAnalysis = calculateTimeAnalysis(
+		durationMinutes,
+		tripAnalysis.routingSource,
+		vehicleCategory?.regulatoryCategory ?? null,
+		vehicleCategory?.name ?? null,
+		pickupAtDate,
+	);
 	
 	// Get profitability thresholds
 	const thresholds = getThresholdsFromSettings(pricingSettings);

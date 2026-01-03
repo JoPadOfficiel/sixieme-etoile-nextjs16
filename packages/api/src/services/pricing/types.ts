@@ -1108,6 +1108,47 @@ export interface WeightedNightRateResult {
 }
 
 // ============================================================================
+// Time Analysis Interface (Story 21.3)
+// ============================================================================
+
+export interface TimeAnalysisBaseTime {
+	durationMinutes: number;
+	source: "GOOGLE_API" | "ESTIMATE";
+	fetchedAt?: string;
+}
+
+export interface TimeAnalysisVehicleAdjustment {
+	percentage: number;
+	additionalMinutes: number;
+	reason: string;
+	vehicleCategoryName: string;
+}
+
+export interface TimeAnalysisTrafficAdjustment {
+	percentage: number;
+	additionalMinutes: number;
+	reason: string;
+	appliedRule: string;
+}
+
+export interface TimeAnalysisMandatoryBreaks {
+	breakCount: number;
+	breakDurationMinutes: number;
+	totalBreakMinutes: number;
+	regulationReference: string;
+	isHeavyVehicle: boolean;
+}
+
+export interface TimeAnalysis {
+	baseGoogleTime: TimeAnalysisBaseTime;
+	vehicleAdjustment: TimeAnalysisVehicleAdjustment | null;
+	trafficAdjustment: TimeAnalysisTrafficAdjustment | null;
+	mandatoryBreaks: TimeAnalysisMandatoryBreaks | null;
+	totalDurationMinutes: number;
+	differenceFromGoogle: number;
+}
+
+// ============================================================================
 // Trip Analysis Interface (Main)
 // ============================================================================
 
@@ -1148,6 +1189,7 @@ export interface TripAnalysis {
 	routeScenarios?: RouteScenarios | null;
 	transversalDecomposition?: unknown;
 	temporalVector?: TemporalVectorResult | null;
+	timeAnalysis?: TimeAnalysis | null;
 }
 
 // ============================================================================

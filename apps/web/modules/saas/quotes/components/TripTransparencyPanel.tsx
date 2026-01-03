@@ -34,6 +34,7 @@ import { ModernRouteMap } from "./ModernRouteMap";
 import { PositioningCostsSection } from "./PositioningCostsSection";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
+import { TimeAnalysisSection } from "./TimeAnalysisSection";
 import type { PricingResult } from "../types";
 import { 
   formatPrice, 
@@ -328,6 +329,9 @@ export function TripTransparencyPanel({
                     )}
                   </div>
                 )}
+
+                {/* Story 21.3: Time Analysis Section */}
+                <TimeAnalysisSection timeAnalysis={tripAnalysis.timeAnalysis} />
               </div>
             </CardContent>
           </Card>

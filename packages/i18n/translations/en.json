@@ -2688,6 +2688,22 @@
 			"estimated": "Estimated",
 			"info": "These costs represent the vehicle's empty trips: approach from the base to the pickup point, and return to the base after dropoff."
 		},
+		"timeAnalysis": {
+			"title": "Time Analysis",
+			"baseGoogleTime": "Base Google Maps Time",
+			"baseGoogleTimeDesc": "Reference travel time",
+			"vehicleAdjustment": "Vehicle Type Adjustment",
+			"trafficAdjustment": "Traffic Adjustment",
+			"mandatoryBreaks": "Mandatory Driving Breaks",
+			"breaks": "breaks",
+			"totalTime": "Total Estimated Time",
+			"differenceExplanation": "The difference with Google Maps is due to vehicle speed, traffic conditions, and/or mandatory driving breaks for heavy vehicles.",
+			"sourceGoogle": "Google API",
+			"sourceEstimate": "Estimate",
+			"sourceVehicle": "Vehicle",
+			"sourceOrg": "Org Config",
+			"sourceRSE": "RSE Regulation"
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trip Cannot Be Created",
