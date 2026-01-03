@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@ui/components/badge";
 import {
   Table,
@@ -14,6 +15,8 @@ import {
   ArrowRightIcon,
   InfoIcon,
   LayersIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
@@ -112,6 +115,7 @@ export function PricingSegmentsSection({
   className,
 }: PricingSegmentsSectionProps) {
   const t = useTranslations();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Don't render if no zone segments at all
   if (!zoneSegments || zoneSegments.length === 0) {
@@ -141,62 +145,80 @@ export function PricingSegmentsSection({
             {t("quotes.pricingSegments.title")}
           </span>
         </div>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
-                variant={segmentationMethod === "POLYLINE" ? "default" : "secondary"}
-                className={cn(
-                  "text-xs cursor-help",
-                  segmentationMethod === "POLYLINE"
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-amber-500 hover:bg-amber-600 text-white"
-                )}
-              >
-                {segmentationMethod === "POLYLINE"
-                  ? t("quotes.pricingSegments.methodPolyline")
-                  : t("quotes.pricingSegments.methodFallback")}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs text-sm">
-                {segmentationMethod === "POLYLINE"
-                  ? t("quotes.pricingSegments.methodPolylineTooltip")
-                  : t("quotes.pricingSegments.methodFallbackTooltip")}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant={segmentationMethod === "POLYLINE" ? "default" : "secondary"}
+                  className={cn(
+                    "text-xs cursor-help",
+                    segmentationMethod === "POLYLINE"
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-amber-500 hover:bg-amber-600 text-white"
+                  )}
+                >
+                  {segmentationMethod === "POLYLINE"
+                    ? t("quotes.pricingSegments.methodPolyline")
+                    : t("quotes.pricingSegments.methodFallback")}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-sm">
+                  {segmentationMethod === "POLYLINE"
+                    ? t("quotes.pricingSegments.methodPolylineTooltip")
+                    : t("quotes.pricingSegments.methodFallbackTooltip")}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-center gap-1 px-2 py-1 text-sm text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-200 transition-colors"
+          >
+            {isCollapsed ? (
+              <ChevronDownIcon className="size-4" />
+            ) : (
+              <ChevronUpIcon className="size-4" />
+            )}
+            <span className="text-xs">
+              {isCollapsed ? "Afficher" : "Masquer"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Zones Traversed */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <MapIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-            {t("quotes.pricingSegments.zonesTraversed")}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1 text-sm">
-          {zonesTraversed.map((zoneCode, index) => (
-            <span key={`${zoneCode}-${index}`} className="flex items-center">
-              <Badge
-                variant="outline"
-                className="text-xs border-emerald-300 text-emerald-700 dark:border-emerald-600 dark:text-emerald-300"
-              >
-                {zoneCode}
-              </Badge>
-              {index < zonesTraversed.length - 1 && (
-                <ArrowRightIcon className="size-3 mx-1 text-emerald-400" />
-              )}
+      {!isCollapsed && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <MapIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+              {t("quotes.pricingSegments.zonesTraversed")}
             </span>
-          ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1 text-sm">
+            {zonesTraversed.map((zoneCode, index) => (
+              <span key={`${zoneCode}-${index}`} className="flex items-center">
+                <Badge
+                  variant="outline"
+                  className="text-xs border-emerald-300 text-emerald-700 dark:border-emerald-600 dark:text-emerald-300"
+                >
+                  {zoneCode}
+                </Badge>
+                {index < zonesTraversed.length - 1 && (
+                  <ArrowRightIcon className="size-3 mx-1 text-emerald-400" />
+                )}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Segment Table */}
-      <div className="rounded-md border border-emerald-200 dark:border-emerald-700 overflow-hidden mb-4">
-        <Table>
+      {!isCollapsed && (
+        <div className="rounded-md border border-emerald-200 dark:border-emerald-700 overflow-hidden mb-4">
+          <Table>
           <TableHeader>
             <TableRow className="bg-emerald-100 dark:bg-emerald-900/50">
               <TableHead className="text-emerald-800 dark:text-emerald-200 w-10">
@@ -269,51 +291,53 @@ export function PricingSegmentsSection({
           </TableBody>
         </Table>
       </div>
+      )}
 
       {/* Summary */}
-      <div className="space-y-2">
-        {/* Weighted Multiplier */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-              {t("quotes.pricingSegments.weightedMultiplier")}
-            </span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <InfoIcon className="size-3.5 text-emerald-500 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-sm">
-                    {t("quotes.pricingSegments.weightedMultiplierTooltip")}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <Badge
-            variant="default"
-            className="text-sm font-mono bg-emerald-600 hover:bg-emerald-700"
-          >
-            {formatMultiplier(weightedMultiplier)}
-          </Badge>
-        </div>
-
-        {/* Total Surcharges */}
-        {totalSurcharges > 0 && (
+      {!isCollapsed && (
+        <div className="space-y-2">
+          {/* Weighted Multiplier */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-              {t("quotes.pricingSegments.totalSurcharges")}
-            </span>
-            <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-              {formatPrice(totalSurcharges)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                {t("quotes.pricingSegments.weightedMultiplier")}
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 text-emerald-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs text-sm">
+                      {t("quotes.pricingSegments.weightedMultiplierTooltip")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Badge
+              variant="default"
+              className="text-sm font-mono bg-emerald-600 hover:bg-emerald-700"
+            >
+              ×{weightedMultiplier.toFixed(2)}
+            </Badge>
           </div>
-        )}
-      </div>
+          {/* Total Surcharges */}
+          {totalSurcharges > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                {t("quotes.pricingSegments.totalSurcharges")}
+              </span>
+              <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+                {formatPrice(totalSurcharges)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Fallback Warning */}
-      {segmentationMethod === "FALLBACK" && (
+      {!isCollapsed && segmentationMethod === "FALLBACK" && (
         <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-700">
           <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
             <InfoIcon className="size-3.5 mt-0.5 flex-shrink-0" />
