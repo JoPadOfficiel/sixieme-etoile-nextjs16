@@ -189,3 +189,20 @@ export {
 	DEFAULT_MAX_RETURN_DISTANCE_KM,
 	DEFAULT_ROUND_TRIP_BUFFER,
 } from "./dense-zone-detector";
+
+// ============================================================================
+// Stay Pricing Module (Story 22.5)
+// ============================================================================
+
+export {
+	calculateStayServicePricing,
+	calculateStayDayPricing,
+	calculateStayPricing,
+	type StayServiceType,
+	type StayServiceInput,
+	type StayDayInput,
+	type StayPricingInput,
+	type StayServicePricingResult,
+	type StayDayPricingResult,
+	type StayPricingResult,
+} from "./stay-pricing";

@@ -158,7 +158,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','createdAt','updatedAt','vehicleId','driverId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','costBreakdown','notes','createdAt','updatedAt']);
 
@@ -181,6 +181,10 @@ export const QuoteStatusAuditLogScalarFieldEnumSchema = z.enum(['id','organizati
 export const QuoteNotesAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousNotes','newNotes','userId','timestamp']);
 
 export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destinationHash','tollAmount','currency','encodedPolyline','source','fetchedAt','expiresAt']);
+
+export const StayDayScalarFieldEnumSchema = z.enum(['id','quoteId','dayNumber','date','hotelRequired','hotelCost','mealCount','mealCost','driverCount','driverOvernightCost','dayTotalCost','dayTotalInternalCost','notes','createdAt','updatedAt']);
+
+export const StayServiceScalarFieldEnumSchema = z.enum(['id','stayDayId','serviceOrder','serviceType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','durationHours','stops','distanceKm','durationMinutes','serviceCost','serviceInternalCost','tripAnalysis','notes','createdAt','updatedAt']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -228,9 +232,13 @@ export const PricingModeSchema = z.enum(['FIXED_GRID','DYNAMIC']);
 
 export type PricingModeType = `${z.infer<typeof PricingModeSchema>}`
 
-export const TripTypeSchema = z.enum(['TRANSFER','EXCURSION','DISPO','OFF_GRID']);
+export const TripTypeSchema = z.enum(['TRANSFER','EXCURSION','DISPO','OFF_GRID','STAY']);
 
 export type TripTypeType = `${z.infer<typeof TripTypeSchema>}`
+
+export const StayServiceTypeSchema = z.enum(['TRANSFER','DISPO','EXCURSION']);
+
+export type StayServiceTypeType = `${z.infer<typeof StayServiceTypeSchema>}`
 
 export const AmountTypeSchema = z.enum(['FIXED','PERCENTAGE']);
 
@@ -1293,6 +1301,8 @@ export const QuoteSchema = z.object({
   subcontractedPrice: z.instanceof(Prisma.Decimal, { message: "Field 'subcontractedPrice' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
   subcontractedAt: z.coerce.date().nullable(),
   subcontractingNotes: z.string().nullable(),
+  stayStartDate: z.coerce.date().nullable(),
+  stayEndDate: z.coerce.date().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   vehicleId: z.string().nullable(),
@@ -1548,3 +1558,65 @@ export const TollCacheSchema = z.object({
 })
 
 export type TollCache = z.infer<typeof TollCacheSchema>
+
+/////////////////////////////////////////
+// STAY DAY SCHEMA
+/////////////////////////////////////////
+
+/**
+ * StayDay - Individual day within a STAY quote
+ * Story 22.5: Multi-day package with multiple services per day
+ */
+export const StayDaySchema = z.object({
+  id: z.string().cuid(),
+  quoteId: z.string(),
+  dayNumber: z.number().int(),
+  date: z.coerce.date(),
+  hotelRequired: z.boolean(),
+  hotelCost: z.instanceof(Prisma.Decimal, { message: "Field 'hotelCost' must be a Decimal. Location: ['Models', 'StayDay']"}),
+  mealCount: z.number().int(),
+  mealCost: z.instanceof(Prisma.Decimal, { message: "Field 'mealCost' must be a Decimal. Location: ['Models', 'StayDay']"}),
+  driverCount: z.number().int(),
+  driverOvernightCost: z.instanceof(Prisma.Decimal, { message: "Field 'driverOvernightCost' must be a Decimal. Location: ['Models', 'StayDay']"}),
+  dayTotalCost: z.instanceof(Prisma.Decimal, { message: "Field 'dayTotalCost' must be a Decimal. Location: ['Models', 'StayDay']"}),
+  dayTotalInternalCost: z.instanceof(Prisma.Decimal, { message: "Field 'dayTotalInternalCost' must be a Decimal. Location: ['Models', 'StayDay']"}),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type StayDay = z.infer<typeof StayDaySchema>
+
+/////////////////////////////////////////
+// STAY SERVICE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * StayService - Individual service within a stay day
+ * Story 22.5: Services can be TRANSFER, DISPO, or EXCURSION
+ */
+export const StayServiceSchema = z.object({
+  serviceType: StayServiceTypeSchema,
+  id: z.string().cuid(),
+  stayDayId: z.string(),
+  serviceOrder: z.number().int(),
+  pickupAt: z.coerce.date(),
+  pickupAddress: z.string(),
+  pickupLatitude: z.instanceof(Prisma.Decimal, { message: "Field 'pickupLatitude' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  pickupLongitude: z.instanceof(Prisma.Decimal, { message: "Field 'pickupLongitude' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  dropoffAddress: z.string().nullable(),
+  dropoffLatitude: z.instanceof(Prisma.Decimal, { message: "Field 'dropoffLatitude' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  dropoffLongitude: z.instanceof(Prisma.Decimal, { message: "Field 'dropoffLongitude' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  durationHours: z.instanceof(Prisma.Decimal, { message: "Field 'durationHours' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  stops: JsonValueSchema.nullable(),
+  distanceKm: z.instanceof(Prisma.Decimal, { message: "Field 'distanceKm' must be a Decimal. Location: ['Models', 'StayService']"}).nullable(),
+  durationMinutes: z.number().int().nullable(),
+  serviceCost: z.instanceof(Prisma.Decimal, { message: "Field 'serviceCost' must be a Decimal. Location: ['Models', 'StayService']"}),
+  serviceInternalCost: z.instanceof(Prisma.Decimal, { message: "Field 'serviceInternalCost' must be a Decimal. Location: ['Models', 'StayService']"}),
+  tripAnalysis: JsonValueSchema.nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type StayService = z.infer<typeof StayServiceSchema>

@@ -255,6 +255,14 @@ enum TripType {
   EXCURSION
   DISPO
   OFF_GRID
+  STAY // Story 22.5: Multi-day package with multiple services
+}
+
+/// Story 22.5: Service type within a stay day
+enum StayServiceType {
+  TRANSFER
+  DISPO
+  EXCURSION
 }
 
 /// Amount type for fees and discounts
@@ -1644,6 +1652,10 @@ model Quote {
   subcontractedAt     DateTime?
   subcontractingNotes String?
 
+  // Story 22.5: STAY trip type fields
+  stayStartDate DateTime? // First day of stay
+  stayEndDate   DateTime? // Last day of stay
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1657,6 +1669,8 @@ model Quote {
   driver              Driver?               @relation(fields: [driverId], references: [id])
   driverId            String?
   quoteNotesAuditLogs QuoteNotesAuditLog[]
+  // Story 22.5: Stay days relation
+  stayDays            StayDay[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1668,6 +1682,7 @@ model Quote {
   @@index([chainId])
   @@index([isSubcontracted])
   @@index([subcontractorId])
+  @@index([stayStartDate])
   @@map("quote")
 }
 
@@ -2019,4 +2034,90 @@ model TollCache {
   @@unique([originHash, destinationHash])
   @@index([expiresAt])
   @@map("toll_cache")
+}
+
+// ----------------------------------------------------------------------------
+// STAY TRIP TYPE (Story 22.5)
+// ----------------------------------------------------------------------------
+
+/// StayDay - Individual day within a STAY quote
+/// Story 22.5: Multi-day package with multiple services per day
+model StayDay {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  dayNumber Int // Order: 1, 2, 3...
+  date      DateTime // Specific date for this day
+
+  // Staffing costs for this day
+  hotelRequired       Boolean @default(false)
+  hotelCost           Decimal @default(0) @db.Decimal(10, 2)
+  mealCount           Int     @default(0)
+  mealCost            Decimal @default(0) @db.Decimal(10, 2)
+  driverCount         Int     @default(1)
+  driverOvernightCost Decimal @default(0) @db.Decimal(10, 2)
+
+  // Day totals
+  dayTotalCost         Decimal @default(0) @db.Decimal(10, 2)
+  dayTotalInternalCost Decimal @default(0) @db.Decimal(10, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  services StayService[]
+
+  @@unique([quoteId, dayNumber])
+  @@index([quoteId])
+  @@index([date])
+  @@map("stay_day")
+}
+
+/// StayService - Individual service within a stay day
+/// Story 22.5: Services can be TRANSFER, DISPO, or EXCURSION
+model StayService {
+  id        String  @id @default(cuid())
+  stayDayId String
+  stayDay   StayDay @relation(fields: [stayDayId], references: [id], onDelete: Cascade)
+
+  serviceOrder Int // Order within day: 1, 2, 3...
+  serviceType  StayServiceType
+
+  // Pickup details
+  pickupAt        DateTime
+  pickupAddress   String
+  pickupLatitude  Decimal? @db.Decimal(10, 7)
+  pickupLongitude Decimal? @db.Decimal(10, 7)
+
+  // Dropoff details (optional for DISPO)
+  dropoffAddress   String?
+  dropoffLatitude  Decimal? @db.Decimal(10, 7)
+  dropoffLongitude Decimal? @db.Decimal(10, 7)
+
+  // Service-specific fields
+  durationHours Decimal? @db.Decimal(5, 2) // For DISPO
+  stops         Json? // For EXCURSION - intermediate stops
+
+  // Calculated fields
+  distanceKm      Decimal? @db.Decimal(10, 2)
+  durationMinutes Int?
+
+  // Pricing
+  serviceCost         Decimal @default(0) @db.Decimal(10, 2)
+  serviceInternalCost Decimal @default(0) @db.Decimal(10, 2)
+
+  // Analysis
+  tripAnalysis Json? // Service-specific trip analysis
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([stayDayId, serviceOrder])
+  @@index([stayDayId])
+  @@map("stay_service")
 }

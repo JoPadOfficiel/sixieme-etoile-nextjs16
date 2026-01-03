@@ -33,6 +33,7 @@ import { seasonalMultipliersRouter } from "./seasonal-multipliers";
 import { timeBucketsRouter } from "./time-buckets";
 import { routesCoverageRouter } from "./routes-coverage";
 import { subcontractorsRouter, missionSubcontractingRoutes } from "./subcontractors";
+import { stayQuotesRouter } from "./stay-quotes";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
@@ -82,6 +83,8 @@ export const vtcRouter = new Hono()
 	.route("/", zoneRouteAssignmentsRouter)
 	.route("/", excursionAssignmentsRouter)
 	.route("/", dispoAssignmentsRouter)
-	.route("/", partnersListRouter);
+	.route("/", partnersListRouter)
+	// Story 22.5: Stay quotes (multi-day packages)
+	.route("/", stayQuotesRouter);
 
 export type VtcRouter = typeof vtcRouter;
