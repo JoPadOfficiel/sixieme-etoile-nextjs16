@@ -93,46 +93,99 @@ const COLORS = {
  */
 export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, className }: ModernRouteMapProps) {
   const t = useTranslations("quotes.create.tripTransparency.routeMap");
-  const { isLoaded: isMapReady, error: mapError, apiKey } = useGoogleMaps();
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const { isLoaded: isMapReady, error: googleMapsError, apiKey } = useGoogleMaps();
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
   const [mapContainerReady, setMapContainerReady] = useState(false);
+  const [mapError, setMapError] = useState<Error | null>(null);
   const requestIdRef = useRef(0);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Callback ref for container
+  // Error state effect - handle Google Maps API errors
+  useEffect(() => {
+    if (googleMapsError) {
+      console.error("[ModernRouteMap] Google Maps API error:", googleMapsError);
+      setMapError(new Error(googleMapsError));
+    }
+  }, [googleMapsError]);
+
+  // Callback ref for container with better cleanup and visibility detection
   const mapRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
       mapContainerRef.current = node;
       setMapContainerReady(true);
+      // Reset error state when container is ready
+      setMapError(null);
+      
+      // Force map refresh when container becomes visible
+      if (mapInstanceRef.current) {
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            google.maps.event.trigger(mapInstanceRef.current, 'resize');
+            console.log("[ModernRouteMap] Map refreshed on container mount");
+          }
+        }, 100);
+      }
     } else {
       // Complete cleanup on unmount
-      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current.forEach((m) => {
+        try {
+          m.setMap(null);
+        } catch (e) {
+          console.warn("[ModernRouteMap] Error clearing marker on unmount:", e);
+        }
+      });
       markersRef.current = [];
+      
       if (polylineRef.current) {
-        polylineRef.current.setMap(null);
+        try {
+          polylineRef.current.setMap(null);
+        } catch (e) {
+          console.warn("[ModernRouteMap] Error clearing polyline on unmount:", e);
+        }
         polylineRef.current = null;
       }
+      
       mapInstanceRef.current = null;
       mapContainerRef.current = null;
       setMapContainerReady(false);
     }
   }, []);
 
-  // Cleanup effect for component unmount
+  // Cleanup effect for component unmount with better error handling
   useEffect(() => {
     return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
+      // Clear all markers
+      markersRef.current.forEach((m) => {
+        try {
+          m.setMap(null);
+        } catch (e) {
+          console.warn("[ModernRouteMap] Error clearing marker on unmount:", e);
+        }
+      });
       markersRef.current = [];
+      
+      // Clear polyline
       if (polylineRef.current) {
-        polylineRef.current.setMap(null);
+        try {
+          polylineRef.current.setMap(null);
+        } catch (e) {
+          console.warn("[ModernRouteMap] Error clearing polyline on unmount:", e);
+        }
         polylineRef.current = null;
       }
+      
+      // Clear timeout
       if (timeoutIdRef.current) {
         clearTimeout(timeoutIdRef.current);
         timeoutIdRef.current = null;
+      }
+      
+      // Clear map instance
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current = null;
       }
     };
   }, []);
@@ -192,11 +245,13 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
     polylineRef.current = polyline;
   }, []);
 
-  // Initialize map
+  // Initialize map with better timing and error handling
   useEffect(() => {
     if (!isMapReady || !mapContainerReady || !mapContainerRef.current || mapInstanceRef.current) {
       return;
     }
+
+    console.log("[ModernRouteMap] Initializing map");
 
     try {
       const map = new google.maps.Map(mapContainerRef.current, {
@@ -206,17 +261,52 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
         fullscreenControl: false,
         mapTypeControl: false,
         zoomControl: true,
+        // Add map options to prevent rendering issues
+        gestureHandling: 'auto',
+        clickableIcons: false,
       });
+      
+      // Force map to render properly
+      google.maps.event.trigger(map, 'resize');
+      
       mapInstanceRef.current = map;
+      console.log("[ModernRouteMap] Map initialized successfully");
     } catch (error) {
       console.error("[ModernRouteMap] Error creating map:", error);
+      // Use setTimeout to avoid setState in effect
+      setTimeout(() => setMapError(error as Error), 0);
     }
   }, [isMapReady, mapContainerReady]);
 
-  // Update markers and route when coordinates change
+  // Force map refresh when component becomes visible (e.g., tab change)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !isMapReady) return;
+    if (map && isMapReady && mapContainerReady) {
+      // Force map to re-render when component becomes visible
+      const refreshTimer = setTimeout(() => {
+        if (map && mapContainerRef.current) {
+          // Check if element is actually visible
+          const rect = mapContainerRef.current.getBoundingClientRect();
+          const isVisible = rect.width > 0 && rect.height > 0;
+          
+          if (isVisible) {
+            google.maps.event.trigger(map, 'resize');
+            console.log("[ModernRouteMap] Map refreshed for visibility change");
+          }
+        }
+      }, 100);
+      
+      return () => clearTimeout(refreshTimer);
+    }
+  }, [isMapReady, mapContainerReady]);
+
+  // Update markers and route when coordinates change with better error handling
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !isMapReady) {
+      console.log("[ModernRouteMap] Skipping route update - map not ready", { hasMap: !!map, isMapReady });
+      return;
+    }
 
     const currentRequestId = ++requestIdRef.current;
     
@@ -229,11 +319,21 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
     });
 
     // Clear existing markers and polyline
-    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current.forEach((m) => {
+      try {
+        m.setMap(null);
+      } catch (e) {
+        console.warn("[ModernRouteMap] Error clearing marker:", e);
+      }
+    });
     markersRef.current = [];
     
     if (polylineRef.current) {
-      polylineRef.current.setMap(null);
+      try {
+        polylineRef.current.setMap(null);
+      } catch (e) {
+        console.warn("[ModernRouteMap] Error clearing polyline:", e);
+      }
       polylineRef.current = null;
     }
 
@@ -309,9 +409,18 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
       bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
     }
 
-    // Fit bounds first for immediate visual feedback
+    // Fit bounds first for immediate visual feedback with error handling
     if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, 40);
+      try {
+        // Use setTimeout to ensure map is fully rendered before fitting bounds
+        setTimeout(() => {
+          if (map && currentRequestId === requestIdRef.current) {
+            map.fitBounds(bounds, 40);
+          }
+        }, 100);
+      } catch (error) {
+        console.warn("[ModernRouteMap] Error fitting bounds:", error);
+      }
     }
 
     // Use Routes API for route rendering
@@ -341,12 +450,18 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
             });
             polylineRef.current = polyline;
             
-            // Fit bounds to the decoded route
+            // Fit bounds to the decoded route with error handling
             const routeBounds = new google.maps.LatLngBounds();
             decodedPath.forEach((point: { lat: number; lng: number }) => {
               routeBounds.extend(point);
             });
-            map.fitBounds(routeBounds, 40);
+            
+            // Use setTimeout to ensure map is ready
+            setTimeout(() => {
+              if (map && currentRequestId === requestIdRef.current) {
+                map.fitBounds(routeBounds, 40);
+              }
+            }, 100);
             
             console.log("[ModernRouteMap] Encoded polyline decoded and displayed with", decodedPath.length, "points");
             return; // Skip Routes API call
@@ -414,12 +529,18 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
               });
               polylineRef.current = polyline;
               
-              // Story 20.7: Fit bounds to the actual route
+              // Story 20.7: Fit bounds to the actual route with error handling
               const routeBounds = new google.maps.LatLngBounds();
               route.overview_path.forEach((point: { lat: number; lng: number }) => {
                 routeBounds.extend(point);
               });
-              map.fitBounds(routeBounds, 40);
+              
+              // Use setTimeout to ensure map is ready
+              setTimeout(() => {
+                if (map && currentRequestId === requestIdRef.current) {
+                  map.fitBounds(routeBounds, 40);
+                }
+              }, 100);
               
               console.log("[ModernRouteMap] Routes API successful - route displayed with", route.overview_path.length, "points");
             } else {
@@ -436,7 +557,7 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, cl
         });
     }
 
-  }, [pickup, dropoff, waypoints, isMapReady, apiKey, createFallbackPolyline, encodedPolyline]);
+  }, [pickup, dropoff, waypoints, isMapReady, apiKey, createFallbackPolyline, encodedPolyline, mapContainerReady]);
 
   // No coordinates
   if (!pickup && !dropoff) {
