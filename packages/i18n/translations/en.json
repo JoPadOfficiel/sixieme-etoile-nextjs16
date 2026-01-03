@@ -2390,7 +2390,8 @@
 				"transfer": "Transfer",
 				"excursion": "Excursion",
 				"dispo": "Hourly",
-				"off_grid": "Off-grid"
+				"off_grid": "Off-grid",
+				"stay": "Stay Package"
 			},
 			"tripTypeFields": {
 				"roundTrip": "Round trip",
@@ -2787,6 +2788,45 @@
 				"driversShort": "drv.",
 				"sourceOrg": "Org",
 				"sourceDefault": "Default"
+			}
+		},
+		"stay": {
+			"packageConfiguration": "Stay Package Configuration",
+			"day": "Day",
+			"days": "days",
+			"addDay": "Add Day",
+			"addFirstDay": "Add First Day",
+			"noDaysYet": "No days configured yet. Add a day to start building your stay package.",
+			"totalDays": "Total Days",
+			"totalServices": "Total Services",
+			"hotelNights": "Hotel Nights",
+			"totalMeals": "Total Meals",
+			"services": "services",
+			"servicesForDay": "Services for this day",
+			"service": "Service",
+			"addService": "Add Service",
+			"serviceType": "Service Type",
+			"serviceTypes": {
+				"transfer": "Transfer",
+				"dispo": "Hourly Rental",
+				"excursion": "Excursion"
+			},
+			"pickupTime": "Pickup Time",
+			"hotelRequired": "Hotel Required",
+			"mealCount": "Meals",
+			"driverCount": "Drivers",
+			"driver": "driver",
+			"drivers": "drivers",
+			"dayNotes": "Day Notes",
+			"dayNotesPlaceholder": "Notes for this day...",
+			"serviceNotes": "Service Notes",
+			"serviceNotesPlaceholder": "Notes for this service...",
+			"summary": {
+				"title": "Stay Summary",
+				"dateRange": "Date Range",
+				"staffingCosts": "Staffing Costs",
+				"servicesCosts": "Services Costs",
+				"grandTotal": "Grand Total"
 			}
 		},
 		"positioning": {

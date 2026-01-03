@@ -554,7 +554,7 @@ export const stayQuotesRouter = new Hono()
 			const limit = Math.min(Number(c.req.query("limit") ?? 20), 100);
 			const skip = (page - 1) * limit;
 
-			const where = withTenantFilter({ tripType: "STAY" }, organizationId);
+			const where = withTenantFilter({ tripType: "STAY" as TripType }, organizationId);
 
 			const [quotes, total] = await Promise.all([
 				db.quote.findMany({

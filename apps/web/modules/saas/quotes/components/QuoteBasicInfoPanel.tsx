@@ -37,7 +37,7 @@ interface QuoteBasicInfoPanelProps {
   className?: string;
 }
 
-const TRIP_TYPES: TripType[] = ["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"];
+const TRIP_TYPES: TripType[] = ["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID", "STAY"];
 
 /**
  * QuoteBasicInfoPanel Component
@@ -233,8 +233,8 @@ export function QuoteBasicInfoPanel({
           />
 
           {/* Dropoff Address - Conditional based on trip type */}
-          {/* DISPO: Hidden, OFF_GRID: Optional, Others: Required */}
-          {formData.tripType !== "DISPO" && (
+          {/* DISPO: Hidden, STAY: Hidden (managed in StayFormFields), OFF_GRID: Optional, Others: Required */}
+          {formData.tripType !== "DISPO" && formData.tripType !== "STAY" && (
             <AddressAutocomplete
               id="dropoff"
               label={

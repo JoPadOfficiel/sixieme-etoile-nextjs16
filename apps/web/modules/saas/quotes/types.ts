@@ -7,7 +7,8 @@
 
 export type QuoteStatus = "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 export type PricingMode = "FIXED_GRID" | "DYNAMIC";
-export type TripType = "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID";
+export type TripType = "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
+export type StayServiceType = "TRANSFER" | "DISPO" | "EXCURSION";
 export type ProfitabilityLevel = "green" | "orange" | "red";
 export type RegulatoryCategory = "LIGHT" | "HEAVY";
 
@@ -418,6 +419,8 @@ export interface CreateQuoteFormData {
   returnDate: Date | null;        // For EXCURSION
   durationHours: number | null;   // For DISPO
   maxKilometers: number | null;   // For DISPO (calculated: durationHours × 50)
+  // Story 22.6: STAY trip type fields
+  stayDays: CreateStayDayInput[]; // For STAY
 }
 
 /**
@@ -452,6 +455,8 @@ export const initialCreateQuoteFormData: CreateQuoteFormData = {
   returnDate: null,             // For EXCURSION
   durationHours: null,          // For DISPO
   maxKilometers: null,          // For DISPO (calculated: durationHours × 50)
+  // Story 22.6: STAY trip type defaults
+  stayDays: [],                 // For STAY
 };
 
 /**
@@ -1075,4 +1080,133 @@ export function getOverallStatusIcon(status: ValidationOverallStatus): string {
     default:
       return "❓";
   }
+}
+
+// ============================================================================
+// Story 22.6: STAY Trip Type Types
+// ============================================================================
+
+/**
+ * StayService - Individual service within a stay day
+ */
+export interface StayService {
+  id: string;
+  stayDayId: string;
+  serviceOrder: number;
+  serviceType: StayServiceType;
+  pickupAt: string;
+  pickupAddress: string;
+  pickupLatitude: string | null;
+  pickupLongitude: string | null;
+  dropoffAddress: string | null;
+  dropoffLatitude: string | null;
+  dropoffLongitude: string | null;
+  durationHours: string | null;
+  stops: QuoteStop[] | null;
+  distanceKm: string | null;
+  durationMinutes: number | null;
+  serviceCost: string;
+  serviceInternalCost: string;
+  tripAnalysis: Record<string, unknown> | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * StayDay - Individual day within a STAY quote
+ */
+export interface StayDay {
+  id: string;
+  quoteId: string;
+  dayNumber: number;
+  date: string;
+  hotelRequired: boolean;
+  hotelCost: string;
+  mealCount: number;
+  mealCost: string;
+  driverCount: number;
+  driverOvernightCost: string;
+  dayTotalCost: string;
+  dayTotalInternalCost: string;
+  notes: string | null;
+  services: StayService[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * StayQuote - Quote with STAY trip type
+ */
+export interface StayQuote extends Quote {
+  tripType: "STAY";
+  stayStartDate: string | null;
+  stayEndDate: string | null;
+  stayDays: StayDay[];
+}
+
+/**
+ * Form input for creating a stay service
+ */
+export interface CreateStayServiceInput {
+  id: string; // Temporary ID for React key
+  serviceType: StayServiceType;
+  pickupAt: Date | null;
+  pickupAddress: string;
+  pickupLatitude: number | null;
+  pickupLongitude: number | null;
+  dropoffAddress: string;
+  dropoffLatitude: number | null;
+  dropoffLongitude: number | null;
+  durationHours: number | null;
+  stops: QuoteStop[];
+  notes: string;
+}
+
+/**
+ * Form input for creating a stay day
+ */
+export interface CreateStayDayInput {
+  id: string; // Temporary ID for React key
+  date: Date | null;
+  hotelRequired: boolean;
+  mealCount: number;
+  driverCount: number;
+  notes: string;
+  services: CreateStayServiceInput[];
+}
+
+/**
+ * Initial stay service input
+ */
+export function createInitialStayService(): CreateStayServiceInput {
+  return {
+    id: crypto.randomUUID(),
+    serviceType: "TRANSFER",
+    pickupAt: null,
+    pickupAddress: "",
+    pickupLatitude: null,
+    pickupLongitude: null,
+    dropoffAddress: "",
+    dropoffLatitude: null,
+    dropoffLongitude: null,
+    durationHours: null,
+    stops: [],
+    notes: "",
+  };
+}
+
+/**
+ * Initial stay day input
+ */
+export function createInitialStayDay(): CreateStayDayInput {
+  return {
+    id: crypto.randomUUID(),
+    date: null,
+    hotelRequired: false,
+    mealCount: 0,
+    driverCount: 1,
+    notes: "",
+    services: [createInitialStayService()],
+  };
 }

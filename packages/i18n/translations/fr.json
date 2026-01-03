@@ -2390,7 +2390,8 @@
 				"transfer": "Transfert",
 				"excursion": "Excursion",
 				"dispo": "Mise à disposition",
-				"off_grid": "Hors grille"
+				"off_grid": "Hors grille",
+				"stay": "Séjour"
 			},
 			"tripTypeFields": {
 				"roundTrip": "Aller-retour",
@@ -2787,6 +2788,45 @@
 				"driversShort": "chauf.",
 				"sourceOrg": "Org",
 				"sourceDefault": "Défaut"
+			}
+		},
+		"stay": {
+			"packageConfiguration": "Configuration du séjour",
+			"day": "Jour",
+			"days": "jours",
+			"addDay": "Ajouter un jour",
+			"addFirstDay": "Ajouter le premier jour",
+			"noDaysYet": "Aucun jour configuré. Ajoutez un jour pour commencer à construire votre séjour.",
+			"totalDays": "Jours totaux",
+			"totalServices": "Services totaux",
+			"hotelNights": "Nuits d'hôtel",
+			"totalMeals": "Repas totaux",
+			"services": "services",
+			"servicesForDay": "Services pour ce jour",
+			"service": "Service",
+			"addService": "Ajouter un service",
+			"serviceType": "Type de service",
+			"serviceTypes": {
+				"transfer": "Transfert",
+				"dispo": "Mise à disposition",
+				"excursion": "Excursion"
+			},
+			"pickupTime": "Heure de prise en charge",
+			"hotelRequired": "Hôtel requis",
+			"mealCount": "Repas",
+			"driverCount": "Chauffeurs",
+			"driver": "chauffeur",
+			"drivers": "chauffeurs",
+			"dayNotes": "Notes du jour",
+			"dayNotesPlaceholder": "Notes pour ce jour...",
+			"serviceNotes": "Notes du service",
+			"serviceNotesPlaceholder": "Notes pour ce service...",
+			"summary": {
+				"title": "Résumé du séjour",
+				"dateRange": "Période",
+				"staffingCosts": "Coûts de staffing",
+				"servicesCosts": "Coûts des services",
+				"grandTotal": "Total général"
 			}
 		},
 		"positioning": {

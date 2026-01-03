@@ -210,7 +210,7 @@ development_status:
   22-3-enable-quote-notes-modification-after-sending: done
   22-4-implement-complete-subcontracting-system: done
   22-5-add-stay-trip-type-data-model-api: done
-  22-6-implement-stay-trip-type-frontend-interface: backlog
+  22-6-implement-stay-trip-type-frontend-interface: done
   22-7-implement-stay-trip-type-pricing-engine: backlog
   22-8-implement-stay-trip-type-invoice-integration: backlog
   22-9-enhance-dispatch-with-staffing-information-display: backlog

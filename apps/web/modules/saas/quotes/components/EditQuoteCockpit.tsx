@@ -86,6 +86,8 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
         returnDate: quote.returnDate ? new Date(quote.returnDate) : null,
         durationHours: quote.durationHours ? parseFloat(quote.durationHours) : null,
         maxKilometers: quote.maxKilometers ? parseFloat(quote.maxKilometers) : null,
+        // Story 22.6: STAY trip type fields
+        stayDays: [],
       });
       
       // Restore added fees from appliedRules
@@ -190,7 +192,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
           dropoffLatitude: formData.dropoffLatitude,
           dropoffLongitude: formData.dropoffLongitude,
           pickupAt: formData.pickupAt?.toISOString() ?? undefined,
-          tripType: formData.tripType,
+          tripType: formData.tripType as "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID",
           vehicleCategoryId: formData.vehicleCategoryId,
           passengerCount: formData.passengerCount,
           luggageCount: formData.luggageCount,

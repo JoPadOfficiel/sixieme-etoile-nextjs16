@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
 import { cn } from "@ui/lib";
 import { StopsEditor } from "./StopsEditor";
+import { StayFormFields } from "./StayFormFields";
 import type { CreateQuoteFormData, TripType, QuoteStop } from "../types";
 
 interface TripTypeFormFieldsProps {
@@ -246,6 +247,16 @@ export function TripTypeFormFields({
             </div>
           </div>
         </div>
+      );
+
+    case "STAY":
+      return (
+        <StayFormFields
+          stayDays={formData.stayDays}
+          onStayDaysChange={(days) => onFormChange("stayDays", days)}
+          disabled={disabled}
+          className={className}
+        />
       );
 
     default:

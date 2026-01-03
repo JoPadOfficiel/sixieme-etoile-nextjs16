@@ -165,7 +165,54 @@ export function CreateQuoteCockpit() {
       
       // Final price includes base price + added fees/promotions
       const computedFinalPrice = formData.finalPrice + addedFeesTotal;
+
+      // Story 22.6: Handle STAY trip type with dedicated API
+      if (formData.tripType === "STAY") {
+        const stayDaysPayload = formData.stayDays.map(day => ({
+          date: day.date?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0],
+          hotelRequired: day.hotelRequired,
+          mealCount: day.mealCount,
+          driverCount: day.driverCount,
+          notes: day.notes || null,
+          services: day.services.map(svc => ({
+            serviceType: svc.serviceType,
+            pickupAt: svc.pickupAt?.toISOString() ?? new Date().toISOString(),
+            pickupAddress: svc.pickupAddress,
+            pickupLatitude: svc.pickupLatitude,
+            pickupLongitude: svc.pickupLongitude,
+            dropoffAddress: svc.dropoffAddress || null,
+            dropoffLatitude: svc.dropoffLatitude,
+            dropoffLongitude: svc.dropoffLongitude,
+            durationHours: svc.durationHours,
+            stops: svc.stops.length > 0
+              ? svc.stops
+                  .filter((s): s is typeof s & { latitude: number; longitude: number } =>
+                    s.latitude !== null && s.longitude !== null)
+                  .map(s => ({ latitude: s.latitude, longitude: s.longitude, address: s.address, order: s.order }))
+              : null,
+            notes: svc.notes || null,
+          })),
+        }));
+
+        const response = await apiClient.vtc["stay-quotes"].$post({
+          json: {
+            contactId: formData.contactId,
+            vehicleCategoryId: formData.vehicleCategoryId,
+            passengerCount: formData.passengerCount,
+            luggageCount: formData.luggageCount,
+            notes: formData.notes || null,
+            stayDays: stayDaysPayload,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create stay quote");
+        }
+
+        return response.json();
+      }
       
+      // Standard quote creation for other trip types
       const response = await apiClient.vtc.quotes.$post({
         json: {
           contactId: formData.contactId,
