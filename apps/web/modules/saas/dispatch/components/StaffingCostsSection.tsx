@@ -145,7 +145,7 @@ function DriverCountSection({
 							<p className={cn("font-medium text-sm", textClass)}>
 								{t("driverCount", { count: plan.driverCount })}
 							</p>
-							{isRSE && plan.reason && (
+							{isRSE && plan.reason && plan.reason !== "undefined" && (
 								<p className="mt-0.5 text-muted-foreground text-xs">
 									{plan.reason}
 								</p>
@@ -174,24 +174,30 @@ function DriverCountSection({
 							{t(`planTypes.${plan.planType}`)}
 						</span>
 					</div>
-					{plan.totalDrivingHours !== undefined && (
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">{t("totalDriving")}</span>
-							<span className="font-medium">
-								{formatHours(plan.totalDrivingHours)}
-							</span>
-						</div>
-					)}
-					{plan.totalAmplitudeHours !== undefined && (
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">
-								{t("totalAmplitude")}
-							</span>
-							<span className="font-medium">
-								{formatHours(plan.totalAmplitudeHours)}
-							</span>
-						</div>
-					)}
+					{plan.totalDrivingHours !== undefined &&
+						plan.totalDrivingHours !== null &&
+						!Number.isNaN(plan.totalDrivingHours) && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									{t("totalDriving")}
+								</span>
+								<span className="font-medium">
+									{formatHours(plan.totalDrivingHours)}
+								</span>
+							</div>
+						)}
+					{plan.totalAmplitudeHours !== undefined &&
+						plan.totalAmplitudeHours !== null &&
+						!Number.isNaN(plan.totalAmplitudeHours) && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									{t("totalAmplitude")}
+								</span>
+								<span className="font-medium">
+									{formatHours(plan.totalAmplitudeHours)}
+								</span>
+							</div>
+						)}
 				</div>
 			</CollapsibleContent>
 		</Collapsible>
@@ -214,9 +220,19 @@ function HotelCostsSection({
 }) {
 	const t = useTranslations("dispatch.staffing");
 
-	const nights = breakdown?.hotelNights ?? 0;
-	const rate = breakdown?.hotelRatePerNight ?? 0;
-	const drivers = breakdown?.driversRequiringHotel ?? 1;
+	const nights =
+		breakdown?.hotelNights && !Number.isNaN(breakdown.hotelNights)
+			? breakdown.hotelNights
+			: 0;
+	const rate =
+		breakdown?.hotelRatePerNight && !Number.isNaN(breakdown.hotelRatePerNight)
+			? breakdown.hotelRatePerNight
+			: 0;
+	const drivers =
+		breakdown?.driversRequiringHotel &&
+		!Number.isNaN(breakdown.driversRequiringHotel)
+			? breakdown.driversRequiringHotel
+			: 1;
 
 	return (
 		<Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -291,8 +307,14 @@ function MealCostsSection({
 }) {
 	const t = useTranslations("dispatch.staffing");
 
-	const mealCount = breakdown?.mealCount ?? 0;
-	const rate = breakdown?.mealRatePerMeal ?? 0;
+	const mealCount =
+		breakdown?.mealCount && !Number.isNaN(breakdown.mealCount)
+			? breakdown.mealCount
+			: 0;
+	const rate =
+		breakdown?.mealRatePerMeal && !Number.isNaN(breakdown.mealRatePerMeal)
+			? breakdown.mealRatePerMeal
+			: 0;
 
 	return (
 		<Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -362,8 +384,15 @@ function SecondDriverCostsSection({
 }) {
 	const t = useTranslations("dispatch.staffing");
 
-	const hours = breakdown?.secondDriverHours ?? 0;
-	const rate = breakdown?.secondDriverHourlyRate ?? 0;
+	const hours =
+		breakdown?.secondDriverHours && !Number.isNaN(breakdown.secondDriverHours)
+			? breakdown.secondDriverHours
+			: 0;
+	const rate =
+		breakdown?.secondDriverHourlyRate &&
+		!Number.isNaN(breakdown.secondDriverHourlyRate)
+			? breakdown.secondDriverHourlyRate
+			: 0;
 
 	return (
 		<Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -454,8 +483,19 @@ export function StaffingCostsSection({
 		return null;
 	}
 
+	// Ensure driverCount has a valid value (fallback to 1 if NaN/undefined)
+	const sanitizedPlan = {
+		...compliancePlan,
+		driverCount:
+			compliancePlan.driverCount && !Number.isNaN(compliancePlan.driverCount)
+				? compliancePlan.driverCount
+				: compliancePlan.planType === "DOUBLE_CREW"
+					? 2
+					: 1,
+	};
+
 	const isStandardStaffing =
-		compliancePlan.planType === "SINGLE_DRIVER" &&
+		sanitizedPlan.planType === "SINGLE_DRIVER" &&
 		(!staffingCosts ||
 			staffingCosts.totalStaffingCost === 0 ||
 			staffingCosts.totalStaffingCost === undefined);
@@ -488,7 +528,7 @@ export function StaffingCostsSection({
 			<CardContent className="space-y-3">
 				{/* Driver count section */}
 				<DriverCountSection
-					plan={compliancePlan}
+					plan={sanitizedPlan}
 					isExpanded={expandedSections.has("drivers")}
 					onToggle={() => toggleSection("drivers")}
 				/>
@@ -524,7 +564,7 @@ export function StaffingCostsSection({
 				)}
 
 				{/* Info about RSE */}
-				{compliancePlan.planType !== "SINGLE_DRIVER" && (
+				{sanitizedPlan.planType !== "SINGLE_DRIVER" && (
 					<div className="flex items-start gap-2 rounded bg-muted/50 p-2 text-muted-foreground text-xs">
 						<Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
 						<span>{t("rseInfo")}</span>
