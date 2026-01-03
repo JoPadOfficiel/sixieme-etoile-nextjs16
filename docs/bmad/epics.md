@@ -5400,6 +5400,540 @@ This epic ensures that operators can see and understand every component of prici
 
 ---
 
+## Epic 22: VTC ERP Complete System Enhancement & Critical Fixes
+
+**Goal:** Implement critical fixes, new advanced features, and system enhancements to make the VTC ERP fully functional with robust pricing, comprehensive trip management, and complete subcontracting capabilities.
+
+### Story 22.1: Fix Round Trip Pricing Calculation
+
+**As a** pricing engineer,  
+**I want** round trip pricing to calculate segments correctly instead of applying a simple ×2 multiplier,  
+**So that** round trip prices reflect the actual operational costs without double-counting empty returns.
+
+**Related FRs:** FR7, FR13, FR15.
+
+**Acceptance Criteria:**
+
+**Given** a round trip quote (isRoundTrip = true),  
+**When** pricing is calculated,  
+**Then** the system calculates:
+
+- **Segment A**: Base → Pickup (positioning cost)
+- **Segment B**: Pickup → Dropoff (service cost)
+- **Segment C**: Dropoff → Base (empty return cost)
+- **Segment D**: Base → Pickup (return positioning for second leg)
+- **Segment E**: Dropoff → Pickup (return service)
+- **Segment F**: Pickup → Base (final empty return)
+
+**And** the total price equals: Segment A + B + C + D + E + F, NOT (A + B + C) × 2.
+
+**Prerequisites:** Existing pricing engine, shadow calculation system.
+
+**Technical Notes:**
+
+- Refactor `applyRoundTripMultiplier()` to use segment-based calculation
+- Update `calculateShadowSegments()` to handle round trip segments correctly
+- Maintain backward compatibility for existing quotes
+
+---
+
+### Story 22.2: Display Staffing Costs in Quote Creation
+
+**As an** operator,  
+**I want** to see meal and hotel costs directly in the quote creation interface,  
+**So that** I can understand the complete cost breakdown before sending quotes to clients.
+
+**Related FRs:** FR47, FR48, FR89, FR90.
+
+**Acceptance Criteria:**
+
+**Given** a quote with long duration or overnight requirements,  
+**When** I create or edit a quote,  
+**Then** the TripTransparencyPanel shows:
+
+- **Meal Costs**: Number of meals × rate per meal × drivers
+- **Hotel Costs**: Number of nights × rate per night × drivers
+- **Second Driver Costs**: Hours × hourly rate (if applicable)
+- **Total Staffing Cost**: Sum of all staffing-related expenses
+
+**And** the calculation rules are:
+
+- **1 meal per 6 hours** (max 2 per day: lunch + dinner)
+- **1 hotel night** when trip ends after 20:00 or exceeds 12 hours
+- **Double all costs** when second driver required
+- **Hotel always includes 1 meal allowance**
+
+**Prerequisites:** Story 21.1 (StaffingCostsSection exists), TripTransparencyPanel.
+
+**Technical Notes:**
+
+- Import and integrate existing `StaffingCostsSection` into `TripTransparencyPanel`
+- Ensure calculations match dispatch staffing logic
+- Add meal/hotel calculation rules to compliance engine
+
+---
+
+### Story 22.3: Enable Quote Notes Modification After Sending
+
+**As an** operator,  
+**I want** to modify notes on sent quotes for driver communication,  
+**So that** I can update operational instructions without changing commercial terms.
+
+**Related FRs:** FR31, FR32.
+
+**Acceptance Criteria:**
+
+**Given** a quote with status SENT, ACCEPTED, or REJECTED,  
+**When** I view the quote detail page,  
+**Then** I can:
+
+- **Edit notes** in the activity section (not commercial fields)
+- **Add driver instructions** that appear in dispatch
+- **Update operational details** without affecting pricing
+- **See note history** with timestamps of changes
+
+**And** the restrictions are:
+
+- **Commercial fields** (price, vehicle, dates) remain frozen
+- **Only notes field** is editable after DRAFT status
+- **All note changes** are logged in audit trail
+
+**Prerequisites:** Quote detail page, notes system, audit logging.
+
+**Technical Notes:**
+
+- Modify `isEditable()` function to allow notes editing
+- Update `QuoteActivityLog` to support post-DRAFT note editing
+- Add note change tracking to audit system
+
+---
+
+### Story 22.4: Implement Complete Subcontracting System
+
+**As a** dispatcher,  
+**I want** a complete subcontracting management system,  
+**So that** I can effectively outsource missions when internal resources are unavailable.
+
+**Related FRs:** FR50, FR51, FR52.
+
+**Acceptance Criteria:**
+
+**Given** the subcontracting module,  
+**When** I need to outsource a mission,  
+**Then** I can:
+
+- **Manage subcontractor profiles** with vehicle fleets and operating zones
+- **View subcontracting suggestions** based on profitability analysis
+- **Compare internal vs subcontractor costs** with detailed breakdowns
+- **Assign missions to subcontractors** with proper documentation
+- **Track subcontracted missions** in dispatch interface
+
+**And** the subcontractor profiles include:
+
+- **Company information** and contact details
+- **Vehicle fleet** with categories and capacities
+- **Operating zones** and service areas
+- **Pricing rates** and minimum fares
+- **Availability status** and response times
+
+**Prerequisites:** SubcontractorProfile model exists, basic dispatch interface.
+
+**Technical Notes:**
+
+- Complete the subcontracting workflow in dispatch
+- Integrate subcontractor suggestions with mission assignment
+- Add subcontractor management UI for profiles
+- Implement subcontractor mission tracking
+
+---
+
+### Story 22.5: Add STAY Trip Type - Data Model & API
+
+**As a** system architect,  
+**I want** to add STAY trip type to support multi-day, multi-service packages,  
+**So that** clients can book complete travel packages with detailed breakdowns.
+
+**Related FRs:** FR31, FR32, FR33, FR34.
+
+**Acceptance Criteria:**
+
+**Given** the extended data model,  
+**When** I create a STAY quote,  
+**Then** the system supports:
+
+- **Stay Quote Structure**: Container for multiple services across multiple days
+- **Stay Day Components**: Individual days with date, services, and requirements
+- **Stay Service Types**: TRANSFER, DISPO, EXCURSION within stay
+- **RSE Integration**: Staffing costs calculated per day and service
+- **Invoice Decomposition**: Each service becomes separate invoice line
+
+**And** the data model includes:
+
+```typescript
+interface StayQuote {
+  id: string;
+  organizationId: string;
+  contactId: string;
+  stayDays: StayDay[];
+  totalCost: number;
+  totalInternalCost: number;
+  notes: string;
+}
+
+interface StayDay {
+  date: DateTime;
+  services: StayService[];
+  hotelRequired: boolean;
+  mealCount: number;
+  driverCount: number;
+}
+
+interface StayService {
+  type: "TRANSFER" | "DISPO" | "EXCURSION";
+  details: ServiceDetails;
+  cost: number;
+  internalCost: number;
+}
+```
+
+**Prerequisites:** Existing Quote model, pricing engine.
+
+**Technical Notes:**
+
+- Add STAY to TripType enum
+- Create new tables for StayQuote, StayDay, StayService
+- Extend pricing API to handle stay calculations
+- Update quote creation workflow for stays
+
+---
+
+### Story 22.6: Implement STAY Trip Type - Frontend Interface
+
+**As a** commercial operator,  
+**I want** an intuitive interface to create multi-day stay packages,  
+**So that** I can easily configure complex travel itineraries for clients.
+
+**Related FRs:** FR42, FR43, FR44.
+
+**Acceptance Criteria:**
+
+**Given** the STAY trip type selected,  
+**When** I create a quote,  
+**Then** the interface provides:
+
+- **Multi-Day Calendar**: Visual date picker for stay duration
+- **Service Configuration Panel**: Add/edit services per day
+- **Flexible Time Inputs**: Different times for each service
+- **Cost Summary**: Real-time cost breakdown by day and service
+- **RSE Indicators**: Staffing requirements per day
+
+**And** for each day I can configure:
+
+- **Multiple Services**: Transfer + Dispo + Excursion combinations
+- **Custom Times**: Different pickup/dropoff times per service
+- **Intermediate Stops**: Multi-stop excursions within stay
+- **Staffing Options**: Single driver, double crew, or relay
+
+**Prerequisites:** Story 22.5 (data model), TripTypeFormFields component.
+
+**Technical Notes:**
+
+- Extend TripTypeFormFields with STAY-specific UI
+- Create StayDayEditor component for daily configuration
+- Implement StayServiceSelector for service types
+- Add StayCostSummary for real-time calculations
+
+---
+
+### Story 22.7: Implement STAY Trip Type - Pricing Engine
+
+**As a** pricing specialist,  
+**I want** accurate pricing calculations for complex stay packages,  
+**So that** multi-day quotes reflect true operational costs and appropriate margins.
+
+**Related FRs:** FR7, FR12, FR13, FR14, FR15.
+
+**Acceptance Criteria:**
+
+**Given** a stay quote with multiple services and days,  
+**When** pricing is calculated,  
+**Then** the engine computes:
+
+- **Service Pricing**: Each service priced independently (transfer, dispo, excursion)
+- **Day-Specific Costs**: Hotel and meal costs per day based on duration
+- **RSE Integration**: Staffing costs calculated per day and service combination
+- **Margin Calculation**: Total margin across entire stay package
+- **Transparency**: Complete breakdown by day and service type
+
+**And** the pricing logic handles:
+
+- **Multi-Service Discounts**: Optimized pricing for combined services
+- **Day-Overnight Costs**: Hotel costs when services span multiple days
+- **Staffing Optimization**: Most efficient driver allocation across stay
+- **Zone Pricing**: Appropriate zone multipliers for each service segment
+
+**Prerequisites:** Story 22.5 (data model), existing pricing engine.
+
+**Technical Notes:**
+
+- Extend pricing API to handle stay requests
+- Implement stay-specific pricing algorithms
+- Add stay cost breakdown to trip analysis
+- Integrate with existing multiplier and zone systems
+
+---
+
+### Story 22.8: Implement STAY Trip Type - Invoice Integration
+
+**As a** finance administrator,  
+**I want** stay quotes to generate detailed invoices with line-item breakdown,  
+**So that** clients receive clear, itemized billing for multi-day packages.
+
+**Related FRs:** FR34, FR35, FR36.
+
+**Acceptance Criteria:**
+
+**Given** an accepted stay quote converted to invoice,  
+**When** the invoice is generated,  
+**Then** it contains:
+
+- **Service Line Items**: Each service as separate line with description
+- **Daily Breakdown**: Hotel and meal costs per day
+- **Staffing Costs**: Driver costs separated by day and service
+- **Package Summary**: Total stay cost with clear grouping
+- **VAT Calculation**: Proper VAT applied to each line item
+
+**And** the invoice structure shows:
+
+```
+Line 1: Transfer - Day 1 - Airport to Hotel
+Line 2: Disposition - Day 1 - City Tour (4 hours)
+Line 3: Hotel - Day 1 - Overnight stay
+Line 4: Meals - Day 1 - Lunch + Dinner
+Line 5: Transfer - Day 2 - Hotel to Airport
+```
+
+**Prerequisites:** Story 22.7 (pricing), existing invoice system.
+
+**Technical Notes:**
+
+- Extend InvoiceLineType enum for stay-specific lines
+- Implement stay-to-invoice conversion logic
+- Add stay invoice templates and formatting
+- Update invoice generation workflow
+
+---
+
+### Story 22.9: Enhance Dispatch with Staffing Information Display
+
+**As a** dispatcher,  
+**I want** to see complete staffing details when assigning missions,  
+**So that** I can make informed decisions about driver allocation and costs.
+
+**Related FRs:** FR47, FR48, FR89, FR90.
+
+**Acceptance Criteria:**
+
+**Given** a mission in the dispatch interface,  
+**When** I view mission details,  
+**Then** I see:
+
+- **Staffing Requirements**: Number of drivers, overnight stays, meals
+- **Cost Breakdown**: Detailed staffing costs with calculations
+- **RSE Compliance**: Staffing plan and any regulatory requirements
+- **Driver Availability**: Which drivers can fulfill staffing requirements
+- **Alternative Options**: Other staffing configurations if needed
+
+**And** the display includes:
+
+- **Visual Indicators**: Icons for hotels, meals, second driver
+- **Cost Calculations**: Clear breakdown of how costs are derived
+- **Timeline View**: Daily staffing requirements for multi-day missions
+- **Flexibility Options**: Alternative staffing with cost implications
+
+**Prerequisites:** Existing dispatch interface, StaffingCostsSection component.
+
+**Technical Notes:**
+
+- Integrate StaffingCostsSection into dispatch mission details
+- Add staffing information to mission cards and lists
+- Implement staffing requirement indicators
+- Connect with driver availability system
+
+---
+
+### Story 22.10: Implement Advanced Subcontracting Workflow
+
+**As a** fleet manager,  
+**I want** a complete subcontracting workflow from suggestion to execution,  
+**So that** I can efficiently manage outsourced missions and maintain quality control.
+
+**Related FRs:** FR50, FR51, FR52.
+
+**Acceptance Criteria:**
+
+**Given** the subcontracting system,  
+**When** I need to outsource a mission,  
+**Then** the workflow provides:
+
+- **Automatic Suggestions**: AI-powered recommendations based on cost and availability
+- **Subcontractor Matching**: Filter by vehicle type, zone, and availability
+- **Cost Comparison**: Detailed breakdown of internal vs subcontractor costs
+- **Contract Management**: Digital agreements and terms with subcontractors
+- **Quality Tracking**: Performance metrics and feedback system
+
+**And** the workflow includes:
+
+- **Suggestion Engine**: Analyzes profitability and recommends outsourcing
+- **Matching Algorithm**: Finds best-fit subcontractors for specific missions
+- **Negotiation Tools**: Cost optimization and terms management
+- **Execution Tracking**: Real-time status of subcontracted missions
+- **Performance Analytics**: Subcontractor reliability and quality metrics
+
+**Prerequisites:** Story 22.4 (basic subcontracting), dispatch system.
+
+**Technical Notes:**
+
+- Implement subcontracting suggestion algorithms
+- Create subcontractor matching and filtering system
+- Add subcontractor management UI
+- Integrate with dispatch and mission tracking
+
+---
+
+### Story 22.11: Fix Quote Notes Display in Dispatch
+
+**As a** dispatcher,  
+**I want** quote notes to be clearly visible when assigning missions,  
+**So that** drivers receive all important operational instructions.
+
+**Related FRs:** FR31, FR32.
+
+**Acceptance Criteria:**
+
+**Given** a mission assigned from a quote,  
+**When** I view the mission in dispatch,  
+**Then** the quote notes are:
+
+- **Prominently Displayed**: Visible in mission details without scrolling
+- **Formatted for Clarity**: Properly formatted with line breaks and emphasis
+- **Driver-Focused**: Instructions specifically relevant to drivers
+- **Searchable**: Can find specific notes across missions
+- **Editable**: Can update notes if operational details change
+
+**And** the notes integration includes:
+
+- **Automatic Sync**: Notes from quotes appear in dispatch automatically
+- **Version Control**: Track note changes with timestamps
+- **Categorization**: Different types of notes (operational, client, special requests)
+- **Alerts**: Highlight critical notes or special requirements
+
+**Prerequisites:** Quote notes system, dispatch interface.
+
+**Technical Notes:**
+
+- Add quote notes to mission data model
+- Implement notes display in dispatch mission details
+- Create notes editing and management interface
+- Add notes search and filtering capabilities
+
+---
+
+### Story 22.12: Implement Comprehensive Testing Suite
+
+**As a** QA engineer,  
+**I want** comprehensive tests for all new features and fixes,  
+**So that** the enhanced system remains stable and reliable.
+
+**Related FRs:** Quality assurance requirements.
+
+**Acceptance Criteria:**
+
+**Given** the enhanced VTC ERP system,  
+**When** I run the test suite,  
+**Then** it validates:
+
+- **Round Trip Pricing**: Correct segment calculations vs ×2 multiplier
+- **Staffing Costs Display**: Accurate meal/hotel costs in quotes and dispatch
+- **Notes Modification**: Post-DRAFT note editing functionality
+- **Subcontracting System**: Complete workflow from suggestion to execution
+- **STAY Trip Type**: Multi-day pricing, UI, and invoice integration
+- **Dispatch Enhancements**: Staffing information display and notes visibility
+
+**And** the test coverage includes:
+
+- **Unit Tests**: Individual component and function testing
+- **Integration Tests**: API endpoints and data flow testing
+- **E2E Tests**: Complete user workflows from quote to invoice
+- **Performance Tests**: System performance with large datasets
+- **Regression Tests**: Ensure existing features remain functional
+
+**Prerequisites:** All previous stories in Epic 22.
+
+**Technical Notes:**
+
+- Create test cases for each new feature
+- Implement automated testing pipelines
+- Add performance benchmarks
+- Create regression test suites
+- Document testing procedures and results
+
+---
+
+### Story 22.13: Update Documentation and Training Materials
+
+**As a** product manager,  
+**I want** updated documentation reflecting all new features,  
+**So that** users can effectively utilize the enhanced VTC ERP system.
+
+**Related FRs:** Documentation and training requirements.
+
+**Acceptance Criteria:**
+
+**Given** the completed Epic 22 implementation,  
+**When** users access documentation,  
+**Then** it includes:
+
+- **User Guides**: Step-by-step instructions for new features
+- **API Documentation**: Updated endpoints for stays and subcontracting
+- **Training Materials**: Videos and tutorials for complex workflows
+- **Release Notes**: Detailed changelog with new capabilities
+- **Troubleshooting Guides**: Common issues and solutions
+
+**And** documentation covers:
+
+- **STAY Trip Type**: Complete guide for multi-day package creation
+- **Subcontracting System**: Workflow and management procedures
+- **Enhanced Pricing**: Round trip corrections and staffing transparency
+- **Notes Management**: Post-DRAFT editing and dispatch integration
+- **Best Practices**: Recommended workflows for different scenarios
+
+**Prerequisites:** All features in Epic 22 completed and tested.
+
+**Technical Notes:**
+
+- Update existing documentation files
+- Create new documentation for complex features
+- Record video tutorials for key workflows
+- Prepare training materials for different user roles
+- Update help system and in-app guidance
+
+---
+
+### Summary
+
+Epic 22 addresses critical system enhancements and fixes to make the VTC ERP fully functional:
+
+1. **Critical Fixes** (Stories 22.1-22.3): Round trip pricing, staffing costs display, notes modification
+2. **Subcontracting System** (Stories 22.4, 22.10): Complete workflow from management to execution
+3. **STAY Trip Type** (Stories 22.5-22.8): Multi-day package system with pricing and invoicing
+4. **Enhanced Dispatch** (Stories 22.9, 22.11): Staffing information and notes integration
+5. **Quality & Documentation** (Stories 22.12-22.13): Testing, documentation, and training
+
+This epic ensures the VTC ERP system provides complete functionality for complex travel packages, accurate pricing, efficient subcontracting, and comprehensive operational management.
+
+---
+
 ## Summary
 
 This document now defines the **21-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:

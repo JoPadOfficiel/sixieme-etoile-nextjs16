@@ -1,4 +1,4 @@
-generated: "2026-01-01T21:51:00+01:00"
+generated: "2026-01-03T17:26:00+01:00"
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -204,3 +204,18 @@ development_status:
   21-8-zone-based-cost-transparency-enhancement: done
   21-9-real-time-cost-calculation-validation: done
   epic-21-retrospective: optional
+  epic-22: backlog
+  22-1-fix-round-trip-pricing-calculation: backlog
+  22-2-display-staffing-costs-in-quote-creation: backlog
+  22-3-enable-quote-notes-modification-after-sending: backlog
+  22-4-implement-complete-subcontracting-system: backlog
+  22-5-add-stay-trip-type-data-model-api: backlog
+  22-6-implement-stay-trip-type-frontend-interface: backlog
+  22-7-implement-stay-trip-type-pricing-engine: backlog
+  22-8-implement-stay-trip-type-invoice-integration: backlog
+  22-9-enhance-dispatch-with-staffing-information-display: backlog
+  22-10-implement-advanced-subcontracting-workflow: backlog
+  22-11-fix-quote-notes-display-in-dispatch: backlog
+  22-12-implement-comprehensive-testing-suite: backlog
+  22-13-update-documentation-and-training-materials: backlog
+  epic-22-retrospective: optional

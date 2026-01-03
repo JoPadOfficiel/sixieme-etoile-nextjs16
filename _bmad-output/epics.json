@@ -756,5 +756,63 @@
         "title": "Real-Time Cost Calculation Validation"
       }
     ]
+  },
+  {
+    "epic": "22",
+    "title": "VTC ERP Complete System Enhancement & Critical Fixes",
+    "stories": [
+      {
+        "id": "22.1",
+        "title": "Fix Round Trip Pricing Calculation"
+      },
+      {
+        "id": "22.2",
+        "title": "Display Staffing Costs in Quote Creation"
+      },
+      {
+        "id": "22.3",
+        "title": "Enable Quote Notes Modification After Sending"
+      },
+      {
+        "id": "22.4",
+        "title": "Implement Complete Subcontracting System"
+      },
+      {
+        "id": "22.5",
+        "title": "Add STAY Trip Type - Data Model & API"
+      },
+      {
+        "id": "22.6",
+        "title": "Implement STAY Trip Type - Frontend Interface"
+      },
+      {
+        "id": "22.7",
+        "title": "Implement STAY Trip Type - Pricing Engine"
+      },
+      {
+        "id": "22.8",
+        "title": "Implement STAY Trip Type - Invoice Integration"
+      },
+      {
+        "id": "22.9",
+        "title": "Enhance Dispatch with Staffing Information Display"
+      },
+      {
+        "id": "22.10",
+        "title": "Implement Advanced Subcontracting Workflow"
+      },
+      {
+        "id": "22.11",
+        "title": "Fix Quote Notes Display in Dispatch"
+      },
+      {
+        "id": "22.12",
+        "title": "Implement Comprehensive Testing Suite"
+      },
+      {
+        "id": "22.13",
+        "title": "Update Documentation and Training Materials"
+      }
+    ]
   }
 ]

@@ -95,6 +95,9 @@ The MVP focuses on making core pricing, CRM and invoicing safe and usable for a 
 Post-MVP features build on the same engine:
 
 - Advanced excursion and multi-day program management (multi-stop itineraries, tours, festivals).
+- **STAY Trip Type**: Complete multi-day package system with configurable services per day (transfers, dispos, excursions), detailed staffing calculations, and invoice decomposition.
+- **Enhanced Subcontracting System**: Complete workflow from subcontractor management to mission execution with cost comparison and quality tracking.
+- **Critical Pricing Fixes**: Corrected round-trip pricing calculations and enhanced staffing cost transparency.
 - Multi-currency contracts and fixed contractual FX rates for certain partners.
 - Deeper reporting and analytics on profitability by client, grid, vehicle type and driver.
 - More sophisticated dispatch integration and near-real-time driver assignment.
