@@ -800,22 +800,50 @@ async function createPricingSettings() {
     data: {
       id: randomUUID(),
       organizationId: ORGANIZATION_ID,
+      // === BASE RATES ===
       baseRatePerKm: 1.80,
       baseRatePerHour: 45.0,
       defaultMarginPercent: 25.0,
       greenMarginThreshold: 20.0,
       orangeMarginThreshold: 5.0,
       minimumFare: 25.0,
+      
+      // === OPERATIONAL COSTS ===
       fuelConsumptionL100km: 8.5,
       fuelPricePerLiter: 1.80,
       tollCostPerKm: 0.12,
       wearCostPerKm: 0.08,
       driverHourlyCost: 30.0,
+      
+      // === ADVANCED PRICING SETTINGS (Story 17.1-17.4) ===
+      // Zone Resolution Strategy
+      zoneConflictStrategy: "MOST_EXPENSIVE",  // When quote overlaps multiple zones, use most expensive
+      zoneMultiplierAggregationStrategy: "MAX", // Take max multiplier between pickup and dropoff
+      
+      // Staffing Selection Policy
+      staffingSelectionPolicy: "PREFER_INTERNAL", // Prefer internal drivers over contractors
+      
+      // Staffing Cost Parameters
+      hotelCostPerNight: 85.0,        // Hotel cost for overnight trips
+      mealCostPerDay: 35.0,           // Meal allowance per day
+      driverOvernightPremium: 50.0,   // Premium for overnight driving
+      secondDriverHourlyRate: 30.0,   // Second driver cost (€30/hour)
+      relayDriverFixedFee: 150.0,     // Fixed fee for relay driver
+      
+      // === TRANSFER-TO-MAD THRESHOLDS (Story 18.11) ===
+      denseZoneSpeedThreshold: 15.0,  // km/h - below this triggers MAD consideration
+      autoSwitchToMAD: true,          // Auto-switch to MAD for dense zones
+      denseZoneCodes: ["PARIS_0", "PARIS_10", "LA_DEFENSE"], // Zones considered dense
+      minWaitingTimeForSeparateTransfers: 30,  // minutes
+      maxReturnDistanceKm: 50.0,      // Max distance for round-trip before separate transfers
+      roundTripBuffer: 15.0,          // Buffer percentage for round-trip pricing
+      autoSwitchRoundTripToMAD: true, // Auto-switch round-trips to MAD if complex
+      
       createdAt: new Date(),
       updatedAt: new Date(),
     },
   });
-  console.log("   ✅ Settings created");
+  console.log("   ✅ Settings created with advanced pricing configuration");
 }
 
 async function createAdvancedRates() {
@@ -921,41 +949,26 @@ async function createDrivers() {
 }
 
 async function createVehicles() {
-  console.log("\n🚙 Creating Vehicles...");
+  console.log("\n🚙 Creating Vehicles with TCO...");
   const vehicles = [
     // ========== FLOTTE SIXIÈME ÉTOILE - Base Bussy-Saint-Martin (5 véhicules réels) ==========
-    // Mercedes Vito 8 places - FS-843-TR (PTAC ~3.2t, permis B car ≤9 places et ≤3.5t)
-    // Coffre Vito 8pl: ~600L = environ 4-5 grosses valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "FS-843-TR", internalName: "Mercedes Vito 8pl", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    // Sprinter 17 places - GS-218-DL (PTAC ~5t, ≤17 places, permis D1)
-    // Soute Sprinter 17pl: ~800L = environ 10-12 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GS-218-DL", internalName: "Mercedes Sprinter 17pl", passengerCapacity: 17, luggageCapacity: 12, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
-    // Sprinter 20 places - GQ-430-XV (PTAC ~5.5t, >17 places = permis D obligatoire)
-    // Soute Sprinter 20pl: ~900L = environ 12-15 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GQ-430-XV", internalName: "Mercedes Sprinter 20pl", passengerCapacity: 20, luggageCapacity: 15, consumptionLPer100Km: 13.0, costPerKm: 0.90, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
-    // Sprinter VIP KAKO 7 places (PTAC ~5.5t = véhicule lourd, permis D obligatoire malgré 7 places)
-    // Soute VIP avec coffre approfondi: ~700L = environ 8-10 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KAKO-VIP", internalName: "Sprinter VIP KAKO 7pl", passengerCapacity: 7, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.95, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
-    // Iveco 30 places - HB-106-LG (PTAC ~7t, permis D)
-    // Grande soute Iveco: ~2000L = environ 25-30 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "HB-106-LG", internalName: "Iveco 30pl", passengerCapacity: 30, luggageCapacity: 28, consumptionLPer100Km: 18.0, costPerKm: 1.20, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "FS-843-TR", internalName: "Mercedes Vito 8pl", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 45000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GS-218-DL", internalName: "Mercedes Sprinter 17pl", passengerCapacity: 17, luggageCapacity: 12, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const, purchasePrice: 65000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 3500, annualInsuranceCost: 1800 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GQ-430-XV", internalName: "Mercedes Sprinter 20pl", passengerCapacity: 20, luggageCapacity: 15, consumptionLPer100Km: 13.0, costPerKm: 0.90, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 75000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 4000, annualInsuranceCost: 2000 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KAKO-VIP", internalName: "Sprinter VIP KAKO 7pl", passengerCapacity: 7, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.95, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 85000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 4500, annualInsuranceCost: 2200 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "HB-106-LG", internalName: "Iveco 30pl", passengerCapacity: 30, luggageCapacity: 28, consumptionLPer100Km: 18.0, costPerKm: 1.20, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 120000, expectedLifespanKm: 400000, expectedLifespanYears: 7, annualMaintenanceBudget: 6000, annualInsuranceCost: 3000 },
 
     // ========== VÉHICULES SUPPLÉMENTAIRES - Bases autour de Paris ==========
-    // Berlines légères (permis B, PTAC <3.5t) - Coffre ~500L = 3 grosses valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    // Vans légers (permis B, ≤9 places, PTAC <3.5t) - V-Class coffre ~600L = 5-6 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class 7pl", passengerCapacity: 7, luggageCapacity: 6, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "TU-678-VW", internalName: "Mercedes Vito 8pl #2", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    // Véhicules Luxe berlines (permis B) - Coffre ~400L = 2 grosses valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const },
-    // Minibus supplémentaires (permis D1, ≤17 places) - Soute ~700L = 10 valises
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const },
-    // Autocars grande capacité (permis D) - Grandes soutes ~4000-5000L
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, luggageCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "MN-234-OP", internalName: "Setra 60pl", passengerCapacity: 60, luggageCapacity: 60, consumptionLPer100Km: 28.0, costPerKm: 1.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 55000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2000, annualInsuranceCost: 1000 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 55000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2000, annualInsuranceCost: 1000 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 58000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2200, annualInsuranceCost: 1100 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class 7pl", passengerCapacity: 7, luggageCapacity: 6, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 50000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2300, annualInsuranceCost: 1150 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "TU-678-VW", internalName: "Mercedes Vito 8pl #2", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 45000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 95000, expectedLifespanKm: 250000, expectedLifespanYears: 5, annualMaintenanceBudget: 3500, annualInsuranceCost: 1800 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 110000, expectedLifespanKm: 250000, expectedLifespanYears: 5, annualMaintenanceBudget: 4000, annualInsuranceCost: 2000 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const, purchasePrice: 60000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 3200, annualInsuranceCost: 1600 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, luggageCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 180000, expectedLifespanKm: 450000, expectedLifespanYears: 8, annualMaintenanceBudget: 7000, annualInsuranceCost: 3500 },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "MN-234-OP", internalName: "Setra 60pl", passengerCapacity: 60, luggageCapacity: 60, consumptionLPer100Km: 28.0, costPerKm: 1.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 200000, expectedLifespanKm: 450000, expectedLifespanYears: 8, annualMaintenanceBudget: 8000, annualInsuranceCost: 4000 },
   ];
   for (const v of vehicles) {
     const created = await prisma.vehicle.create({
@@ -963,35 +976,34 @@ async function createVehicles() {
     });
     VEHICLE_IDS.push(created.id);
   }
-  console.log(`   ✅ ${vehicles.length} vehicles`);
+  console.log(`   ✅ ${vehicles.length} vehicles with TCO calculations`);
 }
 
 async function createContacts() {
-  console.log("\n📞 Creating Contacts...");
+  console.log("\n📞 Creating Contacts with Difficulty Scores...");
   const contacts = [
-    // === CLIENTS PARTICULIERS ===
-    { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const },
-    { type: "INDIVIDUAL" as const, displayName: "Jean Martin", firstName: "Jean", lastName: "Martin", email: "jean.martin@outlook.fr", phone: "+33 6 22 33 44 55", isPartner: false, defaultClientType: "PRIVATE" as const },
-    { type: "INDIVIDUAL" as const, displayName: "Sophie Bernard", firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@free.fr", phone: "+33 6 33 44 55 66", isPartner: false, defaultClientType: "PRIVATE" as const },
-    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const },
-    { type: "INDIVIDUAL" as const, displayName: "Claire Moreau", firstName: "Claire", lastName: "Moreau", email: "claire.moreau@orange.fr", phone: "+33 6 55 66 77 88", isPartner: false, defaultClientType: "PRIVATE" as const },
+    // === CLIENTS PARTICULIERS - Avec Difficulty Scores ===
+    { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 1 }, // Easy
+    { type: "INDIVIDUAL" as const, displayName: "Jean Martin", firstName: "Jean", lastName: "Martin", email: "jean.martin@outlook.fr", phone: "+33 6 22 33 44 55", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 }, // Normal
+    { type: "INDIVIDUAL" as const, displayName: "Sophie Bernard", firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@free.fr", phone: "+33 6 33 44 55 66", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 3 }, // Medium
+    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 4 }, // Hard
+    { type: "INDIVIDUAL" as const, displayName: "Claire Moreau", firstName: "Claire", lastName: "Moreau", email: "claire.moreau@orange.fr", phone: "+33 6 55 66 77 88", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 5 }, // Very Hard
     
     // === HÔTELS DE LUXE PARTENAIRES ===
-    { type: "BUSINESS" as const, displayName: "Hôtel Ritz Paris", companyName: "Hôtel Ritz Paris", email: "concierge@ritzparis.com", phone: "+33 1 43 16 30 30", vatNumber: "FR12345678901", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "Four Seasons George V", companyName: "Four Seasons George V", email: "concierge@fourseasons.com", phone: "+33 1 49 52 70 00", vatNumber: "FR23456789012", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "Le Bristol Paris", companyName: "Oetker Collection - Le Bristol", email: "concierge.paris@oetkercollection.com", phone: "+33 1 53 43 43 00", vatNumber: "FR33456789013", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "Hôtel Plaza Athénée", companyName: "Dorchester Collection - Plaza Athénée", email: "reservations.hpa@dorchestercollection.com", phone: "+33 1 53 67 66 65", vatNumber: "FR44567890124", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "BUSINESS" as const, displayName: "Hôtel Ritz Paris", companyName: "Hôtel Ritz Paris", email: "concierge@ritzparis.com", phone: "+33 1 43 16 30 30", vatNumber: "FR12345678901", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard - VIP clientèle
+    { type: "BUSINESS" as const, displayName: "Four Seasons George V", companyName: "Four Seasons George V", email: "concierge@fourseasons.com", phone: "+33 1 49 52 70 00", vatNumber: "FR23456789012", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard
+    { type: "BUSINESS" as const, displayName: "Le Bristol Paris", companyName: "Oetker Collection - Le Bristol", email: "concierge.paris@oetkercollection.com", phone: "+33 1 53 43 43 00", vatNumber: "FR33456789013", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium
+    { type: "BUSINESS" as const, displayName: "Hôtel Plaza Athénée", companyName: "Dorchester Collection - Plaza Athénée", email: "reservations.hpa@dorchestercollection.com", phone: "+33 1 53 67 66 65", vatNumber: "FR44567890124", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 5 }, // Very Hard - Luxury Concierge
     
     // === AGENCES DE VOYAGE RÉELLES (DMC - Destination Management Companies) ===
-    // Ces agences sont des réceptifs qui gèrent des groupes et VIP
-    { type: "AGENCY" as const, displayName: "PARISCityVISION", companyName: "PARISCityVISION SAS", email: "groups@pariscityvision.com", phone: "+33 1 44 55 61 00", vatNumber: "FR55678901235", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "AGENCY" as const, displayName: "France Tourisme", companyName: "France Tourisme DMC", email: "reservation@francetourisme.fr", phone: "+33 1 53 10 35 35", vatNumber: "FR66789012346", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "AGENCY" as const, displayName: "Euroscope Paris", companyName: "Euroscope International", email: "transport@euroscope.fr", phone: "+33 1 45 26 26 26", vatNumber: "FR77890123457", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "AGENCY" as const, displayName: "PARISCityVISION", companyName: "PARISCityVISION SAS", email: "groups@pariscityvision.com", phone: "+33 1 44 55 61 00", vatNumber: "FR55678901235", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium - Groupes
+    { type: "AGENCY" as const, displayName: "France Tourisme", companyName: "France Tourisme DMC", email: "reservation@francetourisme.fr", phone: "+33 1 53 10 35 35", vatNumber: "FR66789012346", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
+    { type: "AGENCY" as const, displayName: "Euroscope Paris", companyName: "Euroscope International", email: "transport@euroscope.fr", phone: "+33 1 45 26 26 26", vatNumber: "FR77890123457", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
     
     // === ENTREPRISES CORPORATE ===
-    { type: "BUSINESS" as const, displayName: "LVMH Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "travel.services@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "L'Oréal Corporate", companyName: "L'Oréal SA", email: "corporate.travel@loreal.com", phone: "+33 1 47 56 70 00", vatNumber: "FR99012345679", isPartner: true, defaultClientType: "PARTNER" as const },
-    { type: "BUSINESS" as const, displayName: "BNP Paribas Events", companyName: "BNP Paribas SA", email: "events.transport@bnpparibas.com", phone: "+33 1 40 14 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const },
+    { type: "BUSINESS" as const, displayName: "LVMH Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "travel.services@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard - Exigences élevées
+    { type: "BUSINESS" as const, displayName: "L'Oréal Corporate", companyName: "L'Oréal SA", email: "corporate.travel@loreal.com", phone: "+33 1 47 56 70 00", vatNumber: "FR99012345679", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium
+    { type: "BUSINESS" as const, displayName: "BNP Paribas Events", companyName: "BNP Paribas SA", email: "events.transport@bnpparibas.com", phone: "+33 1 40 14 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
   ];
   for (const c of contacts) {
     const created = await prisma.contact.create({
@@ -999,7 +1011,7 @@ async function createContacts() {
     });
     CONTACT_IDS[c.displayName] = created.id;
   }
-  console.log(`   ✅ ${contacts.length} contacts`);
+  console.log(`   ✅ ${contacts.length} contacts with difficulty scores`);
 }
 
 async function createPartnerContracts() {
