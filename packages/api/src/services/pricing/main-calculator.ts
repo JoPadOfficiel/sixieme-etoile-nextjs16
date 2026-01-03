@@ -219,8 +219,9 @@ export function calculatePrice(
 	}
 	
 	// Calculate segments (shadow calculation)
+	// Story 21.6: Use vehicle selection input if available for accurate positioning costs
 	const tripAnalysis = calculateShadowSegments(
-		null,
+		context.vehicleSelectionInput ?? null,
 		distanceKm,
 		durationMinutes,
 		pricingSettings,
@@ -236,14 +237,23 @@ export function calculatePrice(
 		pickupAtDate,
 	);
 	
-	// Story 21.6: Calculate positioning costs
-	tripAnalysis.positioningCosts = calculatePositioningCosts(
-		request.tripType,
-		tripAnalysis.segments,
-		request.durationHours,
-		pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
-		pricingSettings.baseRatePerHour,
-	);
+	// Story 21.6: Calculate positioning costs (with estimation when no vehicle selected)
+	tripAnalysis.positioningCosts = calculatePositioningCosts({
+		tripType: request.tripType,
+		segments: tripAnalysis.segments,
+		serviceDistanceKm: distanceKm,
+		serviceDurationMinutes: durationMinutes,
+		pricingSettings,
+		durationHours: request.durationHours,
+		includedHours: pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
+		availabilityRatePerHour: pricingSettings.baseRatePerHour,
+	});
+	
+	// Story 21.6: Add positioning costs to internal cost
+	// Internal cost = service cost + approach cost + empty return cost
+	if (tripAnalysis.positioningCosts) {
+		internalCost += tripAnalysis.positioningCosts.totalPositioningCost;
+	}
 	
 	// Get profitability thresholds
 	const thresholds = getThresholdsFromSettings(pricingSettings);
@@ -478,8 +488,9 @@ export async function calculatePriceWithRealTolls(
 	}
 	
 	// Calculate segments (shadow calculation)
+	// Story 21.6: Use vehicle selection input if available for accurate positioning costs
 	const tripAnalysis = calculateShadowSegments(
-		null,
+		context.vehicleSelectionInput ?? null,
 		distanceKm,
 		durationMinutes,
 		pricingSettings,
@@ -502,14 +513,23 @@ export async function calculatePriceWithRealTolls(
 		pickupAtDate,
 	);
 	
-	// Story 21.6: Calculate positioning costs
-	tripAnalysis.positioningCosts = calculatePositioningCosts(
-		request.tripType,
-		tripAnalysis.segments,
-		request.durationHours,
-		pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
-		pricingSettings.baseRatePerHour,
-	);
+	// Story 21.6: Calculate positioning costs (with estimation when no vehicle selected)
+	tripAnalysis.positioningCosts = calculatePositioningCosts({
+		tripType: request.tripType,
+		segments: tripAnalysis.segments,
+		serviceDistanceKm: distanceKm,
+		serviceDurationMinutes: durationMinutes,
+		pricingSettings,
+		durationHours: request.durationHours,
+		includedHours: pricingSettings.dispoIncludedKmPerHour ? 4 : undefined,
+		availabilityRatePerHour: pricingSettings.baseRatePerHour,
+	});
+	
+	// Story 21.6: Add positioning costs to internal cost
+	// Internal cost = service cost + approach cost + empty return cost
+	if (tripAnalysis.positioningCosts) {
+		internalCost += tripAnalysis.positioningCosts.totalPositioningCost;
+	}
 	
 	// Get profitability thresholds
 	const thresholds = getThresholdsFromSettings(pricingSettings);

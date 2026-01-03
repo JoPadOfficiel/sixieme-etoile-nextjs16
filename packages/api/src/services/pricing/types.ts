@@ -359,6 +359,8 @@ export interface OrganizationPricingSettings {
 	transitDiscountEnabled?: boolean;
 	transitDiscountPercent?: number;
 	transitZoneCodes?: string[];
+	// Story 21.6: Empty return cost percentage (100 = full cost, 70 = 70%, etc.)
+	emptyReturnCostPercent?: number;
 }
 
 // ============================================================================
@@ -1231,4 +1233,6 @@ export interface PricingEngineContext {
 	advancedRates?: AdvancedRateData[];
 	seasonalMultipliers?: SeasonalMultiplierData[];
 	vehicleCategory?: VehicleCategoryInfo;
+	// Story 21.6: Vehicle selection result for accurate positioning costs
+	vehicleSelectionInput?: ShadowCalculationInput;
 }

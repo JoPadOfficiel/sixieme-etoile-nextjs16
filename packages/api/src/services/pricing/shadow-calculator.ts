@@ -406,27 +406,54 @@ export function calculateEstimatedEndAt(
 // ============================================================================
 
 /**
+ * Options for positioning costs calculation
+ */
+export interface PositioningCostsOptions {
+	tripType: TripType;
+	segments: TripAnalysis["segments"];
+	/** Service segment distance for estimation when no vehicle selected */
+	serviceDistanceKm?: number;
+	/** Service segment duration for estimation when no vehicle selected */
+	serviceDurationMinutes?: number;
+	/** Pricing settings for cost calculation */
+	pricingSettings?: OrganizationPricingSettings;
+	/** Total trip duration in hours (for dispo) */
+	durationHours?: number;
+	/** Included hours in dispo package */
+	includedHours?: number;
+	/** Hourly rate for availability fee */
+	availabilityRatePerHour?: number;
+}
+
+/**
  * Calculate positioning costs for a trip (Story 21.6)
  * 
  * This function determines and calculates:
  * - Approach fee: Cost of vehicle traveling from base to pickup
- * - Empty return: Cost of vehicle returning to base after dropoff
+ * - Empty return: Cost of vehicle returning to base after dropoff (estimated if no vehicle)
  * - Availability fee: Extra waiting time cost for dispo trips
  * 
- * @param tripType - Type of trip (transfer, excursion, dispo)
- * @param segments - Trip segments from shadow calculation
- * @param durationHours - Total trip duration in hours (for dispo)
- * @param includedHours - Included hours in dispo package
- * @param availabilityRatePerHour - Hourly rate for availability fee
+ * When no vehicle is selected (quote creation stage), the empty return is estimated
+ * based on the service distance and the emptyReturnCostPercent setting.
+ * 
+ * @param options - Positioning costs calculation options
  * @returns PositioningCosts object with all positioning cost details
  */
-export function calculatePositioningCosts(
-	tripType: TripType,
-	segments: TripAnalysis["segments"],
-	durationHours?: number,
-	includedHours?: number,
-	availabilityRatePerHour?: number,
-): PositioningCosts {
+export function calculatePositioningCosts(options: PositioningCostsOptions): PositioningCosts {
+	const {
+		tripType,
+		segments,
+		serviceDistanceKm = 0,
+		serviceDurationMinutes = 0,
+		pricingSettings,
+		durationHours,
+		includedHours,
+		availabilityRatePerHour,
+	} = options;
+
+	// Get empty return cost percentage (default 100%)
+	const emptyReturnCostPercent = pricingSettings?.emptyReturnCostPercent ?? 100;
+
 	// Approach fee - from segment A (approach) if available
 	const approachFee: PositioningCostItem = segments.approach
 		? {
@@ -445,22 +472,32 @@ export function calculatePositioningCosts(
 			};
 
 	// Empty return - from segment C (return) if available
-	// All trip types require empty return (vehicle must return to base)
-	const emptyReturn: PositioningCostItem = segments.return
-		? {
-				required: true,
-				distanceKm: segments.return.distanceKm,
-				durationMinutes: segments.return.durationMinutes,
-				cost: segments.return.cost.total,
-				reason: getEmptyReturnReason(tripType),
-			}
-		: {
-				required: tripType !== "dispo", // Dispo may not need explicit return if staying on-site
-				distanceKm: 0,
-				durationMinutes: 0,
-				cost: 0,
-				reason: "No vehicle selected - return cost estimated in base price",
-			};
+	// Note: We do NOT estimate empty return when no vehicle is selected because:
+	// - The return distance depends on the vehicle's base location (unknown at quote stage)
+	// - Estimating with service distance would be incorrect (return ≠ service trip)
+	// - The actual cost will be calculated at dispatch when a vehicle is assigned
+	let emptyReturn: PositioningCostItem;
+	
+	if (segments.return) {
+		// Vehicle selected - use actual return segment with cost percentage applied
+		const adjustedCost = Math.round(segments.return.cost.total * (emptyReturnCostPercent / 100) * 100) / 100;
+		emptyReturn = {
+			required: true,
+			distanceKm: segments.return.distanceKm,
+			durationMinutes: segments.return.durationMinutes,
+			cost: adjustedCost,
+			reason: `${getEmptyReturnReason(tripType)} (${emptyReturnCostPercent}% of operational cost)`,
+		};
+	} else {
+		// No vehicle selected - cannot estimate return cost (depends on vehicle base location)
+		emptyReturn = {
+			required: tripType !== "dispo",
+			distanceKm: 0,
+			durationMinutes: 0,
+			cost: 0,
+			reason: "Retour à vide sera calculé au dispatch (dépend de la base du véhicule)",
+		};
+	}
 
 	// Availability fee - only for dispo trips with extra hours
 	let availabilityFee: AvailabilityFeeItem | null = null;

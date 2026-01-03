@@ -3240,7 +3240,9 @@
 					"secondDriverHourlyRate": "Second Driver Hourly Rate (€/h)",
 					"secondDriverHourlyRateHelp": "Hourly cost for second driver (double crew/relay) (default: 25€)",
 					"relayDriverFixedFee": "Relay Driver Fixed Fee (€)",
-					"relayDriverFixedFeeHelp": "Fixed fee for arranging a relay driver (default: 150€)"
+					"relayDriverFixedFeeHelp": "Fixed fee for arranging a relay driver (default: 150€)",
+					"emptyReturnCostPercent": "Empty Return Cost (%)",
+					"emptyReturnCostPercentHelp": "Percentage of operational cost to charge for empty return trips (driver returning to base without client). 100% = full cost, 70% = 70% of cost."
 				},
 				"roundingRules": {
 					"none": "No rounding",

@@ -1312,6 +1312,8 @@ function CostParametersSection() {
 		driverOvernightPremium: data?.driverOvernightPremium ?? null,
 		secondDriverHourlyRate: data?.secondDriverHourlyRate ?? null,
 		relayDriverFixedFee: data?.relayDriverFixedFee ?? null,
+		// Story 21.6: Empty return cost percentage
+		emptyReturnCostPercent: data?.emptyReturnCostPercent ?? 100,
 	};
 
 	const [formData, setFormData] = useState<PricingSettingsFormData>(defaultFormData);
@@ -1604,6 +1606,28 @@ function CostParametersSection() {
 										}))
 									}
 								/>
+							</div>
+							{/* Story 21.6: Empty return cost percentage */}
+							<div className="space-y-2">
+								<Label htmlFor="emptyReturnCostPercent">{t("fleet.settings.costParameters.fields.emptyReturnCostPercent")}</Label>
+								<Input
+									id="emptyReturnCostPercent"
+									type="number"
+									step="1"
+									min={0}
+									max={100}
+									placeholder="100"
+									value={formData.emptyReturnCostPercent ?? ""}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											emptyReturnCostPercent: e.target.value ? Number.parseInt(e.target.value, 10) : null,
+										}))
+									}
+								/>
+								<p className="text-xs text-muted-foreground">
+									{t("fleet.settings.costParameters.fields.emptyReturnCostPercentHelp")}
+								</p>
 							</div>
 						</div>
 					</div>

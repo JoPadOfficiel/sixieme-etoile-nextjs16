@@ -3236,16 +3236,18 @@
 					"mealCostPerDay": "Coût repas par jour (€)",
 					"mealCostPerDayHelp": "Indemnité repas journalière du chauffeur (défaut: 30€)",
 					"driverOvernightPremium": "Prime de nuit chauffeur (€)",
-					"driverOvernightPremiumHelp": "Prime versée au chauffeur pour les missions avec nuitée (défaut: 50€)",
-					"secondDriverHourlyRate": "Tarif horaire 2ème chauffeur (€/h)",
-					"secondDriverHourlyRateHelp": "Coût horaire du second chauffeur (double équipage/relais) (défaut: 25€)",
+					"driverOvernightPremiumHelp": "Prime versée au chauffeur pour les missions de nuit (défaut: 50€)",
+					"secondDriverHourlyRate": "Taux horaire second chauffeur (€/h)",
+					"secondDriverHourlyRateHelp": "Coût horaire pour un second chauffeur (double équipage/relais) (défaut: 25€)",
 					"relayDriverFixedFee": "Frais fixes chauffeur relais (€)",
-					"relayDriverFixedFeeHelp": "Frais fixes pour l'organisation d'un chauffeur relais (défaut: 150€)"
+					"relayDriverFixedFeeHelp": "Frais fixes pour organiser un chauffeur relais (défaut: 150€)",
+					"emptyReturnCostPercent": "Coût retour à vide (%)",
+					"emptyReturnCostPercentHelp": "Pourcentage du coût opérationnel à facturer pour les trajets retour à vide (chauffeur retournant à la base sans client). 100% = coût complet, 70% = 70% du coût."
 				},
 				"roundingRules": {
 					"none": "Pas d'arrondi",
-					"NEAREST_5": "Au 5€ le plus proche",
-					"NEAREST_10": "Au 10€ le plus proche",
+					"NEAREST_5": "Arrondi au 5€ le plus proche",
+					"NEAREST_10": "Arrondi au 10€ le plus proche",
 					"CEIL_5": "Arrondi supérieur à 5€",
 					"CEIL_10": "Arrondi supérieur à 10€"
 				},

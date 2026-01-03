@@ -46,6 +46,8 @@ import {
 	type VehicleCategoryInfo,
 	type ZoneRouteAssignment,
 	type VehicleSelectionInfo,
+	type ShadowCalculationInput,
+	buildShadowInputFromVehicleSelection,
 } from "../../services/pricing-engine";
 import { getFuelPrice, type FuelPriceResult } from "../../services/fuel-price-service";
 import {
@@ -684,19 +686,24 @@ export const pricingCalculateRouter = new Hono()
 			};
 
 			// Load zones, pricing settings, multipliers, and vehicles (Story 4.3 + 4.5)
+			// Story 21.6: Always load vehicles to enable automatic vehicle pre-selection for accurate positioning costs
+			// This ensures empty return cost is calculated correctly based on actual vehicle base location
+			const shouldSelectVehicle = data.enableVehicleSelection !== false; // Default to true unless explicitly disabled
 			const [zones, pricingSettings, advancedRates, seasonalMultipliers, vehicles, googleMapsApiKey] = await Promise.all([
 				loadZones(organizationId),
 				loadPricingSettings(organizationId, routeCoordinates),
 				loadAdvancedRates(organizationId),
 				loadSeasonalMultipliers(organizationId),
-				data.enableVehicleSelection ? loadVehiclesForSelection(organizationId) : Promise.resolve([]),
-				data.enableVehicleSelection ? loadGoogleMapsApiKey(organizationId) : Promise.resolve(undefined),
+				shouldSelectVehicle ? loadVehiclesForSelection(organizationId) : Promise.resolve([]),
+				shouldSelectVehicle ? loadGoogleMapsApiKey(organizationId) : Promise.resolve(undefined),
 			]);
 
 			// Story 4.5: Vehicle selection
 			let vehicleSelectionInfo: VehicleSelectionInfo | undefined;
 			let effectiveDistanceKm = data.estimatedDistanceKm;
 			let effectiveDurationMinutes = data.estimatedDurationMinutes;
+			// Story 21.6: Shadow calculation input for accurate positioning costs
+			let vehicleSelectionInputForPricing: ShadowCalculationInput | undefined;
 
 			// Story 16.8: For DISPO, use pickup as dropoff if not provided (for vehicle selection)
 			const effectiveDropoff = data.dropoff ?? data.pickup;
@@ -706,7 +713,9 @@ export const pricingCalculateRouter = new Hono()
 				effectiveDurationMinutes = data.durationHours * 60;
 			}
 
-			if (data.enableVehicleSelection && vehicles.length > 0 && data.dropoff) {
+			// Story 21.6: Always perform vehicle selection when vehicles are available
+			// This ensures accurate positioning costs (approach + empty return) based on actual vehicle base
+			if (shouldSelectVehicle && vehicles.length > 0 && data.dropoff) {
 				const selectionInput: VehicleSelectionInput = {
 					organizationId,
 					pickup: data.pickup,
@@ -746,10 +755,24 @@ export const pricingCalculateRouter = new Hono()
 
 				// Use routing data from selected vehicle if available
 				if (selectionResult.selectedCandidate) {
+					const candidate = selectionResult.selectedCandidate;
 					// Use total distance/duration from routing (includes approach + service + return)
 					// For pricing, we use service segment only (pickup → dropoff)
-					effectiveDistanceKm = selectionResult.selectedCandidate.serviceDistanceKm;
-					effectiveDurationMinutes = selectionResult.selectedCandidate.serviceDurationMinutes;
+					effectiveDistanceKm = candidate.serviceDistanceKm;
+					effectiveDurationMinutes = candidate.serviceDurationMinutes;
+					
+					// Story 21.6: Build shadow calculation input with actual routing data
+					// This enables accurate positioning costs (approach + empty return)
+					vehicleSelectionInputForPricing = {
+						approachDistanceKm: candidate.approachDistanceKm,
+						approachDurationMinutes: candidate.approachDurationMinutes,
+						serviceDistanceKm: candidate.serviceDistanceKm,
+						serviceDurationMinutes: candidate.serviceDurationMinutes,
+						returnDistanceKm: candidate.returnDistanceKm,
+						returnDurationMinutes: candidate.returnDurationMinutes,
+						routingSource: candidate.routingSource,
+						vehicleSelection: vehicleSelectionInfo,
+					};
 				}
 			}
 
@@ -816,6 +839,8 @@ export const pricingCalculateRouter = new Hono()
 					// Story 19.2: Regulatory category for RSE compliance (LIGHT = no RSE, HEAVY = RSE applies)
 					regulatoryCategory: vehicleCategory.regulatoryCategory as "LIGHT" | "HEAVY" | null,
 				} : undefined,
+				// Story 21.6: Pass vehicle selection input for accurate positioning costs
+				vehicleSelectionInput: vehicleSelectionInputForPricing,
 			});
 
 			// Story 4.5: Add vehicle selection info to tripAnalysis

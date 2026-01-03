@@ -120,6 +120,7 @@ export {
 	calculateEstimatedEndAt,
 	calculateTimeAnalysis,
 	calculatePositioningCosts,
+	type PositioningCostsOptions,
 } from "./shadow-calculator";
 
 // ============================================================================

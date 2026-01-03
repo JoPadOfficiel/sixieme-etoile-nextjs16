@@ -1253,6 +1253,11 @@ model OrganizationPricingSettings {
   // Minimum idle days to trigger comparison (default: 1)
   minIdleDaysForComparison Int?     @default(1)
 
+  // Story 21.6: Empty return cost percentage
+  // Percentage of operational cost to charge for empty return (no client = reduced cost)
+  // 100 = full cost, 70 = 70% of cost, etc. Default: 100%
+  emptyReturnCostPercent Int? @default(100)
+
   // Story 18.10: Hierarchical pricing algorithm configuration
   // JSON config: { enabled: boolean, skipLevel1?: boolean, skipLevel2?: boolean, skipLevel3?: boolean, centralZoneCodes?: string[] }
   hierarchicalPricingConfig Json?

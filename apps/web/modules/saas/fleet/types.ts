@@ -491,6 +491,8 @@ export interface OrganizationPricingSettings {
 	driverOvernightPremium: number | null;
 	secondDriverHourlyRate: number | null;
 	relayDriverFixedFee: number | null;
+	// Story 21.6: Empty return cost percentage
+	emptyReturnCostPercent: number | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -523,6 +525,8 @@ export interface PricingSettingsFormData {
 	driverOvernightPremium: number | null;
 	secondDriverHourlyRate: number | null;
 	relayDriverFixedFee: number | null;
+	// Story 21.6: Empty return cost percentage
+	emptyReturnCostPercent: number | null;
 }
 
 export type ConfigHealthStatus = "ok" | "warning" | "error";
