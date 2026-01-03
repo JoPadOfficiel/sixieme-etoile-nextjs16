@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
 import { DispatchBadges } from "./DispatchBadges";
+import { SubcontractedBadge } from "./SubcontractedBadge";
 import type { MissionListItem } from "../types";
 
 /**
@@ -72,11 +73,17 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 					</div>
 				</div>
 				{/* Badges */}
-				<DispatchBadges
-					profitability={mission.profitability}
-					compliance={mission.compliance}
-					assignment={mission.assignment}
-				/>
+				<div className="flex items-center gap-1">
+					{/* Story 22.4: Subcontracted badge */}
+					{mission.isSubcontracted && mission.subcontractor && (
+						<SubcontractedBadge subcontractor={mission.subcontractor} />
+					)}
+					<DispatchBadges
+						profitability={mission.profitability}
+						compliance={mission.compliance}
+						assignment={mission.assignment}
+					/>
+				</div>
 			</div>
 
 			{/* Row 2: Route (pickup → dropoff) */}

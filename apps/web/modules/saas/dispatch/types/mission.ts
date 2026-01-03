@@ -60,6 +60,19 @@ export interface MissionListItem {
 	assignment: MissionAssignment | null;
 	profitability: MissionProfitability;
 	compliance: MissionCompliance;
+	// Story 22.4: Subcontracting fields
+	isSubcontracted: boolean;
+	subcontractor: MissionSubcontractor | null;
+}
+
+// Story 22.4: Subcontractor info for subcontracted missions
+export interface MissionSubcontractor {
+	id: string;
+	companyName: string;
+	contactName: string | null;
+	phone: string | null;
+	agreedPrice: number;
+	subcontractedAt: string;
 }
 
 export interface MissionDetail extends MissionListItem {

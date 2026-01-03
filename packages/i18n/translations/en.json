@@ -3473,7 +3473,9 @@
 			"subcontracted": "Subcontracted",
 			"subcontractedAll": "All",
 			"subcontractedOnly": "Subcontracted only",
-			"internalOnly": "Internal only"
+			"internalOnly": "Internal only",
+			"subcontractedDetails": "Subcontracting Details",
+			"agreedPrice": "agreed price"
 		},
 		"badges": {
 			"profitability": {

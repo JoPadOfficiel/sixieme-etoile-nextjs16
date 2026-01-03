@@ -3470,10 +3470,12 @@
 			"partner": "Partenaires",
 			"private": "Privés",
 			"clear": "Effacer",
-			"subcontracted": "Sous-traitance",
+			"subcontracted": "Sous-traité",
 			"subcontractedAll": "Tous",
 			"subcontractedOnly": "Sous-traités uniquement",
-			"internalOnly": "Internes uniquement"
+			"internalOnly": "Internes uniquement",
+			"subcontractedDetails": "Détails de sous-traitance",
+			"agreedPrice": "prix convenu"
 		},
 		"badges": {
 			"profitability": {
