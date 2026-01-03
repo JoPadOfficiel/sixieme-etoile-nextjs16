@@ -2562,6 +2562,7 @@
 				"duration": "Durée",
 				"internalCost": "Coût interne",
 				"margin": "Marge",
+				"staffingCost": "Coûts staffing",
 				"suggestedPrice": "Prix suggéré",
 				"grossMargin": "Marge brute",
 				"from": "depuis",

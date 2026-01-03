@@ -24,6 +24,7 @@ import {
   RefreshCwIcon,
   RouteIcon,
   TruckIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
@@ -193,7 +194,13 @@ export function TripTransparencyPanel({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Story 22.2: Conditional grid - 5 columns when staffing costs exist */}
+      <div className={cn(
+        "grid gap-3",
+        tripAnalysis.compliancePlan?.additionalCost && tripAnalysis.compliancePlan.additionalCost > 0
+          ? "grid-cols-2 lg:grid-cols-5"
+          : "grid-cols-2 lg:grid-cols-4"
+      )}>
         <SummaryCard
           icon={GaugeIcon}
           label={t("quotes.create.tripTransparency.distance")}
@@ -215,6 +222,19 @@ export function TripTransparencyPanel({
           value={`${marginPercent.toFixed(1)}%`}
           extra={<ProfitabilityIndicator marginPercent={marginPercent} compact />}
         />
+        {/* Story 22.2: Staffing Cost Summary Card - only shown when staffing costs exist */}
+        {tripAnalysis.compliancePlan?.additionalCost && tripAnalysis.compliancePlan.additionalCost > 0 && (
+          <SummaryCard
+            icon={UsersIcon}
+            label={t("quotes.create.tripTransparency.staffingCost")}
+            value={formatPrice(tripAnalysis.compliancePlan.additionalCost)}
+            extra={
+              <span className="text-xs text-blue-600 dark:text-blue-400">
+                {tripAnalysis.compliancePlan.adjustedSchedule.driversRequired} {t("quotes.staffing.drivers")}
+              </span>
+            }
+          />
+        )}
       </div>
 
       {/* Tabs for detailed breakdown */}
@@ -342,6 +362,10 @@ export function TripTransparencyPanel({
                     )}
                   </div>
                 )}
+
+                {/* Story 22.2: Staffing Costs Section in Overview Tab */}
+                {/* Display staffing costs prominently when RSE compliance requires additional staffing */}
+                <StaffingCostsSection compliancePlan={tripAnalysis.compliancePlan} />
 
                 {/* Story 21.3: Time Analysis Section */}
                 <TimeAnalysisSection timeAnalysis={tripAnalysis.timeAnalysis} />
