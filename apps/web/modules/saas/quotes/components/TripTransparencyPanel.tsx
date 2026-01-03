@@ -516,6 +516,44 @@ export function TripTransparencyPanel({
                         description={t("quotes.create.tripTransparency.segments.returnDesc")}
                       />
                     )}
+                    
+                    {/* Story 22.1: Round trip return leg segments */}
+                    {tripAnalysis.isRoundTrip && (
+                      <>
+                        {/* Separator for round trip segments */}
+                        <TableRow className="bg-blue-50 dark:bg-blue-950/30">
+                          <TableCell colSpan={4} className="py-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-400">
+                              <RefreshCwIcon className="size-4" />
+                              {t("quotes.create.tripTransparency.segments.returnLeg")}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        
+                        {tripAnalysis.segments.returnApproach && (
+                          <SegmentRow
+                            segment={tripAnalysis.segments.returnApproach}
+                            label={t("quotes.create.tripTransparency.segments.returnApproach")}
+                            description={t("quotes.create.tripTransparency.segments.returnApproachDesc")}
+                          />
+                        )}
+                        {tripAnalysis.segments.returnService && (
+                          <SegmentRow
+                            segment={tripAnalysis.segments.returnService}
+                            label={t("quotes.create.tripTransparency.segments.returnService")}
+                            description={t("quotes.create.tripTransparency.segments.returnServiceDesc")}
+                            isMain
+                          />
+                        )}
+                        {tripAnalysis.segments.finalReturn && (
+                          <SegmentRow
+                            segment={tripAnalysis.segments.finalReturn}
+                            label={t("quotes.create.tripTransparency.segments.finalReturn")}
+                            description={t("quotes.create.tripTransparency.segments.finalReturnDesc")}
+                          />
+                        )}
+                      </>
+                    )}
                     {/* Total Row */}
                     <TableRow className="font-medium bg-muted/50">
                       <TableCell>

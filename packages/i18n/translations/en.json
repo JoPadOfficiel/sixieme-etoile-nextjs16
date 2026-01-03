@@ -2584,7 +2584,14 @@
 					"return": "Return",
 					"returnDesc": "Dropoff → Base (deadhead)",
 					"notAvailable": "Segment data not available",
-					"notAvailableDesc": "Segment details will be displayed once route calculation is complete"
+					"notAvailableDesc": "Segment details will be displayed once route calculation is complete",
+					"returnLeg": "Return Trip (client)",
+					"returnApproach": "Return Repositioning",
+					"returnApproachDesc": "Base → Pickup (repositioning for return)",
+					"returnService": "Return Service",
+					"returnServiceDesc": "Dropoff → Pickup (client return trip)",
+					"finalReturn": "Final Return",
+					"finalReturnDesc": "Pickup → Base (final deadhead)"
 				},
 				"routingSource": "Routing source",
 				"vehicleSelection": "Vehicle Selection",

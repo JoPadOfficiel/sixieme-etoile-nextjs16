@@ -806,7 +806,14 @@ export interface TripAnalysis {
     approach: SegmentAnalysis | null;
     service: SegmentAnalysis;
     return: SegmentAnalysis | null;
+    // Story 22.1: Round trip return leg segments
+    returnApproach?: SegmentAnalysis | null;
+    returnService?: SegmentAnalysis | null;
+    finalReturn?: SegmentAnalysis | null;
   };
+  // Story 22.1: Round trip flags
+  isRoundTrip?: boolean;
+  roundTripMode?: "WAIT_ON_SITE" | "RETURN_BETWEEN_LEGS";
   // Story 16.7: Excursion legs for multi-stop excursions
   excursionLegs?: ExcursionLeg[];
   isMultiDay?: boolean;

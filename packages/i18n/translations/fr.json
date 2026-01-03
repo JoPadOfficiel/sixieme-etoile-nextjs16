@@ -2584,7 +2584,14 @@
 					"return": "Retour",
 					"returnDesc": "Destination → Base (à vide)",
 					"notAvailable": "Données de segments non disponibles",
-					"notAvailableDesc": "Les détails des segments seront affichés une fois le calcul d'itinéraire terminé"
+					"notAvailableDesc": "Les détails des segments seront affichés une fois le calcul d'itinéraire terminé",
+					"returnLeg": "Trajet retour (client)",
+					"returnApproach": "Repositionnement retour",
+					"returnApproachDesc": "Base → Prise en charge (repositionnement pour retour)",
+					"returnService": "Service retour",
+					"returnServiceDesc": "Destination → Prise en charge (trajet retour client)",
+					"finalReturn": "Retour final",
+					"finalReturnDesc": "Prise en charge → Base (retour à vide final)"
 				},
 				"routingSource": "Source de l'itinéraire",
 				"vehicleSelection": "Sélection du véhicule",

@@ -113,15 +113,13 @@ export function PricingSegmentsSection({
 }: PricingSegmentsSectionProps) {
   const t = useTranslations();
 
-  // Don't render if no zone segments or only one zone
+  // Don't render if no zone segments at all
   if (!zoneSegments || zoneSegments.length === 0) {
     return null;
   }
 
-  // Don't render if only one zone (single-zone trip)
-  if (zoneSegments.length === 1 && routeSegmentation?.zonesTraversed?.length === 1) {
-    return null;
-  }
+  // Story 22.1: Always show zone information for transparency, even with single zone
+  // This helps users understand which zone applies to their trip
 
   const segmentationMethod = routeSegmentation?.segmentationMethod ?? "FALLBACK";
   const zonesTraversed = routeSegmentation?.zonesTraversed ?? zoneSegments.map(s => s.zoneCode);

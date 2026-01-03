@@ -14,6 +14,7 @@ import { validator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ZoneData } from "../../lib/geo-utils";
+import { findZonesForPoint, resolveZoneConflict } from "../../lib/geo-utils";
 import { withTenantFilter } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import {
@@ -470,6 +471,8 @@ async function loadPricingSettings(
 
 	if (settings) {
 		return {
+			// Story 19.2: Include organizationId for RSE compliance check
+			organizationId,
 			baseRatePerKm: Number(settings.baseRatePerKm),
 			baseRatePerHour: Number(settings.baseRatePerHour),
 			targetMarginPercent: Number(settings.defaultMarginPercent),
@@ -496,11 +499,21 @@ async function loadPricingSettings(
 			maxReturnDistanceKm: settings.maxReturnDistanceKm ? Number(settings.maxReturnDistanceKm) : undefined,
 			roundTripBuffer: settings.roundTripBuffer ?? undefined,
 			autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
+			// Story 22.1: Staffing cost parameters from organization settings
+			staffingCostParameters: {
+				driverHourlyCost: settings.secondDriverHourlyRate ? Number(settings.secondDriverHourlyRate) : 25,
+				hotelCostPerNight: settings.hotelCostPerNight ? Number(settings.hotelCostPerNight) : 100,
+				mealAllowancePerDay: settings.mealCostPerDay ? Number(settings.mealCostPerDay) : 30,
+				driverOvernightPremium: settings.driverOvernightPremium ? Number(settings.driverOvernightPremium) : 50,
+				relayDriverFixedFee: settings.relayDriverFixedFee ? Number(settings.relayDriverFixedFee) : 150,
+			},
 		};
 	}
 
 	// Return default settings if none exist
 	return {
+		// Story 19.2: Include organizationId for RSE compliance check
+		organizationId,
 		baseRatePerKm: 2.5,
 		baseRatePerHour: 45.0,
 		targetMarginPercent: 20.0,
@@ -793,6 +806,41 @@ export const pricingCalculateRouter = new Hono()
 				}
 			}
 
+			// Story 22.1: Fallback to Google Routes API if vehicle selection failed but we have API key
+			// This ensures we get accurate distance/duration even without a selected vehicle
+			if (!effectiveDistanceKm && googleMapsApiKey && data.dropoff) {
+				try {
+					const { computeRoutes, toRoutesWaypoint } = await import("../../lib/google-routes-client");
+					const routesResponse = await computeRoutes(googleMapsApiKey, {
+						origin: toRoutesWaypoint(data.pickup.lat, data.pickup.lng),
+						destination: toRoutesWaypoint(data.dropoff.lat, data.dropoff.lng),
+						travelMode: "DRIVE",
+						routingPreference: "TRAFFIC_AWARE",
+					});
+					
+					if (routesResponse.routes && routesResponse.routes.length > 0) {
+						const route = routesResponse.routes[0];
+						effectiveDistanceKm = route.distanceMeters / 1000;
+						effectiveDurationMinutes = parseInt(route.duration.replace("s", "")) / 60;
+						console.log(`[PRICING] Fallback routing: ${effectiveDistanceKm.toFixed(1)}km, ${effectiveDurationMinutes.toFixed(0)}min`);
+					}
+				} catch (routingError) {
+					console.warn("[PRICING] Fallback routing failed:", routingError);
+					// Will use Haversine fallback below
+				}
+			}
+
+			// Story 22.1: Final fallback to Haversine if still no distance
+			if (!effectiveDistanceKm && data.dropoff) {
+				const { haversineDistance } = await import("../../lib/geo-utils");
+				const haversine = haversineDistance(data.pickup, data.dropoff);
+				const ROAD_DISTANCE_FACTOR = 1.3; // Roads are ~30% longer than straight line
+				const AVERAGE_SPEED_KMH = 60;
+				effectiveDistanceKm = haversine * ROAD_DISTANCE_FACTOR;
+				effectiveDurationMinutes = (effectiveDistanceKm / AVERAGE_SPEED_KMH) * 60;
+				console.log(`[PRICING] Haversine fallback: ${effectiveDistanceKm.toFixed(1)}km, ${effectiveDurationMinutes.toFixed(0)}min`);
+			}
+
 			// Story 15.2: Resolve fuel consumption with fallback chain
 			// Priority: Vehicle (if selected) → Category → Organization → Default
 			const vehicleConsumption = vehicleSelectionInfo?.selectedVehicle
@@ -1023,36 +1071,36 @@ export const pricingCalculateRouter = new Hono()
 			}
 			
 			// Story 17.13: Fallback segmentation when no polyline available
+			// Story 22.1: Use findZonesForPoint for better zone detection
 			if (!result.tripAnalysis.zoneSegments && zones.length > 0 && data.dropoff && effectiveDistanceKm && effectiveDurationMinutes) {
 				try {
-					const pickupZone = zones.find(z => {
-						if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
-							const dist = Math.sqrt(
-								Math.pow((data.pickup.lat - z.centerLatitude) * 111, 2) +
-								Math.pow((data.pickup.lng - z.centerLongitude) * 111 * Math.cos(data.pickup.lat * Math.PI / 180), 2)
-							);
-							return dist <= z.radiusKm;
-						}
-						return false;
-					}) ?? null;
+					// Use geo-utils functions for robust zone detection
+					const pickupPoint = { lat: data.pickup.lat, lng: data.pickup.lng };
+					const dropoffPoint = { lat: data.dropoff.lat, lng: data.dropoff.lng };
 					
-					const dropoffZone = zones.find(z => {
-						if (z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm) {
-							const dist = Math.sqrt(
-								Math.pow((data.dropoff!.lat - z.centerLatitude) * 111, 2) +
-								Math.pow((data.dropoff!.lng - z.centerLongitude) * 111 * Math.cos(data.dropoff!.lat * Math.PI / 180), 2)
-							);
-							return dist <= z.radiusKm;
-						}
-						return false;
-					}) ?? null;
+					// Find all matching zones and resolve conflicts using org strategy
+					const pickupMatchingZones = findZonesForPoint(pickupPoint, zones);
+					const dropoffMatchingZones = findZonesForPoint(dropoffPoint, zones);
+					
+					const pickupZone = pickupMatchingZones.length > 0 
+						? resolveZoneConflict(pickupPoint, pickupMatchingZones, pricingSettings.zoneConflictStrategy ?? null)
+						: null;
+					const dropoffZone = dropoffMatchingZones.length > 0
+						? resolveZoneConflict(dropoffPoint, dropoffMatchingZones, pricingSettings.zoneConflictStrategy ?? null)
+						: null;
+					
+					console.log(`[PRICING] Zone detection - Pickup: ${pickupZone?.code ?? 'none'} (${pickupMatchingZones.length} matches), Dropoff: ${dropoffZone?.code ?? 'none'} (${dropoffMatchingZones.length} matches)`);
 					
 					if (pickupZone || dropoffZone) {
+						// Story 22.1: Pass pickup/dropoff points and all zones for concentric zone interpolation
 						const fallbackResult = createFallbackSegmentation(
 							pickupZone,
 							dropoffZone,
 							effectiveDistanceKm,
 							effectiveDurationMinutes,
+							pickupPoint,
+							dropoffPoint,
+							zones,
 						);
 						
 						if (fallbackResult.segments.length > 0) {

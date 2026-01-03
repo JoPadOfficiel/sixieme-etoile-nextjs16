@@ -32,6 +32,7 @@ import { applyTripTypePricing } from "./trip-type-pricing";
 import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts, calculateRoundTripSegments, extendTripAnalysisForRoundTrip } from "./shadow-calculator";
 import { isPointInZone, findZonesForPoint, resolveZoneConflict } from "../../lib/geo-utils";
 import { validatePricingResult } from "./validation";
+import { integrateComplianceIntoPricing } from "../pricing-engine";
 
 // ============================================================================
 // Main Calculation Function
@@ -251,6 +252,32 @@ export function calculatePrice(
 		vehicleCategory?.name ?? null,
 		pickupAtDate,
 	);
+	
+	// Story 19.2: Integrate RSE compliance for HEAVY vehicles (2 drivers for long trips)
+	if (vehicleCategory?.regulatoryCategory === "HEAVY" && pricingSettings.organizationId) {
+		const complianceResult = integrateComplianceIntoPricing({
+			organizationId: pricingSettings.organizationId,
+			vehicleCategoryId: vehicleCategory.id,
+			regulatoryCategory: "HEAVY",
+			tripAnalysis,
+			pickupAt: pickupAtDate ?? new Date(),
+			staffingSelectionPolicy: pricingSettings.staffingSelectionPolicy ?? "CHEAPEST",
+			costParameters: pricingSettings.staffingCostParameters ?? undefined,
+		});
+		
+		// Update tripAnalysis with compliancePlan
+		tripAnalysis = complianceResult.tripAnalysis;
+		
+		// Add staffing costs to internal cost and price
+		if (complianceResult.additionalStaffingCost > 0) {
+			internalCost += complianceResult.additionalStaffingCost;
+			price += complianceResult.additionalStaffingCost;
+			
+			if (complianceResult.appliedRule) {
+				appliedRules.push(complianceResult.appliedRule);
+			}
+		}
+	}
 	
 	// Story 21.6: Calculate positioning costs (with estimation when no vehicle selected)
 	tripAnalysis.positioningCosts = calculatePositioningCosts({

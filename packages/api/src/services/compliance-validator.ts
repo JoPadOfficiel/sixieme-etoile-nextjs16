@@ -142,6 +142,7 @@ export interface ComplianceValidationResult {
 /**
  * Calculate total driving time from trip segments (in minutes)
  * Driving time = Approach + Service + Return (all segments)
+ * Story 22.1: Include round trip return leg segments (returnApproach, returnService, finalReturn)
  */
 export function calculateTotalDrivingMinutes(tripAnalysis: TripAnalysis): number {
 	let totalMinutes = 0;
@@ -154,9 +155,25 @@ export function calculateTotalDrivingMinutes(tripAnalysis: TripAnalysis): number
 	// Service segment (client trip)
 	totalMinutes += tripAnalysis.segments.service.durationMinutes;
 
-	// Return segment (deadhead)
+	// Return segment (deadhead) - only for one-way trips
 	if (tripAnalysis.segments.return) {
 		totalMinutes += tripAnalysis.segments.return.durationMinutes;
+	}
+
+	// Story 22.1: Round trip return leg segments
+	if (tripAnalysis.isRoundTrip) {
+		// Segment D: Return approach (repositioning for return leg) - only for RETURN_BETWEEN_LEGS mode
+		if (tripAnalysis.segments.returnApproach) {
+			totalMinutes += tripAnalysis.segments.returnApproach.durationMinutes;
+		}
+		// Segment E: Return service (client return trip)
+		if (tripAnalysis.segments.returnService) {
+			totalMinutes += tripAnalysis.segments.returnService.durationMinutes;
+		}
+		// Segment F: Final return (deadhead back to base)
+		if (tripAnalysis.segments.finalReturn) {
+			totalMinutes += tripAnalysis.segments.finalReturn.durationMinutes;
+		}
 	}
 
 	return Math.round(totalMinutes * 100) / 100;
@@ -165,6 +182,7 @@ export function calculateTotalDrivingMinutes(tripAnalysis: TripAnalysis): number
 /**
  * Calculate total amplitude from pickup to end of return (in minutes)
  * Amplitude = Time from start of approach to end of return
+ * Story 22.1: Include round trip return leg segments
  */
 export function calculateTotalAmplitudeMinutes(
 	tripAnalysis: TripAnalysis,
@@ -177,11 +195,20 @@ export function calculateTotalAmplitudeMinutes(
 		// Add approach and return times
 		const approachMinutes = tripAnalysis.segments.approach?.durationMinutes ?? 0;
 		const returnMinutes = tripAnalysis.segments.return?.durationMinutes ?? 0;
-		return Math.round((amplitudeMs / 60000 + approachMinutes + returnMinutes) * 100) / 100;
+		let totalMinutes = amplitudeMs / 60000 + approachMinutes + returnMinutes;
+		
+		// Story 22.1: Add round trip return leg segments
+		if (tripAnalysis.isRoundTrip) {
+			totalMinutes += (tripAnalysis.segments.returnApproach?.durationMinutes ?? 0);
+			totalMinutes += (tripAnalysis.segments.returnService?.durationMinutes ?? 0);
+			totalMinutes += (tripAnalysis.segments.finalReturn?.durationMinutes ?? 0);
+		}
+		
+		return Math.round(totalMinutes * 100) / 100;
 	}
 
 	// Otherwise, calculate from segment durations
-	// Amplitude = Approach + Service + Return
+	// Amplitude = Approach + Service + Return (+ round trip segments if applicable)
 	return calculateTotalDrivingMinutes(tripAnalysis);
 }
 
@@ -299,11 +326,64 @@ export function applySpeedCapping(
 		}
 	}
 
-	// Recalculate totals
-	const totalDurationMinutes =
+	// Story 22.1: Adjust round trip return leg segments
+	if (tripAnalysis.isRoundTrip) {
+		if (adjustedSegments.returnApproach) {
+			const result = recalculateWithCappedSpeed(
+				adjustedSegments.returnApproach.distanceKm,
+				adjustedSegments.returnApproach.durationMinutes,
+				cappedSpeedKmh,
+			);
+			if (result.speedWasCapped) {
+				speedWasCapped = true;
+				adjustedSegments.returnApproach = {
+					...adjustedSegments.returnApproach,
+					durationMinutes: result.durationMinutes,
+				};
+			}
+		}
+		if (adjustedSegments.returnService) {
+			const result = recalculateWithCappedSpeed(
+				adjustedSegments.returnService.distanceKm,
+				adjustedSegments.returnService.durationMinutes,
+				cappedSpeedKmh,
+			);
+			if (result.speedWasCapped) {
+				speedWasCapped = true;
+				adjustedSegments.returnService = {
+					...adjustedSegments.returnService,
+					durationMinutes: result.durationMinutes,
+				};
+			}
+		}
+		if (adjustedSegments.finalReturn) {
+			const result = recalculateWithCappedSpeed(
+				adjustedSegments.finalReturn.distanceKm,
+				adjustedSegments.finalReturn.durationMinutes,
+				cappedSpeedKmh,
+			);
+			if (result.speedWasCapped) {
+				speedWasCapped = true;
+				adjustedSegments.finalReturn = {
+					...adjustedSegments.finalReturn,
+					durationMinutes: result.durationMinutes,
+				};
+			}
+		}
+	}
+
+	// Recalculate totals - Story 22.1: Include round trip segments
+	let totalDurationMinutes =
 		(adjustedSegments.approach?.durationMinutes ?? 0) +
 		adjustedSegments.service.durationMinutes +
 		(adjustedSegments.return?.durationMinutes ?? 0);
+	
+	// Add round trip return leg segments
+	if (tripAnalysis.isRoundTrip) {
+		totalDurationMinutes += (adjustedSegments.returnApproach?.durationMinutes ?? 0);
+		totalDurationMinutes += (adjustedSegments.returnService?.durationMinutes ?? 0);
+		totalDurationMinutes += (adjustedSegments.finalReturn?.durationMinutes ?? 0);
+	}
 
 	return {
 		adjustedTripAnalysis: {
@@ -805,7 +885,7 @@ export interface AlternativesGenerationResult {
  */
 export function generateDoubleCrewAlternative(
 	complianceResult: ComplianceValidationResult,
-	costParameters: AlternativeCostParameters,
+	costParameters: AlternativeCostParameters | ExtendedStaffingCostParameters,
 	rules: RSERules | null,
 ): AlternativeOption | null {
 	// Only applicable for HEAVY vehicles with violations
@@ -843,10 +923,29 @@ export function generateDoubleCrewAlternative(
 	const isFeasible = drivingFeasible && amplitudeFeasible;
 
 	// Calculate extra driver cost
-	// Second driver works the same hours as the first driver (they alternate)
-	// Cost = total driving hours (both drivers share the driving)
-	const extraDriverHours = actualDrivingHours / 2; // Second driver does half the driving
+	// Story 22.1: Second driver works the ENTIRE trip duration (amplitude), not just driving time
+	// Both drivers are present for the whole mission, they just alternate driving
+	// Cost = total amplitude hours × hourly rate (second driver is paid for full mission)
+	const extraDriverHours = actualAmplitudeHours; // Second driver works the entire mission
 	const extraDriverCost = extraDriverHours * costParameters.driverHourlyCost;
+	
+	// Story 22.1: Calculate hotel and meal costs for double crew
+	// For a round trip that exceeds amplitude, both drivers need hotel and meals
+	// Hotel: if amplitude > 10h, assume overnight stay required (1 night × 2 drivers)
+	// Meals: 2 meals per driver per day (lunch + dinner)
+	const needsOvernight = actualAmplitudeHours > 10; // More than 10h = overnight
+	const hotelCost = needsOvernight 
+		? costParameters.hotelCostPerNight * 2 // 2 drivers × 1 night
+		: 0;
+	const mealCost = needsOvernight
+		? costParameters.mealAllowancePerDay * 2 // 2 drivers × 1 day
+		: costParameters.mealAllowancePerDay; // At least 1 meal for long trip
+	
+	// Story 22.1: Add overnight premium for both drivers if they sleep away from home
+	const extendedParams = costParameters as ExtendedStaffingCostParameters;
+	const overnightPremium = needsOvernight && extendedParams.driverOvernightPremium
+		? extendedParams.driverOvernightPremium * 2 // 2 drivers × 1 night premium
+		: 0;
 
 	// Check remaining violations if double crew is applied
 	const remainingViolations: ComplianceViolation[] = [];
@@ -887,6 +986,9 @@ export function generateDoubleCrewAlternative(
 	}
 	description += solutions.join(" et ");
 
+	// Story 22.1: Total cost includes driver, hotel, meals, and overnight premium
+	const totalCost = extraDriverCost + hotelCost + mealCost + overnightPremium;
+
 	return {
 		type: "DOUBLE_CREW",
 		title: "Double Équipage",
@@ -898,21 +1000,21 @@ export function generateDoubleCrewAlternative(
 				? `Temps de conduite (${actualDrivingHours.toFixed(1)}h) dépasse ${doubleCrewDrivingLimit}h même avec double équipage`
 				: `Amplitude (${actualAmplitudeHours.toFixed(1)}h) dépasse ${doubleCrewAmplitudeLimit}h même avec double équipage`,
 		additionalCost: {
-			total: Math.round(extraDriverCost * 100) / 100,
+			total: Math.round(totalCost * 100) / 100,
 			currency: "EUR",
 			breakdown: {
 				extraDriverCost: Math.round(extraDriverCost * 100) / 100,
-				hotelCost: 0,
-				mealAllowance: 0,
-				otherCosts: 0,
+				hotelCost: Math.round(hotelCost * 100) / 100,
+				mealAllowance: Math.round(mealCost * 100) / 100,
+				otherCosts: Math.round(overnightPremium * 100) / 100, // Overnight premium
 			},
 		},
 		adjustedSchedule: {
 			totalDrivingMinutes: complianceResult.adjustedDurations.totalDrivingMinutes,
 			totalAmplitudeMinutes: complianceResult.adjustedDurations.totalAmplitudeMinutes,
-			daysRequired: 1,
+			daysRequired: needsOvernight ? 2 : 1,
 			driversRequired: 2,
-			hotelNightsRequired: 0,
+			hotelNightsRequired: needsOvernight ? 2 : 0, // 2 drivers × 1 night
 		},
 		wouldBeCompliant: isFeasible && remainingViolations.length === 0,
 		remainingViolations,

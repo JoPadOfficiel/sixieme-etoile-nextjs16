@@ -596,12 +596,13 @@ export function calculateRoundTripSegments(
 	const threshold = waitOnSiteThresholdMinutes ?? DEFAULT_WAIT_ON_SITE_THRESHOLD_MINUTES;
 	
 	// Determine round trip mode based on waiting time
-	// If waiting time is short (< threshold), driver waits on-site
-	// If waiting time is long or unknown, driver returns to base between legs
+	// Story 22.1 FIX: For a normal round trip (checkbox), driver does NOT return to base between legs
+	// Default behavior: WAIT_ON_SITE (A+B+E+F = ~2x price)
+	// RETURN_BETWEEN_LEGS only when explicitly long waiting time is specified (A+B+C+D+E+F)
 	const roundTripMode: RoundTripMode = 
-		waitingTimeMinutes !== undefined && waitingTimeMinutes < threshold
-			? "WAIT_ON_SITE"
-			: "RETURN_BETWEEN_LEGS";
+		waitingTimeMinutes !== undefined && waitingTimeMinutes >= threshold
+			? "RETURN_BETWEEN_LEGS"
+			: "WAIT_ON_SITE";
 
 	// Get existing segments from trip analysis
 	const segmentA = tripAnalysis.segments.approach;

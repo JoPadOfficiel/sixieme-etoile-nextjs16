@@ -110,7 +110,7 @@ function createMockTripAnalysis(
 
 describe("Round Trip Segment Calculation (Story 22.1)", () => {
 	describe("calculateRoundTripSegments", () => {
-		it("should calculate RETURN_BETWEEN_LEGS mode when waiting time is undefined", () => {
+		it("should calculate WAIT_ON_SITE mode when waiting time is undefined (default for normal round trip)", () => {
 			const tripAnalysis = createMockTripAnalysis(30, 80, 35);
 			const settings = createMockPricingSettings();
 			const singleLegPrice = 200;
@@ -121,18 +121,20 @@ describe("Round Trip Segment Calculation (Story 22.1)", () => {
 				singleLegInternalCost,
 				tripAnalysis,
 				settings,
-				undefined, // No waiting time = RETURN_BETWEEN_LEGS
+				undefined, // No waiting time = WAIT_ON_SITE (normal round trip behavior)
 			);
 
-			expect(result.roundTripMode).toBe("RETURN_BETWEEN_LEGS");
+			// Story 22.1 FIX: Default mode is now WAIT_ON_SITE for normal round trips
+			// This gives ~2x price instead of ~4x price
+			expect(result.roundTripMode).toBe("WAIT_ON_SITE");
 			expect(result.appliedRule.type).toBe("ROUND_TRIP_SEGMENTS");
-			expect(result.appliedRule.roundTripMode).toBe("RETURN_BETWEEN_LEGS");
+			expect(result.appliedRule.roundTripMode).toBe("WAIT_ON_SITE");
 			
-			// All 6 segments should have values
+			// Only 4 segments should have values (A, B, E, F) - C and D are null
 			expect(result.segments.approach).not.toBeNull();
 			expect(result.segments.service).not.toBeNull();
-			expect(result.segments.return).not.toBeNull();
-			expect(result.segments.returnApproach).not.toBeNull();
+			expect(result.segments.return).toBeNull(); // C is null
+			expect(result.segments.returnApproach).toBeNull(); // D is null
 			expect(result.segments.returnService).not.toBeNull();
 			expect(result.segments.finalReturn).not.toBeNull();
 		});
@@ -238,7 +240,7 @@ describe("Round Trip Segment Calculation (Story 22.1)", () => {
 				singleLegInternalCost,
 				tripAnalysis,
 				settings,
-				undefined, // RETURN_BETWEEN_LEGS mode
+				180, // Explicit long waiting time >= threshold = RETURN_BETWEEN_LEGS mode
 			);
 
 			const breakdown = result.appliedRule.segmentBreakdown;

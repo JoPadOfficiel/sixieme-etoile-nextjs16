@@ -259,13 +259,180 @@ function createEmptyResult(): RouteSegmentationResult {
 }
 
 /**
- * Create a fallback result using pickup/dropoff zones only
- * Used when no polyline is available
+ * Story 22.1: Interpolate intermediate zones for concentric circle zones
+ * Given pickup and dropoff points, find all zones traversed based on distance from zone centers
+ * 
+ * @param pickup - Pickup point
+ * @param dropoff - Dropoff point
+ * @param zones - All available zones
+ * @param totalDistanceKm - Total route distance
+ * @param totalDurationMinutes - Total route duration
+ * @returns Array of zone segments in order of traversal
+ */
+export function interpolateConcentricZones(
+	pickup: GeoPoint,
+	dropoff: GeoPoint,
+	zones: ZoneData[],
+	totalDistanceKm: number,
+	totalDurationMinutes: number,
+): ZoneSegment[] {
+	// Find RADIUS zones only (concentric circles)
+	const radiusZones = zones.filter(z => z.zoneType === "RADIUS" && z.centerLatitude && z.centerLongitude && z.radiusKm);
+	
+	if (radiusZones.length === 0) {
+		return [];
+	}
+	
+	// Group zones by center point (Paris vs Bussy)
+	const zonesByCenter = new Map<string, ZoneData[]>();
+	for (const zone of radiusZones) {
+		const centerKey = `${zone.centerLatitude!.toFixed(4)},${zone.centerLongitude!.toFixed(4)}`;
+		if (!zonesByCenter.has(centerKey)) {
+			zonesByCenter.set(centerKey, []);
+		}
+		zonesByCenter.get(centerKey)!.push(zone);
+	}
+	
+	// Sort each center's zones by radius (smallest first)
+	for (const [, centerZones] of zonesByCenter) {
+		centerZones.sort((a, b) => (a.radiusKm ?? 0) - (b.radiusKm ?? 0));
+	}
+	
+	// Find the primary center (closest to pickup)
+	let primaryCenter: { lat: number; lng: number } | null = null;
+	let minDistanceToPickup = Infinity;
+	
+	for (const [centerKey] of zonesByCenter) {
+		const [lat, lng] = centerKey.split(",").map(Number);
+		const center = { lat, lng };
+		const distToPickup = haversineDistanceInternal(pickup, center);
+		if (distToPickup < minDistanceToPickup) {
+			minDistanceToPickup = distToPickup;
+			primaryCenter = center;
+		}
+	}
+	
+	if (!primaryCenter) {
+		return [];
+	}
+	
+	const primaryCenterKey = `${primaryCenter.lat.toFixed(4)},${primaryCenter.lng.toFixed(4)}`;
+	const primaryZones = zonesByCenter.get(primaryCenterKey) ?? [];
+	
+	// Calculate distances from primary center
+	const pickupDistFromCenter = haversineDistanceInternal(pickup, primaryCenter);
+	const dropoffDistFromCenter = haversineDistanceInternal(dropoff, primaryCenter);
+	
+	// Determine direction (outward or inward)
+	const isOutward = dropoffDistFromCenter > pickupDistFromCenter;
+	
+	// Find zones crossed based on distance from center
+	const crossedZones: { zone: ZoneData; entryDist: number; exitDist: number }[] = [];
+	
+	const startDist = Math.min(pickupDistFromCenter, dropoffDistFromCenter);
+	const endDist = Math.max(pickupDistFromCenter, dropoffDistFromCenter);
+	
+	for (const zone of primaryZones) {
+		const zoneRadius = zone.radiusKm ?? 0;
+		// Find the inner radius (previous zone's radius or 0)
+		const zoneIndex = primaryZones.indexOf(zone);
+		const innerRadius = zoneIndex > 0 ? (primaryZones[zoneIndex - 1].radiusKm ?? 0) : 0;
+		
+		// Check if route crosses this zone
+		if (startDist < zoneRadius && endDist > innerRadius) {
+			const entryDist = Math.max(startDist, innerRadius);
+			const exitDist = Math.min(endDist, zoneRadius);
+			crossedZones.push({ zone, entryDist, exitDist });
+		}
+	}
+	
+	// Story 22.1: Add OUTSIDE_ZONE segment if route extends beyond all defined zones
+	const maxRadius = primaryZones.length > 0 ? (primaryZones[primaryZones.length - 1].radiusKm ?? 0) : 0;
+	
+	// Check if route goes beyond the outermost zone
+	if (endDist > maxRadius) {
+		// Add outside zone segment for the portion beyond maxRadius
+		crossedZones.push({
+			zone: {
+				id: "OUTSIDE",
+				code: "OUTSIDE_ZONE",
+				name: "Hors Zone",
+				zoneType: "RADIUS",
+				centerLatitude: primaryCenter.lat,
+				centerLongitude: primaryCenter.lng,
+				radiusKm: null, // No limit
+				isActive: true,
+				priceMultiplier: 1.0, // Default multiplier for outside zones
+				priority: 0,
+				geometry: null,
+			} as ZoneData,
+			entryDist: maxRadius,
+			exitDist: endDist,
+		});
+	}
+	
+	// Sort by entry distance (for outward) or reverse (for inward)
+	if (isOutward) {
+		crossedZones.sort((a, b) => a.entryDist - b.entryDist);
+	} else {
+		crossedZones.sort((a, b) => b.entryDist - a.entryDist);
+	}
+	
+	// Calculate segment distances proportionally
+	const totalRadialDistance = endDist - startDist;
+	const segments: ZoneSegment[] = [];
+	
+	for (const { zone, entryDist, exitDist } of crossedZones) {
+		const segmentRadialDist = exitDist - entryDist;
+		const proportion = totalRadialDistance > 0 ? segmentRadialDist / totalRadialDistance : 1 / crossedZones.length;
+		
+		const segmentDistanceKm = totalDistanceKm * proportion;
+		const segmentDurationMinutes = totalDurationMinutes * proportion;
+		const surcharges = (zone.fixedParkingSurcharge ?? 0) + (zone.fixedAccessFee ?? 0);
+		
+		segments.push({
+			zoneId: zone.id,
+			zoneCode: zone.code,
+			zoneName: zone.name,
+			distanceKm: Math.round(segmentDistanceKm * 100) / 100,
+			durationMinutes: Math.round(segmentDurationMinutes * 100) / 100,
+			priceMultiplier: zone.priceMultiplier ?? 1.0,
+			surchargesApplied: surcharges,
+			entryPoint: { lat: 0, lng: 0 },
+			exitPoint: { lat: 0, lng: 0 },
+		});
+	}
+	
+	return segments;
+}
+
+/**
+ * Internal haversine distance calculation
+ */
+function haversineDistanceInternal(point1: GeoPoint, point2: GeoPoint): number {
+	const R = 6371;
+	const lat1Rad = (point1.lat * Math.PI) / 180;
+	const lat2Rad = (point2.lat * Math.PI) / 180;
+	const deltaLat = ((point2.lat - point1.lat) * Math.PI) / 180;
+	const deltaLng = ((point2.lng - point1.lng) * Math.PI) / 180;
+	const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+		Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return R * c;
+}
+
+/**
+ * Create a fallback segmentation when no polyline is available
+ * Story 17.13: Simplified segmentation based on pickup/dropoff zones
+ * Story 22.1: Enhanced to interpolate intermediate concentric zones
  * 
  * @param pickupZone - Zone containing the pickup point
  * @param dropoffZone - Zone containing the dropoff point
  * @param totalDistanceKm - Estimated total distance
  * @param totalDurationMinutes - Estimated total duration
+ * @param pickup - Optional pickup point for zone interpolation
+ * @param dropoff - Optional dropoff point for zone interpolation
+ * @param allZones - Optional all zones for interpolation
  * @returns Simplified segmentation result
  */
 export function createFallbackSegmentation(
@@ -273,7 +440,35 @@ export function createFallbackSegmentation(
 	dropoffZone: ZoneData | null,
 	totalDistanceKm: number,
 	totalDurationMinutes: number,
+	pickup?: GeoPoint,
+	dropoff?: GeoPoint,
+	allZones?: ZoneData[],
 ): RouteSegmentationResult {
+	// Story 22.1: Try to interpolate concentric zones if we have all the data
+	if (pickup && dropoff && allZones && allZones.length > 0) {
+		const interpolatedSegments = interpolateConcentricZones(
+			pickup,
+			dropoff,
+			allZones,
+			totalDistanceKm,
+			totalDurationMinutes,
+		);
+		
+		if (interpolatedSegments.length > 0) {
+			const zonesTraversed = interpolatedSegments.map(s => s.zoneCode);
+			const totalSurcharges = interpolatedSegments.reduce((sum, s) => sum + s.surchargesApplied, 0);
+			const weightedMultiplier = calculateWeightedMultiplier(interpolatedSegments, totalDistanceKm);
+			
+			return {
+				segments: interpolatedSegments,
+				weightedMultiplier,
+				totalSurcharges,
+				zonesTraversed,
+				totalDistanceKm,
+				segmentationMethod: "FALLBACK",
+			};
+		}
+	}
 	const segments: ZoneSegment[] = [];
 	const zonesTraversed: string[] = [];
 	let totalSurcharges = 0;

@@ -4,7 +4,7 @@
  */
 
 import type { GeoPoint, ZoneData, ZoneConflictStrategy } from "../../lib/geo-utils";
-import type { AlternativeCostParameters, RegulatoryCategory } from "../compliance-validator";
+import type { AlternativeCostParameters, ExtendedStaffingCostParameters, RegulatoryCategory } from "../compliance-validator";
 import type { CommissionData } from "../commission-service";
 import type { TollSource } from "../toll-service";
 
@@ -45,7 +45,7 @@ export type RejectionReason = "ZONE_MISMATCH" | "CATEGORY_MISMATCH" | "DIRECTION
 
 // Re-export external types
 export type { GeoPoint, ZoneData, ZoneConflictStrategy };
-export type { AlternativeCostParameters, RegulatoryCategory };
+export type { AlternativeCostParameters, ExtendedStaffingCostParameters, RegulatoryCategory };
 export type { CommissionData };
 export type { TollSource };
 
@@ -347,7 +347,7 @@ export interface OrganizationPricingSettings {
 	zoneConflictStrategy?: ZoneConflictStrategy | null;
 	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy | null;
 	staffingSelectionPolicy?: StaffingSelectionPolicy | null;
-	staffingCostParameters?: AlternativeCostParameters | null;
+	staffingCostParameters?: ExtendedStaffingCostParameters | null;
 	timeBucketInterpolationStrategy?: TimeBucketInterpolationStrategy | null;
 	madTimeBuckets?: MadTimeBucketData[];
 	difficultyMultipliers?: Record<string, number> | null;
