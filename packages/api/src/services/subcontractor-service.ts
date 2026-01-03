@@ -36,14 +36,16 @@ export const DEFAULT_SUBCONTRACTOR_CONFIG: SubcontractorConfig = {
 
 /**
  * Subcontractor with zone match information
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export interface SubcontractorWithMatch {
 	id: string;
-	contactId: string;
-	displayName: string;
+	companyName: string;
+	contactName: string | null;
 	email: string | null;
 	phone: string | null;
-	companyName: string | null;
+	address: string | null;
+	allZones: boolean;
 	ratePerKm: number | null;
 	ratePerHour: number | null;
 	minimumFare: number | null;
@@ -70,15 +72,16 @@ export interface MarginComparison {
 
 /**
  * Subcontracting suggestion for a mission
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export interface SubcontractingSuggestion {
 	subcontractorId: string;
 	subcontractor: {
 		id: string;
-		displayName: string;
+		companyName: string;
+		contactName: string | null;
 		email: string | null;
 		phone: string | null;
-		companyName: string | null;
 	};
 	estimatedPrice: number;
 	marginIfSubcontracted: number;
@@ -309,6 +312,7 @@ export function extractTripMetrics(tripAnalysis: unknown): {
 
 /**
  * Find subcontractors that can serve a mission based on zones
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function findSubcontractorsForMission(
 	organizationId: string,
@@ -326,7 +330,6 @@ export async function findSubcontractorsForMission(
 			isActive: true,
 		},
 		include: {
-			contact: true,
 			operatingZones: {
 				include: {
 					pricingZone: true,
@@ -384,8 +387,8 @@ export async function findSubcontractorsForMission(
 			}
 		}
 
-		// If no zones configured, consider it a match (subcontractor serves all areas)
-		if (sub.operatingZones.length === 0) {
+		// If allZones=true or no zones configured, consider it a match (subcontractor serves all areas)
+		if (sub.allZones || sub.operatingZones.length === 0) {
 			pickupMatch = true;
 			dropoffMatch = true;
 		}
@@ -395,11 +398,12 @@ export async function findSubcontractorsForMission(
 
 		results.push({
 			id: sub.id,
-			contactId: sub.contactId,
-			displayName: sub.contact.displayName,
-			email: sub.contact.email,
-			phone: sub.contact.phone,
-			companyName: sub.contact.companyName,
+			companyName: sub.companyName,
+			contactName: sub.contactName,
+			email: sub.email,
+			phone: sub.phone,
+			address: sub.address,
+			allZones: sub.allZones,
 			ratePerKm: sub.ratePerKm ? Number(sub.ratePerKm) : null,
 			ratePerHour: sub.ratePerHour ? Number(sub.ratePerHour) : null,
 			minimumFare: sub.minimumFare ? Number(sub.minimumFare) : null,
@@ -507,10 +511,10 @@ export async function generateSubcontractingSuggestions(
 			subcontractorId: sub.id,
 			subcontractor: {
 				id: sub.id,
-				displayName: sub.displayName,
+				companyName: sub.companyName,
+				contactName: sub.contactName,
 				email: sub.email,
 				phone: sub.phone,
-				companyName: sub.companyName,
 			},
 			estimatedPrice,
 			marginIfSubcontracted: Math.round(marginIfSubcontracted * 100) / 100,
@@ -601,6 +605,7 @@ export async function subcontractMission(
 
 /**
  * Get subcontractor by ID
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function getSubcontractorById(
 	subcontractorId: string,
@@ -613,7 +618,6 @@ export async function getSubcontractorById(
 			organizationId,
 		},
 		include: {
-			contact: true,
 			operatingZones: {
 				include: {
 					pricingZone: true,
@@ -630,6 +634,7 @@ export async function getSubcontractorById(
 
 /**
  * List all subcontractors for an organization
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function listSubcontractors(
 	organizationId: string,
@@ -646,7 +651,6 @@ export async function listSubcontractors(
 	const subcontractors = await db.subcontractorProfile.findMany({
 		where,
 		include: {
-			contact: true,
 			operatingZones: {
 				include: {
 					pricingZone: true,
@@ -659,21 +663,20 @@ export async function listSubcontractors(
 			},
 		},
 		orderBy: {
-			contact: {
-				displayName: "asc",
-			},
+			companyName: "asc",
 		},
 	});
 
 	return subcontractors.map((sub) => ({
 		id: sub.id,
-		contact: {
-			id: sub.contact.id,
-			displayName: sub.contact.displayName,
-			email: sub.contact.email,
-			phone: sub.contact.phone,
-			companyName: sub.contact.companyName,
-		},
+		companyName: sub.companyName,
+		siret: sub.siret,
+		vatNumber: sub.vatNumber,
+		contactName: sub.contactName,
+		email: sub.email,
+		phone: sub.phone,
+		address: sub.address,
+		allZones: sub.allZones,
 		operatingZones: sub.operatingZones.map((sz) => ({
 			id: sz.pricingZone.id,
 			name: sz.pricingZone.name,
@@ -696,11 +699,19 @@ export async function listSubcontractors(
 
 /**
  * Create a new subcontractor profile
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function createSubcontractor(
 	organizationId: string,
 	data: {
-		contactId: string;
+		companyName: string;
+		siret?: string;
+		vatNumber?: string;
+		contactName?: string;
+		email?: string;
+		phone?: string;
+		address?: string;
+		allZones?: boolean;
 		operatingZoneIds?: string[];
 		vehicleCategoryIds?: string[];
 		ratePerKm?: number;
@@ -710,34 +721,18 @@ export async function createSubcontractor(
 	},
 	db: PrismaClient
 ) {
-	// Verify contact exists and belongs to organization
-	const contact = await db.contact.findFirst({
-		where: {
-			id: data.contactId,
-			organizationId,
-		},
-	});
-
-	if (!contact) {
-		throw new Error(`Contact not found: ${data.contactId}`);
-	}
-
-	// Check if subcontractor profile already exists
-	const existing = await db.subcontractorProfile.findFirst({
-		where: {
-			contactId: data.contactId,
-		},
-	});
-
-	if (existing) {
-		throw new Error(`Subcontractor profile already exists for contact: ${data.contactId}`);
-	}
-
 	// Create subcontractor profile
 	const subcontractor = await db.subcontractorProfile.create({
 		data: {
 			organizationId,
-			contactId: data.contactId,
+			companyName: data.companyName,
+			siret: data.siret,
+			vatNumber: data.vatNumber,
+			contactName: data.contactName,
+			email: data.email,
+			phone: data.phone,
+			address: data.address,
+			allZones: data.allZones ?? false,
 			ratePerKm: data.ratePerKm,
 			ratePerHour: data.ratePerHour,
 			minimumFare: data.minimumFare,
@@ -758,7 +753,6 @@ export async function createSubcontractor(
 				: undefined,
 		},
 		include: {
-			contact: true,
 			operatingZones: {
 				include: {
 					pricingZone: true,
@@ -772,22 +766,25 @@ export async function createSubcontractor(
 		},
 	});
 
-	// Update contact to mark as subcontractor
-	await db.contact.update({
-		where: { id: data.contactId },
-		data: { isSubcontractor: true },
-	});
-
 	return subcontractor;
 }
 
 /**
  * Update a subcontractor profile
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function updateSubcontractor(
 	subcontractorId: string,
 	organizationId: string,
 	data: {
+		companyName?: string;
+		siret?: string | null;
+		vatNumber?: string | null;
+		contactName?: string | null;
+		email?: string | null;
+		phone?: string | null;
+		address?: string | null;
+		allZones?: boolean;
 		operatingZoneIds?: string[];
 		vehicleCategoryIds?: string[];
 		ratePerKm?: number | null;
@@ -850,6 +847,14 @@ export async function updateSubcontractor(
 	const updated = await db.subcontractorProfile.update({
 		where: { id: subcontractorId },
 		data: {
+			companyName: data.companyName,
+			siret: data.siret,
+			vatNumber: data.vatNumber,
+			contactName: data.contactName,
+			email: data.email,
+			phone: data.phone,
+			address: data.address,
+			allZones: data.allZones,
 			ratePerKm: data.ratePerKm,
 			ratePerHour: data.ratePerHour,
 			minimumFare: data.minimumFare,
@@ -857,7 +862,6 @@ export async function updateSubcontractor(
 			isActive: data.isActive,
 		},
 		include: {
-			contact: true,
 			operatingZones: {
 				include: {
 					pricingZone: true,
@@ -876,6 +880,7 @@ export async function updateSubcontractor(
 
 /**
  * Delete a subcontractor profile
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export async function deleteSubcontractor(
 	subcontractorId: string,
@@ -897,12 +902,6 @@ export async function deleteSubcontractor(
 	// Delete subcontractor profile (cascades to zones and categories)
 	await db.subcontractorProfile.delete({
 		where: { id: subcontractorId },
-	});
-
-	// Update contact to unmark as subcontractor
-	await db.contact.update({
-		where: { id: existing.contactId },
-		data: { isSubcontractor: false },
 	});
 
 	return { success: true };

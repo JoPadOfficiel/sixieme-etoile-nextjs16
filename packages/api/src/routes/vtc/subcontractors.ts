@@ -32,10 +32,22 @@ const listSubcontractorsQuerySchema = z.object({
 	includeInactive: z.string().optional().transform((v) => v === "true"),
 });
 
+// Story 22.4: Refactored - Subcontractor is now an independent company entity
 const createSubcontractorSchema = z.object({
-	contactId: z.string().min(1, "Contact ID is required"),
+	// Company information (required)
+	companyName: z.string().min(1, "Company name is required").max(255),
+	siret: z.string().max(20).optional(),
+	vatNumber: z.string().max(50).optional(),
+	// Contact details
+	contactName: z.string().max(255).optional(),
+	email: z.string().email().optional().or(z.literal("")),
+	phone: z.string().max(50).optional(),
+	address: z.string().optional(),
+	// Coverage
+	allZones: z.boolean().optional().default(false),
 	operatingZoneIds: z.array(z.string()).optional().default([]),
 	vehicleCategoryIds: z.array(z.string()).optional().default([]),
+	// Pricing
 	ratePerKm: z.number().positive().optional(),
 	ratePerHour: z.number().positive().optional(),
 	minimumFare: z.number().positive().optional(),
@@ -43,8 +55,20 @@ const createSubcontractorSchema = z.object({
 });
 
 const updateSubcontractorSchema = z.object({
+	// Company information
+	companyName: z.string().min(1).max(255).optional(),
+	siret: z.string().max(20).nullable().optional(),
+	vatNumber: z.string().max(50).nullable().optional(),
+	// Contact details
+	contactName: z.string().max(255).nullable().optional(),
+	email: z.string().email().nullable().optional(),
+	phone: z.string().max(50).nullable().optional(),
+	address: z.string().nullable().optional(),
+	// Coverage
+	allZones: z.boolean().optional(),
 	operatingZoneIds: z.array(z.string()).optional(),
 	vehicleCategoryIds: z.array(z.string()).optional(),
+	// Pricing
 	ratePerKm: z.number().positive().nullable().optional(),
 	ratePerHour: z.number().positive().nullable().optional(),
 	minimumFare: z.number().positive().nullable().optional(),
@@ -107,22 +131,24 @@ export const subcontractorsRouter = new Hono()
 				return c.json({ error: "Subcontractor not found" }, 404);
 			}
 
+			// Story 22.4: Return independent company entity
 			return c.json({
 				subcontractor: {
 					id: subcontractor.id,
-					contact: {
-						id: subcontractor.contact.id,
-						displayName: subcontractor.contact.displayName,
-						email: subcontractor.contact.email,
-						phone: subcontractor.contact.phone,
-						companyName: subcontractor.contact.companyName,
-					},
-					operatingZones: subcontractor.operatingZones.map((sz) => ({
+					companyName: subcontractor.companyName,
+					siret: subcontractor.siret,
+					vatNumber: subcontractor.vatNumber,
+					contactName: subcontractor.contactName,
+					email: subcontractor.email,
+					phone: subcontractor.phone,
+					address: subcontractor.address,
+					allZones: subcontractor.allZones,
+					operatingZones: subcontractor.operatingZones.map((sz: { pricingZone: { id: string; name: string; code: string } }) => ({
 						id: sz.pricingZone.id,
 						name: sz.pricingZone.name,
 						code: sz.pricingZone.code,
 					})),
-					vehicleCategories: subcontractor.vehicleCategories.map((vc) => ({
+					vehicleCategories: subcontractor.vehicleCategories.map((vc: { vehicleCategory: { id: string; name: string; code: string } }) => ({
 						id: vc.vehicleCategory.id,
 						name: vc.vehicleCategory.name,
 						code: vc.vehicleCategory.code,
@@ -152,20 +178,18 @@ export const subcontractorsRouter = new Hono()
 		try {
 			const subcontractor = await createSubcontractor(organizationId, data, db);
 
+			// Story 22.4: Return independent company entity
 			return c.json(
 				{
 					subcontractor: {
 						id: subcontractor.id,
-						contact: {
-							id: subcontractor.contact.id,
-							displayName: subcontractor.contact.displayName,
-						},
-						operatingZones: subcontractor.operatingZones.map((sz) => ({
+						companyName: subcontractor.companyName,
+						operatingZones: subcontractor.operatingZones.map((sz: { pricingZone: { id: string; name: string; code: string } }) => ({
 							id: sz.pricingZone.id,
 							name: sz.pricingZone.name,
 							code: sz.pricingZone.code,
 						})),
-						vehicleCategories: subcontractor.vehicleCategories.map((vc) => ({
+						vehicleCategories: subcontractor.vehicleCategories.map((vc: { vehicleCategory: { id: string; name: string; code: string } }) => ({
 							id: vc.vehicleCategory.id,
 							name: vc.vehicleCategory.name,
 							code: vc.vehicleCategory.code,
@@ -196,19 +220,17 @@ export const subcontractorsRouter = new Hono()
 		try {
 			const subcontractor = await updateSubcontractor(subcontractorId, organizationId, data, db);
 
+			// Story 22.4: Return independent company entity
 			return c.json({
 				subcontractor: {
 					id: subcontractor.id,
-					contact: {
-						id: subcontractor.contact.id,
-						displayName: subcontractor.contact.displayName,
-					},
-					operatingZones: subcontractor.operatingZones.map((sz) => ({
+					companyName: subcontractor.companyName,
+					operatingZones: subcontractor.operatingZones.map((sz: { pricingZone: { id: string; name: string; code: string } }) => ({
 						id: sz.pricingZone.id,
 						name: sz.pricingZone.name,
 						code: sz.pricingZone.code,
 					})),
-					vehicleCategories: subcontractor.vehicleCategories.map((vc) => ({
+					vehicleCategories: subcontractor.vehicleCategories.map((vc: { vehicleCategory: { id: string; name: string; code: string } }) => ({
 						id: vc.vehicleCategory.id,
 						name: vc.vehicleCategory.name,
 						code: vc.vehicleCategory.code,

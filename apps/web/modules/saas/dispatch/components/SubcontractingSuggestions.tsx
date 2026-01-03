@@ -210,8 +210,7 @@ function SuggestionCard({
 					</div>
 					<div className="text-left">
 						<p className="font-medium text-sm">
-							{suggestion.subcontractor.companyName ||
-								suggestion.subcontractor.displayName}
+							{suggestion.subcontractor.companyName}
 						</p>
 						<div className="flex items-center gap-2 mt-0.5">
 							<span className="text-xs text-muted-foreground">
@@ -358,9 +357,7 @@ function SuggestionCard({
 								data-testid="subcontract-button"
 							>
 								{t("action.subcontract", {
-									name:
-										suggestion.subcontractor.companyName ||
-										suggestion.subcontractor.displayName,
+									name: suggestion.subcontractor.companyName,
 								})}
 							</Button>
 						</div>

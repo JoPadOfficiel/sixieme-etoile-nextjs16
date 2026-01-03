@@ -1,19 +1,12 @@
 /**
  * Subcontractor Types
  * Story 8.6: Integrate Subcontractor Directory & Subcontracting Suggestions
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 
 // ============================================================================
 // Subcontractor Types
 // ============================================================================
-
-export interface SubcontractorContact {
-	id: string;
-	displayName: string;
-	email: string | null;
-	phone: string | null;
-	companyName: string | null;
-}
 
 export interface SubcontractorZone {
 	id: string;
@@ -29,16 +22,28 @@ export interface SubcontractorVehicleCategory {
 
 export interface SubcontractorListItem {
 	id: string;
-	contact: SubcontractorContact;
+	// Company information
+	companyName: string;
+	siret: string | null;
+	vatNumber: string | null;
+	// Contact details
+	contactName: string | null;
+	email: string | null;
+	phone: string | null;
+	address: string | null;
+	// Coverage
+	allZones: boolean;
 	operatingZones: SubcontractorZone[];
 	vehicleCategories: SubcontractorVehicleCategory[];
+	// Pricing
 	ratePerKm: number | null;
 	ratePerHour: number | null;
 	minimumFare: number | null;
+	// Status
 	isActive: boolean;
-	notes?: string | null;
-	createdAt?: string;
-	updatedAt?: string;
+	notes: string | null;
+	createdAt: string;
+	updatedAt: string;
 }
 
 // ============================================================================
@@ -63,10 +68,10 @@ export interface SubcontractingSuggestion {
 	subcontractorId: string;
 	subcontractor: {
 		id: string;
-		displayName: string;
+		companyName: string;
+		contactName: string | null;
 		email: string | null;
 		phone: string | null;
-		companyName: string | null;
 	};
 	estimatedPrice: number;
 	marginIfSubcontracted: number;

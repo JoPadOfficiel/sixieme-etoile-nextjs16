@@ -137,13 +137,21 @@ export function useSubcontractMission() {
 
 /**
  * Create a subcontractor
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export function useCreateSubcontractor() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: async (data: {
-			contactId: string;
+			companyName: string;
+			siret?: string;
+			vatNumber?: string;
+			contactName?: string;
+			email?: string;
+			phone?: string;
+			address?: string;
+			allZones?: boolean;
 			operatingZoneIds?: string[];
 			vehicleCategoryIds?: string[];
 			ratePerKm?: number;
@@ -164,6 +172,7 @@ export function useCreateSubcontractor() {
 
 /**
  * Update a subcontractor
+ * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */
 export function useUpdateSubcontractor() {
 	const queryClient = useQueryClient();
@@ -175,6 +184,14 @@ export function useUpdateSubcontractor() {
 		}: {
 			subcontractorId: string;
 			data: {
+				companyName?: string;
+				siret?: string | null;
+				vatNumber?: string | null;
+				contactName?: string | null;
+				email?: string | null;
+				phone?: string | null;
+				address?: string | null;
+				allZones?: boolean;
 				operatingZoneIds?: string[];
 				vehicleCategoryIds?: string[];
 				ratePerKm?: number | null;

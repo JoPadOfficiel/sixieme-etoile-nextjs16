@@ -76,7 +76,7 @@ export function SubcontractingDialog({
 			toast({
 				title: t("success"),
 				description: `Mission subcontracted to ${
-					suggestion.subcontractor.companyName || suggestion.subcontractor.displayName
+					suggestion.subcontractor.companyName
 				}`,
 			});
 
@@ -104,9 +104,7 @@ export function SubcontractingDialog({
 					</DialogTitle>
 					<DialogDescription>
 						{t("description", {
-							name:
-								suggestion.subcontractor.companyName ||
-								suggestion.subcontractor.displayName,
+							name: suggestion.subcontractor.companyName,
 						})}
 					</DialogDescription>
 				</DialogHeader>
@@ -115,8 +113,7 @@ export function SubcontractingDialog({
 					{/* Subcontractor Info */}
 					<div className="p-3 bg-muted/50 rounded-lg">
 						<p className="font-medium">
-							{suggestion.subcontractor.companyName ||
-								suggestion.subcontractor.displayName}
+							{suggestion.subcontractor.companyName}
 						</p>
 						{suggestion.subcontractor.email && (
 							<p className="text-sm text-muted-foreground">

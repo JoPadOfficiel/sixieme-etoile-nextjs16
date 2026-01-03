@@ -183,7 +183,7 @@ export async function getShadowFleetCandidates(
 			candidateId: `shadow-${sub.id}`,
 			isShadowFleet: true,
 			subcontractorId: sub.id,
-			subcontractorName: sub.companyName || sub.displayName,
+			subcontractorName: sub.companyName,
 			email: sub.email,
 			phone: sub.phone,
 			vehicleCategory,

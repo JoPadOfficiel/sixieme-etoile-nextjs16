@@ -422,7 +422,6 @@ model Contact {
 
   // Commercial flags
   isPartner         Boolean    @default(false)
-  isSubcontractor   Boolean    @default(false)
   defaultClientType ClientType @default(PRIVATE)
 
   // Story 17.15: Client difficulty score for "Patience Tax" pricing adjustment
@@ -435,15 +434,15 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   // Relations
-  quotes               Quote[]
-  invoices             Invoice[]
-  partnerContract      PartnerContract?
-  subcontractorProfile SubcontractorProfile?
+  quotes                 Quote[]
+  invoices               Invoice[]
+  partnerContract        PartnerContract?
+  subcontractorProfile   SubcontractorProfile? @relation(fields: [subcontractorProfileId], references: [id])
+  subcontractorProfileId String?
 
   @@index([organizationId])
   @@index([email])
   @@index([isPartner])
-  @@index([isSubcontractor])
   @@map("contact")
 }
 
@@ -533,15 +532,26 @@ model PartnerContractDispoPackage {
 // SUBCONTRACTOR MODELS (Story 8.6)
 // ----------------------------------------------------------------------------
 
-/// SubcontractorProfile - Details for subcontractor contacts
+/// SubcontractorProfile - Partner company for subcontracting missions
+/// Story 22.4: Refactored to be independent entity (not linked to Contact)
 model SubcontractorProfile {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  // Link to Contact (1:1)
-  contactId String  @unique
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  // Company information (independent from Contact)
+  companyName String  @db.VarChar(255)
+  siret       String? @db.VarChar(20)
+  vatNumber   String? @db.VarChar(50)
+
+  // Contact details
+  contactName String? @db.VarChar(255) // Main contact person
+  email       String? @db.VarChar(255)
+  phone       String? @db.VarChar(50)
+  address     String? // Company/depot address
+
+  // Coverage: if allZones=true, operates everywhere (France/Europe)
+  allZones Boolean @default(false)
 
   // Indicative pricing (EUR)
   ratePerKm   Decimal? @db.Decimal(8, 2)
@@ -562,10 +572,11 @@ model SubcontractorProfile {
   operatingZones      SubcontractorZone[]
   vehicleCategories   SubcontractorVehicleCategory[]
   subcontractedQuotes Quote[]
+  contacts            Contact[]
 
   @@index([organizationId])
-  @@index([contactId])
   @@index([isActive])
+  @@index([companyName])
   @@map("subcontractor_profile")
 }
 

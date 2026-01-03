@@ -21,6 +21,7 @@ import {
 	TagIcon,
 	TruckIcon,
 	Users2Icon,
+	UsersIcon,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -131,6 +132,11 @@ export default async function SettingsLayout({
 							title: t("settings.menu.organization.fleet.rseRules"),
 							href: `${organizationSettingsBasePath}/fleet?tab=rse-rules`,
 							icon: <ShieldCheckIcon className="size-4 opacity-50" />,
+						},
+						{
+							title: t("settings.menu.organization.fleet.subcontractors"),
+							href: `${organizationSettingsBasePath}/fleet/subcontractors`,
+							icon: <UsersIcon className="size-4 opacity-50" />,
 						},
 					],
 				},

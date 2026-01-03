@@ -149,6 +149,8 @@ export interface MissionsFilters {
 	vehicleCategoryId?: string;
 	clientType?: "PARTNER" | "PRIVATE" | "ALL";
 	search?: string;
+	// Story 22.4: Filter for subcontracted missions
+	subcontracted?: "ALL" | "SUBCONTRACTED" | "INTERNAL";
 }
 
 export interface MissionsListResponse {

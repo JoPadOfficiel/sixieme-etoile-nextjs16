@@ -81,6 +81,14 @@ export function MissionsFilters({
 		});
 	};
 
+	// Story 22.4: Handle subcontracted filter change
+	const handleSubcontractedChange = (value: string) => {
+		onFiltersChange({
+			...filters,
+			subcontracted: value as "ALL" | "SUBCONTRACTED" | "INTERNAL",
+		});
+	};
+
 	const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		onFiltersChange({
 			...filters,
@@ -97,6 +105,7 @@ export function MissionsFilters({
 		filters.dateTo ||
 		filters.vehicleCategoryId ||
 		(filters.clientType && filters.clientType !== "ALL") ||
+		(filters.subcontracted && filters.subcontracted !== "ALL") ||
 		filters.search;
 
 	return (
@@ -201,6 +210,21 @@ export function MissionsFilters({
 						<SelectItem value="ALL">{t("all")}</SelectItem>
 						<SelectItem value="PARTNER">{t("partner")}</SelectItem>
 						<SelectItem value="PRIVATE">{t("private")}</SelectItem>
+					</SelectContent>
+				</Select>
+
+				{/* Subcontracted Filter - Story 22.4 */}
+				<Select
+					value={filters.subcontracted || "ALL"}
+					onValueChange={handleSubcontractedChange}
+				>
+					<SelectTrigger className="w-[160px] h-9" data-testid="filter-subcontracted">
+						<SelectValue placeholder={t("subcontracted")} />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="ALL">{t("subcontractedAll")}</SelectItem>
+						<SelectItem value="SUBCONTRACTED">{t("subcontractedOnly")}</SelectItem>
+						<SelectItem value="INTERNAL">{t("internalOnly")}</SelectItem>
 					</SelectContent>
 				</Select>
 

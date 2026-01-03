@@ -1324,7 +1324,8 @@
 					"vehicleCategories": "Catégories de véhicules",
 					"costParameters": "Paramètres de coûts",
 					"licenseCategories": "Catégories de permis",
-					"rseRules": "Règles RSE"
+					"rseRules": "Règles RSE",
+					"subcontractors": "Sous-traitants"
 				},
 				"title": "Organisation"
 			}
@@ -3468,7 +3469,11 @@
 			"all": "Tous",
 			"partner": "Partenaires",
 			"private": "Privés",
-			"clear": "Effacer"
+			"clear": "Effacer",
+			"subcontracted": "Sous-traitance",
+			"subcontractedAll": "Tous",
+			"subcontractedOnly": "Sous-traités uniquement",
+			"internalOnly": "Internes uniquement"
 		},
 		"badges": {
 			"profitability": {
@@ -3887,5 +3892,81 @@
 	},
 	"breadcrumb": {
 		"home": "Accueil"
+	},
+	"subcontractors": {
+		"title": "Sous-traitants",
+		"description": "Gérez vos partenaires sous-traitants pour l'externalisation des missions",
+		"addSubcontractor": "Ajouter un sous-traitant",
+		"allZones": "Toutes zones",
+		"table": {
+			"name": "Entreprise",
+			"contact": "Contact",
+			"operatingZones": "Zones d'opération",
+			"vehicleCategories": "Catégories de véhicules",
+			"rates": "Tarifs",
+			"status": "Statut",
+			"actions": "Actions",
+			"noSubcontractors": "Aucun sous-traitant trouvé",
+			"noSubcontractorsDescription": "Ajoutez votre premier partenaire sous-traitant pour commencer à externaliser des missions",
+			"searchPlaceholder": "Rechercher des sous-traitants..."
+		},
+		"form": {
+			"companyInfo": "Informations de l'entreprise",
+			"companyName": "Nom de l'entreprise",
+			"companyNamePlaceholder": "Saisir le nom de l'entreprise...",
+			"companyNameRequired": "Le nom de l'entreprise est requis",
+			"siret": "SIRET",
+			"vatNumber": "N° TVA",
+			"contactDetails": "Coordonnées",
+			"contactName": "Nom du contact",
+			"contactNamePlaceholder": "Saisir le nom du contact...",
+			"email": "Email",
+			"phone": "Téléphone",
+			"address": "Adresse",
+			"addressPlaceholder": "Saisir l'adresse...",
+			"coverage": "Couverture",
+			"allZones": "Toutes zones (couverture nationale/internationale)",
+			"operatingZones": "Zones d'opération",
+			"operatingZonesPlaceholder": "Sélectionner des zones...",
+			"vehicleCategories": "Catégories de véhicules",
+			"vehicleCategoriesPlaceholder": "Sélectionner des catégories...",
+			"ratePerKm": "Tarif au km (EUR)",
+			"ratePerHour": "Tarif horaire (EUR)",
+			"minimumFare": "Tarif minimum (EUR)",
+			"notes": "Notes",
+			"notesPlaceholder": "Notes supplémentaires sur ce sous-traitant...",
+			"isActive": "Actif",
+			"isActiveDescription": "Les sous-traitants inactifs n'apparaîtront pas dans les suggestions"
+		},
+		"dialog": {
+			"createTitle": "Ajouter un sous-traitant",
+			"editTitle": "Modifier le sous-traitant",
+			"deleteTitle": "Supprimer le sous-traitant",
+			"deleteDescription": "Êtes-vous sûr de vouloir supprimer ce sous-traitant ? Cette action est irréversible.",
+			"create": "Créer",
+			"save": "Enregistrer",
+			"delete": "Supprimer",
+			"cancel": "Annuler"
+		},
+		"toast": {
+			"createSuccess": "Sous-traitant créé avec succès",
+			"updateSuccess": "Sous-traitant mis à jour avec succès",
+			"deleteSuccess": "Sous-traitant supprimé avec succès",
+			"error": "Une erreur s'est produite"
+		},
+		"status": {
+			"active": "Actif",
+			"inactive": "Inactif"
+		},
+		"filter": {
+			"all": "Tous",
+			"active": "Actifs",
+			"inactive": "Inactifs"
+		},
+		"rates": {
+			"perKm": "{rate}€/km",
+			"perHour": "{rate}€/h",
+			"minimum": "Min: {rate}€"
+		}
 	}
 }
