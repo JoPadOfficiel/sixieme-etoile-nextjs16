@@ -208,7 +208,7 @@ development_status:
   22-1-fix-round-trip-pricing-calculation: done
   22-2-display-staffing-costs-in-quote-creation: done
   22-3-enable-quote-notes-modification-after-sending: done
-  22-4-implement-complete-subcontracting-system: backlog
+  22-4-implement-complete-subcontracting-system: in_progress
   22-5-add-stay-trip-type-data-model-api: backlog
   22-6-implement-stay-trip-type-frontend-interface: backlog
   22-7-implement-stay-trip-type-pricing-engine: backlog

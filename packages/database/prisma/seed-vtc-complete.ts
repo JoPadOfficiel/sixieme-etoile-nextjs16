@@ -81,6 +81,7 @@ async function main() {
     await createDrivers();
     await createVehicles();
     await createContacts();
+    await createSubcontractors();
     await createPartnerContracts();
     await createIntegrationSettings();
     await seedDocumentTypes();
@@ -1012,6 +1013,195 @@ async function createContacts() {
     CONTACT_IDS[c.displayName] = created.id;
   }
   console.log(`   ✅ ${contacts.length} contacts with difficulty scores`);
+}
+
+async function createSubcontractors() {
+  console.log("\n🚚 Creating Subcontractors...");
+  
+  // ============================================================================
+  // SUBCONTRACTOR CONFIGURATIONS
+  // 4 sous-traitants réalistes avec différentes spécialisations:
+  // 1. Spécialiste Orly - Berline & VAN (zones aéroport sud)
+  // 2. Spécialiste Paris Centre - Berline & Luxe (centre ville)
+  // 3. Spécialiste Autocars - AUTOCAR & MINIBUS (groupes)
+  // 4. Couverture nationale - Toutes zones, toutes catégories
+  // ============================================================================
+  
+  const subcontractors = [
+    // ============================================================================
+    // 1. VTC ORLY PREMIUM - Spécialiste aéroport Orly
+    // Zones: ORLY, PARIS_20 (petite couronne sud)
+    // Catégories: BERLINE, VAN_PREMIUM
+    // Tarifs compétitifs pour l'aéroport
+    // ============================================================================
+    {
+      companyName: "VTC Orly Premium",
+      siret: "89012345600012",
+      vatNumber: "FR89012345678",
+      contactName: "Sophie Dubois",
+      email: "contact@vtcorlypremium.fr",
+      phone: "+33 1 69 38 45 67",
+      address: "12 Avenue de la République, 94310 Orly",
+      allZones: false,
+      operatingZones: ["ORLY", "PARIS_20"],
+      vehicleCategories: ["BERLINE", "VAN_PREMIUM"],
+      ratePerKm: 2.20,
+      ratePerHour: 42.00,
+      minimumFare: 65.00,
+      notes: "Spécialiste des transferts aéroport Orly. Flotte récente, chauffeurs bilingues. Disponible 24/7.",
+    },
+    
+    // ============================================================================
+    // 2. PARIS LUXE TRANSPORT - Spécialiste centre Paris
+    // Zones: PARIS_0, PARIS_10, LA_DEFENSE
+    // Catégories: BERLINE, LUXE
+    // Tarifs premium pour clientèle affaires
+    // ============================================================================
+    {
+      companyName: "Paris Luxe Transport",
+      siret: "78901234500023",
+      vatNumber: "FR78901234567",
+      contactName: "Laurent Mercier",
+      email: "contact@parisluxetransport.fr",
+      phone: "+33 1 42 56 78 90",
+      address: "45 Avenue des Champs-Élysées, 75008 Paris",
+      allZones: false,
+      operatingZones: ["PARIS_0", "PARIS_10", "LA_DEFENSE"],
+      vehicleCategories: ["BERLINE", "LUXE"],
+      ratePerKm: 2.80,
+      ratePerHour: 55.00,
+      minimumFare: 85.00,
+      notes: "Service premium pour clientèle d'affaires. Véhicules haut de gamme (Mercedes Classe S, BMW Série 7). Chauffeurs expérimentés.",
+    },
+    
+    // ============================================================================
+    // 3. GROUPE TRANSPORT IDF - Spécialiste groupes et autocars
+    // Zones: CDG, ORLY, PARIS_0, PARIS_20, PARIS_30
+    // Catégories: AUTOCAR, MINIBUS (2 autocars disponibles)
+    // Tarifs groupes compétitifs
+    // ============================================================================
+    {
+      companyName: "Groupe Transport IDF",
+      siret: "67890123400034",
+      vatNumber: "FR67890123456",
+      contactName: "Michel Rousseau",
+      email: "reservation@groupetransportidf.fr",
+      phone: "+33 1 48 92 34 56",
+      address: "78 Boulevard Périphérique, 93200 Saint-Denis",
+      allZones: false,
+      operatingZones: ["CDG", "ORLY", "PARIS_0", "PARIS_20", "PARIS_30"],
+      vehicleCategories: ["AUTOCAR", "MINIBUS"],
+      ratePerKm: 3.50,
+      ratePerHour: 85.00,
+      minimumFare: 250.00,
+      notes: "Spécialiste transport de groupes. 2 autocars 55 places et 4 minibus 16 places. Idéal pour événements, séminaires, transferts aéroport groupes.",
+    },
+    
+    // ============================================================================
+    // 4. FRANCE VTC SERVICES - Couverture nationale complète
+    // Zones: TOUTES (allZones = true)
+    // Catégories: BERLINE, VAN_PREMIUM, MINIBUS, LUXE
+    // Réseau national, tarifs standards
+    // ============================================================================
+    {
+      companyName: "France VTC Services",
+      siret: "56789012300045",
+      vatNumber: "FR56789012345",
+      contactName: "Isabelle Lefebvre",
+      email: "contact@francevtcservices.fr",
+      phone: "+33 1 55 67 89 01",
+      address: "156 Rue de Rivoli, 75001 Paris",
+      allZones: true,
+      operatingZones: [], // Toutes zones
+      vehicleCategories: ["BERLINE", "VAN_PREMIUM", "MINIBUS", "LUXE"],
+      ratePerKm: 2.50,
+      ratePerHour: 48.00,
+      minimumFare: 75.00,
+      notes: "Réseau national avec partenaires dans toute la France. Couverture complète pour tous types de prestations. Service 24/7, facturation centralisée.",
+    },
+    
+    // ============================================================================
+    // 5. IDF BUS SERVICES - Spécialiste bus et autocars Paris-Ile-de-France
+    // Zones: TOUTES Paris-Ile-de-France (toutes les zones PARIS_*)
+    // Catégories: MINIBUS, AUTOCAR (spécialiste grands bus)
+    // Tarifs groupes adaptés pour les bus
+    // ============================================================================
+    {
+      companyName: "IDF Bus Services",
+      siret: "45678901200056",
+      vatNumber: "FR45678901234",
+      contactName: "Philippe Bernard",
+      email: "reservation@idfbusservices.fr",
+      phone: "+33 1 44 23 45 67",
+      address: "25 Rue de la Convention, 75015 Paris",
+      allZones: false,
+      operatingZones: ["PARIS_0", "PARIS_10", "PARIS_20", "PARIS_30", "PARIS_40", "PARIS_60", "PARIS_100"],
+      vehicleCategories: ["MINIBUS", "AUTOCAR"],
+      ratePerKm: 4.00,
+      ratePerHour: 95.00,
+      minimumFare: 80.00,
+      notes: "Spécialiste transport de groupes en bus et autocars. Couverture complète Paris-Ile-de-France. Flotte de 8 autocars 35-55 places et 12 minibus 16-35 places. Idéal pour écoles, entreprises, événements sportifs.",
+    },
+  ];
+  
+  for (const sub of subcontractors) {
+    // Créer le profil sous-traitant
+    const subcontractor = await prisma.subcontractorProfile.create({
+      data: {
+        id: randomUUID(),
+        organizationId: ORGANIZATION_ID,
+        companyName: sub.companyName,
+        siret: sub.siret,
+        vatNumber: sub.vatNumber,
+        contactName: sub.contactName,
+        email: sub.email,
+        phone: sub.phone,
+        address: sub.address,
+        allZones: sub.allZones,
+        ratePerKm: sub.ratePerKm,
+        ratePerHour: sub.ratePerHour,
+        minimumFare: sub.minimumFare,
+        notes: sub.notes,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    
+    // Ajouter les zones opérationnelles (si pas allZones)
+    if (!sub.allZones && sub.operatingZones.length > 0) {
+      for (const zoneCode of sub.operatingZones) {
+        const zoneId = PRICING_ZONE_IDS[zoneCode];
+        if (zoneId) {
+          await prisma.subcontractorZone.create({
+            data: {
+              id: randomUUID(),
+              subcontractorProfileId: subcontractor.id,
+              pricingZoneId: zoneId,
+            },
+          });
+        }
+      }
+    }
+    
+    // Ajouter les catégories de véhicules
+    for (const categoryCode of sub.vehicleCategories) {
+      const categoryId = VEHICLE_CATEGORY_IDS[categoryCode];
+      if (categoryId) {
+        await prisma.subcontractorVehicleCategory.create({
+          data: {
+            id: randomUUID(),
+            subcontractorProfileId: subcontractor.id,
+            vehicleCategoryId: categoryId,
+          },
+        });
+      }
+    }
+    
+    console.log(`   ✅ ${sub.companyName} (${sub.vehicleCategories.join(", ")})`);
+  }
+  
+  console.log(`   ✅ ${subcontractors.length} subcontractors created`);
 }
 
 async function createPartnerContracts() {
