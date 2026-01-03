@@ -7,6 +7,46 @@ import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
 import { useTranslations } from "next-intl";
 import { computeRoutesWithFallback, toRoutesWaypoint, type RoutesRequest } from "../../../../lib/google-routes-client";
 
+// Story 21.9: Helper function to decode Google encoded polyline
+function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+  const points = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let shift = 0;
+    let result = 0;
+    let byte;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += deltaLng;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+
+  return points;
+}
+
 // Types for Routes API response
 interface RoutesApiResponse {
   success: boolean;
@@ -30,6 +70,8 @@ interface ModernRouteMapProps {
   dropoff?: { lat: number; lng: number; address: string };
   /** Story 19.7: Support for excursion waypoints */
   waypoints?: Array<{ lat: number; lng: number; address: string }>;
+  /** Story 21.9: Use encoded polyline from tripAnalysis when available */
+  encodedPolyline?: string | null;
   className?: string;
 }
 
@@ -49,7 +91,7 @@ const COLORS = {
  * Story 19.7: Modern map component with Routes API integration
  * Story 20.7: Fix route display - always show polyline (API or fallback)
  */
-export function ModernRouteMap({ pickup, dropoff, waypoints, className }: ModernRouteMapProps) {
+export function ModernRouteMap({ pickup, dropoff, waypoints, encodedPolyline, className }: ModernRouteMapProps) {
   const t = useTranslations("quotes.create.tripTransparency.routeMap");
   const { isLoaded: isMapReady, error: mapError, apiKey } = useGoogleMaps();
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -274,6 +316,47 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
 
     // Use Routes API for route rendering
     if (pickup && dropoff) {
+      // Story 21.9: Check if we have an encoded polyline from tripAnalysis
+      if (encodedPolyline) {
+        console.log("[ModernRouteMap] Using encoded polyline from tripAnalysis");
+        
+        try {
+          const decodedPath = decodePolyline(encodedPolyline);
+          
+          if (decodedPath.length > 0) {
+            // Clear any existing polyline
+            if (polylineRef.current) {
+              (polylineRef.current as google.maps.Polyline).setMap(null);
+            }
+            
+            // Create polyline from decoded path
+            const polyline = new google.maps.Polyline({
+              map,
+              path: decodedPath,
+              strokeColor: COLORS.route,
+              strokeOpacity: 1,
+              strokeWeight: 4,
+              geodesic: true,
+              zIndex: 50,
+            });
+            polylineRef.current = polyline;
+            
+            // Fit bounds to the decoded route
+            const routeBounds = new google.maps.LatLngBounds();
+            decodedPath.forEach((point: { lat: number; lng: number }) => {
+              routeBounds.extend(point);
+            });
+            map.fitBounds(routeBounds, 40);
+            
+            console.log("[ModernRouteMap] Encoded polyline decoded and displayed with", decodedPath.length, "points");
+            return; // Skip Routes API call
+          }
+        } catch (error) {
+          console.error("[ModernRouteMap] Failed to decode polyline:", error);
+          // Fall back to Routes API
+        }
+      }
+      
       // Story 20.7: Always create immediate fallback polyline for instant visual feedback
       createFallbackPolyline(map, pickup, dropoff, waypoints);
       console.log("[ModernRouteMap] Fallback polyline created for immediate display");
@@ -353,7 +436,7 @@ export function ModernRouteMap({ pickup, dropoff, waypoints, className }: Modern
         });
     }
 
-  }, [pickup, dropoff, waypoints, isMapReady, apiKey, createFallbackPolyline]);
+  }, [pickup, dropoff, waypoints, isMapReady, apiKey, createFallbackPolyline, encodedPolyline]);
 
   // No coordinates
   if (!pickup && !dropoff) {

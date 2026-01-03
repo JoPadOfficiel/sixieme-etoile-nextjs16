@@ -820,6 +820,8 @@ export interface TripAnalysis {
   tollSource?: "GOOGLE_API" | "ESTIMATE";
   // Story 20.5: Fuel price source information for transparency
   fuelPriceSource?: FuelPriceSourceInfo;
+  // Story 21.9: Encoded polyline for route display
+  encodedPolyline?: string | null;
   // Story 19.1: Compliance-driven staffing plan
   compliancePlan?: CompliancePlan | null;
   // Story 21.3: Time analysis breakdown

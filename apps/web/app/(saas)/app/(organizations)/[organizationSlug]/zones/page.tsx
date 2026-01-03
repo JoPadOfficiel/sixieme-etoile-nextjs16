@@ -210,7 +210,7 @@ export default function ZonesPage() {
 				subtitle={t("pricing.zones.description")}
 			/>
 
-			<div className="container max-w-6xl py-6 space-y-6">
+			<div className="max-w-6xl py-6 space-y-6">
 				<div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
 					{/* Map column */}
 					<div className="space-y-4">

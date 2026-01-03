@@ -280,6 +280,8 @@ export async function checkTollCache(
 				source: cached.source as TollSource,
 				fetchedAt: cached.fetchedAt,
 				isFromCache: true,
+				// Story 17.13: Include cached polyline for route segmentation
+				encodedPolyline: cached.encodedPolyline ?? null,
 			};
 		}
 
@@ -303,6 +305,7 @@ export async function storeTollCache(
 	destinationHash: string,
 	tollAmount: number,
 	ttlHours: number = TOLL_CACHE_TTL_HOURS,
+	encodedPolyline?: string | null,
 ): Promise<void> {
 	try {
 		const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
@@ -318,11 +321,15 @@ export async function storeTollCache(
 				currency: "EUR",
 				source: "GOOGLE_API",
 				expiresAt,
+				// Story 17.13: Store polyline for route segmentation
+				encodedPolyline: encodedPolyline ?? null,
 			},
 			update: {
 				tollAmount,
 				fetchedAt: new Date(),
 				expiresAt,
+				// Story 17.13: Update polyline on refresh
+				encodedPolyline: encodedPolyline ?? null,
 			},
 		});
 	} catch (error) {
@@ -388,8 +395,8 @@ export async function getTollCost(
 		);
 
 		if (success) {
-			// Step 3: Cache the result
-			await storeTollCache(originHash, destinationHash, tollAmount, ttlHours);
+			// Step 3: Cache the result (including polyline for route segmentation)
+			await storeTollCache(originHash, destinationHash, tollAmount, ttlHours, encodedPolyline);
 
 			return {
 				amount: tollAmount,

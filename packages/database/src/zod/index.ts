@@ -178,7 +178,7 @@ export const ComplianceAuditLogScalarFieldEnumSchema = z.enum(['id','organizatio
 
 export const QuoteStatusAuditLogScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','previousStatus','newStatus','userId','timestamp','reason']);
 
-export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destinationHash','tollAmount','currency','source','fetchedAt','expiresAt']);
+export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destinationHash','tollAmount','currency','encodedPolyline','source','fetchedAt','expiresAt']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -1503,6 +1503,7 @@ export type QuoteStatusAuditLog = z.infer<typeof QuoteStatusAuditLogSchema>
 /**
  * TollCache - Caches toll costs from Google Routes API
  * Story 15.1: Integrate Google Routes API for Real Toll Costs
+ * Story 17.13: Added encodedPolyline for route segmentation
  */
 export const TollCacheSchema = z.object({
   id: z.string().cuid(),
@@ -1510,6 +1511,7 @@ export const TollCacheSchema = z.object({
   destinationHash: z.string(),
   tollAmount: z.instanceof(Prisma.Decimal, { message: "Field 'tollAmount' must be a Decimal. Location: ['Models', 'TollCache']"}),
   currency: z.string(),
+  encodedPolyline: z.string().nullable(),
   source: z.string(),
   fetchedAt: z.coerce.date(),
   expiresAt: z.coerce.date(),

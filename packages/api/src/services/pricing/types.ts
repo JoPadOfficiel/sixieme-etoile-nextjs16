@@ -1271,6 +1271,8 @@ export interface TripAnalysis {
 	tollSource?: "GOOGLE_API" | "ESTIMATE";
 	fuelConsumptionSource?: FuelConsumptionSource;
 	fuelConsumptionL100km?: number;
+	// Story 21.9: Encoded polyline for route display
+	encodedPolyline?: string | null;
 	compliancePlan?: CompliancePlan | null;
 	zoneSegments?: ZoneSegmentInfo[] | null;
 	routeSegmentation?: {

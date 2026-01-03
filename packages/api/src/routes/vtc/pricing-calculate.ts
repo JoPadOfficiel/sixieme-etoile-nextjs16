@@ -920,6 +920,11 @@ export const pricingCalculateRouter = new Hono()
 						// Set toll source for transparency
 						result.tripAnalysis.tollSource = tollResult.source;
 						
+						// Story 21.9: Store encoded polyline for route display
+						if (tollResult.encodedPolyline) {
+							result.tripAnalysis.encodedPolyline = tollResult.encodedPolyline;
+						}
+						
 						// Story 17.13: Route segmentation for multi-zone trips
 						if (tollResult.encodedPolyline && zones.length > 0 && effectiveDurationMinutes) {
 							try {

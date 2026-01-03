@@ -183,6 +183,7 @@ export function EnhancedTripTransparencyPanel({
             pickup={routeCoordinates.pickup}
             dropoff={routeCoordinates.dropoff}
             waypoints={routeCoordinates.waypoints}
+            encodedPolyline={tripAnalysis.encodedPolyline}
           />
         </div>
       )}

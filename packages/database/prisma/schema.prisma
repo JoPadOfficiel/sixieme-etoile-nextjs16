@@ -1954,6 +1954,7 @@ model QuoteStatusAuditLog {
 
 /// TollCache - Caches toll costs from Google Routes API
 /// Story 15.1: Integrate Google Routes API for Real Toll Costs
+/// Story 17.13: Added encodedPolyline for route segmentation
 model TollCache {
   id String @id @default(cuid())
 
@@ -1964,6 +1965,9 @@ model TollCache {
   // Toll data
   tollAmount Decimal @db.Decimal(10, 2)
   currency   String  @default("EUR")
+
+  // Story 17.13: Encoded polyline for route segmentation
+  encodedPolyline String? @db.Text
 
   // Metadata
   source    String   @default("GOOGLE_API") // "GOOGLE_API" or "ESTIMATE"
