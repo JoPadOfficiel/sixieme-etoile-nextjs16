@@ -37,7 +37,8 @@ import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import { TimeAnalysisSection } from "./TimeAnalysisSection";
 import { ZoneTransparencySection } from "./ZoneTransparencySection";
-import type { PricingResult } from "../types";
+import { CalculationValidationSection } from "./CalculationValidationSection";
+import type { PricingResult, AuditLogEntry } from "../types";
 import { 
   formatPrice, 
   formatDistance, 
@@ -66,6 +67,10 @@ interface TripTransparencyPanelProps {
   isCostUpdating?: boolean;
   // Story 10.1: Route visualization
   routeCoordinates?: RouteCoordinates;
+  // Story 21.9: Validation props
+  onRecalculate?: () => Promise<void>;
+  isRecalculating?: boolean;
+  auditLog?: AuditLogEntry[];
 }
 
 /**
@@ -91,6 +96,9 @@ export function TripTransparencyPanel({
   onCostUpdate,
   isCostUpdating = false,
   routeCoordinates,
+  onRecalculate,
+  isRecalculating = false,
+  auditLog = [],
 }: TripTransparencyPanelProps) {
   const t = useTranslations();
 
@@ -337,6 +345,14 @@ export function TripTransparencyPanel({
 
                 {/* Story 21.8: Zone Transparency Section */}
                 <ZoneTransparencySection zoneTransparency={tripAnalysis.zoneTransparency} />
+
+                {/* Story 21.9: Calculation Validation Section */}
+                <CalculationValidationSection
+                  validation={pricingResult.validation}
+                  onRecalculate={onRecalculate}
+                  isRecalculating={isRecalculating}
+                  auditLog={auditLog}
+                />
               </div>
             </CardContent>
           </Card>

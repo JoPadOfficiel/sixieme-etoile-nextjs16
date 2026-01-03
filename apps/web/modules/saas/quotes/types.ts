@@ -875,6 +875,8 @@ export interface PricingResult {
   complianceResult: ComplianceValidationResult | null;
   // Story 7.4: Commission data for partner quotes
   commissionData?: CommissionData;
+  // Story 21.9: Validation result
+  validation?: ValidationResult;
 }
 
 /**
@@ -984,4 +986,75 @@ export function recalculateMargin(
   const profitabilityIndicator = getProfitabilityLevel(marginPercent);
   
   return { margin, marginPercent, profitabilityIndicator };
+}
+
+// ============================================================================
+// Story 21.9: Validation Types
+// ============================================================================
+
+export type ValidationCheckStatus = "PASS" | "WARNING" | "FAIL";
+export type ValidationOverallStatus = "VALID" | "WARNING" | "INVALID";
+export type ValidationEventType = "INITIAL_CALC" | "RECALCULATE" | "VALIDATION_PASS" | "VALIDATION_FAIL" | "PRICE_OVERRIDE";
+
+export interface ValidationCheck {
+  id: string;
+  name: string;
+  status: ValidationCheckStatus;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  overallStatus: ValidationOverallStatus;
+  checks: ValidationCheck[];
+  timestamp: string;
+  warnings: string[];
+  errors: string[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  eventType: ValidationEventType;
+  price: number;
+  internalCost: number;
+  marginPercent: number;
+  validationStatus: ValidationOverallStatus;
+  warnings: string[];
+  errors: string[];
+  triggeredBy: "SYSTEM" | "USER";
+  userId?: string;
+}
+
+/**
+ * Get validation status icon
+ */
+export function getValidationStatusIcon(status: ValidationCheckStatus): string {
+  switch (status) {
+    case "PASS":
+      return "✅";
+    case "WARNING":
+      return "⚠️";
+    case "FAIL":
+      return "❌";
+    default:
+      return "❓";
+  }
+}
+
+/**
+ * Get overall validation status icon
+ */
+export function getOverallStatusIcon(status: ValidationOverallStatus): string {
+  switch (status) {
+    case "VALID":
+      return "✅";
+    case "WARNING":
+      return "⚠️";
+    case "INVALID":
+      return "❌";
+    default:
+      return "❓";
+  }
 }

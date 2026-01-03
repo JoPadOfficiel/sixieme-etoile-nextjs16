@@ -196,6 +196,8 @@ export interface PricingResult {
 	overrideApplied?: boolean;
 	previousPrice?: number;
 	commissionData?: CommissionData;
+	// Story 21.9: Validation result
+	validation?: ValidationResult;
 }
 
 // ============================================================================
@@ -1304,4 +1306,43 @@ export interface PricingEngineContext {
 	vehicleCategory?: VehicleCategoryInfo;
 	// Story 21.6: Vehicle selection result for accurate positioning costs
 	vehicleSelectionInput?: ShadowCalculationInput;
+}
+
+// ============================================================================
+// Story 21.9: Validation Types
+// ============================================================================
+
+export type ValidationCheckStatus = "PASS" | "WARNING" | "FAIL";
+export type ValidationOverallStatus = "VALID" | "WARNING" | "INVALID";
+export type ValidationEventType = "INITIAL_CALC" | "RECALCULATE" | "VALIDATION_PASS" | "VALIDATION_FAIL" | "PRICE_OVERRIDE";
+
+export interface ValidationCheck {
+	id: string;
+	name: string;
+	status: ValidationCheckStatus;
+	message: string;
+	details?: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+	isValid: boolean;
+	overallStatus: ValidationOverallStatus;
+	checks: ValidationCheck[];
+	timestamp: string;
+	warnings: string[];
+	errors: string[];
+}
+
+export interface AuditLogEntry {
+	id: string;
+	timestamp: string;
+	eventType: ValidationEventType;
+	price: number;
+	internalCost: number;
+	marginPercent: number;
+	validationStatus: ValidationOverallStatus;
+	warnings: string[];
+	errors: string[];
+	triggeredBy: "SYSTEM" | "USER";
+	userId?: string;
 }

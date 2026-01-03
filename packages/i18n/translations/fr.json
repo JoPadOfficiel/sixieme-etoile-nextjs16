@@ -2647,6 +2647,24 @@
 					"noCoordinates": "Aucune coordonnée de route disponible",
 					"loadError": "Impossible de charger la carte",
 					"routeEstimate": "Tracé estimé (ligne directe)"
+				},
+				"validation": {
+					"title": "Validation des calculs",
+					"recalculate": "Recalculer",
+					"valid": "Tous les contrôles sont passés",
+					"warning": "{count} avertissement(s) détecté(s)",
+					"invalid": "Validation échouée - {count} erreur(s)",
+					"showChecks": "Afficher {count} contrôles",
+					"reviewWarning": "Vérifiez les tarifs avant d'envoyer au client",
+					"auditTrail": "Historique",
+					"checks": {
+						"marginPositive": "Marge positive",
+						"marginReasonable": "Marge raisonnable",
+						"zoneMultiplier": "Multiplicateur de zone correct",
+						"durationPlausible": "Durée plausible",
+						"staffingProportional": "Coûts de personnel proportionnels",
+						"componentsSum": "Somme des composants correcte"
+					}
 				}
 			},
 			"recomputeWarning": {

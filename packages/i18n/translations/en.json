@@ -2647,6 +2647,24 @@
 					"noCoordinates": "No route coordinates available",
 					"loadError": "Unable to load map",
 					"routeEstimate": "Estimated route (direct line)"
+				},
+				"validation": {
+					"title": "Calculation Validation",
+					"recalculate": "Recalculate",
+					"valid": "All checks passed",
+					"warning": "{count} warning(s) detected",
+					"invalid": "Validation failed - {count} error(s)",
+					"showChecks": "Show {count} checks",
+					"reviewWarning": "Review pricing before sending to client",
+					"auditTrail": "Audit Trail",
+					"checks": {
+						"marginPositive": "Margin positive",
+						"marginReasonable": "Margin reasonable",
+						"zoneMultiplier": "Zone multiplier correct",
+						"durationPlausible": "Duration plausible",
+						"staffingProportional": "Staffing costs proportional",
+						"componentsSum": "Components sum matches total"
+					}
 				}
 			},
 			"recomputeWarning": {

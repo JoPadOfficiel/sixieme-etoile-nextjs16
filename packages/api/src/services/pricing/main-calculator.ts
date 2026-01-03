@@ -31,6 +31,7 @@ import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThre
 import { applyTripTypePricing } from "./trip-type-pricing";
 import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts } from "./shadow-calculator";
 import { isPointInZone, findZonesForPoint, resolveZoneConflict } from "../../lib/geo-utils";
+import { validatePricingResult } from "./validation";
 
 // ============================================================================
 // Main Calculation Function
@@ -583,7 +584,8 @@ export async function calculatePriceWithRealTolls(
 		priceAfterZoneMultiplier,
 	);
 	
-	return {
+	// Build initial result
+	const result: PricingResult = {
 		pricingMode,
 		price,
 		currency: "EUR",
@@ -599,6 +601,11 @@ export async function calculatePriceWithRealTolls(
 		gridSearchDetails,
 		tripAnalysis,
 	};
+	
+	// Story 21.9: Validate pricing result
+	result.validation = validatePricingResult(result, pricingSettings);
+	
+	return result;
 }
 
 // ============================================================================
