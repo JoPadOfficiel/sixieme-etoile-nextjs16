@@ -650,6 +650,105 @@ export interface PositioningCosts {
 }
 
 // ============================================================================
+// Story 21.8: Zone Transparency Types
+// ============================================================================
+
+/**
+ * Zone candidate info from pricing engine
+ */
+export interface ZoneCandidateInfo {
+  id: string;
+  code: string;
+  name: string;
+  type: "POLYGON" | "RADIUS" | "POINT" | "CORRIDOR";
+  multiplier: number;
+  priority?: number;
+  rejected?: boolean;
+  rejectionReason?: string;
+}
+
+/**
+ * Zone detection info for pickup or dropoff
+ */
+export interface ZoneDetectionInfo {
+  selectedZone: {
+    id: string;
+    code: string;
+    name: string;
+    type: "POLYGON" | "RADIUS" | "POINT" | "CORRIDOR";
+  } | null;
+  candidateZones: ZoneCandidateInfo[];
+  detectionCoordinates: { lat: number; lng: number };
+  detectionMethod: "RADIUS" | "POLYGON" | "CORRIDOR" | "POINT" | "NONE";
+}
+
+/**
+ * Zone conflict resolution strategy
+ */
+export type ZoneConflictStrategy = "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED";
+
+/**
+ * Zone multiplier aggregation strategy
+ */
+export type ZoneMultiplierAggregationStrategy = "MAX" | "PICKUP_ONLY" | "DROPOFF_ONLY" | "AVERAGE";
+
+/**
+ * Zone conflict resolution info
+ */
+export interface ZoneConflictResolutionInfo {
+  strategy: ZoneConflictStrategy | null;
+  pickupConflictResolved: boolean;
+  dropoffConflictResolved: boolean;
+  pickupCandidateCount: number;
+  dropoffCandidateCount: number;
+}
+
+/**
+ * Zone multiplier application info
+ */
+export interface ZoneMultiplierApplicationInfo {
+  pickupMultiplier: number;
+  dropoffMultiplier: number;
+  aggregationStrategy: ZoneMultiplierAggregationStrategy;
+  effectiveMultiplier: number;
+  source: "pickup" | "dropoff" | "both";
+  priceBefore: number;
+  priceAfter: number;
+}
+
+/**
+ * Zone surcharge info
+ */
+export interface ZoneSurchargeInfo {
+  zoneId: string;
+  zoneCode: string;
+  zoneName: string;
+  parkingSurcharge: number;
+  accessFee: number;
+  description: string | null;
+}
+
+/**
+ * Zone surcharges summary
+ */
+export interface ZoneSurchargesInfo {
+  pickup: ZoneSurchargeInfo | null;
+  dropoff: ZoneSurchargeInfo | null;
+  total: number;
+}
+
+/**
+ * Complete zone transparency info
+ */
+export interface ZoneTransparencyInfo {
+  pickup: ZoneDetectionInfo;
+  dropoff: ZoneDetectionInfo;
+  conflictResolution: ZoneConflictResolutionInfo;
+  multiplierApplication: ZoneMultiplierApplicationInfo;
+  surcharges: ZoneSurchargesInfo;
+}
+
+// ============================================================================
 // Story 21.4: Zone Segment Types for Pricing Transparency
 // ============================================================================
 
@@ -730,6 +829,8 @@ export interface TripAnalysis {
   routeSegmentation?: RouteSegmentation | null;
   // Story 21.6: Positioning costs
   positioningCosts?: PositioningCosts | null;
+  // Story 21.8: Zone transparency info
+  zoneTransparency?: ZoneTransparencyInfo | null;
 }
 
 /**

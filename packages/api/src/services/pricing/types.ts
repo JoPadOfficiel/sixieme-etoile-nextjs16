@@ -1178,6 +1178,74 @@ export interface PositioningCosts {
 }
 
 // ============================================================================
+// Story 21.8: Zone Transparency Interfaces
+// ============================================================================
+
+export interface ZoneCandidateInfo {
+	id: string;
+	code: string;
+	name: string;
+	type: "POLYGON" | "RADIUS" | "POINT" | "CORRIDOR";
+	multiplier: number;
+	priority?: number;
+	rejected?: boolean;
+	rejectionReason?: string;
+}
+
+export interface ZoneDetectionInfo {
+	selectedZone: {
+		id: string;
+		code: string;
+		name: string;
+		type: "POLYGON" | "RADIUS" | "POINT" | "CORRIDOR";
+	} | null;
+	candidateZones: ZoneCandidateInfo[];
+	detectionCoordinates: { lat: number; lng: number };
+	detectionMethod: "RADIUS" | "POLYGON" | "CORRIDOR" | "POINT" | "NONE";
+}
+
+export interface ZoneConflictResolutionInfo {
+	strategy: ZoneConflictStrategy | null;
+	pickupConflictResolved: boolean;
+	dropoffConflictResolved: boolean;
+	pickupCandidateCount: number;
+	dropoffCandidateCount: number;
+}
+
+export interface ZoneMultiplierApplicationInfo {
+	pickupMultiplier: number;
+	dropoffMultiplier: number;
+	aggregationStrategy: ZoneMultiplierAggregationStrategy;
+	effectiveMultiplier: number;
+	source: "pickup" | "dropoff" | "both";
+	priceBefore: number;
+	priceAfter: number;
+}
+
+export interface ZoneSurchargeInfo {
+	zoneId: string;
+	zoneCode: string;
+	zoneName: string;
+	parkingSurcharge: number;
+	accessFee: number;
+	description: string | null;
+}
+
+export interface ZoneSurchargesInfo {
+	pickup: ZoneSurchargeInfo | null;
+	dropoff: ZoneSurchargeInfo | null;
+	total: number;
+}
+
+export interface ZoneTransparencyInfo {
+	pickup: ZoneDetectionInfo;
+	dropoff: ZoneDetectionInfo;
+	conflictResolution: ZoneConflictResolutionInfo;
+	multiplierApplication: ZoneMultiplierApplicationInfo;
+	surcharges: ZoneSurchargesInfo;
+}
+
+// ============================================================================
 // Trip Analysis Interface (Main)
 // ============================================================================
 
@@ -1220,6 +1288,7 @@ export interface TripAnalysis {
 	temporalVector?: TemporalVectorResult | null;
 	timeAnalysis?: TimeAnalysis | null;
 	positioningCosts?: PositioningCosts | null;
+	zoneTransparency?: ZoneTransparencyInfo | null;
 }
 
 // ============================================================================

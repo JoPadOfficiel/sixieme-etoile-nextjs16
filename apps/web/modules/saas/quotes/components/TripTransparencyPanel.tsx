@@ -36,6 +36,7 @@ import { PricingSegmentsSection } from "./PricingSegmentsSection";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import { TimeAnalysisSection } from "./TimeAnalysisSection";
+import { ZoneTransparencySection } from "./ZoneTransparencySection";
 import type { PricingResult } from "../types";
 import { 
   formatPrice, 
@@ -333,6 +334,9 @@ export function TripTransparencyPanel({
 
                 {/* Story 21.3: Time Analysis Section */}
                 <TimeAnalysisSection timeAnalysis={tripAnalysis.timeAnalysis} />
+
+                {/* Story 21.8: Zone Transparency Section */}
+                <ZoneTransparencySection zoneTransparency={tripAnalysis.zoneTransparency} />
               </div>
             </CardContent>
           </Card>

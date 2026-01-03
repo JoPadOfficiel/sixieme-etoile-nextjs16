@@ -26,11 +26,11 @@ import { calculateCostBreakdown, calculateCostBreakdownWithTolls, calculateCostB
 import type { TollConfig, FuelPriceSourceInfo } from "./types";
 import { calculateDynamicBasePrice, resolveRates } from "./dynamic-pricing";
 import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMultiplier } from "./multiplier-engine";
-import { applyZoneMultiplier } from "./zone-resolver";
+import { applyZoneMultiplier, buildZoneTransparencyInfo } from "./zone-resolver";
 import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThresholdsFromSettings } from "./profitability";
 import { applyTripTypePricing } from "./trip-type-pricing";
 import { calculateShadowSegments, calculateTimeAnalysis, calculatePositioningCosts } from "./shadow-calculator";
-import { isPointInZone } from "../../lib/geo-utils";
+import { isPointInZone, findZonesForPoint, resolveZoneConflict } from "../../lib/geo-utils";
 
 // ============================================================================
 // Main Calculation Function
@@ -53,9 +53,12 @@ export function calculatePrice(
 	const { contact, zones, pricingSettings, advancedRates, seasonalMultipliers, vehicleCategory } = context;
 	const appliedRules: AppliedRule[] = [];
 	
-	// Find pickup and dropoff zones
-	const pickupZone = findZoneForPoint(request.pickup, zones);
-	const dropoffZone = findZoneForPoint(request.dropoff, zones);
+	// Story 21.8: Find pickup and dropoff zones with candidates for transparency
+	const conflictStrategy = pricingSettings.zoneConflictStrategy ?? null;
+	const pickupDetection = findZoneForPointWithCandidates(request.pickup, zones, conflictStrategy);
+	const dropoffDetection = findZoneForPointWithCandidates(request.dropoff, zones, conflictStrategy);
+	const pickupZone = pickupDetection.selectedZone;
+	const dropoffZone = dropoffDetection.selectedZone;
 	
 	// Initialize grid search details
 	const gridSearchDetails: GridSearchDetails = {
@@ -156,6 +159,8 @@ export function calculatePrice(
 	}
 	
 	// Apply zone multiplier
+	// Story 21.8: Capture price before/after for zone transparency
+	const priceBeforeZoneMultiplier = price;
 	if (pickupZone || dropoffZone) {
 		const zoneResult = applyZoneMultiplier(
 			price,
@@ -168,6 +173,7 @@ export function calculatePrice(
 			appliedRules.push(zoneResult.appliedRule);
 		}
 	}
+	const priceAfterZoneMultiplier = price;
 	
 	// Apply vehicle category multiplier
 	// Story 20.6: Pass usedCategoryRates to skip multiplier when category rates already include premium
@@ -267,6 +273,20 @@ export function calculatePrice(
 	// Round price
 	price = Math.round(price * 100) / 100;
 	
+	// Story 21.8: Build zone transparency info
+	tripAnalysis.zoneTransparency = buildZoneTransparencyInfo(
+		request.pickup,
+		request.dropoff,
+		pickupZone,
+		dropoffZone,
+		pickupDetection.candidateZones,
+		dropoffDetection.candidateZones,
+		conflictStrategy,
+		pricingSettings.zoneMultiplierAggregationStrategy ?? null,
+		priceBeforeZoneMultiplier,
+		priceAfterZoneMultiplier,
+	);
+	
 	return {
 		pricingMode,
 		price,
@@ -308,9 +328,12 @@ export async function calculatePriceWithRealTolls(
 	const { contact, zones, pricingSettings, advancedRates, seasonalMultipliers, vehicleCategory } = context;
 	const appliedRules: AppliedRule[] = [];
 	
-	// Find pickup and dropoff zones
-	const pickupZone = findZoneForPoint(request.pickup, zones);
-	const dropoffZone = findZoneForPoint(request.dropoff, zones);
+	// Story 21.8: Find pickup and dropoff zones with candidates for transparency
+	const conflictStrategy = pricingSettings.zoneConflictStrategy ?? null;
+	const pickupDetection = findZoneForPointWithCandidates(request.pickup, zones, conflictStrategy);
+	const dropoffDetection = findZoneForPointWithCandidates(request.dropoff, zones, conflictStrategy);
+	const pickupZone = pickupDetection.selectedZone;
+	const dropoffZone = dropoffDetection.selectedZone;
 	
 	// Initialize grid search details
 	const gridSearchDetails: GridSearchDetails = {
@@ -411,6 +434,8 @@ export async function calculatePriceWithRealTolls(
 	}
 	
 	// Apply zone multiplier
+	// Story 21.8: Capture price before/after for zone transparency
+	const priceBeforeZoneMultiplier = price;
 	if (pickupZone || dropoffZone) {
 		const zoneResult = applyZoneMultiplier(
 			price,
@@ -423,6 +448,7 @@ export async function calculatePriceWithRealTolls(
 			appliedRules.push(zoneResult.appliedRule);
 		}
 	}
+	const priceAfterZoneMultiplier = price;
 	
 	// Apply vehicle category multiplier
 	// Story 20.6: Pass usedCategoryRates to skip multiplier when category rates already include premium
@@ -542,6 +568,20 @@ export async function calculatePriceWithRealTolls(
 	
 	// Round price
 	price = Math.round(price * 100) / 100;
+	
+	// Story 21.8: Build zone transparency info
+	tripAnalysis.zoneTransparency = buildZoneTransparencyInfo(
+		request.pickup,
+		request.dropoff,
+		pickupZone,
+		dropoffZone,
+		pickupDetection.candidateZones,
+		dropoffDetection.candidateZones,
+		conflictStrategy,
+		pricingSettings.zoneMultiplierAggregationStrategy ?? null,
+		priceBeforeZoneMultiplier,
+		priceAfterZoneMultiplier,
+	);
 	
 	return {
 		pricingMode,
@@ -824,6 +864,24 @@ function matchDispoPackage(
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Story 21.8: Enhanced zone detection that returns both selected zone and candidates
+ */
+interface ZoneDetectionResult {
+	selectedZone: ZoneData | null;
+	candidateZones: ZoneData[];
+}
+
+function findZoneForPointWithCandidates(
+	point: { lat: number; lng: number },
+	zones: ZoneData[],
+	conflictStrategy: "PRIORITY" | "MOST_EXPENSIVE" | "CLOSEST" | "COMBINED" | null = null,
+): ZoneDetectionResult {
+	const candidateZones = findZonesForPoint(point, zones);
+	const selectedZone = resolveZoneConflict(point, candidateZones, conflictStrategy);
+	return { selectedZone, candidateZones };
+}
 
 function findZoneForPoint(point: { lat: number; lng: number }, zones: ZoneData[]): ZoneData | null {
 	for (const zone of zones) {
