@@ -622,6 +622,37 @@ export interface TimeAnalysis {
   differenceFromGoogle: number;
 }
 
+// ============================================================================
+// Story 21.4: Zone Segment Types for Pricing Transparency
+// ============================================================================
+
+/**
+ * Zone segment info from route segmentation
+ * Represents a segment of the route within a single pricing zone
+ */
+export interface ZoneSegmentInfo {
+  zoneId: string;
+  zoneCode: string;
+  zoneName: string;
+  distanceKm: number;
+  durationMinutes: number;
+  priceMultiplier: number;
+  surchargesApplied: number;
+  entryPoint: { lat: number; lng: number };
+  exitPoint: { lat: number; lng: number };
+}
+
+/**
+ * Route segmentation summary
+ * Contains aggregated data about zones traversed
+ */
+export interface RouteSegmentation {
+  weightedMultiplier: number;
+  totalSurcharges: number;
+  zonesTraversed: string[];
+  segmentationMethod: "POLYLINE" | "FALLBACK";
+}
+
 /**
  * Trip analysis from shadow calculation
  */
@@ -667,6 +698,9 @@ export interface TripAnalysis {
   compliancePlan?: CompliancePlan | null;
   // Story 21.3: Time analysis breakdown
   timeAnalysis?: TimeAnalysis | null;
+  // Story 21.4: Zone segments and route segmentation for pricing transparency
+  zoneSegments?: ZoneSegmentInfo[] | null;
+  routeSegmentation?: RouteSegmentation | null;
 }
 
 /**

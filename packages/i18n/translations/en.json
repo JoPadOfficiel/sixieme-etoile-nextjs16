@@ -2704,6 +2704,23 @@
 			"sourceOrg": "Org Config",
 			"sourceRSE": "RSE Regulation"
 		},
+		"pricingSegments": {
+			"title": "Pricing Segments",
+			"zonesTraversed": "Zones Traversed",
+			"zone": "Zone",
+			"distance": "Distance",
+			"duration": "Duration",
+			"multiplier": "Multiplier",
+			"surcharges": "Surcharges",
+			"weightedMultiplier": "Weighted Multiplier",
+			"weightedMultiplierTooltip": "Weighted average of zone multipliers based on distance traveled in each zone",
+			"totalSurcharges": "Total Zone Surcharges",
+			"methodPolyline": "Polyline",
+			"methodFallback": "Estimated",
+			"methodPolylineTooltip": "Precise segmentation based on route polyline",
+			"methodFallbackTooltip": "Estimated segmentation from pickup/dropoff zones only (no polyline available)",
+			"fallbackWarning": "Segmentation is estimated because route polyline was not available. Per-zone distances are approximate."
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trip Cannot Be Created",

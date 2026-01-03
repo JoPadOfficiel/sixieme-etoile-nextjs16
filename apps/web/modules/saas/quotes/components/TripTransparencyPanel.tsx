@@ -32,6 +32,7 @@ import { ComplianceWarningAlert } from "./ComplianceWarningAlert";
 import { EditableCostRow } from "./EditableCostRow";
 import { ModernRouteMap } from "./ModernRouteMap";
 import { PositioningCostsSection } from "./PositioningCostsSection";
+import { PricingSegmentsSection } from "./PricingSegmentsSection";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingPlanBadge } from "./StaffingPlanBadge";
 import { TimeAnalysisSection } from "./TimeAnalysisSection";
@@ -349,6 +350,13 @@ export function TripTransparencyPanel({
               />
             </div>
           )}
+          
+          {/* Story 21.4: Pricing Segments and Traversed Zones Visualization */}
+          <PricingSegmentsSection
+            zoneSegments={tripAnalysis.zoneSegments}
+            routeSegmentation={tripAnalysis.routeSegmentation}
+          />
+          
           <Card>
             <CardContent className="pt-4">
               {/* Story 16.7: Display excursion legs if present */}

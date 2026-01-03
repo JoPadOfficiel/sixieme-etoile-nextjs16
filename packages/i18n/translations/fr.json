@@ -2704,6 +2704,23 @@
 			"sourceOrg": "Config Org",
 			"sourceRSE": "Réglementation RSE"
 		},
+		"pricingSegments": {
+			"title": "Segments de tarification",
+			"zonesTraversed": "Zones traversées",
+			"zone": "Zone",
+			"distance": "Distance",
+			"duration": "Durée",
+			"multiplier": "Multiplicateur",
+			"surcharges": "Suppléments",
+			"weightedMultiplier": "Multiplicateur pondéré",
+			"weightedMultiplierTooltip": "Moyenne pondérée des multiplicateurs de zone basée sur la distance parcourue dans chaque zone",
+			"totalSurcharges": "Total des suppléments de zone",
+			"methodPolyline": "Polyline",
+			"methodFallback": "Estimé",
+			"methodPolylineTooltip": "Segmentation précise basée sur le tracé de l'itinéraire",
+			"methodFallbackTooltip": "Segmentation estimée à partir des zones de départ et d'arrivée uniquement (pas de tracé disponible)",
+			"fallbackWarning": "La segmentation est estimée car le tracé de l'itinéraire n'était pas disponible. Les distances par zone sont approximatives."
+		},
 		"compliance": {
 			"banner": {
 				"title": "Trajet impossible",
