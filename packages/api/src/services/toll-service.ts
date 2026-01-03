@@ -214,9 +214,9 @@ export async function callGoogleRoutesAPI(
 			headers: {
 				"Content-Type": "application/json",
 				"X-Goog-Api-Key": apiKey,
-				// Complete field mask exactly like Google documentation example
+				// Story 22.1: Include polyline for route segmentation
 				"X-Goog-FieldMask":
-					"routes.duration,routes.distanceMeters,routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo",
+					"routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo",
 			},
 			body: JSON.stringify({
 				origin: {
@@ -514,10 +514,18 @@ export async function getTollCost(
 	console.log(`[TollService] Step 1: Checking cache`);
 	const cached = await checkTollCache(originHash, destinationHash);
 	if (cached) {
-		console.log(`[TollService] ✅ Cache hit: ${cached.amount}€ (${cached.source})`);
-		return cached;
+		// Story 22.1: If cache hit but no polyline, we need to refresh to get the polyline
+		// for proper route segmentation (POLYLINE method instead of FALLBACK)
+		if (cached.encodedPolyline) {
+			console.log(`[TollService] ✅ Cache hit with polyline: ${cached.amount}€ (${cached.source})`);
+			return cached;
+		} else {
+			console.log(`[TollService] ⚠️ Cache hit but no polyline - refreshing for route segmentation`);
+			// Continue to API call to get polyline
+		}
+	} else {
+		console.log(`[TollService] Cache miss - proceeding to API`);
 	}
-	console.log(`[TollService] Cache miss - proceeding to API`);
 
 	// Step 2: Call API if key provided
 	if (config.apiKey) {
