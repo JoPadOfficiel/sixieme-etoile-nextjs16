@@ -144,15 +144,15 @@ export function StayServiceForm({
   return (
     <div
       className={cn(
-        "p-4 rounded-lg border bg-card space-y-4",
+        "p-3 sm:p-4 rounded-lg border bg-card space-y-3 sm:space-y-4",
         className
       )}
     >
       {/* Service Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <MapPinIcon className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">
+      <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <MapPinIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-sm font-medium truncate">
             {t("quotes.stay.service")} {serviceIndex + 1}
           </span>
         </div>
@@ -163,7 +163,7 @@ export function StayServiceForm({
             size="sm"
             onClick={() => onRemove(service.id)}
             disabled={disabled}
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive flex-shrink-0"
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -171,14 +171,14 @@ export function StayServiceForm({
       </div>
 
       {/* Service Type */}
-      <div className="space-y-2">
-        <Label>{t("quotes.stay.serviceType")} *</Label>
+      <div className="p-3 bg-background rounded-lg border space-y-2">
+        <Label className="text-sm font-medium">{t("quotes.stay.serviceType")} *</Label>
         <Select
           value={service.serviceType}
           onValueChange={handleServiceTypeChange}
           disabled={disabled}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -192,8 +192,8 @@ export function StayServiceForm({
       </div>
 
       {/* Pickup Time */}
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
+      <div className="p-3 bg-background rounded-lg border space-y-2">
+        <Label className="flex items-center gap-2 text-sm font-medium">
           <CalendarIcon className="h-4 w-4" />
           {t("quotes.stay.pickupTime")} *
         </Label>
@@ -202,37 +202,42 @@ export function StayServiceForm({
           value={formatDateTimeLocal(service.pickupAt)}
           onChange={handlePickupTimeChange}
           disabled={disabled}
+          className="w-full"
         />
       </div>
 
       {/* Pickup Address */}
-      <AddressAutocomplete
-        id={`service-${service.id}-pickup`}
-        label={t("quotes.create.pickup")}
-        value={service.pickupAddress}
-        onChange={handlePickupAddressChange}
-        placeholder={t("quotes.create.pickupPlaceholder")}
-        disabled={disabled}
-        required
-      />
-
-      {/* Dropoff Address - Not shown for DISPO */}
-      {service.serviceType !== "DISPO" && (
+      <div className="p-3 bg-background rounded-lg border space-y-2">
         <AddressAutocomplete
-          id={`service-${service.id}-dropoff`}
-          label={t("quotes.create.dropoff")}
-          value={service.dropoffAddress}
-          onChange={handleDropoffAddressChange}
-          placeholder={t("quotes.create.dropoffPlaceholder")}
+          id={`service-${service.id}-pickup`}
+          label={t("quotes.create.pickup")}
+          value={service.pickupAddress}
+          onChange={handlePickupAddressChange}
+          placeholder={t("quotes.create.pickupPlaceholder")}
           disabled={disabled}
           required
         />
+      </div>
+
+      {/* Dropoff Address - Not shown for DISPO */}
+      {service.serviceType !== "DISPO" && (
+        <div className="p-3 bg-background rounded-lg border space-y-2">
+          <AddressAutocomplete
+            id={`service-${service.id}-dropoff`}
+            label={t("quotes.create.dropoff")}
+            value={service.dropoffAddress}
+            onChange={handleDropoffAddressChange}
+            placeholder={t("quotes.create.dropoffPlaceholder")}
+            disabled={disabled}
+            required
+          />
+        </div>
       )}
 
       {/* Duration Hours - Only for DISPO */}
       {service.serviceType === "DISPO" && (
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
+        <div className="p-3 bg-background rounded-lg border space-y-2">
+          <Label className="flex items-center gap-2 text-sm font-medium">
             <ClockIcon className="h-4 w-4" />
             {t("quotes.create.tripTypeFields.durationHours")} *
           </Label>
@@ -245,14 +250,15 @@ export function StayServiceForm({
             onChange={handleDurationChange}
             disabled={disabled}
             placeholder="4"
+            className="w-full"
           />
         </div>
       )}
 
       {/* Stops Editor - Only for EXCURSION */}
       {service.serviceType === "EXCURSION" && (
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
+        <div className="p-3 bg-background rounded-lg border space-y-2">
+          <Label className="flex items-center gap-2 text-sm font-medium">
             <MapIcon className="h-4 w-4" />
             {t("quotes.create.tripTypeFields.intermediateStops")}
           </Label>
@@ -266,14 +272,15 @@ export function StayServiceForm({
       )}
 
       {/* Notes */}
-      <div className="space-y-2">
-        <Label>{t("quotes.stay.serviceNotes")}</Label>
+      <div className="p-3 bg-background rounded-lg border space-y-2">
+        <Label className="text-sm font-medium">{t("quotes.stay.serviceNotes")}</Label>
         <Textarea
           value={service.notes}
           onChange={handleNotesChange}
           disabled={disabled}
           placeholder={t("quotes.stay.serviceNotesPlaceholder")}
           rows={2}
+          className="w-full"
         />
       </div>
     </div>

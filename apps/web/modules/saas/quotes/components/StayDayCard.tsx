@@ -148,51 +148,63 @@ export function StayDayCard({
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-3 bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 h-auto"
-            >
-              {isExpanded ? (
-                <ChevronUpIcon className="h-4 w-4" />
-              ) : (
-                <ChevronDownIcon className="h-4 w-4" />
-              )}
-            </Button>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-primary" />
-              <span className="font-semibold">
-                {t("quotes.stay.day")} {dayIndex + 1}
-              </span>
-            </div>
-            <Input
-              type="date"
-              value={formatDateLocal(day.date)}
-              onChange={handleDateChange}
-              disabled={disabled}
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {day.services.length} {t("quotes.stay.services")}
-            </span>
-            {canRemove && (
+        <div className="space-y-3">
+          {/* First Row: Day Title and Expand/Collapse */}
+          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => onRemove(day.id)}
-                disabled={disabled}
-                className="text-destructive hover:text-destructive"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 h-auto flex-shrink-0"
               >
-                <TrashIcon className="h-4 w-4" />
+                {isExpanded ? (
+                  <ChevronUpIcon className="h-4 w-4" />
+                ) : (
+                  <ChevronDownIcon className="h-4 w-4" />
+                )}
               </Button>
-            )}
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <CalendarIcon className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="font-semibold truncate">
+                  {t("quotes.stay.day")} {dayIndex + 1}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-muted-foreground">
+                {day.services.length} {t("quotes.stay.services")}
+              </span>
+              {canRemove && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRemove(day.id)}
+                  disabled={disabled}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {/* Second Row: Date Input */}
+          <div className="px-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium flex-shrink-0">
+                {t("quotes.stay.day")} {dayIndex + 1} Date:
+              </Label>
+              <Input
+                type="date"
+                value={formatDateLocal(day.date)}
+                onChange={handleDateChange}
+                disabled={disabled}
+                className="flex-1 min-w-0"
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -200,61 +212,66 @@ export function StayDayCard({
       {isExpanded && (
         <CardContent className="pt-4 space-y-6">
           {/* Staffing Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-lg border bg-muted/20">
-            {/* Hotel Required */}
-            <div className="flex items-center justify-between space-x-2">
-              <Label className="flex items-center gap-2 cursor-pointer">
-                <HotelIcon className="h-4 w-4 text-muted-foreground" />
-                {t("quotes.stay.hotelRequired")}
+          <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+            {/* First Row: Hotel Required */}
+            <div className="flex items-center justify-between p-3 bg-background rounded-lg border">
+              <Label className="flex items-center gap-2 cursor-pointer flex-1">
+                <HotelIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-medium">{t("quotes.stay.hotelRequired")}</span>
               </Label>
               <Switch
                 checked={day.hotelRequired}
                 onCheckedChange={handleHotelChange}
                 disabled={disabled}
+                className="flex-shrink-0"
               />
             </div>
 
-            {/* Meal Count */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <UtensilsIcon className="h-4 w-4 text-muted-foreground" />
-                {t("quotes.stay.mealCount")}
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                max={10}
-                value={day.mealCount}
-                onChange={handleMealCountChange}
-                disabled={disabled}
-              />
-            </div>
+            {/* Second Row: Meal Count and Driver Count */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Meal Count */}
+              <div className="space-y-2 p-3 bg-background rounded-lg border">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <UtensilsIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  {t("quotes.stay.mealCount")}
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={day.mealCount}
+                  onChange={handleMealCountChange}
+                  disabled={disabled}
+                  className="w-full"
+                />
+              </div>
 
-            {/* Driver Count */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <UsersIcon className="h-4 w-4 text-muted-foreground" />
-                {t("quotes.stay.driverCount")}
-              </Label>
-              <Select
-                value={String(day.driverCount)}
-                onValueChange={handleDriverCountChange}
-                disabled={disabled}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 {t("quotes.stay.driver")}</SelectItem>
-                  <SelectItem value="2">2 {t("quotes.stay.drivers")}</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Driver Count */}
+              <div className="space-y-2 p-3 bg-background rounded-lg border">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <UsersIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  {t("quotes.stay.driverCount")}
+                </Label>
+                <Select
+                  value={String(day.driverCount)}
+                  onValueChange={handleDriverCountChange}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 {t("quotes.stay.driver")}</SelectItem>
+                    <SelectItem value="2">2 {t("quotes.stay.drivers")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {/* Services */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <Label className="text-base font-medium">
                 {t("quotes.stay.servicesForDay")}
               </Label>
@@ -264,6 +281,7 @@ export function StayDayCard({
                 size="sm"
                 onClick={handleAddService}
                 disabled={disabled}
+                className="w-full sm:w-auto"
               >
                 <PlusIcon className="h-4 w-4 mr-1" />
                 {t("quotes.stay.addService")}

@@ -126,10 +126,10 @@ export function StayFormFields({
       {/* Header with Add Day button */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDaysIcon className="h-5 w-5" />
-              {t("quotes.stay.packageConfiguration")}
+              <CalendarDaysIcon className="h-5 w-5 flex-shrink-0" />
+              <span className="truncate">{t("quotes.stay.packageConfiguration")}</span>
             </CardTitle>
             <Button
               type="button"
@@ -137,6 +137,7 @@ export function StayFormFields({
               size="sm"
               onClick={handleAddDay}
               disabled={disabled}
+              className="w-full sm:w-auto"
             >
               <PlusIcon className="h-4 w-4 mr-1" />
               {t("quotes.stay.addDay")}
@@ -145,7 +146,7 @@ export function StayFormFields({
         </CardHeader>
         <CardContent>
           {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/30">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3 rounded-lg bg-muted/30">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">
                 {stayDays.length}
