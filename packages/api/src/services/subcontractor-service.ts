@@ -621,6 +621,64 @@ export async function subcontractMission(
 }
 
 /**
+ * Remove subcontracting from a mission (allow normal assignment again)
+ */
+export async function removeSubcontracting(
+	missionId: string,
+	operatorId: string,
+	organizationId: string,
+	db: PrismaClient
+): Promise<{ mission: { id: string; isSubcontracted: boolean } }> {
+	// Verify mission exists
+	const mission = await db.quote.findFirst({
+		where: {
+			id: missionId,
+			organizationId,
+		},
+	});
+
+	if (!mission) {
+		throw new Error(`Mission not found: ${missionId}`);
+	}
+
+	// Update mission - remove subcontracting and allow normal assignment
+	const updatedMission = await db.quote.update({
+		where: { id: missionId },
+		data: {
+			isSubcontracted: false,
+			subcontractorId: null,
+			subcontractedPrice: null,
+			subcontractedAt: null,
+			subcontractingNotes: null,
+			// Clear internal assignment (will be set by normal assignment process)
+			assignedVehicleId: null,
+			assignedDriverId: null,
+			secondDriverId: null,
+			assignedAt: null,
+		},
+	});
+
+	// Create audit log entry
+	await db.quoteStatusAuditLog.create({
+		data: {
+			organizationId,
+			quoteId: missionId,
+			previousStatus: mission.status,
+			newStatus: mission.status, // Status doesn't change, just subcontracting flag
+			userId: operatorId,
+			reason: "Subcontracting removed - mission available for normal assignment",
+		},
+	});
+
+	return {
+		mission: {
+			id: updatedMission.id,
+			isSubcontracted: updatedMission.isSubcontracted,
+		},
+	};
+}
+
+/**
  * Get subcontractor by ID
  * Story 22.4: Refactored - Subcontractor is now an independent company entity
  */

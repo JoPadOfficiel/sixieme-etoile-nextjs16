@@ -21,6 +21,7 @@ import {
 	deleteSubcontractor,
 	generateSubcontractingSuggestions,
 	subcontractMission,
+	removeSubcontracting,
 	DEFAULT_SUBCONTRACTOR_CONFIG,
 } from "../../services/subcontractor-service";
 import {
@@ -428,6 +429,31 @@ export const missionSubcontractingRoutes = new Hono()
 		} catch (error) {
 			console.error("Error subcontracting mission:", error);
 			const message = error instanceof Error ? error.message : "Failed to subcontract mission";
+			return c.json({ error: message }, 400);
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// DELETE /api/vtc/missions/:id/subcontract
+	// -------------------------------------------------------------------------
+	.delete("/:id/subcontract", async (c) => {
+		const organizationId = c.get("organizationId");
+		const user = c.get("user");
+		const userId = user.id;
+		const missionId = c.req.param("id");
+
+		try {
+			const result = await removeSubcontracting(
+				missionId,
+				userId,
+				organizationId,
+				db
+			);
+
+			return c.json(result);
+		} catch (error) {
+			console.error("Error removing subcontracting:", error);
+			const message = error instanceof Error ? error.message : "Failed to remove subcontracting";
 			return c.json({ error: message }, 400);
 		}
 	});
