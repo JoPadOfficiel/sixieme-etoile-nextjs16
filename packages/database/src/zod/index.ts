@@ -112,6 +112,8 @@ export const SubcontractorZoneScalarFieldEnumSchema = z.enum(['id','subcontracto
 
 export const SubcontractorVehicleCategoryScalarFieldEnumSchema = z.enum(['id','subcontractorProfileId','vehicleCategoryId']);
 
+export const SubcontractorFeedbackScalarFieldEnumSchema = z.enum(['id','organizationId','subcontractorProfileId','quoteId','rating','punctuality','vehicleCondition','driverProfessionalism','communication','comments','createdAt','createdBy']);
+
 export const VehicleCategoryScalarFieldEnumSchema = z.enum(['id','organizationId','name','code','regulatoryCategory','maxPassengers','maxLuggageVolume','priceMultiplier','defaultRatePerKm','defaultRatePerHour','averageConsumptionL100km','defaultPurchasePrice','defaultExpectedLifespanKm','defaultExpectedLifespanYears','defaultAnnualMaintenanceBudget','defaultAnnualInsuranceCost','defaultDepreciationMethod','dailyReferenceRevenue','description','isActive','createdAt','updatedAt']);
 
 export const OperatingBaseScalarFieldEnumSchema = z.enum(['id','organizationId','name','addressLine1','addressLine2','city','postalCode','countryCode','latitude','longitude','isActive','createdAt','updatedAt']);
@@ -635,6 +637,31 @@ export const SubcontractorVehicleCategorySchema = z.object({
 })
 
 export type SubcontractorVehicleCategory = z.infer<typeof SubcontractorVehicleCategorySchema>
+
+/////////////////////////////////////////
+// SUBCONTRACTOR FEEDBACK SCHEMA
+/////////////////////////////////////////
+
+/**
+ * SubcontractorFeedback - Feedback for completed subcontracted missions
+ * Story 22.10: Advanced Subcontracting Workflow
+ */
+export const SubcontractorFeedbackSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  subcontractorProfileId: z.string(),
+  quoteId: z.string(),
+  rating: z.number().int(),
+  punctuality: z.number().int().nullable(),
+  vehicleCondition: z.number().int().nullable(),
+  driverProfessionalism: z.number().int().nullable(),
+  communication: z.number().int().nullable(),
+  comments: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  createdBy: z.string(),
+})
+
+export type SubcontractorFeedback = z.infer<typeof SubcontractorFeedbackSchema>
 
 /////////////////////////////////////////
 // VEHICLE CATEGORY SCHEMA

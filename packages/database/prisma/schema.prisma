@@ -151,6 +151,7 @@ model Organization {
   complianceAuditLogs         ComplianceAuditLog[]
   quoteStatusAuditLogs        QuoteStatusAuditLog[]
   quoteNotesAuditLogs         QuoteNotesAuditLog[]
+  subcontractorFeedbacks      SubcontractorFeedback[]
 
   @@unique([slug])
   @@map("organization")
@@ -581,6 +582,7 @@ model SubcontractorProfile {
   vehicleCategories   SubcontractorVehicleCategory[]
   subcontractedQuotes Quote[]
   contacts            Contact[]
+  feedbacks           SubcontractorFeedback[]
 
   @@index([organizationId])
   @@index([isActive])
@@ -610,6 +612,39 @@ model SubcontractorVehicleCategory {
 
   @@unique([subcontractorProfileId, vehicleCategoryId])
   @@map("subcontractor_vehicle_category")
+}
+
+/// SubcontractorFeedback - Feedback for completed subcontracted missions
+/// Story 22.10: Advanced Subcontracting Workflow
+model SubcontractorFeedback {
+  id                     String               @id @default(cuid())
+  organizationId         String
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  quoteId                String
+  quote                  Quote                @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Overall rating (1-5 stars)
+  rating Int
+
+  // Detailed ratings (1-5 stars, optional)
+  punctuality           Int?
+  vehicleCondition      Int?
+  driverProfessionalism Int?
+  communication         Int?
+
+  // Comments
+  comments String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  createdBy String // User ID who submitted feedback
+
+  @@index([organizationId])
+  @@index([subcontractorProfileId])
+  @@index([quoteId])
+  @@map("subcontractor_feedback")
 }
 
 // ----------------------------------------------------------------------------
@@ -1661,16 +1696,17 @@ model Quote {
   updatedAt DateTime @updatedAt
 
   // Relations
-  invoice             Invoice?
-  statusAuditLogs     QuoteStatusAuditLog[]
-  documents           Document[]
-  vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id])
-  vehicleId           String?
-  driver              Driver?               @relation(fields: [driverId], references: [id])
-  driverId            String?
-  quoteNotesAuditLogs QuoteNotesAuditLog[]
+  invoice                Invoice?
+  statusAuditLogs        QuoteStatusAuditLog[]
+  documents              Document[]
+  vehicle                Vehicle?                @relation(fields: [vehicleId], references: [id])
+  vehicleId              String?
+  driver                 Driver?                 @relation(fields: [driverId], references: [id])
+  driverId               String?
+  quoteNotesAuditLogs    QuoteNotesAuditLog[]
   // Story 22.5: Stay days relation
-  stayDays            StayDay[]
+  stayDays               StayDay[]
+  subcontractorFeedbacks SubcontractorFeedback[]
 
   @@index([organizationId])
   @@index([contactId])

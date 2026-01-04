@@ -4025,6 +4025,51 @@
 			"perKm": "{rate}€/km",
 			"perHour": "{rate}€/h",
 			"minimum": "Min: {rate}€"
+		},
+		"performance": {
+			"title": "Performance",
+			"noData": "No performance data available",
+			"totalMissions": "Total Missions",
+			"successRate": "Success Rate",
+			"averageRating": "Avg. Rating",
+			"reliabilityScore": "Reliability",
+			"detailedRatings": "Detailed Ratings",
+			"detailedRatingsDescription": "Average ratings across all feedback",
+			"punctuality": "Punctuality",
+			"vehicleCondition": "Vehicle",
+			"professionalism": "Professionalism",
+			"communication": "Communication",
+			"recentMissions": "Recent Missions",
+			"recentMissionsDescription": "Last {count} subcontracted missions"
+		},
+		"feedback": {
+			"title": "Submit Feedback",
+			"description": "Rate your experience with {name}",
+			"overallRating": "Overall Rating",
+			"detailedRatings": "Detailed Ratings (Optional)",
+			"punctuality": "Punctuality",
+			"vehicleCondition": "Vehicle Condition",
+			"professionalism": "Driver Professionalism",
+			"communication": "Communication",
+			"comments": "Comments",
+			"commentsPlaceholder": "Share your experience...",
+			"submit": "Submit Feedback",
+			"submitting": "Submitting...",
+			"success": "Feedback submitted successfully",
+			"error": "Failed to submit feedback",
+			"ratingRequired": "Please provide an overall rating"
+		},
+		"availability": {
+			"title": "Availability",
+			"status": "Status",
+			"notes": "Notes",
+			"notesPlaceholder": "Reason for status change...",
+			"available": "Available",
+			"busy": "Busy",
+			"offline": "Offline",
+			"update": "Update Availability",
+			"success": "Availability updated",
+			"error": "Failed to update availability"
 		}
 	}
 }

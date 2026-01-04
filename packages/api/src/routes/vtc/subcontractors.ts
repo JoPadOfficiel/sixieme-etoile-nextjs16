@@ -23,6 +23,12 @@ import {
 	subcontractMission,
 	DEFAULT_SUBCONTRACTOR_CONFIG,
 } from "../../services/subcontractor-service";
+import {
+	getSubcontractorPerformance,
+	recordSubcontractorFeedback,
+	updateSubcontractorAvailability,
+	getSubcontractorsWithMatchScores,
+} from "../../services/subcontractor-performance-service";
 
 // ============================================================================
 // Validation Schemas
@@ -85,6 +91,23 @@ const subcontractMissionSchema = z.object({
 const suggestionsQuerySchema = z.object({
 	threshold: z.string().optional().transform((v) => (v ? parseFloat(v) : undefined)),
 	maxSuggestions: z.string().optional().transform((v) => (v ? parseInt(v, 10) : undefined)),
+});
+
+// Story 22.10: Feedback schema
+const feedbackSchema = z.object({
+	quoteId: z.string().min(1, "Quote ID is required"),
+	rating: z.number().int().min(1).max(5),
+	punctuality: z.number().int().min(1).max(5).optional(),
+	vehicleCondition: z.number().int().min(1).max(5).optional(),
+	driverProfessionalism: z.number().int().min(1).max(5).optional(),
+	communication: z.number().int().min(1).max(5).optional(),
+	comments: z.string().optional(),
+});
+
+// Story 22.10: Availability update schema
+const availabilitySchema = z.object({
+	status: z.enum(["AVAILABLE", "BUSY", "OFFLINE"]),
+	notes: z.string().optional(),
 });
 
 // ============================================================================
@@ -261,6 +284,79 @@ export const subcontractorsRouter = new Hono()
 		} catch (error) {
 			console.error("Error deleting subcontractor:", error);
 			const message = error instanceof Error ? error.message : "Failed to delete subcontractor";
+			return c.json({ error: message }, 400);
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// Story 22.10: GET /api/vtc/subcontractors/:id/performance
+	// -------------------------------------------------------------------------
+	.get("/:id/performance", async (c) => {
+		const organizationId = c.get("organizationId");
+		const subcontractorId = c.req.param("id");
+
+		try {
+			const performance = await getSubcontractorPerformance(
+				subcontractorId,
+				organizationId,
+				db
+			);
+
+			return c.json({ performance });
+		} catch (error) {
+			console.error("Error getting subcontractor performance:", error);
+			const message = error instanceof Error ? error.message : "Failed to get performance";
+			return c.json({ error: message }, 400);
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// Story 22.10: POST /api/vtc/subcontractors/:id/feedback
+	// -------------------------------------------------------------------------
+	.post("/:id/feedback", validator("json", feedbackSchema), async (c) => {
+		const organizationId = c.get("organizationId");
+		const user = c.get("user");
+		const userId = user.id;
+		const subcontractorId = c.req.param("id");
+		const data = c.req.valid("json");
+
+		try {
+			const feedback = await recordSubcontractorFeedback(
+				subcontractorId,
+				organizationId,
+				userId,
+				data,
+				db
+			);
+
+			return c.json({ feedback }, 201);
+		} catch (error) {
+			console.error("Error recording feedback:", error);
+			const message = error instanceof Error ? error.message : "Failed to record feedback";
+			return c.json({ error: message }, 400);
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// Story 22.10: PATCH /api/vtc/subcontractors/:id/availability
+	// -------------------------------------------------------------------------
+	.patch("/:id/availability", validator("json", availabilitySchema), async (c) => {
+		const organizationId = c.get("organizationId");
+		const subcontractorId = c.req.param("id");
+		const data = c.req.valid("json");
+
+		try {
+			const result = await updateSubcontractorAvailability(
+				subcontractorId,
+				organizationId,
+				data,
+				db
+			);
+
+			return c.json({ subcontractor: result });
+		} catch (error) {
+			console.error("Error updating availability:", error);
+			const message = error instanceof Error ? error.message : "Failed to update availability";
 			return c.json({ error: message }, 400);
 		}
 	});

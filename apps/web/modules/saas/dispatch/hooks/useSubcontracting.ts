@@ -45,6 +45,9 @@ export const subcontractingKeys = {
 	subcontractor: (id: string) => [...subcontractingKeys.subcontractors(), id] as const,
 	suggestions: (missionId: string) =>
 		[...subcontractingKeys.all, "suggestions", missionId] as const,
+	// Story 22.10: Performance tracking keys
+	performance: (subcontractorId: string) =>
+		[...subcontractingKeys.subcontractors(), subcontractorId, "performance"] as const,
 };
 
 // ============================================================================
@@ -235,6 +238,130 @@ export function useDeleteSubcontractor() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: subcontractingKeys.subcontractors() });
+		},
+	});
+}
+
+// ============================================================================
+// Story 22.10: Performance Tracking Hooks
+// ============================================================================
+
+/**
+ * Performance metrics response type
+ */
+export interface SubcontractorPerformanceMetrics {
+	subcontractorId: string;
+	companyName: string;
+	totalMissions: number;
+	completedMissions: number;
+	successRate: number;
+	averageRating: number;
+	averagePunctuality: number | null;
+	averageVehicleCondition: number | null;
+	averageDriverProfessionalism: number | null;
+	averageCommunication: number | null;
+	reliabilityScore: number;
+	recentMissions: Array<{
+		id: string;
+		pickupAt: string;
+		pickupAddress: string;
+		dropoffAddress: string;
+		status: string;
+		subcontractedPrice: number;
+		hasFeedback: boolean;
+		rating: number | null;
+	}>;
+}
+
+/**
+ * Feedback input type
+ */
+export interface SubcontractorFeedbackInput {
+	quoteId: string;
+	rating: number;
+	punctuality?: number;
+	vehicleCondition?: number;
+	driverProfessionalism?: number;
+	communication?: number;
+	comments?: string;
+}
+
+/**
+ * Fetch subcontractor performance metrics
+ */
+export function useSubcontractorPerformance(subcontractorId: string | null) {
+	return useQuery({
+		queryKey: subcontractingKeys.performance(subcontractorId || ""),
+		queryFn: () => {
+			if (!subcontractorId) throw new Error("Subcontractor ID required");
+			return fetchApi<{ performance: SubcontractorPerformanceMetrics }>(
+				`/api/vtc/subcontractors/${subcontractorId}/performance`
+			);
+		},
+		enabled: !!subcontractorId,
+	});
+}
+
+/**
+ * Submit feedback for a subcontracted mission
+ */
+export function useSubmitFeedback() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			subcontractorId,
+			data,
+		}: {
+			subcontractorId: string;
+			data: SubcontractorFeedbackInput;
+		}) => {
+			return fetchApi<{ feedback: unknown }>(
+				`/api/vtc/subcontractors/${subcontractorId}/feedback`,
+				{
+					method: "POST",
+					body: JSON.stringify(data),
+				}
+			);
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: subcontractingKeys.performance(variables.subcontractorId),
+			});
+		},
+	});
+}
+
+/**
+ * Update subcontractor availability
+ */
+export function useUpdateAvailability() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			subcontractorId,
+			data,
+		}: {
+			subcontractorId: string;
+			data: {
+				status: "AVAILABLE" | "BUSY" | "OFFLINE";
+				notes?: string;
+			};
+		}) => {
+			return fetchApi<{ subcontractor: unknown }>(
+				`/api/vtc/subcontractors/${subcontractorId}/availability`,
+				{
+					method: "PATCH",
+					body: JSON.stringify(data),
+				}
+			);
+		},
+		onSuccess: (_, variables) => {
+			queryClient.invalidateQueries({ queryKey: subcontractingKeys.subcontractors() });
+			queryClient.invalidateQueries({
+				queryKey: subcontractingKeys.subcontractor(variables.subcontractorId),
+			});
 		},
 	});
 }

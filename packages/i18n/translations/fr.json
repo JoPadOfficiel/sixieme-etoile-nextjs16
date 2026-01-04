@@ -4025,6 +4025,51 @@
 			"perKm": "{rate}€/km",
 			"perHour": "{rate}€/h",
 			"minimum": "Min: {rate}€"
+		},
+		"performance": {
+			"title": "Performance",
+			"noData": "Aucune donnée de performance disponible",
+			"totalMissions": "Missions totales",
+			"successRate": "Taux de réussite",
+			"averageRating": "Note moyenne",
+			"reliabilityScore": "Fiabilité",
+			"detailedRatings": "Notes détaillées",
+			"detailedRatingsDescription": "Moyennes des notes sur tous les retours",
+			"punctuality": "Ponctualité",
+			"vehicleCondition": "Véhicule",
+			"professionalism": "Professionnalisme",
+			"communication": "Communication",
+			"recentMissions": "Missions récentes",
+			"recentMissionsDescription": "Les {count} dernières missions sous-traitées"
+		},
+		"feedback": {
+			"title": "Donner un avis",
+			"description": "Évaluez votre expérience avec {name}",
+			"overallRating": "Note globale",
+			"detailedRatings": "Notes détaillées (Optionnel)",
+			"punctuality": "Ponctualité",
+			"vehicleCondition": "État du véhicule",
+			"professionalism": "Professionnalisme du chauffeur",
+			"communication": "Communication",
+			"comments": "Commentaires",
+			"commentsPlaceholder": "Partagez votre expérience...",
+			"submit": "Envoyer l'avis",
+			"submitting": "Envoi en cours...",
+			"success": "Avis envoyé avec succès",
+			"error": "Échec de l'envoi de l'avis",
+			"ratingRequired": "Veuillez donner une note globale"
+		},
+		"availability": {
+			"title": "Disponibilité",
+			"status": "Statut",
+			"notes": "Notes",
+			"notesPlaceholder": "Raison du changement de statut...",
+			"available": "Disponible",
+			"busy": "Occupé",
+			"offline": "Hors ligne",
+			"update": "Mettre à jour la disponibilité",
+			"success": "Disponibilité mise à jour",
+			"error": "Échec de la mise à jour de la disponibilité"
 		}
 	}
 }
