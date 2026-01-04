@@ -1,7 +1,7 @@
 # Story 22.7: Implement STAY Trip Type Pricing Engine
 
 **Epic:** Epic 22 – VTC ERP Complete System Enhancement & Critical Fixes  
-**Status:** completed  
+**Status:** done  
 **Created:** 2026-01-04  
 **Priority:** High  
 **Branch:** feature/22-7-stay-trip-type-pricing-engine
