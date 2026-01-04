@@ -2761,6 +2761,21 @@
 			"notEditable": "Devis non modifiable",
 			"notEditableDescription": "Seuls les devis en brouillon peuvent être modifiés."
 		},
+		"assignment": {
+			"title": "Assignation",
+			"subcontracted": "Sous-traité",
+			"subcontractorCompany": "Entreprise sous-traitante",
+			"phone": "Téléphone",
+			"agreedPrice": "Prix convenu",
+			"subcontractedAt": "Sous-traité le",
+			"unassigned": "Non assigné",
+			"unassignedDescription": "Aucun véhicule ou chauffeur assigné",
+			"vehicle": "Véhicule",
+			"driver": "Chauffeur",
+			"secondDriver": "Deuxième chauffeur",
+			"base": "Base",
+			"unknownVehicle": "Véhicule inconnu"
+		},
 		"staffing": {
 			"doubleCrew": "Double équipage",
 			"relayDriver": "Chauffeur relais",
@@ -4089,21 +4104,6 @@
 			"update": "Mettre à jour la disponibilité",
 			"success": "Disponibilité mise à jour",
 			"error": "Échec de la mise à jour de la disponibilité"
-		},
-		"assignment": {
-			"title": "Assignation",
-			"subcontracted": "Sous-traité",
-			"subcontractorCompany": "Entreprise sous-traitante",
-			"phone": "Téléphone",
-			"agreedPrice": "Prix convenu",
-			"subcontractedAt": "Sous-traité le",
-			"unassigned": "Non assigné",
-			"unassignedDescription": "Aucun véhicule ou chauffeur assigné",
-			"vehicle": "Véhicule",
-			"driver": "Chauffeur",
-			"secondDriver": "Deuxième chauffeur",
-			"base": "Base",
-			"unknownVehicle": "Véhicule inconnu"
 		}
 	}
 }

@@ -84,7 +84,7 @@ export function QuoteAssignmentInfo({ quote, className }: QuoteAssignmentInfoPro
 							<div className="flex-1">
 								<div className="text-sm font-medium">{t("quotes.assignment.agreedPrice")}</div>
 								<div className="text-sm font-semibold text-purple-700 dark:text-purple-400">
-									{quote.subcontractor.agreedPrice.toFixed(2)} €
+									{quote.subcontractor.agreedPrice?.toFixed(2) ?? "0.00"} €
 								</div>
 							</div>
 						</div>
@@ -97,7 +97,10 @@ export function QuoteAssignmentInfo({ quote, className }: QuoteAssignmentInfoPro
 							<div className="flex-1">
 								<div className="text-sm font-medium">{t("quotes.assignment.subcontractedAt")}</div>
 								<div className="text-sm text-muted-foreground">
-									{format(new Date(quote.subcontractor.subcontractedAt), "dd/MM/yyyy HH:mm")}
+									{quote.subcontractor.subcontractedAt 
+										? format(new Date(quote.subcontractor.subcontractedAt), "dd/MM/yyyy HH:mm")
+										: "N/A"
+									}
 								</div>
 							</div>
 						</div>
