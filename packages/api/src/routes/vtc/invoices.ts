@@ -22,9 +22,12 @@ import { organizationMiddleware } from "../../middleware/organization";
 import {
 	parseAppliedRules,
 	buildInvoiceLines,
+	buildStayInvoiceLines,
 	calculateInvoiceTotals,
 	calculateTransportAmount,
 	TRANSPORT_VAT_RATE,
+	type StayDayInput,
+	type StayServiceInput,
 } from "../../services/invoice-line-builder";
 import {
 	calculateCommission,
@@ -365,14 +368,14 @@ export const invoicesRouter = new Hono()
 		"/from-quote/:quoteId",
 		describeRoute({
 			summary: "Create invoice from quote",
-			description: "Convert an accepted quote to an invoice with deep-copy semantics",
+			description: "Convert an accepted quote to an invoice with deep-copy semantics. Story 22.8: Supports STAY trip type with detailed line items per day and service.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const quoteId = c.req.param("quoteId");
 
-			// Get the quote with all details
+			// Get the quote with all details, including stayDays for STAY trip type
 			const quote = await db.quote.findFirst({
 				where: withTenantId(quoteId, organizationId),
 				include: {
@@ -382,6 +385,13 @@ export const invoicesRouter = new Hono()
 						},
 					},
 					vehicleCategory: true,
+					// Story 22.8: Include stayDays and services for STAY quotes
+					stayDays: {
+						include: {
+							services: true,
+						},
+						orderBy: { dayNumber: "asc" },
+					},
 				},
 			});
 
@@ -413,18 +423,54 @@ export const invoicesRouter = new Hono()
 
 			// Story 7.3: Parse appliedRules to extract optional fees and promotions
 			const parsedRules = parseAppliedRules(quote.appliedRules);
-			const finalPrice = Number(quote.finalPrice);
 
-			// Calculate transport amount (finalPrice minus fees, plus promotions back)
-			const transportAmount = calculateTransportAmount(finalPrice, parsedRules);
+			// Story 22.8: Build invoice lines based on trip type
+			let invoiceLines;
+			let invoiceNotes: string;
 
-			// Build invoice lines with appropriate VAT rates
-			const invoiceLines = buildInvoiceLines(
-				transportAmount,
-				quote.pickupAddress,
-				quote.dropoffAddress,
-				parsedRules,
-			);
+			if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+				// STAY trip type: Build detailed lines per day and service
+				// Convert Prisma Decimal types to numbers for invoice line builder
+				const stayDaysInput: StayDayInput[] = quote.stayDays.map((day) => ({
+					dayNumber: day.dayNumber,
+					date: day.date,
+					hotelRequired: day.hotelRequired,
+					hotelCost: Number(day.hotelCost),
+					mealCount: day.mealCount,
+					mealCost: Number(day.mealCost),
+					driverCount: day.driverCount,
+					driverOvernightCost: Number(day.driverOvernightCost),
+					services: day.services.map((service) => ({
+						serviceOrder: service.serviceOrder,
+						serviceType: service.serviceType as "TRANSFER" | "DISPO" | "EXCURSION",
+						pickupAddress: service.pickupAddress,
+						dropoffAddress: service.dropoffAddress,
+						durationHours: service.durationHours ? Number(service.durationHours) : null,
+						serviceCost: Number(service.serviceCost),
+					})),
+				}));
+
+				invoiceLines = buildStayInvoiceLines(stayDaysInput, parsedRules);
+
+				// Build notes for STAY invoice
+				const totalDays = quote.stayDays.length;
+				const startDate = quote.stayStartDate ? new Date(quote.stayStartDate).toLocaleDateString("fr-FR") : "N/A";
+				const endDate = quote.stayEndDate ? new Date(quote.stayEndDate).toLocaleDateString("fr-FR") : "N/A";
+				invoiceNotes = `Séjour multi-jours (${totalDays} jours) du ${startDate} au ${endDate}`;
+			} else {
+				// Standard trip types: Use existing logic
+				const finalPrice = Number(quote.finalPrice);
+				const transportAmount = calculateTransportAmount(finalPrice, parsedRules);
+
+				invoiceLines = buildInvoiceLines(
+					transportAmount,
+					quote.pickupAddress,
+					quote.dropoffAddress,
+					parsedRules,
+				);
+
+				invoiceNotes = `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`;
+			}
 
 			// Calculate totals from lines (ensures consistency)
 			const totals = calculateInvoiceTotals(invoiceLines);
@@ -466,6 +512,16 @@ export const invoicesRouter = new Hono()
 				dueDate.setDate(dueDate.getDate() + 30);
 			}
 
+			// Story 22.8: Build cost breakdown with tripAnalysis for STAY quotes
+			const costBreakdown = quote.tripType === "STAY" 
+				? {
+					...((quote.costBreakdown as object) ?? {}),
+					tripAnalysis: quote.tripAnalysis,
+					tripType: quote.tripType,
+					stayDays: quote.stayDays?.length ?? 0,
+				}
+				: quote.costBreakdown ?? undefined;
+
 			// Create invoice with all lines in a transaction
 			const invoice = await db.$transaction(async (tx) => {
 				const newInvoice = await tx.invoice.create({
@@ -481,9 +537,9 @@ export const invoicesRouter = new Hono()
 							totalVat: totals.totalVat,
 							totalInclVat: totals.totalInclVat,
 							commissionAmount,
-							// Story 15.7: Deep-copy cost breakdown from quote
-							costBreakdown: quote.costBreakdown ?? undefined,
-							notes: `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`,
+							// Story 15.7 + 22.8: Deep-copy cost breakdown from quote
+							costBreakdown: costBreakdown as Prisma.InputJsonValue,
+							notes: invoiceNotes,
 						},
 						organizationId,
 					),
@@ -514,7 +570,9 @@ export const invoicesRouter = new Hono()
 				include: {
 					contact: true,
 					quote: true,
-					lines: true,
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
 				},
 			});
 

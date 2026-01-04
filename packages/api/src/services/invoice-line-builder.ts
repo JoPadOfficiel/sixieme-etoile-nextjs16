@@ -325,3 +325,241 @@ export function calculateTransportAmount(
 
 	return roundCurrency(transportAmount);
 }
+
+// ============================================================================
+// STAY Invoice Line Builder Functions (Story 22.8)
+// ============================================================================
+
+/**
+ * Stay day input type for invoice line building
+ */
+export interface StayDayInput {
+	dayNumber: number;
+	date: Date;
+	hotelRequired: boolean;
+	hotelCost: number | string;
+	mealCount: number;
+	mealCost: number | string;
+	driverCount: number;
+	driverOvernightCost: number | string;
+	services: StayServiceInput[];
+}
+
+/**
+ * Stay service input type for invoice line building
+ */
+export interface StayServiceInput {
+	serviceOrder: number;
+	serviceType: "TRANSFER" | "DISPO" | "EXCURSION";
+	pickupAddress: string;
+	dropoffAddress: string | null;
+	durationHours: number | string | null;
+	serviceCost: number | string;
+}
+
+/**
+ * Service type labels in French for invoice descriptions
+ */
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+	TRANSFER: "Transfert",
+	DISPO: "Mise à disposition",
+	EXCURSION: "Excursion",
+};
+
+/**
+ * Build a service line for a stay service
+ * @param day - The stay day containing the service
+ * @param service - The stay service
+ * @param sortOrder - The sort order for this line
+ * @returns Invoice line input for the service
+ */
+function buildStayServiceLine(
+	day: StayDayInput,
+	service: StayServiceInput,
+	sortOrder: number,
+): InvoiceLineInput {
+	const serviceTypeLabel = SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType;
+	
+	let description: string;
+	if (service.dropoffAddress) {
+		description = `Jour ${day.dayNumber} - ${serviceTypeLabel}: ${service.pickupAddress} → ${service.dropoffAddress}`;
+	} else {
+		const hours = service.durationHours ? Number(service.durationHours) : 0;
+		description = `Jour ${day.dayNumber} - ${serviceTypeLabel}: ${service.pickupAddress} (${hours}h)`;
+	}
+
+	const serviceCost = roundCurrency(Number(service.serviceCost) || 0);
+	const vatAmount = calculateVat(serviceCost, TRANSPORT_VAT_RATE);
+
+	return {
+		lineType: "SERVICE",
+		description,
+		quantity: 1,
+		unitPriceExclVat: serviceCost,
+		vatRate: TRANSPORT_VAT_RATE,
+		totalExclVat: serviceCost,
+		totalVat: vatAmount,
+		sortOrder,
+	};
+}
+
+/**
+ * Build a hotel line for a stay day
+ * @param day - The stay day with hotel requirement
+ * @param sortOrder - The sort order for this line
+ * @returns Invoice line input for the hotel cost
+ */
+function buildStayHotelLine(day: StayDayInput, sortOrder: number): InvoiceLineInput {
+	const hotelCost = roundCurrency(Number(day.hotelCost) || 0);
+	const driverCount = day.driverCount || 1;
+	const unitPrice = roundCurrency(hotelCost / driverCount);
+	const vatAmount = calculateVat(hotelCost, DEFAULT_ANCILLARY_VAT_RATE);
+
+	return {
+		lineType: "OPTIONAL_FEE",
+		description: `Jour ${day.dayNumber} - Hébergement chauffeur`,
+		quantity: driverCount,
+		unitPriceExclVat: unitPrice,
+		vatRate: DEFAULT_ANCILLARY_VAT_RATE,
+		totalExclVat: hotelCost,
+		totalVat: vatAmount,
+		sortOrder,
+	};
+}
+
+/**
+ * Build a meal line for a stay day
+ * @param day - The stay day with meal costs
+ * @param sortOrder - The sort order for this line
+ * @returns Invoice line input for the meal costs
+ */
+function buildStayMealLine(day: StayDayInput, sortOrder: number): InvoiceLineInput {
+	const mealCost = roundCurrency(Number(day.mealCost) || 0);
+	const driverCount = day.driverCount || 1;
+	const totalMeals = day.mealCount * driverCount;
+	const unitPrice = totalMeals > 0 ? roundCurrency(mealCost / totalMeals) : mealCost;
+	const vatAmount = calculateVat(mealCost, DEFAULT_ANCILLARY_VAT_RATE);
+
+	return {
+		lineType: "OPTIONAL_FEE",
+		description: `Jour ${day.dayNumber} - Repas chauffeur (${day.mealCount} repas)`,
+		quantity: totalMeals,
+		unitPriceExclVat: unitPrice,
+		vatRate: DEFAULT_ANCILLARY_VAT_RATE,
+		totalExclVat: mealCost,
+		totalVat: vatAmount,
+		sortOrder,
+	};
+}
+
+/**
+ * Build a driver overnight premium line for a stay day
+ * @param day - The stay day with driver overnight premium
+ * @param sortOrder - The sort order for this line
+ * @returns Invoice line input for the driver premium
+ */
+function buildStayDriverPremiumLine(day: StayDayInput, sortOrder: number): InvoiceLineInput {
+	const premiumCost = roundCurrency(Number(day.driverOvernightCost) || 0);
+	const driverCount = day.driverCount || 1;
+	const unitPrice = roundCurrency(premiumCost / driverCount);
+	const vatAmount = calculateVat(premiumCost, DEFAULT_ANCILLARY_VAT_RATE);
+
+	return {
+		lineType: "OPTIONAL_FEE",
+		description: `Jour ${day.dayNumber} - Prime de nuit chauffeur`,
+		quantity: driverCount,
+		unitPriceExclVat: unitPrice,
+		vatRate: DEFAULT_ANCILLARY_VAT_RATE,
+		totalExclVat: premiumCost,
+		totalVat: vatAmount,
+		sortOrder,
+	};
+}
+
+/**
+ * Build invoice lines from a STAY quote with multiple days and services.
+ * Each service becomes a separate line, plus hotel/meal/driver premium lines per day.
+ *
+ * @param stayDays - Array of stay days with their services
+ * @param parsedRules - Parsed optional fees and promotions from appliedRules
+ * @returns Array of invoice line inputs ordered by day and type
+ */
+export function buildStayInvoiceLines(
+	stayDays: StayDayInput[],
+	parsedRules: ParsedAppliedRules,
+): InvoiceLineInput[] {
+	const lines: InvoiceLineInput[] = [];
+	let sortOrder = 0;
+
+	// Sort days by dayNumber to ensure correct ordering
+	const sortedDays = [...stayDays].sort((a, b) => a.dayNumber - b.dayNumber);
+
+	// Process each day
+	for (const day of sortedDays) {
+		// Sort services by serviceOrder
+		const sortedServices = [...day.services].sort((a, b) => a.serviceOrder - b.serviceOrder);
+
+		// 1. Service lines for this day
+		for (const service of sortedServices) {
+			const serviceCost = Number(service.serviceCost) || 0;
+			if (serviceCost > 0) {
+				lines.push(buildStayServiceLine(day, service, sortOrder++));
+			}
+		}
+
+		// 2. Hotel line (if applicable)
+		const hotelCost = Number(day.hotelCost) || 0;
+		if (day.hotelRequired && hotelCost > 0) {
+			lines.push(buildStayHotelLine(day, sortOrder++));
+		}
+
+		// 3. Meal line (if applicable)
+		const mealCost = Number(day.mealCost) || 0;
+		if (day.mealCount > 0 && mealCost > 0) {
+			lines.push(buildStayMealLine(day, sortOrder++));
+		}
+
+		// 4. Driver overnight premium (if applicable)
+		const driverOvernightCost = Number(day.driverOvernightCost) || 0;
+		if (driverOvernightCost > 0) {
+			lines.push(buildStayDriverPremiumLine(day, sortOrder++));
+		}
+	}
+
+	// 5. Optional fees from appliedRules (same as standard quotes)
+	for (const fee of parsedRules.optionalFees) {
+		const feeExclVat = roundCurrency(fee.amount);
+		const effectiveVatRate = fee.isTaxable ? fee.vatRate : 0;
+		const feeVat = calculateVat(feeExclVat, effectiveVatRate);
+
+		lines.push({
+			lineType: "OPTIONAL_FEE",
+			description: fee.name,
+			quantity: 1,
+			unitPriceExclVat: feeExclVat,
+			vatRate: effectiveVatRate,
+			totalExclVat: feeExclVat,
+			totalVat: feeVat,
+			sortOrder: sortOrder++,
+		});
+	}
+
+	// 6. Promotions from appliedRules (negative amounts)
+	for (const promo of parsedRules.promotions) {
+		const discountExclVat = roundCurrency(-promo.discountAmount);
+		const discountVat = calculateVat(discountExclVat, TRANSPORT_VAT_RATE);
+
+		lines.push({
+			lineType: "PROMOTION_ADJUSTMENT",
+			description: `Promotion: ${promo.code}`,
+			quantity: 1,
+			unitPriceExclVat: discountExclVat,
+			vatRate: TRANSPORT_VAT_RATE,
+			totalExclVat: discountExclVat,
+			totalVat: discountVat,
+			sortOrder: sortOrder++,
+		});
+	}
+
+	return lines;
+}
