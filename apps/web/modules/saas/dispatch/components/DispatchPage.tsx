@@ -20,6 +20,8 @@ import { MissionNotesSection } from "./MissionNotesSection";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
+import { useAssignMission } from "../hooks/useAssignMission";
+import { useRemoveSubcontracting } from "../hooks/useRemoveSubcontracting";
 import type { MissionsFilters as Filters, MissionDetail, StayDayListItem } from "../types";
 import type { PricingResult } from "@saas/quotes/types";
 import type { CandidateBase } from "../types/assignment";
@@ -181,6 +183,19 @@ export function DispatchPage() {
 		setSelectedCandidateId((prev) => (prev === vehicleId ? null : vehicleId));
 	}, []);
 
+	// Remove subcontracting mutation
+	const removeSubcontractingMutation = useRemoveSubcontracting({
+		onSuccess: () => {
+			// Open assignment drawer after removing subcontractor
+			if (selectedMissionId) {
+				setIsAssignmentDrawerOpen(true);
+			}
+		},
+		onError: (error) => {
+			console.error("Failed to remove subcontracting:", error);
+		},
+	});
+
 	// Handlers for subcontractor management
 	const handleChangeSubcontractor = useCallback(() => {
 		// TODO: Open subcontractor selection dialog
@@ -188,13 +203,10 @@ export function DispatchPage() {
 	}, [selectedMissionId]);
 
 	const handleRemoveSubcontractor = useCallback(() => {
-		// TODO: Remove subcontracting and allow normal assignment
-		console.log("Remove subcontractor for mission:", selectedMissionId);
-		// Open assignment drawer after removing subcontractor
 		if (selectedMissionId) {
-			setIsAssignmentDrawerOpen(true);
+			removeSubcontractingMutation.mutate(selectedMissionId);
 		}
-	}, [selectedMissionId]);
+	}, [selectedMissionId, removeSubcontractingMutation]);
 
 	// Convert mission detail to PricingResult for TripTransparencyPanel
 	const pricingResult = selectedMission ? missionToPricingResult(selectedMission) : null;
