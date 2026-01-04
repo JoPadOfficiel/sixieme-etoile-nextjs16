@@ -30,10 +30,14 @@ export function useRemoveSubcontracting(options?: UseRemoveSubcontractingOptions
 
 			return response.json();
 		},
-		onSuccess: () => {
+		onSuccess: (_, missionId) => {
 			// Invalidate related queries
 			queryClient.invalidateQueries({ queryKey: ["missions"] });
 			queryClient.invalidateQueries({ queryKey: ["mission"] });
+			queryClient.invalidateQueries({ queryKey: ["mission", missionId] });
+			queryClient.invalidateQueries({ queryKey: ["assignment-candidates"] });
+			queryClient.invalidateQueries({ queryKey: ["quote"] });
+			queryClient.invalidateQueries({ queryKey: ["quote", missionId] });
 
 			options?.onSuccess?.();
 		},

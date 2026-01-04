@@ -40,8 +40,11 @@ export function useAssignMission(options?: UseAssignMissionOptions) {
 		onSuccess: (data) => {
 			// Invalidate related queries
 			queryClient.invalidateQueries({ queryKey: ["missions"] });
+			queryClient.invalidateQueries({ queryKey: ["mission"] });
 			queryClient.invalidateQueries({ queryKey: ["mission", data.mission.id] });
 			queryClient.invalidateQueries({ queryKey: ["assignment-candidates"] });
+			queryClient.invalidateQueries({ queryKey: ["quote"] });
+			queryClient.invalidateQueries({ queryKey: ["quote", data.mission.id] });
 
 			options?.onSuccess?.(data);
 		},
