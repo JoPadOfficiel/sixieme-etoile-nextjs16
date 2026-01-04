@@ -1430,3 +1430,154 @@ export interface AuditLogEntry {
 	triggeredBy: "SYSTEM" | "USER";
 	userId?: string;
 }
+
+// ============================================================================
+// STAY Pricing Types (Story 22.5 & 22.7)
+// ============================================================================
+
+export type StayServiceType = "TRANSFER" | "DISPO" | "EXCURSION";
+
+export interface StayServiceInput {
+	serviceType: StayServiceType;
+	pickupAt: string;
+	pickupAddress: string;
+	pickupLatitude?: number;
+	pickupLongitude?: number;
+	dropoffAddress?: string;
+	dropoffLatitude?: number;
+	dropoffLongitude?: number;
+	durationHours?: number;
+	stops?: Array<{
+		address: string;
+		latitude: number;
+		longitude: number;
+		order: number;
+	}>;
+	distanceKm?: number;
+	durationMinutes?: number;
+	notes?: string;
+}
+
+export interface StayDayInput {
+	date: string;
+	hotelRequired?: boolean;
+	mealCount?: number;
+	driverCount?: number;
+	notes?: string;
+	services: StayServiceInput[];
+}
+
+export interface StayPricingInput {
+	vehicleCategoryId: string;
+	passengerCount: number;
+	stayDays: StayDayInput[];
+}
+
+export interface StayServicePricingResult {
+	serviceOrder: number;
+	serviceType: StayServiceType;
+	serviceCost: number;
+	serviceInternalCost: number;
+	distanceKm: number;
+	durationMinutes: number;
+	tollSource?: string;
+	tripAnalysis: {
+		costBreakdown: CostBreakdown;
+	};
+}
+
+export interface StayDayPricingResult {
+	dayNumber: number;
+	date: string;
+	hotelRequired: boolean;
+	hotelCost: number;
+	mealCount: number;
+	mealCost: number;
+	driverCount: number;
+	driverOvernightCost: number;
+	dayTotalCost: number;
+	dayTotalInternalCost: number;
+	services: StayServicePricingResult[];
+}
+
+export interface StayPricingResult {
+	stayStartDate: string;
+	stayEndDate: string;
+	totalDays: number;
+	totalServicesCost: number;
+	totalStaffingCost: number;
+	totalCost: number;
+	totalInternalCost: number;
+	marginPercent: number;
+	vehicleCategoryMultiplier?: number;
+	appliedRules: AppliedRule[];
+	days: StayDayPricingResult[];
+	tripAnalysis: {
+		stayBreakdown: {
+			totalDays: number;
+			totalServices: number;
+			totalHotelNights: number;
+			totalMeals: number;
+			totalDistanceKm: number;
+			totalDurationMinutes: number;
+		};
+		costBreakdown: {
+			services: number;
+			hotels: number;
+			meals: number;
+			driverPremiums: number;
+			total: number;
+		};
+		appliedRules: AppliedRule[];
+		vehicleCategoryMultiplier?: number;
+	};
+}
+
+// Enhanced Types (Story 22.7)
+export interface EnhancedStayServicePricingResult extends StayServicePricingResult {
+	zoneMultiplier?: number;
+	seasonalMultiplier?: number;
+	categoryMultiplier?: number;
+	basePriceBeforeMultipliers?: number;
+	appliedRules: AppliedRule[];
+}
+
+export interface EnhancedStayDayPricingResult extends StayDayPricingResult {
+	seasonalMultiplier?: number;
+	services: EnhancedStayServicePricingResult[];
+	appliedRules: AppliedRule[];
+}
+
+export interface EnhancedStayPricingResult extends StayPricingResult {
+	appliedRules: AppliedRule[];
+	vehicleCategoryMultiplier?: number;
+	days: EnhancedStayDayPricingResult[];
+	tripAnalysis: {
+		stayBreakdown: {
+			totalDays: number;
+			totalServices: number;
+			totalHotelNights: number;
+			totalMeals: number;
+			totalDistanceKm: number;
+			totalDurationMinutes: number;
+		};
+		costBreakdown: {
+			services: number;
+			hotels: number;
+			meals: number;
+			driverPremiums: number;
+			total: number;
+		};
+		appliedRules: AppliedRule[];
+		vehicleCategoryMultiplier?: number;
+	};
+}
+
+export interface EnhancedStayPricingOptions {
+	pickupZones?: Map<string, ZoneData | null>; // serviceId -> zone
+	dropoffZones?: Map<string, ZoneData | null>; // serviceId -> zone
+	seasonalMultipliers?: SeasonalMultiplierData[];
+	advancedRates?: AdvancedRateData[];
+	vehicleCategoryMultiplier?: number;
+	zoneMultiplierAggregationStrategy?: ZoneMultiplierAggregationStrategy;
+}

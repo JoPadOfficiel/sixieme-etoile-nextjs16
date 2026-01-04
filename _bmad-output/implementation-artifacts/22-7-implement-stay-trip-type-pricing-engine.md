@@ -439,15 +439,23 @@ Claude Sonnet 4 (Cascade)
 
 ### Completion Notes List
 
-(To be filled during implementation)
+1. **stay-pricing.ts**: Added enhanced pricing functions with zone multipliers, seasonal multipliers, advanced rates, and vehicle category multipliers
+2. **stay-quotes.ts**: Updated API routes to use enhanced pricing with zone lookup and multiplier integration
+3. **index.ts**: Exported new enhanced functions and types
+
+### Verification Summary
+
+- **TypeScript Compilation**: Code compiles without errors in stay-pricing.ts and stay-quotes.ts
+- **Database Schema**: Verified zones exist with correct multipliers (CDG=1.2×, BUSSY_15=0.9×, etc.)
+- **API Integration**: Enhanced pricing integrated into create and update routes
 
 ### File List
 
-**To Modify:**
+**Modified:**
 
-- `packages/api/src/services/pricing/stay-pricing.ts`
-- `packages/api/src/routes/vtc/stay-quotes.ts`
-- `packages/api/src/services/pricing/index.ts`
+- `packages/api/src/services/pricing/stay-pricing.ts` - Added 430+ lines with enhanced pricing functions
+- `packages/api/src/routes/vtc/stay-quotes.ts` - Added zone/multiplier integration (~150 lines)
+- `packages/api/src/services/pricing/index.ts` - Added exports for new functions/types
 
 ---
 

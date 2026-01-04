@@ -369,7 +369,7 @@ export async function testGoogleDirectionsAPI(
 		return { tollAmount: 0, success: false, error: 'No routes found' };
 	} catch (error) {
 		console.error(`[TollService] Directions API error:`, error);
-		return { tollAmount: 0, success: false, error: error.message };
+		return { tollAmount: 0, success: false, error: error instanceof Error ? error.message : String(error) };
 	}
 }
 

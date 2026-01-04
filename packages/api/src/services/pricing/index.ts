@@ -202,16 +202,20 @@ export {
 	calculateEnhancedStayServicePricing,
 	calculateEnhancedStayDayPricing,
 	calculateEnhancedStayPricing,
-	type StayServiceType,
-	type StayServiceInput,
-	type StayDayInput,
-	type StayPricingInput,
-	type StayServicePricingResult,
-	type StayDayPricingResult,
-	type StayPricingResult,
-	// Story 22.7: Enhanced types
-	type EnhancedStayServicePricingResult,
-	type EnhancedStayDayPricingResult,
-	type EnhancedStayPricingResult,
-	type EnhancedStayPricingOptions,
 } from "./stay-pricing";
+
+// STAY Pricing Types (Story 22.5 & 22.7)
+export type {
+	StayServiceType,
+	StayServiceInput,
+	StayDayInput,
+	StayPricingInput,
+	StayServicePricingResult,
+	StayDayPricingResult,
+	StayPricingResult,
+	// Story 22.7: Enhanced types
+	EnhancedStayServicePricingResult,
+	EnhancedStayDayPricingResult,
+	EnhancedStayPricingResult,
+	EnhancedStayPricingOptions,
+} from "./types";

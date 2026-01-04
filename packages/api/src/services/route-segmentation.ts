@@ -294,7 +294,7 @@ export function interpolateConcentricZones(
 	}
 	
 	// Sort each center's zones by radius (smallest first)
-	for (const [, centerZones] of zonesByCenter) {
+	for (const [, centerZones] of Array.from(zonesByCenter.entries())) {
 		centerZones.sort((a, b) => (a.radiusKm ?? 0) - (b.radiusKm ?? 0));
 	}
 	
@@ -302,21 +302,21 @@ export function interpolateConcentricZones(
 	let primaryCenter: { lat: number; lng: number } | null = null;
 	let minDistanceToPickup = Infinity;
 	
-	for (const [centerKey] of zonesByCenter) {
-		const [lat, lng] = centerKey.split(",").map(Number);
-		const center = { lat, lng };
-		const distToPickup = haversineDistanceInternal(pickup, center);
-		if (distToPickup < minDistanceToPickup) {
-			minDistanceToPickup = distToPickup;
-			primaryCenter = center;
-		}
+	Array.from(zonesByCenter.keys()).forEach(centerKey => {
+	const [lat, lng] = centerKey.split(",").map(Number);
+	const center = { lat, lng };
+	const distToPickup = haversineDistanceInternal(pickup, center);
+	if (distToPickup < minDistanceToPickup) {
+		minDistanceToPickup = distToPickup;
+		primaryCenter = center;
 	}
+});
 	
 	if (!primaryCenter) {
 		return [];
 	}
 	
-	const primaryCenterKey = `${primaryCenter.lat.toFixed(4)},${primaryCenter.lng.toFixed(4)}`;
+	const primaryCenterKey = `${(primaryCenter as { lat: number; lng: number }).lat.toFixed(4)},${(primaryCenter as { lat: number; lng: number }).lng.toFixed(4)}`;
 	const primaryZones = zonesByCenter.get(primaryCenterKey) ?? [];
 	
 	// Calculate distances from primary center
@@ -358,8 +358,8 @@ export function interpolateConcentricZones(
 				code: "OUTSIDE_ZONE",
 				name: "Hors Zone",
 				zoneType: "RADIUS",
-				centerLatitude: primaryCenter.lat,
-				centerLongitude: primaryCenter.lng,
+				centerLatitude: (primaryCenter as { lat: number; lng: number }).lat,
+				centerLongitude: (primaryCenter as { lat: number; lng: number }).lng,
 				radiusKm: null, // No limit
 				isActive: true,
 				priceMultiplier: 1.0, // Default multiplier for outside zones
