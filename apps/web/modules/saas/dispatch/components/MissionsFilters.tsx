@@ -109,17 +109,17 @@ export function MissionsFilters({
 		filters.search;
 
 	return (
-		<div className={cn("space-y-2", className)} data-testid="missions-filters">
+		<div className={cn("space-y-1", className)} data-testid="missions-filters">
 			{/* Search and Filters Row */}
-			<div className="flex flex-wrap items-center gap-2">
+			<div className="flex flex-wrap items-center gap-1">
 				{/* Search */}
 				<div className="relative flex-shrink-0">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+					<Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
 					<Input
 						placeholder={t("searchPlaceholder")}
 						value={filters.search || ""}
 						onChange={handleSearchChange}
-						className="pl-9 w-48"
+						className="pl-7 w-40 h-7 text-xs"
 						data-testid="filter-search"
 					/>
 				</div>
@@ -130,7 +130,7 @@ export function MissionsFilters({
 							variant="outline"
 							size="sm"
 							className={cn(
-								"justify-start text-left font-normal h-8 px-2 text-xs",
+								"justify-start text-left font-normal h-7 px-1 text-xs",
 								!filters.dateFrom && "text-muted-foreground"
 							)}
 							data-testid="filter-date-from"
@@ -158,7 +158,7 @@ export function MissionsFilters({
 							variant="outline"
 							size="sm"
 							className={cn(
-								"justify-start text-left font-normal h-8 px-2 text-xs",
+								"justify-start text-left font-normal h-7 px-1 text-xs",
 								!filters.dateTo && "text-muted-foreground"
 							)}
 							data-testid="filter-date-to"
@@ -184,7 +184,7 @@ export function MissionsFilters({
 					value={filters.vehicleCategoryId || "all"}
 					onValueChange={handleVehicleCategoryChange}
 				>
-					<SelectTrigger className="w-[120px] h-8 text-xs" data-testid="filter-vehicle-category">
+					<SelectTrigger className="w-[100px] h-7 text-xs" data-testid="filter-vehicle-category">
 						<SelectValue placeholder={t("vehicleCategory")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -202,7 +202,7 @@ export function MissionsFilters({
 					value={filters.clientType || "ALL"}
 					onValueChange={handleClientTypeChange}
 				>
-					<SelectTrigger className="w-[110px] h-8 text-xs" data-testid="filter-client-type">
+					<SelectTrigger className="w-[90px] h-7 text-xs" data-testid="filter-client-type">
 						<SelectValue placeholder={t("clientType")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -217,7 +217,7 @@ export function MissionsFilters({
 					value={filters.subcontracted || "ALL"}
 					onValueChange={handleSubcontractedChange}
 				>
-					<SelectTrigger className="w-[120px] h-8 text-xs" data-testid="filter-subcontracted">
+					<SelectTrigger className="w-[100px] h-7 text-xs" data-testid="filter-subcontracted">
 						<SelectValue placeholder={t("subcontracted")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -233,7 +233,7 @@ export function MissionsFilters({
 						variant="ghost"
 						size="sm"
 						onClick={handleClearFilters}
-						className="text-muted-foreground h-8 px-2 text-xs"
+						className="text-muted-foreground h-7 px-1 text-xs"
 					>
 						<X className="mr-1 size-3" />
 						{t("clear")}
