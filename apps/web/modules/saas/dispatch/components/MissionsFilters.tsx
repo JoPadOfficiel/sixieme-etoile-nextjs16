@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import {
@@ -52,6 +53,8 @@ export function MissionsFilters({
 	className,
 }: MissionsFiltersProps) {
 	const t = useTranslations("dispatch.filters");
+	const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+	const searchInputRef = React.useRef<HTMLInputElement>(null);
 
 	const handleDateFromChange = (date: Date | undefined) => {
 		onFiltersChange({
@@ -90,10 +93,26 @@ export function MissionsFilters({
 	};
 
 	const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value || undefined;
 		onFiltersChange({
 			...filters,
-			search: e.target.value || undefined,
+			search: value,
 		});
+		
+		// Close search if input is cleared
+		if (!value) {
+			setIsSearchExpanded(false);
+		}
+	};
+
+	const handleSearchToggle = () => {
+		setIsSearchExpanded(true);
+		// Focus input after it appears
+		setTimeout(() => {
+			if (searchInputRef.current) {
+				searchInputRef.current.focus();
+			}
+		}, 0);
 	};
 
 	const handleClearFilters = () => {
@@ -114,9 +133,11 @@ export function MissionsFilters({
 			<div className="flex flex-wrap items-center gap-1">
 				{/* Search */}
 				<div className="relative flex-shrink-0">
-					{filters.search ? (
+					{isSearchExpanded || filters.search ? (
 						<div className="flex items-center gap-1">
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
 							<Input
+								ref={searchInputRef}
 								placeholder={t("searchPlaceholder")}
 								value={filters.search || ""}
 								onChange={handleSearchChange}
@@ -136,13 +157,7 @@ export function MissionsFilters({
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => {
-								// Focus the search input when it appears
-								const searchInput = document.querySelector('[data-testid="filter-search"]') as HTMLInputElement;
-								if (searchInput) {
-									searchInput.focus();
-								}
-							}}
+							onClick={handleSearchToggle}
 							className="h-7 w-7 p-0 text-muted-foreground"
 							data-testid="filter-search-toggle"
 						>
