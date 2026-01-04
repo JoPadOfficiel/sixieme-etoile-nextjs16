@@ -215,6 +215,16 @@ export interface Quote {
     number: string;
     status: string;
   } | null;
+  // Story 22.4: Subcontracting fields
+  isSubcontracted?: boolean;
+  subcontractor?: {
+    id: string;
+    companyName: string;
+    contactName: string | null;
+    phone: string | null;
+    agreedPrice: number;
+    subcontractedAt: string;
+  } | null;
 }
 
 // ============================================================================

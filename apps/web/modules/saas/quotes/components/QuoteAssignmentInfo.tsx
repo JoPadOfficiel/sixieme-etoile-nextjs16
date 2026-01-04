@@ -2,8 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Badge } from "@ui/components/badge";
-import { Car, User, MapPin, Users } from "lucide-react";
+import { Car, User, MapPin, Users, Building2, Phone, Calendar, Euro } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { format } from "date-fns";
 import { cn } from "@ui/lib";
 import type { Quote } from "../types";
 
@@ -22,6 +23,89 @@ interface QuoteAssignmentInfoProps {
 
 export function QuoteAssignmentInfo({ quote, className }: QuoteAssignmentInfoProps) {
 	const t = useTranslations();
+
+	// Story 22.4: Check if quote is subcontracted first
+	if (quote.isSubcontracted && quote.subcontractor) {
+		return (
+			<Card className={cn("border-purple-200 bg-purple-50/50 dark:bg-purple-950/20", className)}>
+				<CardHeader className="pb-3">
+					<CardTitle className="text-base flex items-center gap-2">
+						<Car className="size-4" />
+						{t("quotes.assignment.title")}
+						<Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 ml-2">
+							<Building2 className="size-3 mr-1" />
+							{t("quotes.assignment.subcontracted")}
+						</Badge>
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-3">
+						{/* Subcontractor Company */}
+						<div className="flex items-start gap-3">
+							<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+								<Building2 className="size-4 text-purple-600" />
+							</div>
+							<div className="flex-1">
+								<div className="text-sm font-medium">{t("quotes.assignment.subcontractorCompany")}</div>
+								<div className="text-sm font-semibold text-purple-700 dark:text-purple-400">
+									{quote.subcontractor.companyName}
+								</div>
+								{quote.subcontractor.contactName && (
+									<div className="text-xs text-muted-foreground">
+										{quote.subcontractor.contactName}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Phone */}
+						{quote.subcontractor.phone && (
+							<div className="flex items-start gap-3">
+								<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+									<Phone className="size-4 text-purple-600" />
+								</div>
+								<div className="flex-1">
+									<div className="text-sm font-medium">{t("quotes.assignment.phone")}</div>
+									<a
+										href={`tel:${quote.subcontractor.phone}`}
+										className="text-sm text-purple-600 hover:underline"
+									>
+										{quote.subcontractor.phone}
+									</a>
+								</div>
+							</div>
+						)}
+
+						{/* Agreed Price */}
+						<div className="flex items-start gap-3">
+							<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+								<Euro className="size-4 text-purple-600" />
+							</div>
+							<div className="flex-1">
+								<div className="text-sm font-medium">{t("quotes.assignment.agreedPrice")}</div>
+								<div className="text-sm font-semibold text-purple-700 dark:text-purple-400">
+									{quote.subcontractor.agreedPrice.toFixed(2)} €
+								</div>
+							</div>
+						</div>
+
+						{/* Subcontracted Date */}
+						<div className="flex items-start gap-3">
+							<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+								<Calendar className="size-4 text-purple-600" />
+							</div>
+							<div className="flex-1">
+								<div className="text-sm font-medium">{t("quotes.assignment.subcontractedAt")}</div>
+								<div className="text-sm text-muted-foreground">
+									{format(new Date(quote.subcontractor.subcontractedAt), "dd/MM/yyyy HH:mm")}
+								</div>
+							</div>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	// Extract assignment info from tripAnalysis.assignment or quote relations
 	// This would need to be populated by the API when the quote is assigned

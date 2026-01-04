@@ -299,6 +299,8 @@ export const quotesRouter = new Hono()
 					include: {
 						contact: true,
 						vehicleCategory: true,
+						// Story 22.4: Include subcontractor info
+						subcontractor: true,
 					},
 				}),
 				db.quote.count({ where }),
@@ -334,6 +336,8 @@ export const quotesRouter = new Hono()
 					contact: true,
 					vehicleCategory: true,
 					invoice: true,
+					// Story 22.4: Include subcontractor info
+					subcontractor: true,
 				},
 			});
 
