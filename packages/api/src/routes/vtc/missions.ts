@@ -204,11 +204,13 @@ function getComplianceStatus(tripAnalysis: unknown): MissionCompliance {
  * Extract vehicle assignment from quote data
  * Story 8.2: Uses assignedVehicle/assignedDriver relations or tripAnalysis.assignment
  * Story 20.8: Added secondDriver support for RSE double crew missions
+ * Story 22.12: Skip fallback for subcontracted missions - internal resources are freed
  */
 function getAssignmentFromQuote(quote: {
 	assignedVehicleId: string | null;
 	assignedDriverId: string | null;
 	secondDriverId?: string | null;
+	isSubcontracted?: boolean;
 	assignedVehicle?: {
 		internalName: string | null;
 		registrationNumber: string;
@@ -224,6 +226,12 @@ function getAssignmentFromQuote(quote: {
 	} | null;
 	tripAnalysis: unknown;
 }): MissionAssignment | null {
+	// Story 22.12: If mission is subcontracted, don't show internal assignment
+	// The subcontractor handles the mission with their own resources
+	if (quote.isSubcontracted) {
+		return null;
+	}
+
 	// First check direct assignment fields (preferred)
 	if (quote.assignedVehicleId) {
 		return {
@@ -427,6 +435,8 @@ export const missionsRouter = new Hono()
 						assignedDriver: true,
 						// Story 20.8: Include second driver for RSE double crew
 						secondDriver: true as any, // Temporary fix for type issue
+						// Story 22.12: Include subcontractor for subcontracted missions
+						subcontractor: true,
 					},
 				}),
 				db.quote.count({ where }),
@@ -479,6 +489,18 @@ export const missionsRouter = new Hono()
 				tripType: quote.tripType,
 				// Story 22.11: Notes for dispatch display
 				notes: quote.notes,
+				// Story 22.12: Subcontracting info
+				isSubcontracted: quote.isSubcontracted,
+				subcontractor: quote.isSubcontracted && (quote as any).subcontractor
+					? {
+							id: (quote as any).subcontractor.id,
+							companyName: (quote as any).subcontractor.companyName,
+							contactName: (quote as any).subcontractor.contactName,
+							phone: (quote as any).subcontractor.phone,
+							agreedPrice: Number(quote.subcontractedPrice) || 0,
+							subcontractedAt: quote.subcontractedAt?.toISOString() || new Date().toISOString(),
+						}
+					: null,
 			}));
 
 			return c.json({
@@ -523,6 +545,8 @@ export const missionsRouter = new Hono()
 					assignedDriver: true,
 					// Story 20.8: Include second driver for RSE double crew
 					secondDriver: true as any, // Temporary fix for type issue
+					// Story 22.12: Include subcontractor for subcontracted missions
+					subcontractor: true,
 				},
 			});
 
@@ -583,6 +607,18 @@ export const missionsRouter = new Hono()
 					),
 				},
 				compliance: getComplianceStatus(quote.tripAnalysis),
+				// Story 22.12: Subcontracting info
+				isSubcontracted: quote.isSubcontracted,
+				subcontractor: quote.isSubcontracted && (quote as any).subcontractor
+					? {
+							id: (quote as any).subcontractor.id,
+							companyName: (quote as any).subcontractor.companyName,
+							contactName: (quote as any).subcontractor.contactName,
+							phone: (quote as any).subcontractor.phone,
+							agreedPrice: Number(quote.subcontractedPrice) || 0,
+							subcontractedAt: quote.subcontractedAt?.toISOString() || new Date().toISOString(),
+						}
+					: null,
 			};
 
 			return c.json(mission);
@@ -1327,9 +1363,16 @@ export const missionsRouter = new Hono()
 					},
 				},
 			};
-			const updatedQuote = await db.quote.update({
+			
+			// Update the quote first
+			await db.quote.update({
 				where: { id: quote.id },
 				data: updateData,
+			});
+
+			// Then fetch the updated quote with relations to ensure fresh data
+			const updatedQuote = await db.quote.findFirst({
+				where: { id: quote.id },
 				include: {
 					contact: true,
 					vehicleCategory: true,
@@ -1344,20 +1387,33 @@ export const missionsRouter = new Hono()
 				},
 			});
 
+			if (!updatedQuote) {
+				throw new HTTPException(500, {
+					message: "Failed to fetch updated mission",
+				});
+			}
+
 			// Build response
 			// Story 20.8: Include second driver in assignment response
 			const assignment: MissionAssignment = {
 				vehicleId: updatedQuote.assignedVehicleId,
-				vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
-				baseName: vehicle.operatingBase.name,
+				vehicleName: updatedQuote.assignedVehicle?.internalName ??
+					updatedQuote.assignedVehicle?.registrationNumber ??
+					vehicle.internalName ?? vehicle.registrationNumber,
+				baseName: updatedQuote.assignedVehicle?.operatingBase?.name ??
+					vehicle.operatingBase.name,
 				driverId: updatedQuote.assignedDriverId,
-				driverName: driver
-					? `${driver.firstName} ${driver.lastName}`
-					: null,
+				driverName: updatedQuote.assignedDriver
+					? `${updatedQuote.assignedDriver.firstName} ${updatedQuote.assignedDriver.lastName}`
+					: driver
+						? `${driver.firstName} ${driver.lastName}`
+						: null,
 				secondDriverId: updatedQuote.secondDriverId,
-				secondDriverName: secondDriver
-					? `${secondDriver.firstName} ${secondDriver.lastName}`
-					: null,
+				secondDriverName: updatedQuote.secondDriver
+					? `${updatedQuote.secondDriver.firstName} ${updatedQuote.secondDriver.lastName}`
+					: secondDriver
+						? `${secondDriver.firstName} ${secondDriver.lastName}`
+						: null,
 			};
 
 			return c.json({
