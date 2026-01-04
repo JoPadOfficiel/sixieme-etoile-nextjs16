@@ -3483,6 +3483,9 @@
 	"dispatch": {
 		"title": "Dispatch",
 		"subtitle": "{count, plural, =0 {Aucune mission} one {# mission} other {# missions}} à dispatcher",
+		"subcontracted": "Sous-traité",
+		"subcontractedDetails": "Détails du sous-traitant",
+		"agreedPrice": "Prix convenu",
 		"missions": {
 			"title": "Missions",
 			"partner": "Partenaire",
@@ -3544,6 +3547,11 @@
 			"unassignedDescription": "Cliquez sur 'Assigner' pour assigner un véhicule et un chauffeur à cette mission.",
 			"assignButton": "Assigner",
 			"changeButton": "Modifier l'assignation",
+			"subcontracted": "Sous-traité",
+			"subcontractorCompany": "Sous-traitant",
+			"phone": "Téléphone",
+			"agreedPrice": "Prix convenu",
+			"subcontractedAt": "Sous-traité le",
 			"confirm": "Confirmer l'assignation",
 			"cancel": "Annuler",
 			"success": "Assignation confirmée avec succès",

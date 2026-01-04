@@ -1,7 +1,7 @@
 # Story 22.11: Fix Quote Notes Display in Dispatch
 
 **Epic:** Epic 22 – VTC ERP Complete System Enhancement & Critical Fixes  
-**Status:** ready-for-dev  
+**Status:** done  
 **Created:** 2026-01-04  
 **Priority:** Medium  
 **Branch:** feature/22-11-fix-quote-notes-display-dispatch

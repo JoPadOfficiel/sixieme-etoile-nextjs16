@@ -10,7 +10,7 @@
  * 5. Log subcontracting decisions
  */
 
-import type { PrismaClient, SubcontractorProfile, PricingZone, VehicleCategory } from "@prisma/client";
+import type { PrismaClient, SubcontractorProfile, PricingZone, VehicleCategory, Prisma } from "@prisma/client";
 
 // ============================================================================
 // Types
@@ -569,7 +569,17 @@ export async function subcontractMission(
 		throw new Error(`Subcontractor not found: ${subcontractorId}`);
 	}
 
-	// Update mission
+	// Update mission - release internal drivers/vehicles when subcontracting
+	// Story 22.12: When subcontracting, internal resources must be freed
+	// Also clear tripAnalysis.assignment to prevent fallback display
+	let updatedTripAnalysis: Prisma.InputJsonValue | undefined = undefined;
+	if (mission.tripAnalysis && typeof mission.tripAnalysis === "object" && !Array.isArray(mission.tripAnalysis)) {
+		const tripAnalysisObj = { ...mission.tripAnalysis as object } as Record<string, unknown>;
+		// Remove assignment from tripAnalysis - subcontractor handles the mission
+		delete tripAnalysisObj.assignment;
+		updatedTripAnalysis = tripAnalysisObj as Prisma.InputJsonValue;
+	}
+
 	const updatedMission = await db.quote.update({
 		where: { id: missionId },
 		data: {
@@ -578,6 +588,13 @@ export async function subcontractMission(
 			subcontractedPrice: agreedPrice,
 			subcontractedAt: new Date(),
 			subcontractingNotes: notes,
+			// Release internal assignment - subcontractor handles the mission
+			assignedVehicleId: null,
+			assignedDriverId: null,
+			secondDriverId: null,
+			assignedAt: null,
+			// Clear tripAnalysis.assignment to prevent fallback display
+			...(updatedTripAnalysis && { tripAnalysis: updatedTripAnalysis }),
 		},
 	});
 

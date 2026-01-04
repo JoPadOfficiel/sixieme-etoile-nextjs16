@@ -26,7 +26,7 @@ import {
 	type AdvancedRateData,
 	type ZoneData,
 } from "../../services/pricing";
-import { findZoneForPoint } from "../../lib/geo-utils";
+import { findZoneForPoint, haversineDistance } from "../../lib/geo-utils";
 
 // ============================================================================
 // Validation Schemas
@@ -267,12 +267,187 @@ async function getZonesForServices(
 }
 
 // ============================================================================
+// Pricing Calculation Schema (for preview without creating quote)
+// ============================================================================
+
+const calculateStayPricingSchema = z.object({
+	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
+	passengerCount: z.number().int().positive().describe("Number of passengers"),
+	stayDays: z.array(stayDaySchema).min(1).describe("Days in the stay package"),
+});
+
+// ============================================================================
 // Routes
 // ============================================================================
 
 export const stayQuotesRouter = new Hono()
 	.basePath("/stay-quotes")
 	.use("*", organizationMiddleware)
+
+	// Story 22.12: Calculate STAY pricing without creating quote (for real-time preview)
+	.post(
+		"/calculate",
+		validator("json", calculateStayPricingSchema),
+		describeRoute({
+			summary: "Calculate STAY pricing",
+			description: "Calculate pricing for a STAY package without creating a quote. Used for real-time pricing preview.",
+			tags: ["VTC - Stay Quotes"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const data = c.req.valid("json");
+
+			// Verify vehicleCategory belongs to this organization
+			const category = await db.vehicleCategory.findFirst({
+				where: withTenantId(data.vehicleCategoryId, organizationId),
+			});
+
+			if (!category) {
+				throw new HTTPException(400, { message: "Vehicle category not found" });
+			}
+
+			// Get pricing settings and rates
+			const settings = await getOrganizationPricingSettings(organizationId);
+			const rates = await getVehicleCategoryRates(data.vehicleCategoryId);
+
+			// Story 22.7: Get zones, seasonal multipliers, and advanced rates for enhanced pricing
+			const { pickupZones, dropoffZones } = await getZonesForServices(organizationId, data.stayDays);
+			const seasonalMultipliers = await getSeasonalMultipliers(organizationId);
+			const advancedRates = await getAdvancedRates(organizationId);
+
+			// Convert stayDays to pricing input format with distance/duration calculation
+			const stayDaysInput: StayDayInput[] = data.stayDays.map(day => ({
+				date: day.date,
+				hotelRequired: day.hotelRequired,
+				mealCount: day.mealCount,
+				driverCount: day.driverCount,
+				notes: day.notes ?? undefined,
+				services: day.services.map(svc => {
+					// Calculate distance from coordinates if not provided
+					let distanceKm = svc.distanceKm ?? undefined;
+					let durationMinutes = svc.durationMinutes ?? undefined;
+					
+					// For TRANSFER and EXCURSION, calculate distance from pickup/dropoff coordinates
+					if (svc.serviceType === "TRANSFER" || svc.serviceType === "EXCURSION") {
+						if (
+							svc.pickupLatitude != null && 
+							svc.pickupLongitude != null && 
+							svc.dropoffLatitude != null && 
+							svc.dropoffLongitude != null &&
+							distanceKm === undefined
+						) {
+							// Calculate haversine distance and apply road factor (1.3x for typical road routing)
+							const straightLineDistance = haversineDistance(
+								{ lat: svc.pickupLatitude, lng: svc.pickupLongitude },
+								{ lat: svc.dropoffLatitude, lng: svc.dropoffLongitude }
+							);
+							distanceKm = Math.round(straightLineDistance * 1.3 * 100) / 100; // Road factor 1.3x
+							
+							// Estimate duration: average 60 km/h for mixed driving
+							if (durationMinutes === undefined) {
+								durationMinutes = Math.round((distanceKm / 60) * 60); // minutes
+							}
+						} else if (distanceKm === undefined) {
+							// Default minimum distance for TRANSFER/EXCURSION without coordinates
+							// This ensures pricing is calculated even without GPS data
+							distanceKm = 30; // 30km default minimum
+							durationMinutes = 45; // 45 minutes default
+						}
+					}
+					
+					// For DISPO, use durationHours to calculate duration in minutes
+					if (svc.serviceType === "DISPO") {
+						if (svc.durationHours != null && durationMinutes === undefined) {
+							durationMinutes = Math.round(svc.durationHours * 60);
+						} else if (durationMinutes === undefined) {
+							// Default minimum duration for DISPO without hours specified
+							durationMinutes = 240; // 4 hours default minimum
+						}
+						// For DISPO, estimate distance based on duration (avg 30 km/h city driving)
+						if (durationMinutes != null && distanceKm === undefined) {
+							distanceKm = Math.round((durationMinutes / 60) * 30 * 100) / 100;
+						}
+					}
+					
+					return {
+						serviceType: svc.serviceType,
+						pickupAt: svc.pickupAt,
+						pickupAddress: svc.pickupAddress,
+						pickupLatitude: svc.pickupLatitude ?? undefined,
+						pickupLongitude: svc.pickupLongitude ?? undefined,
+						dropoffAddress: svc.dropoffAddress ?? undefined,
+						dropoffLatitude: svc.dropoffLatitude ?? undefined,
+						dropoffLongitude: svc.dropoffLongitude ?? undefined,
+						durationHours: svc.durationHours ?? undefined,
+						stops: svc.stops ?? undefined,
+						distanceKm,
+						durationMinutes,
+						notes: svc.notes ?? undefined,
+					};
+				}),
+			}));
+
+			// Story 22.7: Build enhanced pricing options
+			const enhancedOptions: EnhancedStayPricingOptions = {
+				pickupZones,
+				dropoffZones,
+				seasonalMultipliers,
+				advancedRates,
+				vehicleCategoryMultiplier: rates.priceMultiplier !== 1.0 ? rates.priceMultiplier : undefined,
+				zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy ?? "MAX",
+			};
+
+			// Calculate enhanced pricing with zones and multipliers
+			const pricingResult = calculateEnhancedStayPricing(
+				{
+					vehicleCategoryId: data.vehicleCategoryId,
+					passengerCount: data.passengerCount,
+					stayDays: stayDaysInput,
+				},
+				settings,
+				rates.ratePerKm,
+				rates.ratePerHour,
+				enhancedOptions,
+			);
+
+			// Return pricing result for preview
+			return c.json({
+				pricingMode: "DYNAMIC" as const,
+				price: pricingResult.totalCost,
+				currency: "EUR",
+				internalCost: pricingResult.totalInternalCost,
+				margin: pricingResult.totalCost - pricingResult.totalInternalCost,
+				marginPercent: pricingResult.marginPercent,
+				profitabilityIndicator: pricingResult.marginPercent >= 30 ? "green" : pricingResult.marginPercent >= 15 ? "orange" : "red",
+				stayStartDate: pricingResult.stayStartDate,
+				stayEndDate: pricingResult.stayEndDate,
+				totalDays: pricingResult.days.length,
+				totalServices: pricingResult.days.reduce((sum, day) => sum + day.services.length, 0),
+				tripAnalysis: pricingResult.tripAnalysis,
+				days: pricingResult.days.map(day => ({
+					date: day.date,
+					dayCost: day.dayTotalCost,
+					dayInternalCost: day.dayTotalInternalCost,
+					hotelCost: day.hotelCost,
+					mealCost: day.mealCost,
+					services: day.services.map(svc => ({
+						serviceType: svc.serviceType,
+						serviceCost: svc.serviceCost,
+						serviceInternalCost: svc.serviceInternalCost,
+						distanceKm: svc.distanceKm,
+						durationMinutes: svc.durationMinutes,
+					})),
+				})),
+				appliedRules: [
+					{ type: "STAY_PACKAGE", description: `${pricingResult.days.length}-day stay package` },
+					...pricingResult.appliedRules.map(rule => ({
+						type: rule.type,
+						description: rule.description,
+					})),
+				],
+			});
+		},
+	)
 
 	// Create STAY quote
 	.post(

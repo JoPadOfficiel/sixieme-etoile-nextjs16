@@ -14,6 +14,7 @@ import { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
 import { usePricingCalculation } from "../hooks/usePricingCalculation";
+import { useStayPricingCalculation } from "../hooks/useStayPricingCalculation";
 import { useScenarioHelpers } from "../hooks/useScenarioHelpers";
 import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import { useOptionalFees } from "../hooks/useOptionalFees";
@@ -50,10 +51,31 @@ export function CreateQuoteCockpit() {
   // Added fees and promotions (manual additions via dialog)
   const [addedFees, setAddedFees] = useState<AddedFee[]>([]);
   
-  // Pricing calculation hook
-  const { pricingResult, isCalculating, error: pricingError, calculate } = usePricingCalculation({
+  // Pricing calculation hook (for non-STAY trip types)
+  const { 
+    pricingResult: standardPricingResult, 
+    isCalculating: isStandardCalculating, 
+    error: standardPricingError, 
+    calculate: calculateStandard 
+  } = usePricingCalculation({
     debounceMs: 500,
   });
+
+  // Story 22.12: STAY pricing calculation hook
+  const { 
+    pricingResult: stayPricingResult, 
+    isCalculating: isStayCalculating, 
+    error: stayPricingError, 
+    calculate: calculateStay 
+  } = useStayPricingCalculation({
+    debounceMs: 500,
+  });
+
+  // Unified pricing result based on trip type
+  const pricingResult = formData.tripType === "STAY" ? stayPricingResult : standardPricingResult;
+  const isCalculating = formData.tripType === "STAY" ? isStayCalculating : isStandardCalculating;
+  const pricingError = formData.tripType === "STAY" ? stayPricingError : standardPricingError;
+  const calculate = formData.tripType === "STAY" ? calculateStay : calculateStandard;
 
   // Story 6.6: Vehicle categories and optional fees for helpers
   const { categories: allVehicleCategories } = useVehicleCategories();
@@ -129,6 +151,10 @@ export function CreateQuoteCockpit() {
     formData.durationHours,
     formData.maxKilometers,
     formData.isRoundTrip,
+    // Story 22.12: Add STAY-specific fields to trigger recalculation
+    // Using JSON.stringify to detect deep changes in stayDays array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(formData.stayDays),
     // Note: calculate is NOT a dependency - we use ref to avoid infinite loops
   ]);
 
