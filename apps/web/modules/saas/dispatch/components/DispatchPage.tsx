@@ -214,17 +214,19 @@ export function DispatchPage() {
 	const missions = missionsData?.data || [];
 
 	return (
-		<div className="min-h-screen flex gap-4 p-4">
-			{/* Left Panel - Missions List */}
-			<div className="w-1/3 flex flex-col gap-4" data-testid="dispatch-left-panel">
-				<div className="flex-shrink-0">
+		<div className="h-screen flex gap-4 p-4 overflow-hidden">
+			{/* Left Panel - Missions List with independent scroll */}
+			<div className="w-1/3 flex flex-col h-full" data-testid="dispatch-left-panel">
+				{/* Header - always visible */}
+				<div className="flex-shrink-0 pb-4">
 					<h1 className="text-2xl font-bold tracking-tight mb-1">{t("title")}</h1>
 					<p className="text-sm text-muted-foreground">
 						{t("subtitle", { count: missions.length })}
 					</p>
 				</div>
 
-				<div className="flex-shrink-0">
+				{/* Filters - always visible */}
+				<div className="flex-shrink-0 pb-4">
 					<MissionsFilters
 						filters={filters}
 						onFiltersChange={handleFiltersChange}
@@ -232,22 +234,24 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Missions list - shows all missions without internal scroll */}
-				<MissionsList
-					missions={missions}
-					selectedMissionId={selectedMissionId}
-					onSelectMission={handleSelectMission}
-					isLoading={missionsLoading}
-				/>
+				{/* Scrollable missions list */}
+				<div className="flex-1 overflow-y-auto min-h-0 space-y-4">
+					<MissionsList
+						missions={missions}
+						selectedMissionId={selectedMissionId}
+						onSelectMission={handleSelectMission}
+						isLoading={missionsLoading}
+					/>
 
-				{/* Story 8.5: Empty-Leg Opportunities - compact */}
-				<EmptyLegsList />
+					{/* Story 8.5: Empty-Leg Opportunities - compact */}
+					<EmptyLegsList />
+				</div>
 			</div>
 
-			{/* Right Panel - Map + Transparency - sticky */}
-			<div className="w-2/3 sticky top-4 h-fit flex flex-col gap-4" data-testid="dispatch-right-panel">
-				{/* Map - fixed height */}
-				<div className="h-[400px]">
+			{/* Right Panel - Map fixed + scrollable details */}
+			<div className="w-2/3 flex flex-col h-full" data-testid="dispatch-right-panel">
+				{/* Map - fixed height, always visible */}
+				<div className="flex-shrink-0 h-[400px]">
 					<DispatchMapGoogle
 						mission={selectedMission || null}
 						bases={bases}
@@ -267,54 +271,56 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Transparency + Notes + Staffing + Compliance + Assignment - no internal scroll */}
-				<div className="flex flex-col gap-4">
-					<TripTransparencyPanel
-						pricingResult={pricingResult}
-						isLoading={missionDetailLoading}
-					/>
-					{/* Story 22.11: Mission Notes Section */}
-					{selectedMissionId && selectedMission && (
-						<MissionNotesSection
-							notes={selectedMission.notes}
-							missionId={selectedMissionId}
-							onUpdateNotes={async (notes) => {
-								await updateNotes({ quoteId: selectedMission.quoteId, notes });
-							}}
-							isUpdating={isUpdatingNotes}
-						/>
-					)}
-					{/* Story 21.5: RSE Staffing Costs Section */}
-					{selectedMissionId && (
-						<StaffingCostsSection
-							tripAnalysis={selectedMission?.tripAnalysis ?? null}
+				{/* Scrollable details section */}
+				<div className="flex-1 overflow-y-auto min-h-0 pt-4">
+					<div className="flex flex-col gap-4">
+						<TripTransparencyPanel
+							pricingResult={pricingResult}
 							isLoading={missionDetailLoading}
 						/>
-					)}
-					{/* Story 22.9: Staffing Timeline for STAY missions */}
-					{selectedMissionId && selectedMission?.tripType === "STAY" && (
-						<StaffingTimeline
-							stayDays={(selectedMission?.tripAnalysis as Record<string, unknown>)?.stayDays as StayDayListItem[] | undefined}
+						{/* Story 22.11: Mission Notes Section */}
+						{selectedMissionId && selectedMission && (
+							<MissionNotesSection
+								notes={selectedMission.notes}
+								missionId={selectedMissionId}
+								onUpdateNotes={async (notes) => {
+									await updateNotes({ quoteId: selectedMission.quoteId, notes });
+								}}
+								isUpdating={isUpdatingNotes}
+							/>
+						)}
+						{/* Story 21.5: RSE Staffing Costs Section */}
+						{selectedMissionId && (
+							<StaffingCostsSection
+								tripAnalysis={selectedMission?.tripAnalysis ?? null}
+								isLoading={missionDetailLoading}
+							/>
+						)}
+						{/* Story 22.9: Staffing Timeline for STAY missions */}
+						{selectedMissionId && selectedMission?.tripType === "STAY" && (
+							<StaffingTimeline
+								stayDays={(selectedMission?.tripAnalysis as Record<string, unknown>)?.stayDays as StayDayListItem[] | undefined}
+							/>
+						)}
+						{/* Story 5.6: Compliance Details */}
+						{selectedMissionId && (
+							<MissionComplianceDetails
+								complianceDetails={complianceDetails ?? null}
+								isLoading={complianceLoading}
+							/>
+						)}
+						{/* Story 8.6: Subcontracting Suggestions */}
+						<SubcontractingSuggestions missionId={selectedMissionId} />
+						<VehicleAssignmentPanel
+							assignment={selectedMission?.assignment || null}
+							isSubcontracted={selectedMission?.isSubcontracted ?? false}
+							subcontractor={selectedMission?.subcontractor ?? null}
+							isLoading={missionDetailLoading}
+							onAssign={selectedMissionId && !selectedMission?.isSubcontracted ? handleOpenAssignmentDrawer : undefined}
+							onChangeSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleChangeSubcontractor : undefined}
+							onRemoveSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleRemoveSubcontractor : undefined}
 						/>
-					)}
-					{/* Story 5.6: Compliance Details */}
-					{selectedMissionId && (
-						<MissionComplianceDetails
-							complianceDetails={complianceDetails ?? null}
-							isLoading={complianceLoading}
-						/>
-					)}
-					{/* Story 8.6: Subcontracting Suggestions */}
-					<SubcontractingSuggestions missionId={selectedMissionId} />
-					<VehicleAssignmentPanel
-						assignment={selectedMission?.assignment || null}
-						isSubcontracted={selectedMission?.isSubcontracted ?? false}
-						subcontractor={selectedMission?.subcontractor ?? null}
-						isLoading={missionDetailLoading}
-						onAssign={selectedMissionId && !selectedMission?.isSubcontracted ? handleOpenAssignmentDrawer : undefined}
-						onChangeSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleChangeSubcontractor : undefined}
-						onRemoveSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleRemoveSubcontractor : undefined}
-					/>
+					</div>
 				</div>
 			</div>
 		{/* Assignment Drawer (Story 8.2 + 8.3) */}
