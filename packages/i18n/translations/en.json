@@ -2769,12 +2769,12 @@
 			"agreedPrice": "Agreed Price",
 			"subcontractedAt": "Subcontracted At",
 			"unassigned": "Unassigned",
-			"unassignedDescription": "No vehicle or driver assigned yet",
+			"unassignedDescription": "This quote has not yet been assigned to a vehicle or driver.",
 			"vehicle": "Vehicle",
 			"driver": "Driver",
 			"secondDriver": "Second Driver",
 			"base": "Base",
-			"unknownVehicle": "Unknown Vehicle"
+			"unknownVehicle": "Unknown vehicle"
 		},
 		"staffing": {
 			"doubleCrew": "Double Crew",
@@ -2941,16 +2941,6 @@
 			"blockedTooltip": "This trip cannot be created due to regulatory violations. Please review the blocking alerts above.",
 			"cannotCreate": "Cannot Create Quote",
 			"resolveViolations": "Please resolve the compliance violations before creating this quote."
-		},
-		"assignment": {
-			"title": "Assignment",
-			"unassigned": "Unassigned",
-			"unassignedDescription": "This quote has not yet been assigned to a vehicle or driver.",
-			"vehicle": "Vehicle",
-			"driver": "Driver",
-			"secondDriver": "Second Driver",
-			"base": "Base",
-			"unknownVehicle": "Unknown vehicle"
 		},
 		"helpers": {
 			"airport": {
