@@ -52,29 +52,27 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 			data-testid="mission-row"
 			data-selected={isSelected}
 		>
-			{/* Row 1: Time + Client + Trip Type + Badges */}
-			<div className="flex items-center justify-between gap-2 mb-2 min-w-0">
-				<div className="flex items-center gap-3 min-w-0">
-					{/* Time */}
-					<div className="flex items-center gap-1.5 flex-shrink-0">
-						<Clock className="size-4 text-muted-foreground" />
-						<div className="font-semibold">{format(pickupDate, "HH:mm")}</div>
-						<div className="text-xs text-muted-foreground">
-							{format(pickupDate, "dd/MM/yyyy")}
-						</div>
+			{/* Row 1: Time + Client + Trip Type */}
+			<div className="flex items-center gap-3 mb-2">
+				{/* Time */}
+				<div className="flex items-center gap-1.5 flex-shrink-0">
+					<Clock className="size-4 text-muted-foreground" />
+					<div className="font-semibold">{format(pickupDate, "HH:mm")}</div>
+					<div className="text-xs text-muted-foreground">
+						{format(pickupDate, "dd/MM/yyyy")}
 					</div>
-					{/* Client */}
-					<div className="flex items-center gap-1.5 min-w-0">
-						<span className="font-medium truncate max-w-[140px]">
-							{mission.contact.displayName}
-						</span>
-						<Badge
-							variant={mission.contact.isPartner ? "default" : "secondary"}
-							className="text-xs px-1.5 py-0 flex-shrink-0"
-						>
-							{mission.contact.isPartner ? t("partner") : t("private")}
-						</Badge>
-					</div>
+				</div>
+				{/* Client */}
+				<div className="flex items-center gap-1.5 min-w-0 flex-1">
+					<span className="font-medium truncate">
+						{mission.contact.displayName}
+					</span>
+					<Badge
+						variant={mission.contact.isPartner ? "default" : "secondary"}
+						className="text-xs px-1.5 py-0 flex-shrink-0"
+					>
+						{mission.contact.isPartner ? t("partner") : t("private")}
+					</Badge>
 					{/* Story 22.9: STAY trip type indicator */}
 					{mission.tripType === "STAY" && mission.stayDays && (
 						<Badge
@@ -86,22 +84,23 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 						</Badge>
 					)}
 				</div>
-				{/* Badges */}
-				<div className="flex items-center gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-					{/* Story 22.11: Notes indicator */}
-					<NotesIndicator notes={mission.notes ?? null} />
-					{/* Story 22.9: Staffing indicators */}
-					<StaffingIndicators staffingSummary={mission.staffingSummary} />
-					{/* Story 22.4: Subcontracted badge */}
-					{mission.isSubcontracted && mission.subcontractor && (
-						<SubcontractedBadge subcontractor={mission.subcontractor} />
-					)}
-					<DispatchBadges
-						profitability={mission.profitability}
-						compliance={mission.compliance}
-						assignment={mission.assignment}
-					/>
-				</div>
+			</div>
+
+			{/* Row 1.5: Badges (scrollable) */}
+			<div className="flex items-center gap-1 overflow-x-auto mb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+				{/* Story 22.11: Notes indicator */}
+				<NotesIndicator notes={mission.notes ?? null} />
+				{/* Story 22.9: Staffing indicators */}
+				<StaffingIndicators staffingSummary={mission.staffingSummary} />
+				{/* Story 22.4: Subcontracted badge */}
+				{mission.isSubcontracted && mission.subcontractor && (
+					<SubcontractedBadge subcontractor={mission.subcontractor} />
+				)}
+				<DispatchBadges
+					profitability={mission.profitability}
+					compliance={mission.compliance}
+					assignment={mission.assignment}
+				/>
 			</div>
 
 			{/* Row 2: Route (pickup → dropoff) */}
