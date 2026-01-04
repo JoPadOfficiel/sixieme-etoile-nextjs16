@@ -114,14 +114,41 @@ export function MissionsFilters({
 			<div className="flex flex-wrap items-center gap-1">
 				{/* Search */}
 				<div className="relative flex-shrink-0">
-					<Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-					<Input
-						placeholder={t("searchPlaceholder")}
-						value={filters.search || ""}
-						onChange={handleSearchChange}
-						className="pl-7 w-40 h-7 text-xs"
-						data-testid="filter-search"
-					/>
+					{filters.search ? (
+						<div className="flex items-center gap-1">
+							<Input
+								placeholder={t("searchPlaceholder")}
+								value={filters.search || ""}
+								onChange={handleSearchChange}
+								className="pl-7 w-32 h-7 text-xs"
+								data-testid="filter-search"
+							/>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => handleSearchChange({ target: { value: "" } } as React.ChangeEvent<HTMLInputElement>)}
+								className="h-7 w-6 p-0 text-muted-foreground"
+							>
+								<X className="size-3" />
+							</Button>
+						</div>
+					) : (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								// Focus the search input when it appears
+								const searchInput = document.querySelector('[data-testid="filter-search"]') as HTMLInputElement;
+								if (searchInput) {
+									searchInput.focus();
+								}
+							}}
+							className="h-7 w-7 p-0 text-muted-foreground"
+							data-testid="filter-search-toggle"
+						>
+							<Search className="size-3" />
+						</Button>
+					)}
 				</div>
 				{/* Date From */}
 				<Popover>
