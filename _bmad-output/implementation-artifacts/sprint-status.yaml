@@ -204,7 +204,7 @@ development_status:
   21-8-zone-based-cost-transparency-enhancement: done
   21-9-real-time-cost-calculation-validation: done
   epic-21-retrospective: optional
-  epic-22: in_progress
+  epic-22: done
   22-1-fix-round-trip-pricing-calculation: done
   22-2-display-staffing-costs-in-quote-creation: done
   22-3-enable-quote-notes-modification-after-sending: done
@@ -217,5 +217,5 @@ development_status:
   22-10-implement-advanced-subcontracting-workflow: done
   22-11-fix-quote-notes-display-in-dispatch: done
   22-12-implement-comprehensive-testing-suite: done
-  22-13-update-documentation-and-training-materials: backlog
+  22-13-update-documentation-and-training-materials: done
   epic-22-retrospective: optional
