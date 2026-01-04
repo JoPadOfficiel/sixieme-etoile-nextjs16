@@ -98,6 +98,18 @@ interface MissionCompliance {
 	warnings: string[];
 }
 
+/**
+ * Story 22.9: Staffing summary for mission list display
+ */
+interface StaffingSummary {
+	driverCount: number;
+	hotelNights: number;
+	mealCount: number;
+	totalStaffingCost: number;
+	planType: "SINGLE_DRIVER" | "DOUBLE_CREW" | "RELAY" | "MULTI_DAY";
+	isRSERequired: boolean;
+}
+
 interface MissionListItem {
 	id: string;
 	quoteId: string;
@@ -124,6 +136,9 @@ interface MissionListItem {
 	assignment: MissionAssignment | null;
 	profitability: MissionProfitability;
 	compliance: MissionCompliance;
+	// Story 22.9: Staffing information display
+	staffingSummary: StaffingSummary | null;
+	tripType: string | null;
 }
 
 /**
@@ -263,6 +278,80 @@ function getAssignmentFromQuote(quote: {
 	return null;
 }
 
+/**
+ * Story 22.9: Extract staffing summary from tripAnalysis
+ * Returns compact staffing information for mission list display
+ */
+function getStaffingSummary(tripAnalysis: unknown): StaffingSummary | null {
+	if (!tripAnalysis || typeof tripAnalysis !== "object") {
+		return null;
+	}
+
+	const analysis = tripAnalysis as Record<string, unknown>;
+	const compliancePlan = analysis.compliancePlan as Record<string, unknown> | undefined;
+	const staffingCosts = analysis.staffingCosts as Record<string, unknown> | undefined;
+
+	if (!compliancePlan) {
+		return null;
+	}
+
+	const planType = (compliancePlan.planType as string) || "SINGLE_DRIVER";
+	
+	// Map plan types to expected format
+	const normalizedPlanType = (() => {
+		switch (planType) {
+			case "DOUBLE_CREW":
+				return "DOUBLE_CREW" as const;
+			case "RELAY_DRIVER":
+			case "RELAY":
+				return "RELAY" as const;
+			case "MULTI_DAY":
+				return "MULTI_DAY" as const;
+			default:
+				return "SINGLE_DRIVER" as const;
+		}
+	})();
+
+	const isRSERequired = normalizedPlanType !== "SINGLE_DRIVER";
+
+	// Extract costs breakdown
+	const adjustedSchedule = compliancePlan.adjustedSchedule as Record<string, unknown> | undefined;
+	const costBreakdown = compliancePlan.costBreakdown as Record<string, unknown> | undefined;
+
+	const driverCount = adjustedSchedule?.driversRequired 
+		? Number(adjustedSchedule.driversRequired) 
+		: (normalizedPlanType === "DOUBLE_CREW" ? 2 : 1);
+	
+	const staffingBreakdown = staffingCosts?.breakdown as Record<string, unknown> | undefined;
+	const hotelNights = adjustedSchedule?.hotelNightsRequired 
+		? Number(adjustedSchedule.hotelNightsRequired) 
+		: staffingBreakdown?.hotelNights 
+			? Number(staffingBreakdown.hotelNights)
+			: 0;
+
+	const mealCount = staffingBreakdown?.mealCount 
+		? Number(staffingBreakdown.mealCount)
+		: 0;
+
+	const totalStaffingCost = staffingCosts?.totalStaffingCost 
+		? Number(staffingCosts.totalStaffingCost) 
+		: (compliancePlan.additionalCost ? Number(compliancePlan.additionalCost) : 0);
+
+	// Don't return summary if it's standard staffing with no costs
+	if (!isRSERequired && totalStaffingCost === 0 && hotelNights === 0 && mealCount === 0) {
+		return null;
+	}
+
+	return {
+		driverCount,
+		hotelNights,
+		mealCount,
+		totalStaffingCost,
+		planType: normalizedPlanType,
+		isRSERequired,
+	};
+}
+
 export const missionsRouter = new Hono()
 	.basePath("/missions")
 	.use("*", organizationMiddleware)
@@ -383,6 +472,9 @@ export const missionsRouter = new Hono()
 					),
 				},
 				compliance: getComplianceStatus(quote.tripAnalysis),
+				// Story 22.9: Staffing information display
+				staffingSummary: getStaffingSummary(quote.tripAnalysis),
+				tripType: quote.tripType,
 			}));
 
 			return c.json({

@@ -14,11 +14,12 @@ import { EmptyLegsList } from "./EmptyLegsList";
 import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { MissionComplianceDetails } from "./MissionComplianceDetails";
 import { StaffingCostsSection } from "./StaffingCostsSection";
+import { StaffingTimeline } from "./StaffingTimeline";
 import { useMissions, useMissionDetail } from "../hooks/useMissions";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
-import type { MissionsFilters as Filters, MissionDetail } from "../types";
+import type { MissionsFilters as Filters, MissionDetail, StayDayListItem } from "../types";
 import type { PricingResult } from "@saas/quotes/types";
 import type { CandidateBase } from "../types/assignment";
 
@@ -246,6 +247,12 @@ export function DispatchPage() {
 						<StaffingCostsSection
 							tripAnalysis={selectedMission?.tripAnalysis ?? null}
 							isLoading={missionDetailLoading}
+						/>
+					)}
+					{/* Story 22.9: Staffing Timeline for STAY missions */}
+					{selectedMissionId && selectedMission?.tripType === "STAY" && (
+						<StaffingTimeline
+							stayDays={(selectedMission?.tripAnalysis as Record<string, unknown>)?.stayDays as StayDayListItem[] | undefined}
 						/>
 					)}
 					{/* Story 5.6: Compliance Details */}

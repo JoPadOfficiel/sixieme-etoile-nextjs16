@@ -213,7 +213,7 @@ development_status:
   22-6-implement-stay-trip-type-frontend-interface: done
   22-7-implement-stay-trip-type-pricing-engine: done
   22-8-implement-stay-trip-type-invoice-integration: done
-  22-9-enhance-dispatch-with-staffing-information-display: backlog
+  22-9-enhance-dispatch-with-staffing-information-display: done
   22-10-implement-advanced-subcontracting-workflow: backlog
   22-11-fix-quote-notes-display-in-dispatch: backlog
   22-12-implement-comprehensive-testing-suite: backlog

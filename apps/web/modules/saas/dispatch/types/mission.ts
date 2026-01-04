@@ -63,6 +63,10 @@ export interface MissionListItem {
 	// Story 22.4: Subcontracting fields
 	isSubcontracted: boolean;
 	subcontractor: MissionSubcontractor | null;
+	// Story 22.9: Staffing information display
+	staffingSummary?: StaffingSummary | null;
+	tripType?: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
+	stayDays?: StayDayListItem[];
 }
 
 // Story 22.4: Subcontractor info for subcontracted missions
@@ -75,12 +79,37 @@ export interface MissionSubcontractor {
 	subcontractedAt: string;
 }
 
+/**
+ * Story 22.9: Staffing summary for mission list display
+ * Compact staffing information shown in mission rows
+ */
+export interface StaffingSummary {
+	driverCount: number;
+	hotelNights: number;
+	mealCount: number;
+	totalStaffingCost: number;
+	planType: "SINGLE_DRIVER" | "DOUBLE_CREW" | "RELAY" | "MULTI_DAY";
+	isRSERequired: boolean;
+}
+
+/**
+ * Story 22.9: STAY day summary for list display
+ */
+export interface StayDayListItem {
+	dayNumber: number;
+	date: string;
+	serviceCount: number;
+	hotelRequired: boolean;
+	mealCount: number;
+	driverCount: number;
+}
+
 export interface MissionDetail extends MissionListItem {
 	internalCost: number | null;
 	marginPercent: number | null;
 	suggestedPrice: number;
 	pricingMode: "FIXED_GRID" | "DYNAMIC";
-	tripType: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID";
+	tripType: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
 	notes: string | null;
 	tripAnalysis: unknown;
 	appliedRules: unknown;

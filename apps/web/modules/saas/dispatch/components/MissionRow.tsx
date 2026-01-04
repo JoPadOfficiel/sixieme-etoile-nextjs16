@@ -1,12 +1,13 @@
 "use client";
 
 import { Badge } from "@ui/components/badge";
-import { MapPin, ArrowRight, Clock, Car, User } from "lucide-react";
+import { MapPin, ArrowRight, Clock, Car, User, Calendar } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
 import { DispatchBadges } from "./DispatchBadges";
 import { SubcontractedBadge } from "./SubcontractedBadge";
+import { StaffingIndicators } from "./StaffingIndicators";
 import type { MissionListItem } from "../types";
 
 /**
@@ -33,7 +34,8 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 	const pickupDate = new Date(mission.pickupAt);
 
 	// Truncate address for display
-	const truncateAddress = (address: string, maxLength = 35) => {
+	const truncateAddress = (address: string | null | undefined, maxLength = 35) => {
+		if (!address) return "—";
 		if (address.length <= maxLength) return address;
 		return `${address.substring(0, maxLength)}...`;
 	};
@@ -48,7 +50,7 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 			data-testid="mission-row"
 			data-selected={isSelected}
 		>
-			{/* Row 1: Time + Client + Badges */}
+			{/* Row 1: Time + Client + Trip Type + Badges */}
 			<div className="flex items-center justify-between gap-2 mb-2">
 				<div className="flex items-center gap-3">
 					{/* Time */}
@@ -71,9 +73,21 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 							{mission.contact.isPartner ? t("partner") : t("private")}
 						</Badge>
 					</div>
+					{/* Story 22.9: STAY trip type indicator */}
+					{mission.tripType === "STAY" && mission.stayDays && (
+						<Badge
+							variant="outline"
+							className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400"
+						>
+							<Calendar className="size-3 mr-1" />
+							{mission.stayDays.length} {t("days")}
+						</Badge>
+					)}
 				</div>
 				{/* Badges */}
 				<div className="flex items-center gap-1">
+					{/* Story 22.9: Staffing indicators */}
+					<StaffingIndicators staffingSummary={mission.staffingSummary} />
 					{/* Story 22.4: Subcontracted badge */}
 					{mission.isSubcontracted && mission.subcontractor && (
 						<SubcontractedBadge subcontractor={mission.subcontractor} />
