@@ -477,14 +477,138 @@ function buildStayDriverPremiumLine(day: StayDayInput, sortOrder: number): Invoi
 }
 
 /**
- * Build invoice lines from a STAY quote with multiple days and services.
- * Each service becomes a separate line, plus hotel/meal/driver premium lines per day.
+ * Build a service line for a stay day with staffing costs included
+ * This distributes staffing costs across service lines so the client sees a clean invoice
+ * @param day - The stay day containing the service
+ * @param service - The stay service
+ * @param dayStaffingCost - Total staffing cost for this day (hotel + meals + premium)
+ * @param sortOrder - The sort order for this line
+ * @returns Invoice line input for the service with embedded staffing costs
+ */
+function buildStayServiceLineWithStaffing(
+	day: StayDayInput,
+	service: StayServiceInput,
+	dayStaffingCost: number,
+	sortOrder: number,
+): InvoiceLineInput {
+	const serviceTypeLabel = SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType;
+	
+	let description: string;
+	if (service.dropoffAddress) {
+		description = `Jour ${day.dayNumber} - ${serviceTypeLabel}: ${service.pickupAddress} → ${service.dropoffAddress}`;
+	} else {
+		const hours = service.durationHours ? Number(service.durationHours) : 0;
+		description = `Jour ${day.dayNumber} - ${serviceTypeLabel}: ${service.pickupAddress} (${hours}h)`;
+	}
+
+	// Distribute day's staffing cost across all services in this day
+	const serviceCost = Number(service.serviceCost) || 0;
+	const totalServicesInDay = day.services.length;
+	const staffCostPerService = totalServicesInDay > 0 ? dayStaffingCost / totalServicesInDay : 0;
+	
+	// Total cost for this service = service cost + allocated staffing cost
+	const totalServiceCost = roundCurrency(serviceCost + staffCostPerService);
+	const vatAmount = calculateVat(totalServiceCost, TRANSPORT_VAT_RATE);
+
+	return {
+		lineType: "SERVICE",
+		description,
+		quantity: 1,
+		unitPriceExclVat: totalServiceCost,
+		vatRate: TRANSPORT_VAT_RATE,
+		totalExclVat: totalServiceCost,
+		totalVat: vatAmount,
+		sortOrder,
+	};
+}
+
+/**
+ * Build invoice lines from a STAY quote for CLIENT VIEW.
+ * Staffing costs (hotel, meals, driver premium) are distributed across service lines,
+ * so the client only sees transport services but the price includes all costs.
  *
  * @param stayDays - Array of stay days with their services
  * @param parsedRules - Parsed optional fees and promotions from appliedRules
- * @returns Array of invoice line inputs ordered by day and type
+ * @returns Array of invoice line inputs ordered by day and type (CLIENT VIEW)
  */
 export function buildStayInvoiceLines(
+	stayDays: StayDayInput[],
+	parsedRules: ParsedAppliedRules,
+): InvoiceLineInput[] {
+	const lines: InvoiceLineInput[] = [];
+	let sortOrder = 0;
+
+	// Sort days by dayNumber to ensure correct ordering
+	const sortedDays = [...stayDays].sort((a, b) => a.dayNumber - b.dayNumber);
+
+	// Process each day
+	for (const day of sortedDays) {
+		// Sort services by serviceOrder
+		const sortedServices = [...day.services].sort((a, b) => a.serviceOrder - b.serviceOrder);
+
+		// Calculate total staffing cost for this day (internal, not shown to client)
+		const hotelCost = Number(day.hotelCost) || 0;
+		const mealCost = Number(day.mealCost) || 0;
+		const driverOvernightCost = Number(day.driverOvernightCost) || 0;
+		const dayStaffingCost = hotelCost + mealCost + driverOvernightCost;
+
+		// Create service lines with embedded staffing costs
+		for (const service of sortedServices) {
+			const serviceCost = Number(service.serviceCost) || 0;
+			if (serviceCost > 0 || dayStaffingCost > 0) {
+				lines.push(buildStayServiceLineWithStaffing(day, service, dayStaffingCost, sortOrder++));
+			}
+		}
+	}
+
+	// Optional fees from appliedRules (same as standard quotes)
+	for (const fee of parsedRules.optionalFees) {
+		const feeExclVat = roundCurrency(fee.amount);
+		const effectiveVatRate = fee.isTaxable ? fee.vatRate : 0;
+		const feeVat = calculateVat(feeExclVat, effectiveVatRate);
+
+		lines.push({
+			lineType: "OPTIONAL_FEE",
+			description: fee.name,
+			quantity: 1,
+			unitPriceExclVat: feeExclVat,
+			vatRate: effectiveVatRate,
+			totalExclVat: feeExclVat,
+			totalVat: feeVat,
+			sortOrder: sortOrder++,
+		});
+	}
+
+	// Promotions from appliedRules (negative amounts)
+	for (const promo of parsedRules.promotions) {
+		const discountExclVat = roundCurrency(-promo.discountAmount);
+		const discountVat = calculateVat(discountExclVat, TRANSPORT_VAT_RATE);
+
+		lines.push({
+			lineType: "PROMOTION_ADJUSTMENT",
+			description: `Promotion: ${promo.code}`,
+			quantity: 1,
+			unitPriceExclVat: discountExclVat,
+			vatRate: TRANSPORT_VAT_RATE,
+			totalExclVat: discountExclVat,
+			totalVat: discountVat,
+			sortOrder: sortOrder++,
+		});
+	}
+
+	return lines;
+}
+
+/**
+ * Build internal invoice lines from a STAY quote for OPERATIONAL VIEW.
+ * Shows ALL costs including hotel, meals, and driver premiums for internal tracking.
+ * This function is NOT used for client invoices - only for internal reporting.
+ *
+ * @param stayDays - Array of stay days with their services
+ * @param parsedRules - Parsed optional fees and promotions from appliedRules
+ * @returns Array of invoice line inputs with all internal costs visible
+ */
+export function buildStayInvoiceLinesInternal(
 	stayDays: StayDayInput[],
 	parsedRules: ParsedAppliedRules,
 ): InvoiceLineInput[] {
@@ -507,19 +631,19 @@ export function buildStayInvoiceLines(
 			}
 		}
 
-		// 2. Hotel line (if applicable)
+		// 2. Hotel line (if applicable) - INTERNAL ONLY
 		const hotelCost = Number(day.hotelCost) || 0;
 		if (day.hotelRequired && hotelCost > 0) {
 			lines.push(buildStayHotelLine(day, sortOrder++));
 		}
 
-		// 3. Meal line (if applicable)
+		// 3. Meal line (if applicable) - INTERNAL ONLY
 		const mealCost = Number(day.mealCost) || 0;
 		if (day.mealCount > 0 && mealCost > 0) {
 			lines.push(buildStayMealLine(day, sortOrder++));
 		}
 
-		// 4. Driver overnight premium (if applicable)
+		// 4. Driver overnight premium (if applicable) - INTERNAL ONLY
 		const driverOvernightCost = Number(day.driverOvernightCost) || 0;
 		if (driverOvernightCost > 0) {
 			lines.push(buildStayDriverPremiumLine(day, sortOrder++));
