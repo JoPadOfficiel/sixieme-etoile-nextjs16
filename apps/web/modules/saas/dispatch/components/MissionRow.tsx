@@ -8,6 +8,7 @@ import { cn } from "@ui/lib";
 import { DispatchBadges } from "./DispatchBadges";
 import { SubcontractedBadge } from "./SubcontractedBadge";
 import { StaffingIndicators } from "./StaffingIndicators";
+import { NotesIndicator } from "./NotesIndicator";
 import type { MissionListItem } from "../types";
 
 /**
@@ -86,6 +87,8 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 				</div>
 				{/* Badges */}
 				<div className="flex items-center gap-1">
+					{/* Story 22.11: Notes indicator */}
+					<NotesIndicator notes={mission.notes ?? null} />
 					{/* Story 22.9: Staffing indicators */}
 					<StaffingIndicators staffingSummary={mission.staffingSummary} />
 					{/* Story 22.4: Subcontracted badge */}

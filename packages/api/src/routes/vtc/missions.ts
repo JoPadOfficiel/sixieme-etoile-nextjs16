@@ -139,6 +139,8 @@ interface MissionListItem {
 	// Story 22.9: Staffing information display
 	staffingSummary: StaffingSummary | null;
 	tripType: string | null;
+	// Story 22.11: Notes for dispatch display
+	notes: string | null;
 }
 
 /**
@@ -475,6 +477,8 @@ export const missionsRouter = new Hono()
 				// Story 22.9: Staffing information display
 				staffingSummary: getStaffingSummary(quote.tripAnalysis),
 				tripType: quote.tripType,
+				// Story 22.11: Notes for dispatch display
+				notes: quote.notes,
 			}));
 
 			return c.json({

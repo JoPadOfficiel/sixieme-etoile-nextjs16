@@ -15,7 +15,8 @@ import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { MissionComplianceDetails } from "./MissionComplianceDetails";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingTimeline } from "./StaffingTimeline";
-import { useMissions, useMissionDetail } from "../hooks/useMissions";
+import { useMissions, useMissionDetail, useMissionNotesUpdate } from "../hooks/useMissions";
+import { MissionNotesSection } from "./MissionNotesSection";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
@@ -89,6 +90,9 @@ export function DispatchPage() {
 		missionId: selectedMissionId,
 		enabled: !!selectedMissionId,
 	});
+
+	// Story 22.11: Notes update hook
+	const { updateNotes, isUpdating: isUpdatingNotes } = useMissionNotesUpdate();
 
 	// Story 8.3: Transform candidates to map-friendly format
 	const candidateBases = useMemo<CandidateBase[]>(() => {
@@ -236,12 +240,23 @@ export function DispatchPage() {
 					/>
 				</div>
 
-				{/* Transparency + Staffing + Compliance + Assignment - no internal scroll */}
+				{/* Transparency + Notes + Staffing + Compliance + Assignment - no internal scroll */}
 				<div className="flex flex-col gap-4">
 					<TripTransparencyPanel
 						pricingResult={pricingResult}
 						isLoading={missionDetailLoading}
 					/>
+					{/* Story 22.11: Mission Notes Section */}
+					{selectedMissionId && selectedMission && (
+						<MissionNotesSection
+							notes={selectedMission.notes}
+							missionId={selectedMissionId}
+							onUpdateNotes={async (notes) => {
+								await updateNotes({ quoteId: selectedMission.quoteId, notes });
+							}}
+							isUpdating={isUpdatingNotes}
+						/>
+					)}
 					{/* Story 21.5: RSE Staffing Costs Section */}
 					{selectedMissionId && (
 						<StaffingCostsSection
