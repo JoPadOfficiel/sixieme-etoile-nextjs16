@@ -215,7 +215,7 @@ development_status:
   22-8-implement-stay-trip-type-invoice-integration: done
   22-9-enhance-dispatch-with-staffing-information-display: done
   22-10-implement-advanced-subcontracting-workflow: done
-  22-11-fix-quote-notes-display-in-dispatch: backlog
+  22-11-fix-quote-notes-display-in-dispatch: done
   22-12-implement-comprehensive-testing-suite: backlog
   22-13-update-documentation-and-training-materials: backlog
   epic-22-retrospective: optional

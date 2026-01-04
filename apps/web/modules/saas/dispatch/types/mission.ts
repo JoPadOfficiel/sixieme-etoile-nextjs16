@@ -67,6 +67,8 @@ export interface MissionListItem {
 	staffingSummary?: StaffingSummary | null;
 	tripType?: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
 	stayDays?: StayDayListItem[];
+	// Story 22.11: Notes for dispatch display
+	notes?: string | null;
 }
 
 // Story 22.4: Subcontractor info for subcontracted missions

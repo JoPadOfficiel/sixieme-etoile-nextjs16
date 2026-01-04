@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@shared/lib/api-client";
+import { useToast } from "@ui/hooks/use-toast";
+import { useTranslations } from "next-intl";
 import type { MissionsFilters, MissionsListResponse, MissionDetail } from "../types";
 
 /**
@@ -81,4 +83,59 @@ export function useMissionDetail({
 		enabled: enabled && !!missionId,
 		staleTime: 30000,
 	});
+}
+
+/**
+ * useMissionNotesUpdate Hook
+ *
+ * Story 22.11: Fix Quote Notes Display in Dispatch
+ *
+ * Updates mission notes via the quote endpoint.
+ * Notes are stored on the Quote model and synced to missions.
+ */
+export function useMissionNotesUpdate() {
+	const queryClient = useQueryClient();
+	const { toast } = useToast();
+	const t = useTranslations("dispatch.notes");
+
+	const mutation = useMutation({
+		mutationFn: async ({
+			quoteId,
+			notes,
+		}: {
+			quoteId: string;
+			notes: string | null;
+		}) => {
+			const response = await apiClient.vtc.quotes[":id"].$patch({
+				param: { id: quoteId },
+				json: { notes },
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to update notes");
+			}
+
+			return response.json();
+		},
+		onSuccess: (_data, variables) => {
+			toast({
+				title: t("updateSuccess"),
+			});
+			// Invalidate mission queries to refresh the data
+			queryClient.invalidateQueries({ queryKey: ["missions"] });
+			queryClient.invalidateQueries({ queryKey: ["mission"] });
+			queryClient.invalidateQueries({ queryKey: ["quote", variables.quoteId] });
+		},
+		onError: () => {
+			toast({
+				title: t("updateError"),
+				variant: "error",
+			});
+		},
+	});
+
+	return {
+		updateNotes: mutation.mutateAsync,
+		isUpdating: mutation.isPending,
+	};
 }

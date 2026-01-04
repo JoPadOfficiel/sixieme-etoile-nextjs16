@@ -3813,6 +3813,17 @@
 				"break_recommended": "Break Recommended"
 			}
 		},
+		"notes": {
+			"title": "Mission Notes",
+			"edit": "Edit",
+			"save": "Save",
+			"cancel": "Cancel",
+			"placeholder": "Add operational notes for this mission (VIP, special requirements, access instructions...)",
+			"empty": "No notes for this mission",
+			"updateSuccess": "Notes updated successfully",
+			"updateError": "Failed to update notes",
+			"keywordHint": "Tip: Use keywords like VIP, URGENT, FRAGILE, WHEELCHAIR, CHILD SEAT for automatic highlighting"
+		},
 		"staffing": {
 			"title": "Staffing Costs",
 			"standardStaffing": "Standard staffing - 1 driver",

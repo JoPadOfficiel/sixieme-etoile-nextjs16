@@ -3813,6 +3813,17 @@
 				"break_recommended": "Pause recommandée"
 			}
 		},
+		"notes": {
+			"title": "Notes de mission",
+			"edit": "Modifier",
+			"save": "Enregistrer",
+			"cancel": "Annuler",
+			"placeholder": "Ajoutez des notes opérationnelles pour cette mission (VIP, exigences spéciales, instructions d'accès...)",
+			"empty": "Aucune note pour cette mission",
+			"updateSuccess": "Notes mises à jour avec succès",
+			"updateError": "Échec de la mise à jour des notes",
+			"keywordHint": "Astuce : Utilisez des mots-clés comme VIP, URGENT, FRAGILE, FAUTEUIL ROULANT, SIÈGE ENFANT pour un surlignage automatique"
+		},
 		"staffing": {
 			"title": "Coûts de personnel",
 			"standardStaffing": "Personnel standard - 1 conducteur",
