@@ -181,6 +181,21 @@ export function DispatchPage() {
 		setSelectedCandidateId((prev) => (prev === vehicleId ? null : vehicleId));
 	}, []);
 
+	// Handlers for subcontractor management
+	const handleChangeSubcontractor = useCallback(() => {
+		// TODO: Open subcontractor selection dialog
+		console.log("Change subcontractor for mission:", selectedMissionId);
+	}, [selectedMissionId]);
+
+	const handleRemoveSubcontractor = useCallback(() => {
+		// TODO: Remove subcontracting and allow normal assignment
+		console.log("Remove subcontractor for mission:", selectedMissionId);
+		// Open assignment drawer after removing subcontractor
+		if (selectedMissionId) {
+			setIsAssignmentDrawerOpen(true);
+		}
+	}, [selectedMissionId]);
+
 	// Convert mission detail to PricingResult for TripTransparencyPanel
 	const pricingResult = selectedMission ? missionToPricingResult(selectedMission) : null;
 
@@ -281,8 +296,12 @@ export function DispatchPage() {
 					<SubcontractingSuggestions missionId={selectedMissionId} />
 					<VehicleAssignmentPanel
 						assignment={selectedMission?.assignment || null}
+						isSubcontracted={selectedMission?.isSubcontracted ?? false}
+						subcontractor={selectedMission?.subcontractor ?? null}
 						isLoading={missionDetailLoading}
-						onAssign={selectedMissionId ? handleOpenAssignmentDrawer : undefined}
+						onAssign={selectedMissionId && !selectedMission?.isSubcontracted ? handleOpenAssignmentDrawer : undefined}
+						onChangeSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleChangeSubcontractor : undefined}
+						onRemoveSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleRemoveSubcontractor : undefined}
 					/>
 				</div>
 			</div>
