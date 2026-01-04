@@ -4089,6 +4089,21 @@
 			"update": "Update Availability",
 			"success": "Availability updated",
 			"error": "Failed to update availability"
+		},
+		"assignment": {
+			"title": "Assignment",
+			"subcontracted": "Subcontracted",
+			"subcontractorCompany": "Subcontractor Company",
+			"phone": "Phone",
+			"agreedPrice": "Agreed Price",
+			"subcontractedAt": "Subcontracted At",
+			"unassigned": "Unassigned",
+			"unassignedDescription": "No vehicle or driver assigned yet",
+			"vehicle": "Vehicle",
+			"driver": "Driver",
+			"secondDriver": "Second Driver",
+			"base": "Base",
+			"unknownVehicle": "Unknown Vehicle"
 		}
 	}
 }
