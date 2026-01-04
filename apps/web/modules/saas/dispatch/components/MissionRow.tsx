@@ -5,6 +5,7 @@ import { MapPin, ArrowRight, Clock, Car, User, Calendar } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
+
 import { DispatchBadges } from "./DispatchBadges";
 import { SubcontractedBadge } from "./SubcontractedBadge";
 import { StaffingIndicators } from "./StaffingIndicators";
@@ -52,10 +53,10 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 			data-selected={isSelected}
 		>
 			{/* Row 1: Time + Client + Trip Type + Badges */}
-			<div className="flex items-center justify-between gap-2 mb-2">
-				<div className="flex items-center gap-3">
+			<div className="flex items-center justify-between gap-2 mb-2 min-w-0">
+				<div className="flex items-center gap-3 min-w-0">
 					{/* Time */}
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 flex-shrink-0">
 						<Clock className="size-4 text-muted-foreground" />
 						<div className="font-semibold">{format(pickupDate, "HH:mm")}</div>
 						<div className="text-xs text-muted-foreground">
@@ -63,13 +64,13 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 						</div>
 					</div>
 					{/* Client */}
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 min-w-0">
 						<span className="font-medium truncate max-w-[140px]">
 							{mission.contact.displayName}
 						</span>
 						<Badge
 							variant={mission.contact.isPartner ? "default" : "secondary"}
-							className="text-xs px-1.5 py-0"
+							className="text-xs px-1.5 py-0 flex-shrink-0"
 						>
 							{mission.contact.isPartner ? t("partner") : t("private")}
 						</Badge>
@@ -78,7 +79,7 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 					{mission.tripType === "STAY" && mission.stayDays && (
 						<Badge
 							variant="outline"
-							className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400"
+							className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400 flex-shrink-0"
 						>
 							<Calendar className="size-3 mr-1" />
 							{mission.stayDays.length} {t("days")}
@@ -86,7 +87,7 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 					)}
 				</div>
 				{/* Badges */}
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 					{/* Story 22.11: Notes indicator */}
 					<NotesIndicator notes={mission.notes ?? null} />
 					{/* Story 22.9: Staffing indicators */}
