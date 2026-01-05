@@ -143,7 +143,7 @@ export function useStayPricingCalculation(
         appliedRules: data.appliedRules,
         isContractPrice: false,
         fallbackReason: null,
-        tripAnalysis: data.tripAnalysis as PricingResult["tripAnalysis"],
+        tripAnalysis: data.tripAnalysis as unknown as PricingResult["tripAnalysis"],
         complianceResult: null,
       };
       setPricingResult(result);
