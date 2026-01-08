@@ -292,11 +292,11 @@ export function PartnerAssignmentDialog({
           </DialogTitle>
           <DialogDescription>
             {t("dialogDescription")}
-            <div className="mt-2 flex items-center gap-2">
-              <Badge variant="outline">{itemLabel}</Badge>
-              <Badge variant="secondary">{t("catalogPrice")}: {formatPrice(catalogPrice)}</Badge>
-            </div>
           </DialogDescription>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline">{itemLabel}</Badge>
+            <Badge variant="secondary">{t("catalogPrice")}: {formatPrice(catalogPrice)}</Badge>
+          </div>
         </DialogHeader>
 
         {isLoading ? (

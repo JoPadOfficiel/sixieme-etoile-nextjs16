@@ -69,7 +69,7 @@ async function rateLimitedFetch(url: string): Promise<Response> {
 
 	return fetch(url, {
 		headers: {
-			"User-Agent": "SixiemeEtoile-VTC-ERP/1.0 (contact@sixieme-etoile.fr)",
+			"User-Agent": "VTC-Premium-ERP/1.0 (contact@vtc-premium.fr)",
 			Accept: "application/json",
 		},
 	});

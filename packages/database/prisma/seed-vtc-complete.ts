@@ -260,18 +260,20 @@ async function createOrganizationLicenseRules() {
 async function createVehicleCategories() {
   console.log("\n🚗 Creating Vehicle Categories...");
   // Story 15.2: Added averageConsumptionL100km for accurate fuel cost calculation
-  // Consumption values based on typical vehicle types:
-  // - Berline: 5.5 L/100km (efficient sedan)
-  // - Van Premium: 8.5 L/100km (larger vehicle)
-  // - Minibus: 12.0 L/100km (9-16 seats)
-  // - Autocar: 18.0 L/100km (large coach)
-  // - Luxe: 9.0 L/100km (luxury sedan, higher consumption)
+  // Consommation basée sur tarification 2026 VAP:
+  // - Berline: 6.5 L/100km (véhicules récents) - Référence 1.0x (base)
+  // - Van Premium: 9.0 L/100km (V-Class/Vito) - +25% pour espace supplémentaire
+  // - Minibus: 12.5 L/100km (Sprinter standard) - +60% pour capacité groupe
+  // - Minibus VIP: 11.0 L/100km (Sprinter aménagé luxe) - +100% pour service premium
+  // - Autocar: 20.0 L/100km (grand autocar) - +120% pour grande capacité
+  // - Luxe: 8.5 L/100km (S-Class/7-Series) - +80% pour service haut de gamme
   const cats = [
-    { name: "Berline", code: "BERLINE", regulatoryCategory: "LIGHT" as const, maxPassengers: 4, priceMultiplier: 1.0, defaultRatePerKm: 1.80, defaultRatePerHour: 45.0, averageConsumptionL100km: 5.5 },
-    { name: "Van Premium", code: "VAN_PREMIUM", regulatoryCategory: "LIGHT" as const, maxPassengers: 7, priceMultiplier: 1.3, defaultRatePerKm: 2.20, defaultRatePerHour: 55.0, averageConsumptionL100km: 8.5 },
-    { name: "Minibus", code: "MINIBUS", regulatoryCategory: "HEAVY" as const, maxPassengers: 16, priceMultiplier: 1.8, defaultRatePerKm: 3.00, defaultRatePerHour: 75.0, averageConsumptionL100km: 12.0 },
-    { name: "Autocar", code: "AUTOCAR", regulatoryCategory: "HEAVY" as const, maxPassengers: 50, priceMultiplier: 2.5, defaultRatePerKm: 4.50, defaultRatePerHour: 120.0, averageConsumptionL100km: 18.0 },
-    { name: "Luxe", code: "LUXE", regulatoryCategory: "LIGHT" as const, maxPassengers: 3, priceMultiplier: 2.0, defaultRatePerKm: 3.50, defaultRatePerHour: 90.0, averageConsumptionL100km: 9.0 },
+    { name: "Berline", code: "BERLINE", regulatoryCategory: "LIGHT" as const, maxPassengers: 4, priceMultiplier: 1.0, defaultRatePerKm: 2.10, defaultRatePerHour: 52.0, averageConsumptionL100km: 6.5 },
+    { name: "Van Premium", code: "VAN_PREMIUM", regulatoryCategory: "LIGHT" as const, maxPassengers: 7, priceMultiplier: 1.25, defaultRatePerKm: 2.60, defaultRatePerHour: 65.0, averageConsumptionL100km: 9.0 },
+    { name: "Minibus", code: "MINIBUS", regulatoryCategory: "HEAVY" as const, maxPassengers: 16, priceMultiplier: 1.6, defaultRatePerKm: 3.50, defaultRatePerHour: 85.0, averageConsumptionL100km: 12.5 },
+    { name: "Minibus VIP", code: "MINIBUS_VIP", regulatoryCategory: "HEAVY" as const, maxPassengers: 8, priceMultiplier: 2.0, defaultRatePerKm: 4.80, defaultRatePerHour: 110.0, averageConsumptionL100km: 11.0 },
+    { name: "Autocar", code: "AUTOCAR", regulatoryCategory: "HEAVY" as const, maxPassengers: 50, priceMultiplier: 2.2, defaultRatePerKm: 5.20, defaultRatePerHour: 140.0, averageConsumptionL100km: 20.0 },
+    { name: "Luxe", code: "LUXE", regulatoryCategory: "LIGHT" as const, maxPassengers: 3, priceMultiplier: 1.8, defaultRatePerKm: 4.00, defaultRatePerHour: 105.0, averageConsumptionL100km: 8.5 },
   ];
   for (const c of cats) {
     const created = await prisma.vehicleCategory.create({
@@ -432,158 +434,83 @@ async function createZoneRoutes() {
   //
   const routes = [
     // ============================================================================
-    // AÉROPORT CDG - TRANSFERTS (35km de Paris, ~45min)
-    // Prix marché: Berline 70-90€, Van 90-120€
+    // TARIFICATION 2026 VAP - TRANSFERTS
+    // Prix basés sur le PDF officiel VAP 2026
     // ============================================================================
-    { from: "CDG", to: "PARIS_0", category: "BERLINE", price: 79.0 },
-    { from: "CDG", to: "PARIS_0", category: "VAN_PREMIUM", price: 99.0 },
-    { from: "CDG", to: "PARIS_0", category: "LUXE", price: 149.0 },
-    { from: "CDG", to: "PARIS_0", category: "MINIBUS", price: 175.0 },
-    { from: "CDG", to: "PARIS_10", category: "BERLINE", price: 75.0 },
-    { from: "CDG", to: "PARIS_10", category: "VAN_PREMIUM", price: 95.0 },
-    { from: "CDG", to: "PARIS_20", category: "BERLINE", price: 59.0 },
-    { from: "CDG", to: "PARIS_20", category: "VAN_PREMIUM", price: 79.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 89.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "CDG", to: "LA_DEFENSE", category: "LUXE", price: 169.0 },
-    { from: "CDG", to: "BUSSY_0", category: "BERLINE", price: 59.0 },
-    { from: "CDG", to: "BUSSY_0", category: "VAN_PREMIUM", price: 79.0 },
-    { from: "CDG", to: "BUSSY_10", category: "BERLINE", price: 69.0 },
-    { from: "CDG", to: "BUSSY_10", category: "VAN_PREMIUM", price: 89.0 },
-    { from: "CDG", to: "BUSSY_10", category: "MINIBUS", price: 149.0 },
-    { from: "CDG", to: "VERSAILLES", category: "BERLINE", price: 139.0 },
-    { from: "CDG", to: "VERSAILLES", category: "VAN_PREMIUM", price: 179.0 },
-    { from: "CDG", to: "ORLY", category: "BERLINE", price: 115.0 },
-    { from: "CDG", to: "ORLY", category: "VAN_PREMIUM", price: 149.0 },
-    { from: "CDG", to: "CHANTILLY", category: "BERLINE", price: 89.0 },
-    { from: "CDG", to: "CHANTILLY", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "CDG", to: "REIMS", category: "BERLINE", price: 249.0 },
-    { from: "CDG", to: "REIMS", category: "VAN_PREMIUM", price: 319.0 },
-    { from: "CDG", to: "ROUEN", category: "BERLINE", price: 349.0 },
-    { from: "CDG", to: "ROUEN", category: "VAN_PREMIUM", price: 449.0 },
+    
+    // Paris Intramuros
+    { from: "PARIS_0", to: "PARIS_0", category: "BERLINE", price: 80.0 },
+    { from: "PARIS_0", to: "PARIS_0", category: "VAN_PREMIUM", price: 100.0 },
+    { from: "PARIS_0", to: "PARIS_0", category: "MINIBUS", price: 275.0 },
+    { from: "PARIS_0", to: "PARIS_0", category: "AUTOCAR", price: 290.0 },
+    
+    // Paris <> Aéroports
+    { from: "CDG", to: "PARIS_0", category: "BERLINE", price: 120.0 },
+    { from: "CDG", to: "PARIS_0", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "CDG", to: "PARIS_0", category: "MINIBUS", price: 320.0 },
+    { from: "CDG", to: "PARIS_0", category: "AUTOCAR", price: 350.0 },
+    { from: "ORLY", to: "PARIS_0", category: "BERLINE", price: 120.0 },
+    { from: "ORLY", to: "PARIS_0", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "ORLY", to: "PARIS_0", category: "MINIBUS", price: 320.0 },
+    { from: "ORLY", to: "PARIS_0", category: "AUTOCAR", price: 350.0 },
+    
+    // Paris Versailles
+    { from: "PARIS_0", to: "VERSAILLES", category: "BERLINE", price: 110.0 },
+    { from: "PARIS_0", to: "VERSAILLES", category: "VAN_PREMIUM", price: 130.0 },
+    { from: "PARIS_0", to: "VERSAILLES", category: "MINIBUS", price: 300.0 },
+    { from: "PARIS_0", to: "VERSAILLES", category: "AUTOCAR", price: 330.0 },
+    { from: "VERSAILLES", to: "PARIS_0", category: "BERLINE", price: 110.0 },
+    { from: "VERSAILLES", to: "PARIS_0", category: "VAN_PREMIUM", price: 130.0 },
+    { from: "VERSAILLES", to: "PARIS_0", category: "MINIBUS", price: 300.0 },
+    { from: "VERSAILLES", to: "PARIS_0", category: "AUTOCAR", price: 330.0 },
+    
+    // Paris > Disneyland
+    { from: "PARIS_0", to: "BUSSY_10", category: "BERLINE", price: 120.0 },
+    { from: "PARIS_0", to: "BUSSY_10", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "PARIS_0", to: "BUSSY_10", category: "MINIBUS", price: 330.0 },
+    { from: "PARIS_0", to: "BUSSY_10", category: "AUTOCAR", price: 360.0 },
+    { from: "BUSSY_10", to: "PARIS_0", category: "BERLINE", price: 120.0 },
+    { from: "BUSSY_10", to: "PARIS_0", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "BUSSY_10", to: "PARIS_0", category: "MINIBUS", price: 330.0 },
+    { from: "BUSSY_10", to: "PARIS_0", category: "AUTOCAR", price: 360.0 },
+    
+    // Routes supplémentaires pour la couverture complète
+    { from: "CDG", to: "LA_DEFENSE", category: "BERLINE", price: 120.0 },
+    { from: "CDG", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "ORLY", to: "LA_DEFENSE", category: "BERLINE", price: 120.0 },
+    { from: "ORLY", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 150.0 },
+    { from: "PARIS_0", to: "LA_DEFENSE", category: "BERLINE", price: 80.0 },
+    { from: "PARIS_0", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 100.0 },
+    { from: "BUSSY_0", to: "PARIS_0", category: "BERLINE", price: 120.0 },
+    { from: "BUSSY_0", to: "PARIS_0", category: "VAN_PREMIUM", price: 150.0 },
     
     // ============================================================================
-    // AÉROPORT ORLY - TRANSFERTS (18km de Paris, ~30min)
-    // Prix marché: Berline 45-60€, Van 60-80€
+    // ROUTES LUXE MANQUANTES - Pour les configs partenaires
     // ============================================================================
-    { from: "ORLY", to: "PARIS_0", category: "BERLINE", price: 55.0 },
-    { from: "ORLY", to: "PARIS_0", category: "VAN_PREMIUM", price: 72.0 },
-    { from: "ORLY", to: "PARIS_0", category: "LUXE", price: 105.0 },
-    { from: "ORLY", to: "PARIS_0", category: "MINIBUS", price: 125.0 },
-    { from: "ORLY", to: "PARIS_10", category: "BERLINE", price: 49.0 },
-    { from: "ORLY", to: "PARIS_10", category: "VAN_PREMIUM", price: 65.0 },
-    { from: "ORLY", to: "PARIS_20", category: "BERLINE", price: 45.0 },
-    { from: "ORLY", to: "PARIS_20", category: "VAN_PREMIUM", price: 59.0 },
-    { from: "ORLY", to: "LA_DEFENSE", category: "BERLINE", price: 75.0 },
-    { from: "ORLY", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 98.0 },
-    { from: "ORLY", to: "VERSAILLES", category: "BERLINE", price: 79.0 },
-    { from: "ORLY", to: "VERSAILLES", category: "VAN_PREMIUM", price: 99.0 },
-    { from: "ORLY", to: "BUSSY_0", category: "BERLINE", price: 89.0 },
-    { from: "ORLY", to: "BUSSY_0", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "ORLY", to: "BUSSY_10", category: "BERLINE", price: 99.0 },
-    { from: "ORLY", to: "BUSSY_10", category: "VAN_PREMIUM", price: 129.0 },
-    { from: "ORLY", to: "BUSSY_10", category: "MINIBUS", price: 219.0 },
-    { from: "ORLY", to: "FONTAINEBLEAU", category: "BERLINE", price: 99.0 },
-    { from: "ORLY", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 129.0 },
     
-    // ============================================================================
-    // LE BOURGET (Aviation d'affaires) - PREMIUM UNIQUEMENT
-    // Clientèle très haut de gamme, tarifs premium
-    // ============================================================================
-    { from: "LBG", to: "PARIS_0", category: "BERLINE", price: 79.0 },
-    { from: "LBG", to: "PARIS_0", category: "LUXE", price: 149.0 },
-    { from: "LBG", to: "LA_DEFENSE", category: "BERLINE", price: 89.0 },
-    { from: "LBG", to: "LA_DEFENSE", category: "LUXE", price: 169.0 },
-    { from: "LBG", to: "VERSAILLES", category: "LUXE", price: 199.0 },
-    { from: "LBG", to: "CHANTILLY", category: "LUXE", price: 179.0 },
-    { from: "LBG", to: "DEAUVILLE", category: "LUXE", price: 549.0 },
+    // Routes LUXE Paris <> Aéroports
+    { from: "CDG", to: "PARIS_0", category: "LUXE", price: 180.0 },
+    { from: "ORLY", to: "PARIS_0", category: "LUXE", price: 180.0 },
     
-    // ============================================================================
-    // BUSSY-SAINT-MARTIN (Garage) - TARIFS AVANTAGEUX
-    // Pas de trajet à vide = prix réduits
-    // ============================================================================
-    { from: "BUSSY_0", to: "PARIS_0", category: "BERLINE", price: 79.0 },
-    { from: "BUSSY_0", to: "PARIS_0", category: "VAN_PREMIUM", price: 99.0 },
-    { from: "BUSSY_0", to: "PARIS_10", category: "BERLINE", price: 72.0 },
-    { from: "BUSSY_0", to: "PARIS_10", category: "VAN_PREMIUM", price: 92.0 },
-    { from: "BUSSY_0", to: "CDG", category: "BERLINE", price: 59.0 },
-    { from: "BUSSY_0", to: "CDG", category: "VAN_PREMIUM", price: 79.0 },
-    { from: "BUSSY_0", to: "ORLY", category: "BERLINE", price: 89.0 },
-    { from: "BUSSY_0", to: "ORLY", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "BUSSY_0", to: "LA_DEFENSE", category: "BERLINE", price: 89.0 },
-    { from: "BUSSY_0", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "BUSSY_0", to: "VERSAILLES", category: "BERLINE", price: 119.0 },
-    { from: "BUSSY_0", to: "VERSAILLES", category: "VAN_PREMIUM", price: 155.0 },
-    { from: "BUSSY_0", to: "FONTAINEBLEAU", category: "BERLINE", price: 79.0 },
-    { from: "BUSSY_0", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 99.0 },
+    // Routes LUXE Paris <> Versailles
+    { from: "PARIS_0", to: "VERSAILLES", category: "LUXE", price: 160.0 },
+    { from: "VERSAILLES", to: "PARIS_0", category: "LUXE", price: 160.0 },
     
-    // Bussy 10km (Disney, Val d'Europe) - Zone touristique forte demande
-    { from: "BUSSY_10", to: "PARIS_0", category: "BERLINE", price: 89.0 },
-    { from: "BUSSY_10", to: "PARIS_0", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "BUSSY_10", to: "PARIS_0", category: "MINIBUS", price: 195.0 },
-    { from: "BUSSY_10", to: "VERSAILLES", category: "BERLINE", price: 139.0 },
-    { from: "BUSSY_10", to: "VERSAILLES", category: "VAN_PREMIUM", price: 179.0 },
-    { from: "BUSSY_10", to: "FONTAINEBLEAU", category: "BERLINE", price: 99.0 },
-    { from: "BUSSY_10", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 129.0 },
+    // Routes LUXE Paris <> Chantilly
+    { from: "PARIS_0", to: "CHANTILLY", category: "BERLINE", price: 140.0 },
+    { from: "CHANTILLY", to: "PARIS_0", category: "BERLINE", price: 140.0 },
     
-    // Bussy 15km (Meaux, Torcy)
-    { from: "BUSSY_15", to: "PARIS_0", category: "BERLINE", price: 85.0 },
-    { from: "BUSSY_15", to: "PARIS_0", category: "VAN_PREMIUM", price: 109.0 },
-    { from: "BUSSY_15", to: "CDG", category: "BERLINE", price: 55.0 },
-    { from: "BUSSY_15", to: "CDG", category: "VAN_PREMIUM", price: 72.0 },
+    // Routes LUXE Le Bourget
+    { from: "LBG", to: "PARIS_0", category: "LUXE", price: 180.0 },
+    { from: "LBG", to: "PARIS_0", category: "BERLINE", price: 140.0 },
+    { from: "LBG", to: "PARIS_0", category: "VAN_PREMIUM", price: 180.0 },
     
-    // Bussy 25km (Melun, Coulommiers)
-    { from: "BUSSY_25", to: "PARIS_0", category: "BERLINE", price: 95.0 },
-    { from: "BUSSY_25", to: "PARIS_0", category: "VAN_PREMIUM", price: 125.0 },
-    { from: "BUSSY_25", to: "ORLY", category: "BERLINE", price: 85.0 },
-    { from: "BUSSY_25", to: "ORLY", category: "VAN_PREMIUM", price: 109.0 },
-    
-    // ============================================================================
-    // PARIS CENTRE - DESTINATIONS TOURISTIQUES
-    // ============================================================================
-    { from: "PARIS_0", to: "VERSAILLES", category: "BERLINE", price: 69.0 },
-    { from: "PARIS_0", to: "VERSAILLES", category: "VAN_PREMIUM", price: 89.0 },
-    { from: "PARIS_0", to: "VERSAILLES", category: "LUXE", price: 129.0 },
-    { from: "PARIS_0", to: "FONTAINEBLEAU", category: "BERLINE", price: 119.0 },
-    { from: "PARIS_0", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 155.0 },
-    { from: "PARIS_0", to: "CHANTILLY", category: "BERLINE", price: 99.0 },
-    { from: "PARIS_0", to: "CHANTILLY", category: "VAN_PREMIUM", price: 129.0 },
-    { from: "PARIS_0", to: "GIVERNY", category: "BERLINE", price: 149.0 },
-    { from: "PARIS_0", to: "GIVERNY", category: "VAN_PREMIUM", price: 195.0 },
-    { from: "PARIS_0", to: "REIMS", category: "BERLINE", price: 299.0 },
-    { from: "PARIS_0", to: "REIMS", category: "VAN_PREMIUM", price: 389.0 },
-    { from: "PARIS_0", to: "DEAUVILLE", category: "BERLINE", price: 379.0 },
-    { from: "PARIS_0", to: "DEAUVILLE", category: "VAN_PREMIUM", price: 489.0 },
-    { from: "PARIS_0", to: "ROUEN", category: "BERLINE", price: 299.0 },
-    { from: "PARIS_0", to: "ROUEN", category: "VAN_PREMIUM", price: 389.0 },
-    { from: "PARIS_0", to: "LA_DEFENSE", category: "BERLINE", price: 49.0 },
-    { from: "PARIS_0", to: "LA_DEFENSE", category: "VAN_PREMIUM", price: 65.0 },
-    
-    // ============================================================================
-    // LA DÉFENSE - ZONE AFFAIRES
-    // ============================================================================
-    { from: "LA_DEFENSE", to: "VERSAILLES", category: "BERLINE", price: 59.0 },
-    { from: "LA_DEFENSE", to: "VERSAILLES", category: "VAN_PREMIUM", price: 79.0 },
-    { from: "LA_DEFENSE", to: "DEAUVILLE", category: "BERLINE", price: 369.0 },
-    { from: "LA_DEFENSE", to: "DEAUVILLE", category: "VAN_PREMIUM", price: 479.0 },
-    { from: "LA_DEFENSE", to: "CDG", category: "BERLINE", price: 89.0 },
-    { from: "LA_DEFENSE", to: "CDG", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "LA_DEFENSE", to: "ORLY", category: "BERLINE", price: 75.0 },
-    { from: "LA_DEFENSE", to: "ORLY", category: "VAN_PREMIUM", price: 98.0 },
-    
-    // ============================================================================
-    // ANNEAUX PARIS - CONNEXIONS INTER-ZONES
-    // ============================================================================
-    { from: "PARIS_20", to: "VERSAILLES", category: "BERLINE", price: 65.0 },
-    { from: "PARIS_20", to: "VERSAILLES", category: "VAN_PREMIUM", price: 85.0 },
-    { from: "PARIS_20", to: "BUSSY_10", category: "BERLINE", price: 79.0 },
-    { from: "PARIS_20", to: "BUSSY_10", category: "VAN_PREMIUM", price: 99.0 },
-    { from: "PARIS_30", to: "FONTAINEBLEAU", category: "BERLINE", price: 89.0 },
-    { from: "PARIS_30", to: "FONTAINEBLEAU", category: "VAN_PREMIUM", price: 115.0 },
-    { from: "PARIS_30", to: "CHANTILLY", category: "BERLINE", price: 69.0 },
-    { from: "PARIS_30", to: "CHANTILLY", category: "VAN_PREMIUM", price: 89.0 },
-    { from: "PARIS_40", to: "GIVERNY", category: "BERLINE", price: 99.0 },
-    { from: "PARIS_40", to: "GIVERNY", category: "VAN_PREMIUM", price: 129.0 },
+    // Routes Aéroports <> Bussy (Disney) - Pour les configs partenaires
+    { from: "CDG", to: "BUSSY_10", category: "BERLINE", price: 140.0 },
+    { from: "CDG", to: "BUSSY_10", category: "VAN_PREMIUM", price: 180.0 },
+    { from: "CDG", to: "BUSSY_10", category: "MINIBUS", price: 320.0 },
+    { from: "ORLY", to: "BUSSY_10", category: "BERLINE", price: 140.0 },
+    { from: "ORLY", to: "BUSSY_10", category: "VAN_PREMIUM", price: 180.0 },
   ];
   
   for (const r of routes) {
@@ -693,6 +620,7 @@ async function createExcursionPackages() {
     { name: "Champagne Journée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 720.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
     { name: "Champagne Journée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 940.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
     { name: "Champagne Journée Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1280.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims" },
+    { name: "Champagne Journée Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1440.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Champagne (Reims)", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Visite prestige" },
     
     // ============================================================================
     // EXCURSIONS SPÉCIALES (Non-temporal vectors)
@@ -704,6 +632,42 @@ async function createExcursionPackages() {
     // Shopping Outlets (La Vallée Village): 50km A/R, 6h
     { name: "Shopping Outlets Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 100.0, price: 390.0 },
     { name: "Shopping Outlets Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 6.0, includedDistanceKm: 100.0, price: 510.0 },
+    
+    // ============================================================================
+    // EXCURSIONS AVEC MAD (LONGUE DISTANCE) - TARIFS PDF VAP 2026
+    // ============================================================================
+    // Ces excursions sont classées comme "excursions avec MAD" car elles impliquent
+    // de longues distances et durées, mais conservent le nom "MAD" de la tarification
+    
+    // MAD 7H Reims/Champagne (excursion avec MAD)
+    { name: "MAD 7H Reims Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 7.0, includedDistanceKm: 160.0, price: 580.0, isTemporalVector: true, minimumDurationHours: 7.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion avec MAD" },
+    { name: "MAD 7H Reims Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 7.0, includedDistanceKm: 160.0, price: 690.0, isTemporalVector: true, minimumDurationHours: 7.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion avec MAD" },
+    { name: "MAD 7H Reims Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 7.0, includedDistanceKm: 160.0, price: 890.0, isTemporalVector: true, minimumDurationHours: 7.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion avec MAD" },
+    { name: "MAD 7H Reims Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 7.0, includedDistanceKm: 160.0, price: 1060.0, isTemporalVector: true, minimumDurationHours: 7.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion avec MAD" },
+    
+    // MAD 10H Reims/Champagne (excursion avec MAD)
+    { name: "MAD 10H Reims Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 760.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion complète avec MAD" },
+    { name: "MAD 10H Reims Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 890.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion complète avec MAD" },
+    { name: "MAD 10H Reims Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1190.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion complète avec MAD" },
+    { name: "MAD 10H Reims Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 10.0, includedDistanceKm: 320.0, price: 1350.0, isTemporalVector: true, minimumDurationHours: 10.0, destinationName: "Reims/Champagne", destinationDescription: "Caves de Champagne, Cathédrale de Reims - Excursion complète avec MAD" },
+    
+    // MAD 12H Vallée de la Loire (excursion avec MAD)
+    { name: "MAD 12H Loire Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 890.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Vallée de la Loire", destinationDescription: "Châteaux de la Loire - Excursion avec MAD" },
+    { name: "MAD 12H Loire Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 990.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Vallée de la Loire", destinationDescription: "Châteaux de la Loire - Excursion avec MAD" },
+    { name: "MAD 12H Loire Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 1450.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Vallée de la Loire", destinationDescription: "Châteaux de la Loire - Excursion avec MAD" },
+    { name: "MAD 12H Loire Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 1620.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Vallée de la Loire", destinationDescription: "Châteaux de la Loire - Excursion avec MAD" },
+    
+    // MAD 12H Plages Normandie (excursion avec MAD)
+    { name: "MAD 12H Normandie Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 950.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Plages Normandie", destinationDescription: "Plages du Débarquement - Excursion avec MAD" },
+    { name: "MAD 12H Normandie Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 1090.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Plages Normandie", destinationDescription: "Plages du Débarquement - Excursion avec MAD" },
+    { name: "MAD 12H Normandie Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 1590.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Plages Normandie", destinationDescription: "Plages du Débarquement - Excursion avec MAD" },
+    { name: "MAD 12H Normandie Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 12.0, includedDistanceKm: 400.0, price: 1790.0, isTemporalVector: true, minimumDurationHours: 12.0, destinationName: "Plages Normandie", destinationDescription: "Plages du Débarquement - Excursion avec MAD" },
+    
+    // MAD 14H Mont Saint Michel (excursion avec MAD)
+    { name: "MAD 14H Mont Saint Michel Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1150.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint Michel", destinationDescription: "Abbaye du Mont Saint-Michel - Excursion avec MAD" },
+    { name: "MAD 14H Mont Saint Michel Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1290.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint Michel", destinationDescription: "Abbaye du Mont Saint-Michel - Excursion avec MAD" },
+    { name: "MAD 14H Mont Saint Michel Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 1790.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint Michel", destinationDescription: "Abbaye du Mont Saint-Michel - Excursion avec MAD" },
+    { name: "MAD 14H Mont Saint Michel Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 14.0, includedDistanceKm: 700.0, price: 2090.0, isTemporalVector: true, minimumDurationHours: 14.0, destinationName: "Mont Saint Michel", destinationDescription: "Abbaye du Mont Saint-Michel - Excursion avec MAD" },
   ];
   for (const p of pkgs) {
     const created = await prisma.excursionPackage.create({
@@ -733,58 +697,97 @@ async function createExcursionPackages() {
 async function createDispoPackages() {
   console.log("\n⏰ Creating Dispo Packages...");
   // ============================================================================
-  // FORFAITS MISE À DISPOSITION - GRILLE TARIFAIRE PROFESSIONNELLE
+  // FORFAITS MISE À DISPOSITION - TARIFICATION 2026 VAP EXACTE
   // ============================================================================
   // 
-  // FORMULE DE CALCUL:
-  // Prix de base = Durée × Taux horaire (avec dégressivité)
-  // Distance incluse = ~15-20km/h en moyenne
-  //
-  // DÉGRESSIVITÉ HORAIRE:
-  // - 3h:  100% du taux horaire
-  // - 4h:  95% du taux horaire
-  // - 6h:  90% du taux horaire
-  // - 8h:  85% du taux horaire
-  // - 10h: 80% du taux horaire
-  //
-  // TAUX DE DÉPASSEMENT:
-  // - Km supplémentaire: ~120% du taux km standard
-  // - Heure supplémentaire: ~110% du taux horaire
+  // Prix basés sur le PDF officiel VAP 2026:
+  // - MAD Paris 3H30 Soirée (80km): 290-790€ selon catégorie
+  // - MAD Paris 1/2 Journée 4H (80km): 280-750€
+  // - MAD Paris 4H Nuit (80km): 350-890€
+  // - MAD Paris 5H (100km): 340-890€
+  // - MAD Paris 5H Nuit (100km): 420-1050€
+  // - MAD Paris 6H (120km): 400-1050€
+  // - MAD Paris Journée 8H (150km): 520-1360€
+  // - MAD 4H Versailles/Chantilly: 350-820€
+  // - MAD 5H Versailles/Chantilly: 410-950€
+  // - MAD 7H Reims/Champagne: 580-1490€
+  // - MAD 10H Reims/Champagne: 760-1790€
+  // - MAD 12H Vallée de la Loire: 890-2090€
+  // - MAD 12H Plages Normandie: 950-2290€
+  // - MAD 14H Mont Saint Michel: 1150-2590€
+  // 
+  // Heure supplémentaire: 70-150€
+  // Heure sup. (21h00 - 07h00): 80-200€
   //
   const pkgs = [
     // ============================================================================
-    // BERLINE - Taux de base: 55€/h, 1.80€/km
+    // MAD PARIS - TARIFS PDF VAP 2026
     // ============================================================================
-    { name: "Dispo 3h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 3.0, includedDistanceKm: 50.0, basePrice: 165.0, overageRatePerKm: 2.20, overageRatePerHour: 60.0 },
-    { name: "Dispo 4h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 70.0, basePrice: 210.0, overageRatePerKm: 2.20, overageRatePerHour: 58.0 },
-    { name: "Dispo 6h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 110.0, basePrice: 300.0, overageRatePerKm: 2.10, overageRatePerHour: 55.0 },
-    { name: "Dispo 8h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 380.0, overageRatePerKm: 2.00, overageRatePerHour: 52.0 },
-    { name: "Dispo 10h Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 450.0, overageRatePerKm: 1.90, overageRatePerHour: 50.0 },
     
-    // ============================================================================
-    // VAN PREMIUM - Taux de base: 72€/h (+30%), 2.35€/km
-    // ============================================================================
-    { name: "Dispo 3h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 3.0, includedDistanceKm: 50.0, basePrice: 215.0, overageRatePerKm: 2.85, overageRatePerHour: 78.0 },
-    { name: "Dispo 4h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 70.0, basePrice: 275.0, overageRatePerKm: 2.85, overageRatePerHour: 75.0 },
-    { name: "Dispo 6h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 6.0, includedDistanceKm: 110.0, basePrice: 390.0, overageRatePerKm: 2.75, overageRatePerHour: 72.0 },
-    { name: "Dispo 8h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 495.0, overageRatePerKm: 2.60, overageRatePerHour: 68.0 },
-    { name: "Dispo 10h Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 585.0, overageRatePerKm: 2.50, overageRatePerHour: 65.0 },
+    // MAD Paris 3H30 Soirée (80km)
+    { name: "MAD Paris 3H30 Soirée Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 3.5, includedDistanceKm: 80.0, basePrice: 290.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 3H30 Soirée Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 3.5, includedDistanceKm: 80.0, basePrice: 360.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 3H30 Soirée Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 3.5, includedDistanceKm: 80.0, basePrice: 490.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 3H30 Soirée Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 3.5, includedDistanceKm: 80.0, basePrice: 590.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
     
-    // ============================================================================
-    // LUXE - Taux de base: 105€/h (+90%), 3.40€/km
-    // ============================================================================
-    { name: "Dispo 3h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 3.0, includedDistanceKm: 40.0, basePrice: 315.0, overageRatePerKm: 4.10, overageRatePerHour: 115.0 },
-    { name: "Dispo 4h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 4.0, includedDistanceKm: 55.0, basePrice: 400.0, overageRatePerKm: 4.10, overageRatePerHour: 110.0 },
-    { name: "Dispo 6h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 6.0, includedDistanceKm: 85.0, basePrice: 570.0, overageRatePerKm: 3.95, overageRatePerHour: 105.0 },
-    { name: "Dispo 8h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 8.0, includedDistanceKm: 120.0, basePrice: 720.0, overageRatePerKm: 3.80, overageRatePerHour: 100.0 },
+    // MAD Paris 1/2 Journée 4H (80km)
+    { name: "MAD Paris 4H Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 280.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 4H Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 320.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 4H Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 460.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 4H Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 560.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
     
-    // ============================================================================
-    // MINIBUS - Taux de base: 120€/h (+120%), 4.00€/km
-    // ============================================================================
-    { name: "Dispo 4h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 4.0, includedDistanceKm: 60.0, basePrice: 460.0, overageRatePerKm: 4.80, overageRatePerHour: 130.0 },
-    { name: "Dispo 6h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 6.0, includedDistanceKm: 100.0, basePrice: 650.0, overageRatePerKm: 4.60, overageRatePerHour: 125.0 },
-    { name: "Dispo 8h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 820.0, overageRatePerKm: 4.40, overageRatePerHour: 120.0 },
-    { name: "Dispo 10h Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 980.0, overageRatePerKm: 4.20, overageRatePerHour: 115.0 },
+    // MAD Paris 4H Nuit (80km)
+    { name: "MAD Paris 4H Nuit Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 350.0, overageRatePerKm: 2.10, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 4H Nuit Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 400.0, overageRatePerKm: 2.60, overageRatePerHour: 90.0 },
+    { name: "MAD Paris 4H Nuit Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 550.0, overageRatePerKm: 3.50, overageRatePerHour: 120.0 },
+    { name: "MAD Paris 4H Nuit Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 660.0, overageRatePerKm: 5.20, overageRatePerHour: 135.0 },
+    
+    // MAD Paris 5H (100km)
+    { name: "MAD Paris 5H Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 340.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 5H Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 420.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 5H Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 550.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 5H Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 650.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
+    
+    // MAD Paris 5H Nuit (100km)
+    { name: "MAD Paris 5H Nuit Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 420.0, overageRatePerKm: 2.10, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 5H Nuit Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 490.0, overageRatePerKm: 2.60, overageRatePerHour: 90.0 },
+    { name: "MAD Paris 5H Nuit Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 650.0, overageRatePerKm: 3.50, overageRatePerHour: 120.0 },
+    { name: "MAD Paris 5H Nuit Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 760.0, overageRatePerKm: 5.20, overageRatePerHour: 135.0 },
+    
+    // MAD Paris 6H (120km)
+    { name: "MAD Paris 6H Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 6.0, includedDistanceKm: 120.0, basePrice: 400.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 6H Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 6.0, includedDistanceKm: 120.0, basePrice: 470.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 6H Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 6.0, includedDistanceKm: 120.0, basePrice: 650.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 6H Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 6.0, includedDistanceKm: 120.0, basePrice: 750.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
+    
+    // MAD Paris Journée 8H (150km)
+    { name: "MAD Paris 8H Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 520.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 8H Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 620.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 8H Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 860.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 8H Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 990.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
+    
+    // MAD Paris 10H (200km) - Pour les configs partenaires
+    { name: "MAD Paris 10H Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 540.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD Paris 10H Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 700.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD Paris 10H Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 950.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD Paris 10H Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 10.0, includedDistanceKm: 200.0, basePrice: 1100.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
+    
+    // MAD Luxe (pour les configs partenaires)
+    { name: "Dispo 4h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 400.0, overageRatePerKm: 4.00, overageRatePerHour: 105.0 },
+    { name: "Dispo 6h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 6.0, includedDistanceKm: 120.0, basePrice: 600.0, overageRatePerKm: 4.00, overageRatePerHour: 105.0 },
+    { name: "Dispo 8h Luxe", vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], includedDurationHours: 8.0, includedDistanceKm: 150.0, basePrice: 720.0, overageRatePerKm: 4.00, overageRatePerHour: 105.0 },
+    
+    // MAD 4H Versailles/Chantilly
+    { name: "MAD 4H Versailles Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 350.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD 4H Versailles Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 390.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD 4H Versailles Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 500.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD 4H Versailles Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 4.0, includedDistanceKm: 80.0, basePrice: 620.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
+    
+    // MAD 5H Versailles/Chantilly
+    { name: "MAD 5H Versailles Berline", vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 410.0, overageRatePerKm: 2.10, overageRatePerHour: 70.0 },
+    { name: "MAD 5H Versailles Van", vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 490.0, overageRatePerKm: 2.60, overageRatePerHour: 80.0 },
+    { name: "MAD 5H Versailles Minibus", vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 600.0, overageRatePerKm: 3.50, overageRatePerHour: 100.0 },
+    { name: "MAD 5H Versailles Autocar", vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], includedDurationHours: 5.0, includedDistanceKm: 100.0, basePrice: 730.0, overageRatePerKm: 5.20, overageRatePerHour: 120.0 },
   ];
   for (const p of pkgs) {
     const created = await prisma.dispoPackage.create({
@@ -801,13 +804,13 @@ async function createPricingSettings() {
     data: {
       id: randomUUID(),
       organizationId: ORGANIZATION_ID,
-      // === BASE RATES ===
-      baseRatePerKm: 1.80,
-      baseRatePerHour: 45.0,
-      defaultMarginPercent: 25.0,
-      greenMarginThreshold: 20.0,
-      orangeMarginThreshold: 5.0,
-      minimumFare: 25.0,
+      // === BASE RATES TARIFICATION 2026 VAP ===
+      baseRatePerKm: 2.10,
+      baseRatePerHour: 52.0,
+      defaultMarginPercent: 28.0,
+      greenMarginThreshold: 22.0,
+      orangeMarginThreshold: 8.0,
+      minimumFare: 30.0,
       
       // === OPERATIONAL COSTS ===
       fuelConsumptionL100km: 8.5,
@@ -851,8 +854,22 @@ async function createAdvancedRates() {
   console.log("\n📈 Creating Advanced Rates...");
   // Story 11.4: Only NIGHT and WEEKEND types are supported
   // LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed - zone-based pricing handled by PricingZone.priceMultiplier
+  
+  // Majorations de nuit et heures supplémentaires (selon tableau tarifaire)
   const rates = [
-    { name: "Majoration Nuit", appliesTo: "NIGHT" as const, startTime: "22:00", endTime: "06:00", adjustmentType: "PERCENTAGE" as const, value: 25.0, priority: 10 },
+    // Majoration nuit générale (25% de base)
+    { name: "Majoration Nuit Standard", appliesTo: "NIGHT" as const, startTime: "22:00", endTime: "06:00", adjustmentType: "PERCENTAGE" as const, value: 25.0, priority: 10 },
+    
+    // Heures supplémentaires de nuit (21h00 - 07h00) - majorations spécifiques par catégorie
+    { name: "Heure Sup Nuit Berline (80€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 80.0, priority: 20 },
+    { name: "Heure Sup Nuit Van VIP (90€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 90.0, priority: 20 },
+    { name: "Heure Sup Nuit Minivan (200€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 200.0, priority: 20 },
+    { name: "Heure Sup Nuit Minicar (120€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 120.0, priority: 20 },
+    { name: "Heure Sup Nuit Autocar 30p (135€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 135.0, priority: 20 },
+    { name: "Heure Sup Nuit Autocar 40p (150€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 150.0, priority: 20 },
+    { name: "Heure Sup Nuit Autocar 57p (160€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 160.0, priority: 20 },
+    
+    // Majoration week-end
     { name: "Majoration Week-end", appliesTo: "WEEKEND" as const, daysOfWeek: "0,6", adjustmentType: "PERCENTAGE" as const, value: 15.0, priority: 5 },
   ];
   for (const r of rates) {
@@ -881,13 +898,24 @@ async function createSeasonalMultipliers() {
 
 async function createOptionalFees() {
   console.log("\n💵 Creating Optional Fees...");
+  // Frais optionnels selon le tableau tarifaire
   const fees = [
+    // Frais optionnels existants
     { name: "Siège Bébé", amountType: "FIXED" as const, amount: 15.0, isTaxable: true, vatRate: 20.0 },
     { name: "Siège Rehausseur", amountType: "FIXED" as const, amount: 10.0, isTaxable: true, vatRate: 20.0 },
     { name: "Bagage Supplémentaire", amountType: "FIXED" as const, amount: 10.0, isTaxable: true, vatRate: 20.0 },
     { name: "Accueil Personnalisé", amountType: "FIXED" as const, amount: 20.0, isTaxable: true, vatRate: 20.0 },
     { name: "Eau et Rafraîchissements", amountType: "FIXED" as const, amount: 15.0, isTaxable: true, vatRate: 20.0 },
     { name: "WiFi à Bord", amountType: "FIXED" as const, amount: 10.0, isTaxable: true, vatRate: 20.0 },
+    
+    // Heures supplémentaires par catégorie de véhicule (selon tableau tarifaire)
+    { name: "Heure Supplémentaire Berline (70€)", amountType: "FIXED" as const, amount: 70.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Van VIP (80€)", amountType: "FIXED" as const, amount: 80.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Minivan (150€)", amountType: "FIXED" as const, amount: 150.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Minicar (100€)", amountType: "FIXED" as const, amount: 100.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Autocar 30p (120€)", amountType: "FIXED" as const, amount: 120.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Autocar 40p (140€)", amountType: "FIXED" as const, amount: 140.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Autocar 57p (140€)", amountType: "FIXED" as const, amount: 140.0, isTaxable: true, vatRate: 20.0 },
   ];
   for (const f of fees) {
     await prisma.optionalFee.create({
@@ -952,24 +980,24 @@ async function createDrivers() {
 async function createVehicles() {
   console.log("\n🚙 Creating Vehicles with TCO...");
   const vehicles = [
-    // ========== FLOTTE SIXIÈME ÉTOILE - Base Bussy-Saint-Martin (5 véhicules réels) ==========
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "FS-843-TR", internalName: "Mercedes Vito 8pl", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 45000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GS-218-DL", internalName: "Mercedes Sprinter 17pl", passengerCapacity: 17, luggageCapacity: 12, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const, purchasePrice: 65000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 3500, annualInsuranceCost: 1800 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GQ-430-XV", internalName: "Mercedes Sprinter 20pl", passengerCapacity: 20, luggageCapacity: 15, consumptionLPer100Km: 13.0, costPerKm: 0.90, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 75000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 4000, annualInsuranceCost: 2000 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KAKO-VIP", internalName: "Sprinter VIP KAKO 7pl", passengerCapacity: 7, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.95, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 85000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 4500, annualInsuranceCost: 2200 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "HB-106-LG", internalName: "Iveco 30pl", passengerCapacity: 30, luggageCapacity: 28, consumptionLPer100Km: 18.0, costPerKm: 1.20, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 120000, expectedLifespanKm: 400000, expectedLifespanYears: 7, annualMaintenanceBudget: 6000, annualInsuranceCost: 3000 },
+    // ========== FLOTTE SIXIÈME ÉTOILE - Base Bussy-Saint-Martin (6 véhicules principaux) ==========
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "FS-843-TR", internalName: "Mercedes Vito 8pl", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 45000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200, notes: "Véhicule léger - Non soumis à la RSE (8 places < 9, < 3.5t)" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GS-218-DL", internalName: "Mercedes Sprinter 17pl", passengerCapacity: 17, luggageCapacity: 12, consumptionLPer100Km: 12.0, costPerKm: 0.85, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const, purchasePrice: 65000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 3500, annualInsuranceCost: 1800, notes: "Soumis à la RSE - Tachygraphe numérique 1C V2, limiteur vitesse 90km/h, contrôle technique annuel, Euro 6" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GQ-430-XV", internalName: "Mercedes Sprinter 20pl", passengerCapacity: 20, luggageCapacity: 15, consumptionLPer100Km: 13.0, costPerKm: 0.90, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 75000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 4000, annualInsuranceCost: 2000, notes: "Soumis à la RSE - Tachygraphe numérique 1C V2, limiteur vitesse 90km/h, contrôle technique annuel, Euro 6" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS_VIP"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "KAKO-VIP", internalName: "Sprinter VIP KAKO 7pl", passengerCapacity: 7, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.95, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 85000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 4500, annualInsuranceCost: 2200, notes: "Soumis à la RSE - Tachygraphe numérique 1C V2, limiteur vitesse 90km/h, contrôle technique annuel, Euro 6 (plus de 3.5t)" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "HB-106-LG", internalName: "Iveco 30pl", passengerCapacity: 30, luggageCapacity: 28, consumptionLPer100Km: 18.0, costPerKm: 1.20, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 120000, expectedLifespanKm: 400000, expectedLifespanYears: 7, annualMaintenanceBudget: 6000, annualInsuranceCost: 3000, notes: "Soumis à la RSE - Tachygraphe numérique 1C V2, limiteur vitesse 90km/h, contrôle technique annuel, Euro 6" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "EF-456-GH", internalName: "Mercedes V-Class 7pl", passengerCapacity: 7, luggageCapacity: 6, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 50000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2300, annualInsuranceCost: 1150, notes: "Véhicule léger - Non soumis à la RSE (7 places < 9, < 3.5t)" },
 
-    // ========== VÉHICULES SUPPLÉMENTAIRES - Bases autour de Paris ==========
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "AB-123-CD", internalName: "Mercedes E220d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 55000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2000, annualInsuranceCost: 1000 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "EF-456-GH", internalName: "Mercedes E220d #2", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.5, costPerKm: 0.35, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 55000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2000, annualInsuranceCost: 1000 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["BERLINE"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "IJ-789-KL", internalName: "BMW 520d #1", passengerCapacity: 4, luggageCapacity: 3, consumptionLPer100Km: 5.8, costPerKm: 0.38, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 58000, expectedLifespanKm: 280000, expectedLifespanYears: 5, annualMaintenanceBudget: 2200, annualInsuranceCost: 1100 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "QR-345-ST", internalName: "Mercedes V-Class 7pl", passengerCapacity: 7, luggageCapacity: 6, consumptionLPer100Km: 8.5, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 50000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2300, annualInsuranceCost: 1150 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Orly Airport"], registrationNumber: "TU-678-VW", internalName: "Mercedes Vito 8pl #2", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 45000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "UV-678-WX", internalName: "Mercedes S-Class", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 7.5, costPerKm: 0.65, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 95000, expectedLifespanKm: 250000, expectedLifespanYears: 5, annualMaintenanceBudget: 3500, annualInsuranceCost: 1800 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["LUXE"], operatingBaseId: OPERATING_BASE_IDS["Base La Défense"], registrationNumber: "YZ-901-AB", internalName: "BMW 750Li", passengerCapacity: 3, luggageCapacity: 2, consumptionLPer100Km: 8.0, costPerKm: 0.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 110000, expectedLifespanKm: 250000, expectedLifespanYears: 5, annualMaintenanceBudget: 4000, annualInsuranceCost: 2000 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["MINIBUS"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "GH-567-IJ", internalName: "Ford Transit 14pl", passengerCapacity: 14, luggageCapacity: 10, consumptionLPer100Km: 11.0, costPerKm: 0.80, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D1"], status: "ACTIVE" as const, purchasePrice: 60000, expectedLifespanKm: 350000, expectedLifespanYears: 6, annualMaintenanceBudget: 3200, annualInsuranceCost: 1600 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Base CDG Airport"], registrationNumber: "KL-890-MN", internalName: "Mercedes Tourismo 50pl", passengerCapacity: 50, luggageCapacity: 50, consumptionLPer100Km: 25.0, costPerKm: 1.50, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 180000, expectedLifespanKm: 450000, expectedLifespanYears: 8, annualMaintenanceBudget: 7000, annualInsuranceCost: 3500 },
-    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["AUTOCAR"], operatingBaseId: OPERATING_BASE_IDS["Siège Paris 8ème"], registrationNumber: "MN-234-OP", internalName: "Setra 60pl", passengerCapacity: 60, luggageCapacity: 60, consumptionLPer100Km: 28.0, costPerKm: 1.70, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["D"], status: "ACTIVE" as const, purchasePrice: 200000, expectedLifespanKm: 450000, expectedLifespanYears: 8, annualMaintenanceBudget: 8000, annualInsuranceCost: 4000 },
+    // ========== NOUVEAUX VÉHICULES 2025 - Mise à jour flotte ==========
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "GW-364-SW", internalName: "Mercedes Vito 8pl GW", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 46000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200, notes: "Véhicule léger - Non soumis à la RSE (8 places < 9, < 3.5t)" },
+    { vehicleCategoryId: VEHICLE_CATEGORY_IDS["VAN_PREMIUM"], operatingBaseId: OPERATING_BASE_IDS["Base Bussy-Saint-Martin"], registrationNumber: "SW-096-GW", internalName: "Mercedes Vito 8pl SW", passengerCapacity: 8, luggageCapacity: 5, consumptionLPer100Km: 9.0, costPerKm: 0.55, requiredLicenseCategoryId: LICENSE_CATEGORY_IDS["B"], status: "ACTIVE" as const, purchasePrice: 46000, expectedLifespanKm: 300000, expectedLifespanYears: 5, annualMaintenanceBudget: 2500, annualInsuranceCost: 1200, notes: "Véhicule léger - Non soumis à la RSE (8 places < 9, < 3.5t)" },
+
+    // ========== VÉHICULES SOUS-TRAITÉS (non dans la flotte propre) ==========
+    // NOTE: Les véhicules suivants sont gérés par les sous-traitants spécialisés :
+    // - Mercedes E220d (AB-123-CD) - Géré par France VTC Services (catégorie BERLINE)
+    // - Mercedes Tourismo 50pl (BC-789-DE) - Géré par IDF Bus Services (catégorie AUTOCAR)
+    // - Setra 70pl (FG-345-HI) - Géré par IDF Bus Services (catégorie AUTOCAR)
+    // - Iveco Evadys 50pl (JK-678-LM) - Géré par IDF Bus Services (catégorie AUTOCAR)
   ];
   for (const v of vehicles) {
     const created = await prisma.vehicle.create({
@@ -981,30 +1009,30 @@ async function createVehicles() {
 }
 
 async function createContacts() {
-  console.log("\n📞 Creating Contacts with Difficulty Scores...");
+  console.log("\n📞 Creating Contacts - 5 Agences et 2 Comptes Business...");
   const contacts = [
-    // === CLIENTS PARTICULIERS - Avec Difficulty Scores ===
-    { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 1 }, // Easy
-    { type: "INDIVIDUAL" as const, displayName: "Jean Martin", firstName: "Jean", lastName: "Martin", email: "jean.martin@outlook.fr", phone: "+33 6 22 33 44 55", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 }, // Normal
-    { type: "INDIVIDUAL" as const, displayName: "Sophie Bernard", firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@free.fr", phone: "+33 6 33 44 55 66", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 3 }, // Medium
-    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 4 }, // Hard
-    { type: "INDIVIDUAL" as const, displayName: "Claire Moreau", firstName: "Claire", lastName: "Moreau", email: "claire.moreau@orange.fr", phone: "+33 6 55 66 77 88", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 5 }, // Very Hard
+    // === 5 AGENCES PRINCIPALES ===
+    { type: "AGENCY" as const, displayName: "VTC Premium - Siège Social", companyName: "VTC Premium Services", email: "contact@vtc-premium.fr", phone: "+33 1 42 86 83 00", vatNumber: "FR12345678901", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 },
+    { type: "AGENCY" as const, displayName: "VTC Premium - Opérations CDG", companyName: "VTC Premium CDG", email: "cdg@vtc-premium.fr", phone: "+33 1 39 21 50 00", vatNumber: "FR12345678902", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+    { type: "AGENCY" as const, displayName: "VTC Premium - Opérations Orly", companyName: "VTC Premium Orly", email: "orly@vtc-premium.fr", phone: "+33 1 69 38 45 67", vatNumber: "FR12345678903", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+    { type: "AGENCY" as const, displayName: "VTC Premium - Tourisme Paris", companyName: "VTC Premium Tourisme", email: "tourisme@vtc-premium.fr", phone: "+33 1 44 55 61 00", vatNumber: "FR12345678904", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 },
+    { type: "AGENCY" as const, displayName: "VTC Premium - Événementiel", companyName: "VTC Premium Events", email: "events@vtc-premium.fr", phone: "+33 1 47 56 70 00", vatNumber: "FR12345678905", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
     
-    // === HÔTELS DE LUXE PARTENAIRES ===
-    { type: "BUSINESS" as const, displayName: "Hôtel Ritz Paris", companyName: "Hôtel Ritz Paris", email: "concierge@ritzparis.com", phone: "+33 1 43 16 30 30", vatNumber: "FR12345678901", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard - VIP clientèle
-    { type: "BUSINESS" as const, displayName: "Four Seasons George V", companyName: "Four Seasons George V", email: "concierge@fourseasons.com", phone: "+33 1 49 52 70 00", vatNumber: "FR23456789012", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard
-    { type: "BUSINESS" as const, displayName: "Le Bristol Paris", companyName: "Oetker Collection - Le Bristol", email: "concierge.paris@oetkercollection.com", phone: "+33 1 53 43 43 00", vatNumber: "FR33456789013", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium
-    { type: "BUSINESS" as const, displayName: "Hôtel Plaza Athénée", companyName: "Dorchester Collection - Plaza Athénée", email: "reservations.hpa@dorchestercollection.com", phone: "+33 1 53 67 66 65", vatNumber: "FR44567890124", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 5 }, // Very Hard - Luxury Concierge
+    // === 2 COMPTES BUSINESS CORPORATE ===
+    { type: "BUSINESS" as const, displayName: "LVMH Group Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "group.travel@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
+    { type: "BUSINESS" as const, displayName: "TotalEnergies Corporate", companyName: "TotalEnergies SE", email: "corporate.travel@totalenergies.com", phone: "+33 1 47 55 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
     
-    // === AGENCES DE VOYAGE RÉELLES (DMC - Destination Management Companies) ===
-    { type: "AGENCY" as const, displayName: "PARISCityVISION", companyName: "PARISCityVISION SAS", email: "groups@pariscityvision.com", phone: "+33 1 44 55 61 00", vatNumber: "FR55678901235", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium - Groupes
-    { type: "AGENCY" as const, displayName: "France Tourisme", companyName: "France Tourisme DMC", email: "reservation@francetourisme.fr", phone: "+33 1 53 10 35 35", vatNumber: "FR66789012346", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
-    { type: "AGENCY" as const, displayName: "Euroscope Paris", companyName: "Euroscope International", email: "transport@euroscope.fr", phone: "+33 1 45 26 26 26", vatNumber: "FR77890123457", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
-    
-    // === ENTREPRISES CORPORATE ===
-    { type: "BUSINESS" as const, displayName: "LVMH Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "travel.services@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 }, // Hard - Exigences élevées
-    { type: "BUSINESS" as const, displayName: "L'Oréal Corporate", companyName: "L'Oréal SA", email: "corporate.travel@loreal.com", phone: "+33 1 47 56 70 00", vatNumber: "FR99012345679", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 }, // Medium
-    { type: "BUSINESS" as const, displayName: "BNP Paribas Events", companyName: "BNP Paribas SA", email: "events.transport@bnpparibas.com", phone: "+33 1 40 14 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 }, // Normal
+    // === 10 CONTACTS CLIENTS RÉELS ===
+    { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 1 },
+    { type: "INDIVIDUAL" as const, displayName: "Jean Martin", firstName: "Jean", lastName: "Martin", email: "jean.martin@outlook.fr", phone: "+33 6 22 33 44 55", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 },
+    { type: "INDIVIDUAL" as const, displayName: "Sophie Bernard", firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@free.fr", phone: "+33 6 33 44 55 66", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 },
+    { type: "INDIVIDUAL" as const, displayName: "Pierre Durand", firstName: "Pierre", lastName: "Durand", email: "pierre.durand@yahoo.fr", phone: "+33 6 44 55 66 77", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 3 },
+    { type: "INDIVIDUAL" as const, displayName: "Claire Moreau", firstName: "Claire", lastName: "Moreau", email: "claire.moreau@orange.fr", phone: "+33 6 55 66 77 88", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 },
+    { type: "INDIVIDUAL" as const, displayName: "Michel Lefebvre", firstName: "Michel", lastName: "Lefebvre", email: "m.lefebvre@sfr.fr", phone: "+33 6 66 77 88 99", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 3 },
+    { type: "INDIVIDUAL" as const, displayName: "Isabelle Rousseau", firstName: "Isabelle", lastName: "Rousseau", email: "i.rousseau@bbox.fr", phone: "+33 6 77 88 99 00", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 },
+    { type: "INDIVIDUAL" as const, displayName: "Bernard Petit", firstName: "Bernard", lastName: "Petit", email: "b.petit@numericable.fr", phone: "+33 6 88 99 00 11", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 1 },
+    { type: "INDIVIDUAL" as const, displayName: "Françoise Laurent", firstName: "Françoise", lastName: "Laurent", email: "f.laurent@free.fr", phone: "+33 6 99 00 11 22", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 2 },
+    { type: "INDIVIDUAL" as const, displayName: "Philippe Dubois", firstName: "Philippe", lastName: "Dubois", email: "p.dubois@orange.fr", phone: "+33 6 00 11 22 33", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 3 },
   ];
   for (const c of contacts) {
     const created = await prisma.contact.create({
@@ -1048,7 +1076,7 @@ async function createSubcontractors() {
       ratePerKm: 2.20,
       ratePerHour: 42.00,
       minimumFare: 65.00,
-      notes: "Spécialiste des transferts aéroport Orly. Flotte récente, chauffeurs bilingues. Disponible 24/7.",
+      notes: "Spécialiste des transferts aéroport Orly. Flotte récente, chauffeurs bilingues. Disponible 24/7. VÉHICULES SPÉCIFIQUES: Mercedes E-Class, V-Class, Peugeot 5008, BMW Série 5.",
     },
     
     // ============================================================================
@@ -1071,7 +1099,7 @@ async function createSubcontractors() {
       ratePerKm: 2.80,
       ratePerHour: 55.00,
       minimumFare: 85.00,
-      notes: "Service premium pour clientèle d'affaires. Véhicules haut de gamme (Mercedes Classe S, BMW Série 7). Chauffeurs expérimentés.",
+      notes: "Service premium pour clientèle d'affaires. Véhicules haut de gamme (Mercedes Classe S, BMW Série 7, Audi A8). Chauffeurs expérimentés. VÉHICULES SPÉCIFIQUES: Mercedes S-Class, BMW 7-Series, Audi A8, Porsche Panamera.",
     },
     
     // ============================================================================
@@ -1094,7 +1122,7 @@ async function createSubcontractors() {
       ratePerKm: 3.50,
       ratePerHour: 85.00,
       minimumFare: 250.00,
-      notes: "Spécialiste transport de groupes. 2 autocars 55 places et 4 minibus 16 places. Idéal pour événements, séminaires, transferts aéroport groupes.",
+      notes: "Spécialiste transport de groupes. 2 autocars 55 places et 4 minibus 16 places. Idéal pour événements, séminaires, transferts aéroport groupes. VÉHICULES SPÉCIFIQUES: Iveco Daily, Renault Master, Mercedes Sprinter, Peugeot Boxer.",
     },
     
     // ============================================================================
@@ -1117,7 +1145,7 @@ async function createSubcontractors() {
       ratePerKm: 2.50,
       ratePerHour: 48.00,
       minimumFare: 75.00,
-      notes: "Réseau national avec partenaires dans toute la France. Couverture complète pour tous types de prestations. Service 24/7, facturation centralisée.",
+      notes: "Réseau national avec partenaires dans toute la France. Couverture complète pour tous types de prestations. Service 24/7, facturation centralisée. VÉHICULES SPÉCIFIQUES: Mercedes E220d (AB-123-CD) pour services berline premium.",
     },
     
     // ============================================================================
@@ -1140,7 +1168,7 @@ async function createSubcontractors() {
       ratePerKm: 4.00,
       ratePerHour: 95.00,
       minimumFare: 80.00,
-      notes: "Spécialiste transport de groupes en bus et autocars. Couverture complète Paris-Ile-de-France. Flotte de 8 autocars 35-55 places et 12 minibus 16-35 places. Idéal pour écoles, entreprises, événements sportifs.",
+      notes: "Spécialiste transport de groupes en bus et autocars. Couverture complète Paris-Ile-de-France. Flotte de 8 autocars 35-55 places et 12 minibus 16-35 places. Idéal pour écoles, entreprises, événements sportifs. VÉHICULES SPÉCIFIQUES: Mercedes Tourismo 50pl (BC-789-DE), Setra S 516 HDH 70pl (FG-345-HI), Iveco Evadys H 50pl (JK-678-LM).",
     },
   ];
   
@@ -1217,26 +1245,24 @@ async function createPartnerContracts() {
   
   const partnerConfigs = [
     // ============================================================================
-    // HÔTELS DE LUXE - Tarifs négociés premium (-8% à -12%)
-    // Volume régulier, clientèle premium, paiement à 30 jours
+    // AGENCE 1: SIÈGE SOCIAL - Tarifs standards
     // ============================================================================
     {
-      name: "Hôtel Ritz Paris",
+      name: "VTC Premium - Siège Social",
       paymentTerms: "DAYS_30" as const,
-      commissionPercent: 10.0,
+      commissionPercent: 0.0, // Agence interne
       zoneRoutes: [
-        // Aéroports vers Paris Centre (clientèle internationale)
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 72.0 },       // Catalog: 79€, -9%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 89.0 },   // Catalog: 99€, -10%
-        { routeKey: "CDG_PARIS_0_LUXE", overridePrice: 135.0 },         // Catalog: 149€, -9%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 50.0 },      // Catalog: 55€, -9%
-        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 65.0 },  // Catalog: 72€, -10%
-        { routeKey: "ORLY_PARIS_0_LUXE", overridePrice: 95.0 },         // Catalog: 105€, -10%
-        { routeKey: "LBG_PARIS_0_LUXE", overridePrice: 135.0 },         // Catalog: 149€, -9%
-        { routeKey: "LBG_PARIS_0_BERLINE", overridePrice: 72.0 },       // Catalog: 79€, -9%
-        // Destinations touristiques
-        { routeKey: "PARIS_0_VERSAILLES_BERLINE", overridePrice: 62.0 },// Catalog: 69€, -10%
-        { routeKey: "PARIS_0_VERSAILLES_LUXE", overridePrice: 116.0 },  // Catalog: 129€, -10%
+        // Routes principales - tarifs standards PDF 2026
+        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 120.0 },
+        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 150.0 },
+        { routeKey: "CDG_PARIS_0_MINIBUS", overridePrice: 320.0 },
+        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 120.0 },
+        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 150.0 },
+        { routeKey: "ORLY_PARIS_0_MINIBUS", overridePrice: 320.0 },
+        { routeKey: "PARIS_0_VERSAILLES_BERLINE", overridePrice: 110.0 },
+        { routeKey: "PARIS_0_VERSAILLES_VAN_PREMIUM", overridePrice: 130.0 },
+        { routeKey: "PARIS_0_BUSSY_10_BERLINE", overridePrice: 120.0 },
+        { routeKey: "PARIS_0_BUSSY_10_VAN_PREMIUM", overridePrice: 150.0 },
       ],
       excursions: [
         { name: "Versailles Journée Complète Berline", overridePrice: 435.0 },  // Catalog: 480€, -9%
@@ -1247,14 +1273,14 @@ async function createPartnerContracts() {
         { name: "Paris by Night Luxe", overridePrice: 335.0 },                  // Catalog: 370€, -9%
       ],
       dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 189.0 },    // Catalog: 210€, -10%
-        { name: "Dispo 8h Berline", overridePrice: 342.0 },    // Catalog: 380€, -10%
+        { name: "MAD Paris 4H Berline", overridePrice: 189.0 },    // Catalog: 210€, -10%
+        { name: "MAD Paris 8H Berline", overridePrice: 342.0 },    // Catalog: 380€, -10%
         { name: "Dispo 4h Luxe", overridePrice: 360.0 },       // Catalog: 400€, -10%
         { name: "Dispo 8h Luxe", overridePrice: 648.0 },       // Catalog: 720€, -10%
       ],
     },
     {
-      name: "Four Seasons George V",
+      name: "VTC Premium - Opérations CDG",
       paymentTerms: "DAYS_30" as const,
       commissionPercent: 10.0,
       zoneRoutes: [
@@ -1275,14 +1301,14 @@ async function createPartnerContracts() {
         { name: "Fontainebleau + Vaux Journée Berline", overridePrice: 522.0 }, // Catalog: 580€, -10%
       ],
       dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 189.0 },    // Catalog: 210€, -10%
-        { name: "Dispo 8h Berline", overridePrice: 342.0 },    // Catalog: 380€, -10%
+        { name: "MAD Paris 4H Berline", overridePrice: 189.0 },    // Catalog: 210€, -10%
+        { name: "MAD Paris 8H Berline", overridePrice: 342.0 },    // Catalog: 380€, -10%
         { name: "Dispo 4h Luxe", overridePrice: 360.0 },       // Catalog: 400€, -10%
         { name: "Dispo 8h Luxe", overridePrice: 648.0 },       // Catalog: 720€, -10%
       ],
     },
     {
-      name: "Le Bristol Paris",
+      name: "VTC Premium - Opérations Orly",
       paymentTerms: "DAYS_30" as const,
       commissionPercent: 10.0,
       zoneRoutes: [
@@ -1305,7 +1331,7 @@ async function createPartnerContracts() {
       ],
     },
     {
-      name: "Hôtel Plaza Athénée",
+      name: "VTC Premium - Tourisme Paris",
       paymentTerms: "DAYS_30" as const,
       commissionPercent: 10.0,
       zoneRoutes: [
@@ -1329,7 +1355,7 @@ async function createPartnerContracts() {
     // Gros volumes, groupes, paiement à 15 jours
     // ============================================================================
     {
-      name: "PARISCityVISION",
+      name: "VTC Premium - Événementiel",
       paymentTerms: "DAYS_15" as const,
       commissionPercent: 15.0,
       // Agence spécialisée groupes et excursions - tarifs très compétitifs
@@ -1368,166 +1394,61 @@ async function createPartnerContracts() {
         { name: "Shopping Outlets Van", overridePrice: 418.0 },              // Catalog: 510€, -18%
       ],
       dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 172.0 },    // Catalog: 210€, -18%
-        { name: "Dispo 8h Berline", overridePrice: 312.0 },    // Catalog: 380€, -18%
-        { name: "Dispo 4h Van", overridePrice: 226.0 },        // Catalog: 275€, -18%
-        { name: "Dispo 8h Van", overridePrice: 406.0 },        // Catalog: 495€, -18%
-        { name: "Dispo 4h Minibus", overridePrice: 377.0 },    // Catalog: 460€, -18%
-        { name: "Dispo 8h Minibus", overridePrice: 672.0 },    // Catalog: 820€, -18%
-      ],
-    },
-    {
-      name: "France Tourisme",
-      paymentTerms: "DAYS_15" as const,
-      commissionPercent: 15.0,
-      // DMC spécialisée tourisme haut de gamme (-15%)
-      zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 67.0 },       // Catalog: 79€, -15%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 84.0 },   // Catalog: 99€, -15%
-        { routeKey: "CDG_PARIS_0_LUXE", overridePrice: 127.0 },         // Catalog: 149€, -15%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 47.0 },      // Catalog: 55€, -15%
-        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 61.0 },  // Catalog: 72€, -15%
-        { routeKey: "CDG_VERSAILLES_BERLINE", overridePrice: 118.0 },   // Catalog: 139€, -15%
-        { routeKey: "CDG_VERSAILLES_VAN_PREMIUM", overridePrice: 152.0 },// Catalog: 179€, -15%
-        { routeKey: "PARIS_0_FONTAINEBLEAU_BERLINE", overridePrice: 101.0 },// Catalog: 119€, -15%
-        { routeKey: "PARIS_0_FONTAINEBLEAU_VAN_PREMIUM", overridePrice: 132.0 },// Catalog: 155€, -15%
-        { routeKey: "PARIS_0_CHANTILLY_BERLINE", overridePrice: 84.0 }, // Catalog: 99€, -15%
-        { routeKey: "PARIS_0_CHANTILLY_VAN_PREMIUM", overridePrice: 110.0 },// Catalog: 129€, -15%
-        { routeKey: "PARIS_0_GIVERNY_BERLINE", overridePrice: 127.0 },  // Catalog: 149€, -15%
-        { routeKey: "PARIS_0_GIVERNY_VAN_PREMIUM", overridePrice: 166.0 },// Catalog: 195€, -15%
-        { routeKey: "PARIS_0_REIMS_BERLINE", overridePrice: 254.0 },    // Catalog: 299€, -15%
-        { routeKey: "PARIS_0_REIMS_VAN_PREMIUM", overridePrice: 331.0 },// Catalog: 389€, -15%
-      ],
-      excursions: [
-        { name: "Versailles Journée Complète Berline", overridePrice: 408.0 },  // Catalog: 480€, -15%
-        { name: "Versailles Journée Complète Van", overridePrice: 531.0 },      // Catalog: 625€, -15%
-        { name: "Giverny Journée Berline", overridePrice: 442.0 },              // Catalog: 520€, -15%
-        { name: "Giverny Journée Van", overridePrice: 578.0 },                  // Catalog: 680€, -15%
-        { name: "Champagne Journée Berline", overridePrice: 612.0 },            // Catalog: 720€, -15%
-        { name: "Champagne Journée Van", overridePrice: 799.0 },                // Catalog: 940€, -15%
-        { name: "Fontainebleau + Vaux Journée Berline", overridePrice: 493.0 }, // Catalog: 580€, -15%
-        { name: "Fontainebleau + Vaux Journée Van", overridePrice: 642.0 },     // Catalog: 755€, -15%
-        { name: "Châteaux de la Loire Berline", overridePrice: 808.0 },         // Catalog: 950€, -15%
-        { name: "Châteaux de la Loire Van", overridePrice: 1050.0 },            // Catalog: 1235€, -15%
-        { name: "Normandie D-Day Berline", overridePrice: 918.0 },              // Catalog: 1080€, -15%
-        { name: "Normandie D-Day Van", overridePrice: 1194.0 },                 // Catalog: 1405€, -15%
-        { name: "Mont Saint-Michel Berline", overridePrice: 1063.0 },           // Catalog: 1250€, -15%
-        { name: "Mont Saint-Michel Van", overridePrice: 1381.0 },               // Catalog: 1625€, -15%
-      ],
-      dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 179.0 },    // Catalog: 210€, -15%
-        { name: "Dispo 8h Berline", overridePrice: 323.0 },    // Catalog: 380€, -15%
-        { name: "Dispo 10h Berline", overridePrice: 383.0 },   // Catalog: 450€, -15%
-        { name: "Dispo 4h Van", overridePrice: 234.0 },        // Catalog: 275€, -15%
-        { name: "Dispo 8h Van", overridePrice: 421.0 },        // Catalog: 495€, -15%
-        { name: "Dispo 10h Van", overridePrice: 497.0 },       // Catalog: 585€, -15%
-      ],
-    },
-    {
-      name: "Euroscope Paris",
-      paymentTerms: "DAYS_15" as const,
-      commissionPercent: 15.0,
-      // DMC spécialisée groupes corporate et incentive (-15%)
-      zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 67.0 },       // Catalog: 79€, -15%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 84.0 },   // Catalog: 99€, -15%
-        { routeKey: "CDG_PARIS_0_MINIBUS", overridePrice: 149.0 },      // Catalog: 175€, -15%
-        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 76.0 },    // Catalog: 89€, -15%
-        { routeKey: "CDG_LA_DEFENSE_VAN_PREMIUM", overridePrice: 98.0 },// Catalog: 115€, -15%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 47.0 },      // Catalog: 55€, -15%
-        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 61.0 },  // Catalog: 72€, -15%
-        { routeKey: "ORLY_LA_DEFENSE_BERLINE", overridePrice: 64.0 },   // Catalog: 75€, -15%
-        { routeKey: "ORLY_LA_DEFENSE_VAN_PREMIUM", overridePrice: 83.0 },// Catalog: 98€, -15%
-        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 42.0 },// Catalog: 49€, -14%
-        { routeKey: "PARIS_0_LA_DEFENSE_VAN_PREMIUM", overridePrice: 55.0 },// Catalog: 65€, -15%
-        { routeKey: "LA_DEFENSE_VERSAILLES_BERLINE", overridePrice: 50.0 },// Catalog: 59€, -15%
-        { routeKey: "LA_DEFENSE_VERSAILLES_VAN_PREMIUM", overridePrice: 67.0 },// Catalog: 79€, -15%
-      ],
-      excursions: [
-        { name: "Versailles Journée Complète Berline", overridePrice: 408.0 },  // Catalog: 480€, -15%
-        { name: "Versailles Journée Complète Van", overridePrice: 531.0 },      // Catalog: 625€, -15%
-        { name: "Champagne Journée Berline", overridePrice: 612.0 },            // Catalog: 720€, -15%
-        { name: "Champagne Journée Van", overridePrice: 799.0 },                // Catalog: 940€, -15%
-        { name: "Champagne Journée Minibus", overridePrice: 1088.0 },           // Catalog: 1280€, -15%
-        { name: "Chantilly Demi-Journée Berline", overridePrice: 298.0 },       // Catalog: 350€, -15%
-      ],
-      dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 179.0 },    // Catalog: 210€, -15%
-        { name: "Dispo 8h Berline", overridePrice: 323.0 },    // Catalog: 380€, -15%
-        { name: "Dispo 4h Van", overridePrice: 234.0 },        // Catalog: 275€, -15%
-        { name: "Dispo 8h Van", overridePrice: 421.0 },        // Catalog: 495€, -15%
-        { name: "Dispo 4h Minibus", overridePrice: 391.0 },    // Catalog: 460€, -15%
-        { name: "Dispo 8h Minibus", overridePrice: 697.0 },    // Catalog: 820€, -15%
-        { name: "Dispo 10h Minibus", overridePrice: 833.0 },   // Catalog: 980€, -15%
+        { name: "MAD Paris 4H Berline", overridePrice: 266.0 },   // Catalog: 280€, -5%
+        { name: "MAD Paris 8H Berline", overridePrice: 494.0 },   // Catalog: 520€, -5%
+        { name: "MAD Paris 4H Van", overridePrice: 304.0 },       // Catalog: 320€, -5%
+        { name: "MAD Paris 8H Van", overridePrice: 589.0 },       // Catalog: 620€, -5%
       ],
     },
     
     // ============================================================================
-    // CORPORATE - Tarifs modérés (-5% à -8%)
-    // Paiement rapide, volume régulier
+    // COMPTE BUSINESS 1: LVMH - Tarifs préférentiels volume
     // ============================================================================
     {
-      name: "LVMH Travel",
+      name: "LVMH Group Travel",
       paymentTerms: "DAYS_15" as const,
       commissionPercent: 8.0,
       zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 73.0 },       // Catalog: 79€, -8%
-        { routeKey: "CDG_PARIS_0_LUXE", overridePrice: 137.0 },         // Catalog: 149€, -8%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 51.0 },      // Catalog: 55€, -7%
-        { routeKey: "ORLY_PARIS_0_LUXE", overridePrice: 97.0 },         // Catalog: 105€, -8%
-        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 82.0 },    // Catalog: 89€, -8%
-        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 45.0 },// Catalog: 49€, -8%
-        { routeKey: "LBG_PARIS_0_LUXE", overridePrice: 137.0 },         // Catalog: 149€, -8%
+        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 73.0 },   // -8%
+        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 95.0 }, // -8%
+        { routeKey: "CDG_PARIS_0_LUXE", overridePrice: 137.0 },     // -8%
+        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 51.0 },    // -7%
+        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 66.0 }, // -8%
+        { routeKey: "ORLY_PARIS_0_LUXE", overridePrice: 97.0 },      // -8%
+        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 82.0 },  // -8%
+        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 45.0 }, // -8%
       ],
-      excursions: [],
+      excursions: [
+        { name: "Versailles Journée Complète Luxe", overridePrice: 846.0 }, // -5%
+        { name: "Champagne Journée Luxe", overridePrice: 1368.0 },       // -5%
+      ],
       dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 193.0 },    // Catalog: 210€, -8%
-        { name: "Dispo 8h Berline", overridePrice: 350.0 },    // Catalog: 380€, -8%
-        { name: "Dispo 4h Luxe", overridePrice: 368.0 },       // Catalog: 400€, -8%
-        { name: "Dispo 8h Luxe", overridePrice: 662.0 },       // Catalog: 720€, -8%
+        { name: "MAD Paris 8H Berline", overridePrice: 494.0 },   // Catalog: 520€, -5%
+        { name: "MAD Paris 10H Berline", overridePrice: 513.0 },  // Catalog: 540€, -5%
       ],
     },
+    
+    // ============================================================================
+    // COMPTE BUSINESS 2: TOTAL ENERGIES - Tarifs standards corporate
+    // ============================================================================
     {
-      name: "L'Oréal Corporate",
-      paymentTerms: "DAYS_15" as const,
-      commissionPercent: 8.0,
+      name: "TotalEnergies Corporate",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
       zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 73.0 },       // Catalog: 79€, -8%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 91.0 },   // Catalog: 99€, -8%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 51.0 },      // Catalog: 55€, -7%
-        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 66.0 },  // Catalog: 72€, -8%
-        { routeKey: "CDG_PARIS_20_BERLINE", overridePrice: 54.0 },      // Catalog: 59€, -8%
+        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 75.0 },   // -5%
+        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 94.0 }, // -5%
+        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 52.0 },    // -5%
+        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 68.0 }, // -5%
+        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 47.0 }, // -4%
       ],
-      excursions: [],
+      excursions: [
+        { name: "Versailles Demi-Journée Van", overridePrice: 399.0 }, // -5%
+        { name: "Fontainebleau Demi-Journée Van", overridePrice: 470.0 }, // -5%
+      ],
       dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 193.0 },    // Catalog: 210€, -8%
-        { name: "Dispo 8h Berline", overridePrice: 350.0 },    // Catalog: 380€, -8%
-        { name: "Dispo 4h Van", overridePrice: 253.0 },        // Catalog: 275€, -8%
-        { name: "Dispo 8h Van", overridePrice: 455.0 },        // Catalog: 495€, -8%
-      ],
-    },
-    {
-      name: "BNP Paribas Events",
-      paymentTerms: "IMMEDIATE" as const,
-      commissionPercent: 5.0,
-      // Paiement immédiat = remise minimale (-5%)
-      zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 75.0 },       // Catalog: 79€, -5%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 94.0 },   // Catalog: 99€, -5%
-        { routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 85.0 },    // Catalog: 89€, -4%
-        { routeKey: "CDG_LA_DEFENSE_VAN_PREMIUM", overridePrice: 109.0 },// Catalog: 115€, -5%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 52.0 },      // Catalog: 55€, -5%
-        { routeKey: "ORLY_LA_DEFENSE_BERLINE", overridePrice: 71.0 },   // Catalog: 75€, -5%
-        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 47.0 },// Catalog: 49€, -4%
-        { routeKey: "PARIS_0_LA_DEFENSE_VAN_PREMIUM", overridePrice: 62.0 },// Catalog: 65€, -5%
-      ],
-      excursions: [],
-      dispos: [
-        { name: "Dispo 4h Berline", overridePrice: 200.0 },    // Catalog: 210€, -5%
-        { name: "Dispo 8h Berline", overridePrice: 361.0 },    // Catalog: 380€, -5%
-        { name: "Dispo 4h Van", overridePrice: 261.0 },        // Catalog: 275€, -5%
-        { name: "Dispo 8h Van", overridePrice: 470.0 },        // Catalog: 495€, -5%
-        { name: "Dispo 10h Van", overridePrice: 550.0 },
+        { name: "MAD Paris 8H Van", overridePrice: 589.0 },   // Catalog: 620€, -5%
+        { name: "MAD Paris 10H Van", overridePrice: 665.0 },  // Catalog: 700€, -5%
       ],
     },
   ];
