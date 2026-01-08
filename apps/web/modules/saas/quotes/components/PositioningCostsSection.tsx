@@ -80,8 +80,9 @@ export function PositioningCostsSection({
   const returnCost = positioningCosts?.emptyReturn?.cost ?? returnSegment?.cost?.total ?? 0;
   const totalPositioningCost = positioningCosts?.totalPositioningCost ?? (approachCost + returnCost);
 
-  // Don't render if no positioning costs
-  if (totalPositioningCost <= 0 && !positioningCosts) {
+  // Story 23.4: Always render if positioningCosts is provided, even if total is 0
+  // This allows showing "Retour à vide sera calculé au dispatch" message for quotes without vehicle
+  if (!positioningCosts && totalPositioningCost <= 0) {
     return null;
   }
 
