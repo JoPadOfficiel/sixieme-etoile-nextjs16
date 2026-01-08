@@ -150,13 +150,13 @@ export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId',
 
 export const IntraCentralFlatRateScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','vehicleCategoryId','flatRate','description','isActive','createdAt','updatedAt']);
 
-export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt']);
+export const AdvancedRateScalarFieldEnumSchema = z.enum(['id','organizationId','name','appliesTo','startTime','endTime','daysOfWeek','minDistanceKm','maxDistanceKm','zoneId','adjustmentType','value','priority','isActive','createdAt','updatedAt','vehicleCategoryId']);
 
-export const SeasonalMultiplierScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','startDate','endDate','multiplier','priority','isActive','createdAt','updatedAt']);
+export const SeasonalMultiplierScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','startDate','endDate','multiplier','priority','isActive','createdAt','updatedAt','vehicleCategoryId']);
 
-export const OptionalFeeScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','amountType','amount','isTaxable','vatRate','autoApplyRules','isActive','createdAt','updatedAt']);
+export const OptionalFeeScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','amountType','amount','isTaxable','vatRate','autoApplyRules','isActive','createdAt','updatedAt','vehicleCategoryId']);
 
-export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','code','description','discountType','value','validFrom','validTo','maxTotalUses','maxUsesPerContact','currentUses','isActive','createdAt','updatedAt']);
+export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','code','description','discountType','value','validFrom','validTo','maxTotalUses','maxUsesPerContact','currentUses','isActive','createdAt','updatedAt','vehicleCategoryId']);
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
@@ -1160,6 +1160,7 @@ export const AdvancedRateSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  vehicleCategoryId: z.string().nullable(),
 })
 
 export type AdvancedRate = z.infer<typeof AdvancedRateSchema>
@@ -1183,6 +1184,7 @@ export const SeasonalMultiplierSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  vehicleCategoryId: z.string().nullable(),
 })
 
 export type SeasonalMultiplier = z.infer<typeof SeasonalMultiplierSchema>
@@ -1207,6 +1209,7 @@ export const OptionalFeeSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  vehicleCategoryId: z.string().nullable(),
 })
 
 export type OptionalFee = z.infer<typeof OptionalFeeSchema>
@@ -1233,6 +1236,7 @@ export const PromotionSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  vehicleCategoryId: z.string().nullable(),
 })
 
 export type Promotion = z.infer<typeof PromotionSchema>
