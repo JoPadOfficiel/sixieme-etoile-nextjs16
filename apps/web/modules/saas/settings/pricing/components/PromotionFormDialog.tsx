@@ -114,6 +114,28 @@ export function PromotionFormDialog({
 		}
 	}, [open, promotion]);
 
+	// Reset form when dialog closes to prevent state leakage (Story 23.3 fix)
+	useEffect(() => {
+		if (!open) {
+			// Small delay to ensure backdrop is properly removed
+			const timer = setTimeout(() => {
+				const today = getTodayDate();
+				setCode("");
+				setDescription("");
+				setDiscountType("FIXED");
+				setValue(0);
+				setValidFrom(today);
+				setValidTo(today);
+				setMaxTotalUses("");
+				setMaxUsesPerContact("");
+				setIsActive(true);
+				setErrors({});
+			}, 100);
+			
+			return () => clearTimeout(timer);
+		}
+	}, [open]);
+
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
 

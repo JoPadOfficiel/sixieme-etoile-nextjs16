@@ -105,6 +105,26 @@ export function OptionalFeeFormDialog({
 		}
 	}, [open, fee]);
 
+	// Reset form when dialog closes to prevent state leakage (Story 23.3 fix)
+	useEffect(() => {
+		if (!open) {
+			// Small delay to ensure backdrop is properly removed
+			const timer = setTimeout(() => {
+				setName("");
+				setDescription("");
+				setAmountType("FIXED");
+				setAmount(0);
+				setIsTaxable(true);
+				setVatRate(20);
+				setAutoApplyRules([]);
+				setIsActive(true);
+				setErrors({});
+			}, 100);
+			
+			return () => clearTimeout(timer);
+		}
+	}, [open]);
+
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
 
