@@ -256,7 +256,7 @@ development_status:
   22-13-update-documentation-and-training-materials: done
   epic-22-retrospective: optional
   epic-23: in-progress
-  23-1-fix-pricing-routes-excursions-disposals-loading-state-bug: review
+  23-1-fix-pricing-routes-excursions-disposals-loading-state-bug: done
   23-2-fix-multizone select-component-click-interaction-bug: backlog
   23-3-fix-pricing-adjustment-dialogs-freeze-on-cancel-save: backlog
   23-4-fix-positioning-costs-display-in-quote-trip-transparency: backlog

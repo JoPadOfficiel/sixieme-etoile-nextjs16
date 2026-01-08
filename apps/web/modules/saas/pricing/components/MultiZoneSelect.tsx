@@ -2,13 +2,12 @@
 
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@ui/components/dropdown-menu";
 import { Input } from "@ui/components/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@ui/components/popover";
 import { cn } from "@ui/lib";
 import { Check, ChevronsUpDown, MapIcon, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -35,9 +34,9 @@ interface MultiZoneSelectProps {
  * 
  * A multi-select dropdown for selecting multiple pricing zones.
  * Displays selected zones as removable badges.
- * Uses DropdownMenu for better compatibility with Sheet/Dialog components.
+ * Uses Popover (Combobox pattern) for better compatibility with Sheet/Dialog components.
  * 
- * Story 14.3: Created for flexible route pricing
+ * Story 23.2: Switch from DropdownMenu to Popover to fix click interaction bugs in Drawers
  */
 export function MultiZoneSelect({
 	zones,
@@ -85,8 +84,8 @@ export function MultiZoneSelect({
 	return (
 		<div className="space-y-2">
 			<div className="flex gap-2">
-				<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-					<DropdownMenuTrigger asChild>
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger asChild>
 						<Button
 							variant="outline"
 							role="combobox"
@@ -104,70 +103,68 @@ export function MultiZoneSelect({
 								: placeholder || t("routes.form.selectZones")}
 							<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 						</Button>
-					</DropdownMenuTrigger>
-				<DropdownMenuContent 
-					className="w-[var(--radix-dropdown-menu-trigger-width)] p-0" 
-					align="start"
-					sideOffset={4}
-				>
-					{/* Search input */}
-					<div className="p-2 border-b">
-						<div className="relative">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder={t("routes.form.searchZones")}
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								className="pl-8 h-8"
-								onClick={(e) => e.stopPropagation()}
-								onKeyDown={(e) => e.stopPropagation()}
-							/>
-						</div>
-					</div>
-					
-					{/* Zone list with scroll */}
-					<div 
-						className="max-h-60 overflow-y-auto overscroll-contain p-1"
-						onWheel={(e) => e.stopPropagation()}
+					</PopoverTrigger>
+					<PopoverContent 
+						className="w-[var(--radix-popover-trigger-width)] p-0" 
+						align="start"
 					>
-						{filteredZones.length === 0 ? (
-							<p className="text-sm text-muted-foreground text-center py-4">
-								{t("routes.form.noZonesFound")}
-							</p>
-						) : (
-							filteredZones.map((zone) => {
-								const isSelected = selectedIds.includes(zone.id);
-								return (
-									<DropdownMenuItem
-										key={zone.id}
-										onSelect={(e) => {
-											e.preventDefault();
-											handleSelect(zone.id, !isSelected);
-										}}
-										className="cursor-pointer flex items-center gap-3 py-2"
-									>
-										{/* Circle checkbox */}
-										<div
+						{/* Search input */}
+						<div className="p-2 border-b">
+							<div className="relative">
+								<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<Input
+									placeholder={t("routes.form.searchZones")}
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+									className="pl-8 h-8"
+									autoFocus
+								/>
+							</div>
+						</div>
+						
+						{/* Zone list with scroll */}
+						<div className="max-h-60 overflow-y-auto overscroll-contain p-1">
+							{filteredZones.length === 0 ? (
+								<p className="text-sm text-muted-foreground text-center py-4">
+									{t("routes.form.noZonesFound")}
+								</p>
+							) : (
+								filteredZones.map((zone) => {
+									const isSelected = selectedIds.includes(zone.id);
+									return (
+										<button
+											key={zone.id}
+											type="button"
+											onClick={() => handleSelect(zone.id, !isSelected)}
 											className={cn(
-												"h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
-												isSelected
-													? "border-primary bg-primary"
-													: "border-muted-foreground/50",
+												"w-full flex items-center gap-3 py-2 px-2 rounded-sm text-sm text-left transition-colors",
+												"hover:bg-accent hover:text-accent-foreground",
+												"focus:bg-accent focus:text-accent-foreground focus:outline-none",
+												isSelected && "bg-accent/50"
 											)}
 										>
-											{isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-										</div>
-										<span className="flex-1">{zone.name}</span>
-										<span className="text-muted-foreground text-xs">
-											({zone.code})
-										</span>
-									</DropdownMenuItem>
-								);
-							})
-						)}
-					</div>
-				</DropdownMenuContent>
-				</DropdownMenu>
+											{/* Circle checkbox */}
+											<div
+												className={cn(
+													"h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+													isSelected
+														? "border-primary bg-primary"
+														: "border-muted-foreground/50",
+												)}
+											>
+												{isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+											</div>
+											<span className="flex-1 truncate">{zone.name}</span>
+											<span className="text-muted-foreground text-xs shrink-0">
+												({zone.code})
+											</span>
+										</button>
+									);
+								})
+							)}
+						</div>
+					</PopoverContent>
+				</Popover>
 
 				{/* Map picker button */}
 				{showMapPicker && googleMapsApiKey && (
