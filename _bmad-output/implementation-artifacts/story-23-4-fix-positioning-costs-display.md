@@ -1,10 +1,11 @@
 # Story 23.4: Fix Positioning Costs Display in Quote Trip Transparency
 
 **Epic:** Epic 23 - Bug Fixes - Pricing UI  
-**Status:** in-progress  
+**Status:** done  
 **Priority:** High  
 **Estimate:** 3 SP  
 **Created:** 2026-01-08  
+**Completed:** 2026-01-08  
 **Author:** BMAD Orchestrator (Bob - Scrum Master)
 
 ---
@@ -29,29 +30,29 @@ Le composant `PositioningCostsSection` existe déjà et est appelé dans l'ongle
 
 ### AC1 : PositioningCostsSection s'affiche quand des coûts existent
 
-- [ ] Le composant `PositioningCostsSection` s'affiche dans l'onglet "costs" du TripTransparencyPanel
-- [ ] L'affichage se produit lorsque `tripAnalysis.positioningCosts.totalPositioningCost > 0`
-- [ ] L'affichage se produit également lorsque `positioningCosts` est défini mais `totalPositioningCost = 0` (pour montrer que les coûts ont été calculés)
+- [x] Le composant `PositioningCostsSection` s'affiche dans l'onglet "costs" du TripTransparencyPanel
+- [x] L'affichage se produit lorsque `tripAnalysis.positioningCosts.totalPositioningCost > 0`
+- [x] L'affichage se produit également lorsque `positioningCosts` est défini mais `totalPositioningCost = 0` (pour montrer que les coûts ont été calculés)
 
 ### AC2 : Les coûts de positioning sont correctement transmis
 
-- [ ] L'API de pricing retourne `tripAnalysis.positioningCosts` correctement peuplé
-- [ ] Les données incluent `approachFee`, `emptyReturn`, et `availabilityFee` (si applicable)
-- [ ] Les données sont sérialisées correctement dans la réponse API
+- [x] L'API de pricing retourne `tripAnalysis.positioningCosts` correctement peuplé
+- [x] Les données incluent `approachFee`, `emptyReturn`, et `availabilityFee` (si applicable)
+- [x] Les données sont sérialisées correctement dans la réponse API
 
 ### AC3 : L'interface utilisateur affiche les détails corrects
 
-- [ ] L'approach fee s'affiche avec la distance, durée et coût
-- [ ] L'empty return s'affiche avec la distance, durée et coût
-- [ ] L'availability fee s'affiche pour les dispo avec heures supplémentaires
-- [ ] Le total positioning cost est affiché
+- [x] L'approach fee s'affiche avec la distance, durée et coût
+- [x] L'empty return s'affiche avec la distance, durée et coût
+- [x] L'availability fee s'affiche pour les dispo avec heures supplémentaires
+- [x] Le total positioning cost est affiché
 
 ### AC4 : Compatibilité avec les différents scénarios
 
-- [ ] Affichage correct pour les quotes avec véhicule sélectionné
-- [ ] Affichage correct pour les quotes sans véhicule sélectionné (estimation)
-- [ ] Affichage correct pour les dispo trips avec availability fee
-- [ ] Affichage correct pour les transfer/excursion trips
+- [x] Affichage correct pour les quotes avec véhicule sélectionné
+- [x] Affichage correct pour les quotes sans véhicule sélectionné (estimation)
+- [x] Affichage correct pour les dispo trips avec availability fee
+- [x] Affichage correct pour les transfer/excursion trips
 
 ## Test Cases
 
