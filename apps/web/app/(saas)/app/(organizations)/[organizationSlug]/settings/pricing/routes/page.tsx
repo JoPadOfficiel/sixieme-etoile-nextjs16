@@ -53,7 +53,8 @@ export default function SettingsPricingRoutesPage() {
 	// Coverage data
 	const [coverageStats, setCoverageStats] = useState<CoverageStats | null>(null);
 	const [matrixData, setMatrixData] = useState<MatrixData | null>(null);
-	const [isCoverageLoading, setIsCoverageLoading] = useState(true);
+	const [isStatsLoading, setIsStatsLoading] = useState(true);
+	const [isMatrixLoading, setIsMatrixLoading] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>("list");
 
 	const [page, setPage] = useState(1);
@@ -153,6 +154,7 @@ export default function SettingsPricingRoutesPage() {
 	}, []);
 
 	const fetchCoverageStats = useCallback(async () => {
+		setIsStatsLoading(true);
 		try {
 			const response = await fetch("/api/vtc/pricing/routes/coverage");
 			if (!response.ok) throw new Error("Failed to fetch coverage stats");
@@ -160,11 +162,13 @@ export default function SettingsPricingRoutesPage() {
 			setCoverageStats(data);
 		} catch (error) {
 			console.error("Error fetching coverage stats:", error);
+		} finally {
+			setIsStatsLoading(false);
 		}
 	}, []);
 
 	const fetchMatrixData = useCallback(async () => {
-		setIsCoverageLoading(true);
+		setIsMatrixLoading(true);
 		try {
 			const params = new URLSearchParams();
 			if (vehicleCategoryId !== "all") {
@@ -177,7 +181,7 @@ export default function SettingsPricingRoutesPage() {
 		} catch (error) {
 			console.error("Error fetching matrix data:", error);
 		} finally {
-			setIsCoverageLoading(false);
+			setIsMatrixLoading(false);
 		}
 	}, [vehicleCategoryId]);
 
@@ -362,7 +366,7 @@ export default function SettingsPricingRoutesPage() {
 			</div>
 
 			{/* Coverage Stats */}
-			<CoverageStatsCard stats={coverageStats} isLoading={isCoverageLoading} />
+			<CoverageStatsCard stats={coverageStats} isLoading={isStatsLoading} />
 
 			{/* List or Matrix View */}
 			{viewMode === "list" ? (
@@ -391,7 +395,7 @@ export default function SettingsPricingRoutesPage() {
 			) : (
 				<CoverageMatrix
 					data={matrixData}
-					isLoading={isCoverageLoading}
+					isLoading={isMatrixLoading}
 					onCellClick={handleMatrixCellClick}
 				/>
 			)}
