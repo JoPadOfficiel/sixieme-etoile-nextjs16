@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document decomposes the VTC ERP PRD into **18 functional epics**, aligned with the Tech Spec and UX Design Specification. Each epic delivers recognisable business value and is traceable back to Functional Requirements (FR1–FR88).
+This document decomposes the VTC ERP PRD into **24 functional epics**, aligned with the Tech Spec and UX Design Specification. Each epic delivers recognisable business value and is traceable back to Functional Requirements (FR1–FR130).
 
 ### Epic List (High Level)
 
@@ -70,6 +70,15 @@ This document decomposes the VTC ERP PRD into **18 functional epics**, aligned w
 - **Epic 21 – Complete Pricing System Refactor with Full Transparency**  
   Refactor the entire pricing calculation system to display ultra-detailed cost breakdown, complete calculation transparency, and full integration of RSE/staffing information in quotes and dispatch.
 
+- **Epic 22 – STAY Trip Type, Subcontracting & Critical Fixes**  
+  Implement multi-day STAY packages, enhanced subcontracting workflow, round-trip pricing corrections, staffing costs transparency, and notes management improvements.
+
+- **Epic 23 – Critical Bug Fixes & Vehicle Category Pricing Filters**  
+  Fix critical UI bugs (loading states, zone selection, dialog freeze, positioning costs) and implement vehicle category filtering for all pricing adjustment types.
+
+- **Epic 24 – Agency Mini-CRM & Bidirectional Pricing**  
+  Implement EndCustomer sub-contacts within agency profiles, integrate sub-contact selection in quotes and invoices, display end-customer names in dispatch, and add bidirectional pricing toggle for partner clients.
+
 ---
 
 ## Functional Requirements Inventory (Summary)
@@ -108,6 +117,12 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
 
 - **FR Group 11 – Complete Pricing System Refactor with Full Transparency:** FR89–FR110.  
   Ultra-detailed cost breakdown display, staffing costs transparency, detailed time calculation analysis, pricing segments visualization, dispatch staffing integration, automatic empty return calculation, enhanced TripTransparency interface, automated testing and validation, documentation and training, and production deployment with monitoring.
+
+- **FR Group 12 – Vehicle Category Filtering, Bidirectional Pricing & Agency Sub-Contacts:** FR111–FR120.  
+  Vehicle category filtering for pricing adjustments, automatic adjustment filtering in quote pricing, bidirectional client/agency price display, agency sub-contacts (end-customers) CRM, dispatch end-customer visibility, difficulty score on sub-contacts, pricing page loading state fixes, and dialog state management fixes.
+
+- **FR Group 13 – Agency Mini-CRM, Bidirectional Pricing UX & Dispatch Enhancements:** FR121–FR130.  
+  EndCustomer data model, Partner contact detail page with sub-contacts, quote end-customer selector, quote/invoice PDF enhancements, dispatch end-customer display, difficulty score integration, bidirectional pricing toggle UI, pricing mode logging, and end-customer search/filter.
 
 ---
 
@@ -166,6 +181,14 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
 - **FR Group 11 (FR89–FR110) – Complete Pricing System Refactor with Full Transparency**
   - Primary epic: **Epic 21 – Complete Pricing System Refactor with Full Transparency**
   - Secondary epics: **Epic 4 – Dynamic Pricing & Shadow Calculation**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 8 – Dispatch & Strategic Optimisation**, **Epic 17 – Advanced Zone Resolution**, **Epic 20 – Critical Bug Fixes & Testing**
+
+- **FR Group 12 (FR111–FR120) – Vehicle Category Filtering, Bidirectional Pricing & Agency Sub-Contacts**
+  - Primary epic: **Epic 23 – Critical Bug Fixes & Vehicle Category Pricing Filters**
+  - Secondary epics: **Epic 9 – Advanced Pricing Configuration & Reporting**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 2 – CRM & Partner Contracts**
+
+- **FR Group 13 (FR121–FR130) – Agency Mini-CRM, Bidirectional Pricing UX & Dispatch Enhancements**
+  - Primary epic: **Epic 24 – Agency Mini-CRM & Bidirectional Pricing**
+  - Secondary epics: **Epic 2 – CRM & Partner Contracts**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch & Strategic Optimisation**
 
 ---
 
@@ -5936,20 +5959,1046 @@ This epic ensures the VTC ERP system provides complete functionality for complex
 
 ## Summary
 
-This document now defines the **21-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
+This document now defines the **24-epic structure**, summarises the **FR inventory and coverage** and provides **detailed stories** per epic with:
 
 - User stories (As a / I want / So that).
 - BDD-style acceptance criteria (Given / When / Then / And).
 - Prerequisites and technical notes.
 - Explicit references to related FRs for traceability.
 
-The 21 epics cover the complete VTC ERP system:
+The 24 epics cover the complete VTC ERP system:
 
 **Core Foundation (Epics 1-2):** Data model, multi-tenancy, CRM, and partner contracts
 **Pricing Engine (Epics 3-4, 14-18, 21):** Zone management, dynamic pricing, flexible routes, engine accuracy, quote system refactoring, advanced zone/compliance/availability features, advanced geospatial/yield management, and complete pricing transparency refactor  
 **Fleet & Operations (Epics 5-8):** Vehicle management, compliance, quotes lifecycle, and dispatch optimization
 **Configuration & Reporting (Epic 9):** Advanced pricing configuration and profitability reporting
 **Platform Improvements (Epics 10-13):** Maps integration, zone management UI, partner pricing, and UX improvements
-**Critical Fixes (Epics 19-20):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization, Google Maps API migration, toll/fuel integration, comprehensive E2E testing
+**Critical Fixes & Enhancements (Epics 19-20, 22-24):** Pricing engine bug fixes, RSE staffing automation, quote system stabilization, Google Maps API migration, toll/fuel integration, STAY trip type, subcontracting, vehicle category filtering, critical UI bug fixes, agency mini-CRM, and bidirectional pricing
 
 It is intended as the canonical epic and story breakdown for implementation and sprint planning, following the BMad `create-epics-and-stories` workflow.
+
+---
+
+## Epic 23: Critical Bug Fixes & Vehicle Category Pricing Filters
+
+**Goal:** Fix critical UI bugs blocking pricing configuration and quote creation, and implement vehicle category filtering for all pricing adjustment types to enable differentiated pricing per vehicle type.
+
+**Priority:** Critical – Blocking issues preventing normal operation
+
+**Related FRs:** FR111, FR112, FR119, FR120
+
+---
+
+### Story 23.1: Fix Pricing Routes/Excursions/Disposals Loading State Bug
+
+**As a** pricing administrator,  
+**I want** the pricing configuration pages to load correctly without getting stuck,  
+**So that** I can configure routes, excursions, and disposals without manually refreshing the page.
+
+**Related FRs:** FR119
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/settings/pricing/routes`,  
+**When** the page loads,  
+**Then** the route list or matrix view displays within 3 seconds without remaining in a perpetual loading state.
+
+**Given** I switch between "Liste" and "Matrice" views,  
+**When** I click on the view toggle,  
+**Then** the view changes immediately and displays the correct data without a grey overlay or spinner remaining visible.
+
+**Given** I navigate to `/settings/pricing/excursions` or `/settings/pricing/disposals`,  
+**When** the page loads,  
+**Then** the data displays correctly and the loading indicator disappears once data is fetched.
+
+**Prerequisites:** Access to pricing settings pages.
+
+**Technical Notes:**
+
+- Investigate the loading state management in the route/excursion/disposal list components
+- Check for race conditions between view toggle state and data fetching
+- Ensure `isLoading` state is properly reset after successful or failed API calls
+- Add error boundary to prevent silent failures
+- Test with Playwright MCP to validate fix
+
+---
+
+### Story 23.2: Fix MultiZoneSelect Component Click Interaction Bug
+
+**As a** pricing administrator,  
+**I want** to select origin and destination zones using the mouse in excursion and route forms,  
+**So that** I can configure zone-based pricing without keyboard-only workarounds.
+
+**Related FRs:** FR119
+
+**Acceptance Criteria:**
+
+**Given** I open the Edit Excursion or Edit Route drawer/sheet,  
+**When** I click on the "Select origin zones..." dropdown,  
+**Then** the dropdown opens and displays the list of available zones.
+
+**Given** the zone dropdown is open,  
+**When** I click on a zone item,  
+**Then** the zone is selected and added to the selection badges below the dropdown.
+
+**Given** I have selected multiple zones,  
+**When** I click the X button on a zone badge,  
+**Then** the zone is removed from the selection.
+
+**And** all interactions work with both mouse clicks and keyboard navigation.
+
+**Prerequisites:** Story 23.1 (pages must load correctly first).
+
+**Technical Notes:**
+
+- The `MultiZoneSelect` component uses `DropdownMenu` with `modal={false}` (line 88)
+- Issue may be related to Sheet/Dialog portal conflicts with dropdown portals
+- Investigate z-index stacking context between Sheet and DropdownMenuContent
+- Consider using Radix Popover instead of DropdownMenu for better Sheet compatibility
+- Test in both create and edit modes
+- Verify with Playwright MCP that clicks are registered correctly
+
+---
+
+### Story 23.3: Fix Pricing Adjustment Dialogs Freeze on Cancel/Save
+
+**As a** pricing administrator,  
+**I want** pricing adjustment dialogs to close properly when I cancel or save,  
+**So that** the application remains responsive and I can continue working without refreshing.
+
+**Related FRs:** FR120
+
+**Acceptance Criteria:**
+
+**Given** I open the Time-Based Rate edit dialog,  
+**When** I click the "Cancel" button,  
+**Then** the dialog closes, the overlay disappears, and the page is fully interactive.
+
+**Given** I open the Seasonal Multiplier edit dialog and make changes,  
+**When** I click the "Save" button and the save succeeds,  
+**Then** the dialog closes, the list refreshes, and the page is fully interactive.
+
+**Given** I open the Optional Fee or Promotion edit dialog,  
+**When** I perform any cancel or save action,  
+**Then** the application does not freeze and remains fully functional.
+
+**And** this fix applies to all four dialog types: `AdvancedRateFormDialog`, `SeasonalMultiplierFormDialog`, `OptionalFeeFormDialog`, `PromotionFormDialog`.
+
+**Prerequisites:** None.
+
+**Technical Notes:**
+
+- Investigate `onOpenChange` handlers in all four dialog components
+- Check if parent state (e.g., `editingItem`, `isDialogOpen`) is properly reset
+- Look for potential infinite re-render loops triggered by state updates
+- Ensure the Dialog component's `open` prop is controlled correctly
+- Consider using `key` prop to force remount on close
+- Add `useEffect` cleanup to reset form state on unmount
+- Test each dialog type individually with Playwright
+
+---
+
+### Story 23.4: Fix Positioning Costs Display in Quote Trip Transparency
+
+**As a** dispatcher/operator,  
+**I want** to see accurate positioning costs (approach fee, empty return) in the quote transparency panel,  
+**So that** I can understand the true cost breakdown and make informed pricing decisions.
+
+**Related FRs:** FR91, FR92 (from Epic 21)
+
+**Acceptance Criteria:**
+
+**Given** I create a new quote with pickup and dropoff addresses,  
+**When** the trip analysis runs,  
+**Then** the Positioning Costs section displays non-zero values for:
+- Empty Return cost with distance and calculation breakdown
+- Base information (To: [Base Name])
+
+**Given** the quote has a valid pickup location,  
+**When** no vehicle is yet assigned,  
+**Then** the system shows an informative message: "Retour à vide sera calculé au dispatch (dépend de la base du véhicule)" instead of 0.00€ placeholders.
+
+**Given** a vehicle/base is selected for the quote,  
+**When** the positioning costs are calculated,  
+**Then** the costs reflect the actual distance from dropoff back to the selected vehicle's home base.
+
+**Prerequisites:** Valid routing data from Google Maps API.
+
+**Technical Notes:**
+
+- Check if `tripAnalysis.segments.approach` and `tripAnalysis.segments.return` are being populated
+- Verify the shadow calculation service is running for new quotes
+- The `PositioningCostsSection` component correctly handles null segments but may need fallback UI
+- Ensure `vehicleSelection.selectedVehicle.baseName` is populated
+- May need to trigger positioning calculation on address change, not just on save
+- Investigate if the pricing engine is being called with incomplete data
+
+---
+
+### Story 23.5: Add Vehicle Category Field to Pricing Adjustment Data Models
+
+**As a** backend engineer,  
+**I want** to extend the pricing adjustment data models to support vehicle category filtering,  
+**So that** each adjustment can be configured to apply to specific vehicle categories.
+
+**Related FRs:** FR111
+
+**Acceptance Criteria:**
+
+**Given** the Prisma schema for `AdvancedRate`, `SeasonalMultiplier`, `OptionalFee`, and `Promotion`,  
+**When** I review the models,  
+**Then** each model includes:
+- `vehicleCategoryMode` enum field: `ALL`, `SINGLE`, `MULTIPLE`
+- `vehicleCategoryId` optional foreign key (for SINGLE mode)
+- `vehicleCategoryIds` array/relation (for MULTIPLE mode)
+
+**Given** I run `prisma migrate dev`,  
+**Then** the migration applies successfully without data loss to existing records.
+
+**And** existing records default to `vehicleCategoryMode = ALL` to maintain backward compatibility.
+
+**Prerequisites:** None.
+
+**Technical Notes:**
+
+- Create a new enum `VehicleCategoryFilterMode` with values: ALL, SINGLE, MULTIPLE
+- Add fields to all four models: AdvancedRate, SeasonalMultiplier, OptionalFee, Promotion
+- For MULTIPLE mode, consider using a JSON array of IDs or a junction table
+- Ensure indexes are created for efficient filtering
+- Update TypeScript types in the frontend modules
+
+---
+
+### Story 23.6: Implement Vehicle Category Filter UI in Pricing Adjustment Forms
+
+**As a** pricing administrator,  
+**I want** to select which vehicle categories each pricing adjustment applies to,  
+**So that** I can configure different rates for different vehicle types (e.g., different overtime fees per vehicle).
+
+**Related FRs:** FR111
+
+**Acceptance Criteria:**
+
+**Given** I open the Time-Based Rate create/edit dialog,  
+**When** I view the form,  
+**Then** I see a new "Vehicle Categories" section with three options:
+- "All Categories" (default, radio button)
+- "Single Category" (radio button + dropdown selector)
+- "Multiple Categories" (radio button + multi-select)
+
+**Given** I select "Single Category",  
+**When** I choose a vehicle category from the dropdown,  
+**Then** the selected category is displayed and will be saved with the rate.
+
+**Given** I select "Multiple Categories",  
+**When** I check multiple categories from the multi-select,  
+**Then** all selected categories are displayed as badges and will be saved.
+
+**And** this UI pattern is consistent across all four dialog types: Time-Based Rates, Seasonal Multipliers, Optional Fees, and Promotions.
+
+**Prerequisites:** Story 23.5 (data model changes).
+
+**Technical Notes:**
+
+- Create a reusable `VehicleCategoryFilter` component
+- Use RadioGroup for mode selection
+- Use Select for single category, MultiSelect/Checkbox group for multiple
+- Fetch vehicle categories from existing API endpoint
+- Update all four form dialog components to include this section
+- Place the section logically after the value/adjustment fields
+
+---
+
+### Story 23.7: Update Pricing Engine to Filter by Vehicle Category
+
+**As a** pricing engine,  
+**I want** to filter applicable adjustments based on the quote's selected vehicle category,  
+**So that** only relevant rates, fees, and promotions are applied to each quote.
+
+**Related FRs:** FR112
+
+**Acceptance Criteria:**
+
+**Given** a quote with vehicle category "Berline" selected,  
+**When** the pricing engine calculates applicable Time-Based Rates,  
+**Then** it only applies rates where:
+- `vehicleCategoryMode = ALL`, OR
+- `vehicleCategoryMode = SINGLE` AND `vehicleCategoryId = quote.vehicleCategoryId`, OR
+- `vehicleCategoryMode = MULTIPLE` AND `vehicleCategoryIds` contains `quote.vehicleCategoryId`
+
+**Given** a quote with vehicle category "Minivan",  
+**When** the pricing engine fetches applicable Optional Fees for display,  
+**Then** the catalog only shows fees configured for Minivan or for all categories.
+
+**Given** a quote switches vehicle category from "Berline" to "Van VIP",  
+**When** the pricing is recalculated,  
+**Then** the applicable adjustments update to reflect the new category's configuration.
+
+**Prerequisites:** Stories 23.5, 23.6.
+
+**Technical Notes:**
+
+- Update the pricing service functions: `getApplicableAdvancedRates`, `getApplicableSeasonalMultipliers`, `getApplicableOptionalFees`, `getApplicablePromotions`
+- Add `vehicleCategoryId` parameter to these functions
+- Create a shared filter utility function for the category matching logic
+- Update the quote pricing calculation flow to pass vehicle category
+- Ensure backward compatibility with existing adjustments (ALL mode)
+
+---
+
+### Story 23.8: Display Vehicle Category Column in Pricing Adjustment Lists
+
+**As a** pricing administrator,  
+**I want** to see which vehicle categories each adjustment applies to in the list view,  
+**So that** I can quickly understand the scope of each configuration.
+
+**Related FRs:** FR111
+
+**Acceptance Criteria:**
+
+**Given** the Time-Based Rates list (`/settings/pricing/adjustments?tab=time-based`),  
+**When** I view the table,  
+**Then** I see a "Categories" column showing:
+- "All" for adjustments with `vehicleCategoryMode = ALL`
+- The category name for SINGLE mode
+- "2 categories" (or count) with tooltip listing names for MULTIPLE mode
+
+**Given** I hover over a "2 categories" badge,  
+**When** the tooltip appears,  
+**Then** it shows the list of category names (e.g., "Berline, Minivan").
+
+**And** this column appears in all four lists: Time-Based, Seasonal, Optional Fees, Promotions.
+
+**Prerequisites:** Stories 23.5, 23.6.
+
+**Technical Notes:**
+
+- Add `Categories` column to all four list components
+- Create a `VehicleCategoryBadge` component for consistent display
+- Use Tooltip component for showing full list on hover
+- Ensure column is sortable/filterable if other columns support it
+- Keep the column width reasonable (not too wide)
+
+---
+
+### Story 23.9: Add Vehicle Category Filter to Quote Fee/Promotion Catalog
+
+**As an** operator creating a quote,  
+**I want** the fee and promotion catalog to only show items applicable to my selected vehicle,  
+**So that** I don't accidentally add fees that shouldn't apply to this vehicle type.
+
+**Related FRs:** FR112
+
+**Acceptance Criteria:**
+
+**Given** I am creating a quote with a "Berline" vehicle selected,  
+**When** I open "Add a fee or promotion" dialog and view "From Catalog",  
+**Then** only Optional Fees configured for "Berline" or "All categories" are shown.
+
+**Given** I change the vehicle category in the quote to "Autocar 57p",  
+**When** I reopen the fee catalog,  
+**Then** the list updates to show only fees applicable to "Autocar 57p" or "All categories".
+
+**Given** a fee "Heure Supplémentaire Berline (70€)" is configured for Berline only,  
+**When** I am creating a quote for a Minivan,  
+**Then** this fee does not appear in the catalog.
+
+**Prerequisites:** Story 23.7.
+
+**Technical Notes:**
+
+- Update the `useOptionalFees` hook to accept `vehicleCategoryId` parameter
+- Filter the catalog results in the API call or frontend
+- Ensure the quote form passes the current `vehicleCategoryId` to the catalog
+- Handle the case where no category is selected yet (show all? show message?)
+- Update the Promotions catalog similarly
+
+---
+
+### Story 23.10: Implement Automated E2E Tests for Bug Fixes
+
+**As a** QA engineer,  
+**I want** automated E2E tests covering all bug fixes in this epic,  
+**So that** we can prevent regressions and validate fixes work correctly.
+
+**Related FRs:** FR119, FR120
+
+**Acceptance Criteria:**
+
+**Given** the Cypress/Playwright test suite,  
+**When** I run the Epic 23 test file,  
+**Then** it validates:
+
+1. **Loading State Test:**
+   - Navigate to `/settings/pricing/routes`
+   - Assert page loads within 5 seconds
+   - Assert no loading spinner is visible
+   - Switch to matrix view, assert it renders
+
+2. **Zone Selection Test:**
+   - Navigate to Excursions, click edit on an item
+   - Click origin zone dropdown, assert it opens
+   - Click a zone item, assert it's selected
+   - Assert badge appears with zone name
+
+3. **Dialog Cancel Test:**
+   - Navigate to Time-Based Rates
+   - Click edit on a rate
+   - Click Cancel
+   - Assert dialog is closed
+   - Assert page is interactive (click another element)
+
+4. **Positioning Costs Test:**
+   - Create a new quote with valid addresses
+   - Navigate to Costs tab
+   - Assert positioning section is visible
+   - Assert values are not all 0.00€ or show informative message
+
+**Prerequisites:** Stories 23.1-23.4 completed.
+
+**Technical Notes:**
+
+- Use Playwright MCP for browser automation
+- Create test file: `cypress/e2e/epic-23-bug-fixes.cy.ts`
+- Include proper waits and assertions
+- Test on both French and English locales if applicable
+- Add to CI pipeline
+
+---
+
+### Story 23.11: Implement Vehicle Category Filter Tests
+
+**As a** QA engineer,  
+**I want** automated tests for the vehicle category filtering feature,  
+**So that** we ensure correct filtering behavior across all pricing adjustment types.
+
+**Related FRs:** FR111, FR112
+
+**Acceptance Criteria:**
+
+**Given** the test suite,  
+**When** I run vehicle category filter tests,  
+**Then** it validates:
+
+1. **UI Test - Form:**
+   - Open Time-Based Rate dialog
+   - Select "Single Category" mode
+   - Choose "Berline" from dropdown
+   - Save and verify the rate shows "Berline" in list
+
+2. **API Test - Filtering:**
+   - Create test rates with different category modes
+   - Call pricing engine with specific vehicle category
+   - Assert only matching rates are returned
+
+3. **Integration Test - Quote:**
+   - Create quote with Berline vehicle
+   - Open fee catalog
+   - Assert only Berline-applicable fees shown
+
+**Prerequisites:** Stories 23.5-23.9 completed.
+
+**Technical Notes:**
+
+- Create unit tests for the category filter logic
+- Create integration tests for the pricing engine
+- Create E2E tests for the UI flow
+- Test all three modes: ALL, SINGLE, MULTIPLE
+- Test edge cases: no category selected, category deleted
+
+---
+
+### Story 23.12: Update Documentation and User Guide
+
+**As a** product manager,  
+**I want** updated documentation covering the new features and bug fixes,  
+**So that** operators can understand and use the vehicle category filtering feature.
+
+**Related FRs:** Documentation requirements
+
+**Acceptance Criteria:**
+
+**Given** the completed Epic 23,  
+**When** users access documentation,  
+**Then** it includes:
+
+1. **Release Notes:**
+   - List of bug fixes with before/after descriptions
+   - New vehicle category filtering feature overview
+
+2. **User Guide - Vehicle Category Filtering:**
+   - How to configure a rate for specific vehicle categories
+   - Examples: night overtime fees per vehicle type
+   - Impact on quote creation and fee catalogs
+
+3. **Admin Guide:**
+   - Migration notes for existing configurations
+   - Troubleshooting common issues
+
+**Prerequisites:** All Epic 23 stories completed.
+
+**Technical Notes:**
+
+- Update CHANGELOG.md with release notes
+- Create/update user guide section in docs
+- Include screenshots of new UI elements
+- Document the data model changes for developers
+
+---
+
+### Epic 23 Summary
+
+Epic 23 addresses critical blocking issues and implements an important pricing flexibility feature:
+
+**Bug Fixes (Stories 23.1-23.4):**
+- Loading state issues on pricing configuration pages
+- Zone selection component not responding to clicks
+- Application freeze after dialog cancel/save
+- Positioning costs not displaying in quotes
+
+**Feature: Vehicle Category Filtering (Stories 23.5-23.9):**
+- Data model extension for category filtering
+- UI implementation in all pricing forms
+- Pricing engine filtering logic
+- Quote catalog integration
+
+**Quality Assurance (Stories 23.10-23.12):**
+- Automated E2E tests for bug fixes
+- Automated tests for new feature
+- Documentation updates
+
+This epic is critical for unblocking pricing configuration and enabling differentiated pricing per vehicle type as requested by the operator.
+
+---
+
+## Epic 24: Agency Mini-CRM & Bidirectional Pricing
+
+**Goal:** Implement a sub-contact management system (Mini-CRM) for agency/partner contacts, enabling operators to track individual end-customers, attribute difficulty scores, and display end-customer names on quotes, invoices, and dispatch. Also implement bidirectional pricing display to compare client vs agency prices.
+
+**Priority:** High – Improves CRM granularity and dispatch clarity
+
+**Related FRs:** FR121, FR122, FR123, FR124, FR125, FR126, FR127, FR128, FR129, FR130
+
+---
+
+### Story 24.1: Create EndCustomer Data Model
+
+**As a** backend engineer,  
+**I want** to create an EndCustomer model linked to Partner contacts,  
+**So that** operators can store and manage individual end-customers within agency profiles.
+
+**Related FRs:** FR121
+
+**Acceptance Criteria:**
+
+**Given** the Prisma schema,  
+**When** I review the EndCustomer model,  
+**Then** it includes:
+- `id` (cuid, primary key)
+- `organizationId` (foreign key to Organization)
+- `contactId` (foreign key to Contact, the parent agency)
+- `firstName` (required string)
+- `lastName` (required string)
+- `email` (optional string)
+- `phone` (optional string)
+- `difficultyScore` (optional Int, 1-5 scale)
+- `notes` (optional string)
+- `createdAt`, `updatedAt` timestamps
+
+**Given** I run `prisma migrate dev`,  
+**Then** the migration applies successfully.
+
+**And** the Contact model has a new `endCustomers EndCustomer[]` relation.
+
+**Prerequisites:** None.
+
+**Technical Notes:**
+
+```prisma
+model EndCustomer {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  difficultyScore Int?    // 1-5 scale for "patience tax"
+  notes           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotes Quote[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@map("end_customer")
+}
+```
+
+- Add `endCustomers EndCustomer[]` to Contact model
+- Add `endCustomerId` optional foreign key to Quote model
+- Create Zod schemas for API validation
+
+---
+
+### Story 24.2: Implement EndCustomer CRUD API
+
+**As a** backend engineer,  
+**I want** API endpoints for managing end-customers,  
+**So that** the frontend can create, read, update, and delete sub-contacts.
+
+**Related FRs:** FR121, FR122
+
+**Acceptance Criteria:**
+
+**Given** the API routes,  
+**When** I call `GET /api/contacts/:contactId/end-customers`,  
+**Then** I receive a list of all end-customers for that contact.
+
+**Given** a valid payload with firstName and lastName,  
+**When** I call `POST /api/contacts/:contactId/end-customers`,  
+**Then** a new end-customer is created and linked to the contact.
+
+**Given** an existing end-customer,  
+**When** I call `PATCH /api/end-customers/:id`,  
+**Then** the end-customer is updated with the provided fields.
+
+**Given** an end-customer with no linked quotes,  
+**When** I call `DELETE /api/end-customers/:id`,  
+**Then** the end-customer is deleted.
+
+**And** attempting to delete an end-customer with linked quotes returns an error with guidance.
+
+**Prerequisites:** Story 24.1.
+
+**Technical Notes:**
+
+- Create server actions in `apps/web/modules/saas/crm/actions/end-customer-actions.ts`
+- Use Zod validation for input schemas
+- Include `_count: { quotes: true }` in responses for mission count display
+- Apply organization access control
+
+---
+
+### Story 24.3: Add EndCustomer Section to Partner Contact Detail Page
+
+**As a** CRM user,  
+**I want** to see and manage end-customers directly on the Partner contact detail page,  
+**So that** I can maintain a list of individual clients for each agency.
+
+**Related FRs:** FR122
+
+**Acceptance Criteria:**
+
+**Given** I view a Partner contact's detail page,  
+**When** the page loads,  
+**Then** I see a "Clients Finaux" (End Customers) section below the contact information.
+
+**Given** the End Customers section,  
+**When** I view the list,  
+**Then** each row displays:
+- Full name (lastName, firstName)
+- Difficulty score badge (1-5 stars or "N/A")
+- Mission count (number of linked quotes)
+- Actions: Edit, Delete
+
+**Given** I click "Ajouter un client",  
+**When** the form opens,  
+**Then** I can enter firstName, lastName, email (optional), phone (optional), difficulty score (1-5 dropdown), and notes.
+
+**Given** I click "Modifier" on an end-customer,  
+**When** the edit form opens,  
+**Then** it is pre-filled with the existing data.
+
+**Prerequisites:** Stories 24.1, 24.2.
+
+**Technical Notes:**
+
+- Create `EndCustomerList` component in `apps/web/modules/saas/crm/components/`
+- Create `EndCustomerFormDialog` component for create/edit
+- Use React Query for data fetching with optimistic updates
+- Add empty state with call-to-action
+- Display only for contacts where `isPartner = true`
+
+---
+
+### Story 24.4: Add EndCustomer Selector to Quote Creation Form
+
+**As a** quote operator,  
+**I want** to select an end-customer when creating a quote for a Partner contact,  
+**So that** the quote is attributed to the correct individual client.
+
+**Related FRs:** FR123, FR124
+
+**Acceptance Criteria:**
+
+**Given** I am creating a quote and select a Partner contact,  
+**When** the contact has end-customers,  
+**Then** a new "Client Final" dropdown appears after the contact selector.
+
+**Given** the Client Final dropdown,  
+**When** I click it,  
+**Then** I see a list of end-customers for this agency with their names and difficulty scores.
+
+**Given** no suitable end-customer exists,  
+**When** I click "Créer un nouveau client",  
+**Then** an inline form allows me to create a new end-customer without leaving the quote form.
+
+**Given** I select an end-customer,  
+**When** the quote is saved,  
+**Then** the `endCustomerId` is stored on the Quote record.
+
+**And** the quote summary displays: "Client: [LastName FirstName] (via [Agency Name])"
+
+**Prerequisites:** Stories 24.1-24.3.
+
+**Technical Notes:**
+
+- Modify Quote model to add `endCustomerId String?` and relation
+- Add `EndCustomerSelector` component to quote form
+- Show only when selected contact is a partner
+- Include inline creation option using `EndCustomerFormDialog`
+- Automatically apply end-customer's difficulty score to quote pricing if configured
+
+---
+
+### Story 24.5: Display EndCustomer Name on Quote Summary and PDF
+
+**As a** client/operator,  
+**I want** the end-customer name to appear prominently on quotes and PDFs,  
+**So that** individual clients are correctly identified on documents.
+
+**Related FRs:** FR124, FR125
+
+**Acceptance Criteria:**
+
+**Given** a quote with an end-customer selected,  
+**When** I view the quote summary,  
+**Then** the client section displays:
+- "Client: [FirstName] [LastName]"
+- "Agence: [Agency Name]" (smaller text below)
+
+**Given** I generate a PDF quote,  
+**When** the document renders,  
+**Then** the header shows the end-customer's name as the recipient.
+
+**And** the billing section shows the agency name and billing address.
+
+**Given** a quote without an end-customer,  
+**When** I view the quote,  
+**Then** the display uses the agency name as before (backward compatible).
+
+**Prerequisites:** Story 24.4.
+
+**Technical Notes:**
+
+- Update quote summary component to conditionally display end-customer
+- Modify PDF generation template (react-pdf or similar)
+- Add `endCustomerFullName` computed field to quote API responses
+- Ensure invoice PDF follows same pattern (Story 24.6)
+
+---
+
+### Story 24.6: Display EndCustomer Name on Invoice Documents
+
+**As an** accountant/operator,  
+**I want** invoices to show the correct end-customer name with agency billing,  
+**So that** documents accurately reflect who received the service and who pays.
+
+**Related FRs:** FR125
+
+**Acceptance Criteria:**
+
+**Given** an invoice generated from a quote with an end-customer,  
+**When** the PDF is generated,  
+**Then** the document shows:
+- "Prestation pour: [EndCustomer FirstName LastName]"
+- "Facturé à: [Agency Name]"
+- "[Agency Billing Address]"
+
+**Given** the invoice list view,  
+**When** the invoice has an end-customer,  
+**Then** the client column shows "[EndCustomer Name] ([Agency])".
+
+**Prerequisites:** Story 24.5.
+
+**Technical Notes:**
+
+- Add `endCustomerId` to Invoice model or fetch from related Quote
+- Update invoice PDF template
+- Update invoice list component
+- Maintain backward compatibility for invoices without end-customers
+
+---
+
+### Story 24.7: Integrate EndCustomer in Dispatch Interface
+
+**As a** dispatcher,  
+**I want** to see the end-customer name in the dispatch mission list,  
+**So that** I can easily differentiate between multiple missions from the same agency.
+
+**Related FRs:** FR126
+
+**Acceptance Criteria:**
+
+**Given** the dispatch mission list,  
+**When** a mission has an end-customer,  
+**Then** the client column displays: "[FirstName] [LastName] ([Agency Name])"
+
+**Given** a mission without an end-customer,  
+**When** I view the list,  
+**Then** the display shows the agency name only (backward compatible).
+
+**Given** I click on a mission to view details,  
+**When** the detail panel opens,  
+**Then** I see the end-customer's full details including:
+- Name
+- Phone (if available)
+- Difficulty score (with visual badge)
+- Agency name
+
+**Prerequisites:** Story 24.4.
+
+**Technical Notes:**
+
+- Update dispatch mission card component
+- Add end-customer info to mission detail panel
+- Include `endCustomer` relation when fetching missions
+- Display difficulty score with color-coded badge (1-2: green, 3: yellow, 4-5: red)
+
+---
+
+### Story 24.8: Link Difficulty Score to EndCustomer for Pricing
+
+**As a** pricing engine,  
+**I want** to use the end-customer's difficulty score for "patience tax" calculation,  
+**So that** pricing adjustments are based on individual client behavior, not agency-level scores.
+
+**Related FRs:** FR127
+
+**Acceptance Criteria:**
+
+**Given** a quote with an end-customer selected,  
+**When** the pricing engine calculates the quote,  
+**Then** it uses the end-customer's `difficultyScore` for any configured patience tax multipliers.
+
+**Given** an end-customer with `difficultyScore = 5`,  
+**When** patience tax is configured as "5% per point above 3",  
+**Then** the quote price includes a 10% surcharge ((5-3) × 5%).
+
+**Given** an end-customer with no difficulty score,  
+**When** the pricing runs,  
+**Then** no patience tax is applied (falls back to agency score or none).
+
+**Prerequisites:** Stories 24.4, existing patience tax configuration.
+
+**Technical Notes:**
+
+- Modify pricing engine to check `quote.endCustomer?.difficultyScore` first
+- Fall back to `quote.contact.difficultyScore` if no end-customer or no score
+- Log which score source was used in TripAnalysis for transparency
+- Update quote creation to copy end-customer difficulty score to quote
+
+---
+
+### Story 24.9: Implement Bidirectional Pricing Toggle in Quote Form
+
+**As a** quote operator,  
+**I want** to see and switch between client price and agency price,  
+**So that** I can choose the best price for loyal private clients of partners.
+
+**Related FRs:** FR128, FR129
+
+**Acceptance Criteria:**
+
+**Given** a quote for a Partner contact,  
+**When** the pricing is calculated,  
+**Then** I see both prices displayed:
+- "Prix Grille Agence: €XXX" (from partner grid)
+- "Prix Client Direct: €YYY" (C2C dynamic calculation)
+
+**Given** a price difference exists,  
+**When** I view the comparison,  
+**Then** I see a visual indicator:
+- 📈 "Prix Client +15%" if higher
+- 📉 "Prix Agence -10%" if lower
+
+**Given** I click the toggle button,  
+**When** I switch from "Grille Agence" to "Client Direct",  
+**Then** the selected price updates and is clearly marked as "Custom Pricing Mode".
+
+**And** both calculated prices are stored in the quote record for auditing.
+
+**Prerequisites:** Existing dynamic pricing and partner grid pricing.
+
+**Technical Notes:**
+
+- Add `pricingMode` enum field to Quote: PARTNER_GRID, CLIENT_DIRECT, MANUAL
+- Add `partnerGridPrice` and `clientDirectPrice` Decimal fields to Quote
+- Create `BidirectionalPriceToggle` component
+- Calculate both prices in parallel during quote creation
+- Display toggle only for partner contacts with grid pricing configured
+
+---
+
+### Story 24.10: Add EndCustomer Search and Filtering
+
+**As a** CRM user with many end-customers,  
+**I want** to search and filter the end-customer list,  
+**So that** I can quickly find specific clients in large agency databases.
+
+**Related FRs:** FR130
+
+**Acceptance Criteria:**
+
+**Given** the End Customers section on a partner contact,  
+**When** there are more than 10 end-customers,  
+**Then** a search bar appears above the list.
+
+**Given** I type in the search bar,  
+**When** I enter a partial name,  
+**Then** the list filters to show matching end-customers (firstName or lastName contains search term).
+
+**Given** filter options are available,  
+**When** I filter by difficulty score,  
+**Then** only end-customers with matching scores are shown.
+
+**Given** I view an end-customer,  
+**When** I look at their row,  
+**Then** I see "Dernière mission: [date]" if they have linked quotes.
+
+**Prerequisites:** Stories 24.2, 24.3.
+
+**Technical Notes:**
+
+- Add search input with debouncing (300ms)
+- Implement client-side filtering for small lists (<100)
+- Implement server-side filtering for large lists
+- Add filter chips for difficulty score ranges
+- Include mission statistics in API response
+
+---
+
+### Story 24.11: Implement Automated E2E Tests for Mini-CRM
+
+**As a** QA engineer,  
+**I want** automated tests covering the Mini-CRM feature,  
+**So that** we can prevent regressions in end-customer management.
+
+**Related FRs:** Testing requirements
+
+**Acceptance Criteria:**
+
+**Given** the E2E test suite,  
+**When** I run Mini-CRM tests,  
+**Then** it validates:
+
+1. **EndCustomer CRUD:**
+   - Navigate to partner contact detail
+   - Create new end-customer with all fields
+   - Edit end-customer
+   - Delete end-customer (without quotes)
+   - Verify delete blocked with quotes
+
+2. **Quote Integration:**
+   - Create quote for partner
+   - Select end-customer
+   - Verify name appears in summary
+   - Generate PDF and verify content
+
+3. **Dispatch Display:**
+   - View dispatch list
+   - Verify end-customer format "[Name] ([Agency])"
+   - Open mission detail
+   - Verify end-customer info visible
+
+**Prerequisites:** Stories 24.1-24.10.
+
+**Technical Notes:**
+
+- Create test file: `cypress/e2e/epic-24-mini-crm.cy.ts`
+- Use test fixtures for partner contacts and end-customers
+- Include visual regression tests for key displays
+- Test difficulty score badge rendering
+
+---
+
+### Story 24.12: Update Documentation for Mini-CRM Feature
+
+**As a** product manager,  
+**I want** complete documentation for the Mini-CRM feature,  
+**So that** operators understand how to use end-customer management effectively.
+
+**Related FRs:** Documentation requirements
+
+**Acceptance Criteria:**
+
+**Given** the completed Epic 24,  
+**When** users access documentation,  
+**Then** it includes:
+
+1. **User Guide - Clients Finaux:**
+   - What are end-customers and why use them
+   - How to add/edit/delete end-customers
+   - How to use difficulty scores
+   - How to select end-customers in quotes
+
+2. **User Guide - Bidirectional Pricing:**
+   - Understanding price modes (grid vs client)
+   - When to use each pricing mode
+   - How to switch between modes
+
+3. **Admin Guide:**
+   - Data model overview
+   - Migration notes
+   - API reference
+
+**Prerequisites:** All Epic 24 stories completed.
+
+**Technical Notes:**
+
+- Create user guide section in docs
+- Include annotated screenshots
+- Document API endpoints for developers
+- Add FAQ section for common questions
+
+---
+
+### Epic 24 Summary
+
+Epic 24 implements a comprehensive Mini-CRM for agency sub-contacts and bidirectional pricing:
+
+**Data Model (Story 24.1):**
+- EndCustomer entity linked to Partner contacts
+- Quote and Invoice integration
+
+**CRM Features (Stories 24.2-24.3, 24.10):**
+- CRUD API for end-customers
+- Partner contact detail page integration
+- Search and filtering for large lists
+
+**Quote & Invoice Integration (Stories 24.4-24.6):**
+- End-customer selector in quote form
+- Name display on summaries and PDFs
+- Proper billing attribution
+
+**Dispatch Enhancement (Story 24.7):**
+- "[EndCustomer] ([Agency])" display format
+- End-customer details in mission panel
+
+**Pricing Integration (Stories 24.8-24.9):**
+- Difficulty score from end-customer
+- Bidirectional pricing toggle (grid vs client)
+
+**Quality Assurance (Stories 24.11-24.12):**
+- Automated E2E tests
+- Complete documentation
+
+This epic enables operators to manage individual clients within agency accounts, providing granular CRM data, accurate quoting, and improved dispatch clarity.
+
+

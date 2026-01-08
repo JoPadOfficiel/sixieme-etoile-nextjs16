@@ -911,3 +911,51 @@ This appendix consolidates the advanced modules that adjust and explain the comp
 4. Run the full-loop profitability calculation (Approach + Service + Return) and compare price vs internal cost.
 5. Allow the operator to review and, if needed, manually adjust price and cost components via Trip Transparency.
 6. Add optional charges and promotions, then present the final client price and profitability summary.
+
+---
+
+### FR Group 12 – Vehicle Category Filtering, Bidirectional Pricing & Agency Sub-Contacts
+
+- **FR111:** The system shall support vehicle category filtering on all pricing adjustment types (Optional Fees, Promotions, Time-Based Rates, Seasonal Multipliers), allowing operators to configure whether each adjustment applies to all vehicle categories, a single category, or a selection of multiple categories.
+
+- **FR112:** When creating a quote, the pricing engine shall automatically filter applicable Optional Fees, Promotions, Time-Based Rates and Seasonal Multipliers based on the selected vehicle category, applying only those configured for that category or for "all categories".
+
+- **FR113:** The quote creation UI shall display both the calculated client price (C2C/private) and the partner agency price (from rate grid) when applicable, allowing operators to see the price differential and optionally switch between pricing modes.
+
+- **FR114:** The bidirectional pricing display shall include a visual indicator (tooltip or info icon) showing the price difference between client and agency pricing, enabling operators to make informed decisions about which price to apply to loyal private clients.
+
+- **FR115:** The system shall support sub-contacts (end-customers) within Partner/Agency contact records, storing at minimum first name, last name, and an optional difficulty score for each sub-contact.
+
+- **FR116:** When creating a quote or invoice for a Partner contact, the system shall allow selection of a sub-contact (end-customer) and display the sub-contact's name prominently on the quote, invoice, and dispatch mission details.
+
+- **FR117:** The dispatch interface shall display the end-customer name (sub-contact) as the primary identifier for agency missions, with the agency name shown in parentheses, enabling dispatchers to differentiate between multiple missions from the same partner.
+
+- **FR118:** The difficulty score for agency clients shall be associated with sub-contacts rather than the main agency contact, allowing accurate tracking of individual end-customer behaviour patterns.
+
+- **FR119:** The pricing configuration pages (Routes, Excursions, Disposals) shall correctly handle initial data loading states, ensuring the UI does not remain stuck in a loading state when switching between list and matrix views.
+
+- **FR120:** All pricing adjustment dialogs (Time-Based Rates, Seasonal Multipliers, Optional Fees, Promotions) shall correctly reset their state when closed via Cancel or after Save, preventing the application from becoming unresponsive.
+
+---
+
+### FR Group 13 – Agency Mini-CRM, Bidirectional Pricing UX & Dispatch Enhancements
+
+- **FR121:** The system shall implement an `EndCustomer` data model as a child of Partner contacts, storing firstName, lastName, email (optional), phone (optional), difficultyScore (optional 1-5 scale), notes, and a link to the parent agency contact.
+
+- **FR122:** The Partner contact detail page shall display a "Clients Finaux" (End Customers) section listing all sub-contacts with their name, difficulty score badge, and mission count, with the ability to add, edit, and delete sub-contacts inline.
+
+- **FR123:** When creating a quote for a Partner contact, the system shall display an "End Customer" selector allowing the operator to either select an existing sub-contact from the agency's list or create a new sub-contact inline.
+
+- **FR124:** The quote data model shall store an optional `endCustomerId` foreign key linking to the selected sub-contact, and the quote summary shall display "Client: [EndCustomer Name] (via [Agency Name])" format.
+
+- **FR125:** Generated quote and invoice PDF documents shall prominently display the end customer's name as the primary recipient, with the billing agency clearly indicated in the footer or billing section.
+
+- **FR126:** The dispatch interface shall display missions using the format "[EndCustomer FirstName LastName] ([Agency DisplayName])" when an end customer is linked, making it easy to differentiate multiple missions from the same agency.
+
+- **FR127:** The difficulty score on the Quote model shall reference the end customer's difficulty score when one is selected, automatically applying any configured "patience tax" pricing multiplier based on the sub-contact's score rather than the agency's.
+
+- **FR128:** The bidirectional pricing UI shall display a price toggle button in the quote summary section, allowing operators to switch between "Prix Client Direct" (C2C calculated price) and "Prix Grille Agence" (partner grid price) with a visual comparison indicator.
+
+- **FR129:** When bidirectional pricing is active, the system shall log both prices in the quote record and display the selected pricing mode clearly on the quote summary and generated documents.
+
+- **FR130:** The end customer management interface shall support searching and filtering by name, difficulty score, and mission history (last mission date, total mission count), enabling efficient management of large sub-contact databases.
