@@ -20,20 +20,20 @@ Modification du schéma Prisma pour ajouter une relation optionnelle vers `Vehic
 ## Critères d'Acceptation (AC)
 
 ### AC1 : Mise à jour du Modèle de Données
-- [ ] Le modèle `SeasonalMultiplier` contient un champ optionnel `vehicleCategoryId` (FK).
-- [ ] Le modèle `AdvancedRate` contient un champ optionnel `vehicleCategoryId` (FK).
-- [ ] Le modèle `OptionalFee` contient un champ optionnel `vehicleCategoryId` (FK).
-- [ ] Le modèle `Promotion` contient un champ optionnel `vehicleCategoryId` (FK).
-- [ ] Tous ces champs sont indexés pour la performance des requêtes.
+- [x] Le modèle `SeasonalMultiplier` contient un champ optionnel `vehicleCategoryId` (FK).
+- [x] Le modèle `AdvancedRate` contient un champ optionnel `vehicleCategoryId` (FK).
+- [x] Le modèle `OptionalFee` contient un champ optionnel `vehicleCategoryId` (FK).
+- [x] Le modèle `Promotion` contient un champ optionnel `vehicleCategoryId` (FK).
+- [x] Tous ces champs sont indexés pour la performance des requêtes.
 
 ### AC2 : Migration Base de Données
-- [ ] Une migration Prisma valide est générée est appliquée.
-- [ ] La migration n'entraîne aucune perte de données existantes.
-- [ ] Les enregistrements existants ont `vehicleCategoryId = null` (signifiant "Toutes catégories", préservant le comportement actuel).
+- [x] Une migration Prisma valide est générée est appliquée.
+- [x] La migration n'entraîne aucune perte de données existantes.
+- [x] Les enregistrements existants ont `vehicleCategoryId = null` (signifiant "Toutes catégories", préservant le comportement actuel).
 
 ### AC3 : Validation Technique
-- [ ] Les types TypeScript et schémas Zod sont régénérés et corrects.
-- [ ] Le code compile sans erreur après les changements de schéma.
+- [x] Les types TypeScript et schémas Zod sont régénérés et corrects.
+- [x] Le code compile sans erreur après les changements de schéma.
 
 ## Instructions Techniques Spéciales
 - **Rétro-compatibilité** : La valeur `null` doit explicitement signifier "Applicable à toutes les catégories". Ne pas mettre de valeur par défaut forcée pointant vers une catégorie spécifique.
