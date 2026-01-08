@@ -156,6 +156,14 @@ export default function SettingsPricingExtrasPage() {
 		setFeeDialogOpen(true);
 	};
 
+	const handleFeeDialogOpenChange = (open: boolean) => {
+		setFeeDialogOpen(open);
+		if (!open) {
+			// Reset editing fee when dialog closes (Story 23.3 fix)
+			setEditingFee(null);
+		}
+	};
+
 	const handleDeleteFee = (fee: OptionalFee) => {
 		setDeletingFee(fee);
 		setDeleteFeeDialogOpen(true);
@@ -225,6 +233,14 @@ export default function SettingsPricingExtrasPage() {
 	const handleEditPromotion = (promotion: Promotion) => {
 		setEditingPromotion(promotion);
 		setPromoDialogOpen(true);
+	};
+
+	const handlePromoDialogOpenChange = (open: boolean) => {
+		setPromoDialogOpen(open);
+		if (!open) {
+			// Reset editing promotion when dialog closes (Story 23.3 fix)
+			setEditingPromotion(null);
+		}
 	};
 
 	const handleDeletePromotion = (promotion: Promotion) => {
@@ -436,7 +452,7 @@ export default function SettingsPricingExtrasPage() {
 			{/* Optional Fee Dialogs */}
 			<OptionalFeeFormDialog
 				open={feeDialogOpen}
-				onOpenChange={setFeeDialogOpen}
+				onOpenChange={handleFeeDialogOpenChange}
 				fee={editingFee}
 				onSubmit={handleFeeSubmit}
 				isSubmitting={createFeeMutation.isPending || updateFeeMutation.isPending}
@@ -471,7 +487,7 @@ export default function SettingsPricingExtrasPage() {
 			{/* Promotion Dialogs */}
 			<PromotionFormDialog
 				open={promoDialogOpen}
-				onOpenChange={setPromoDialogOpen}
+				onOpenChange={handlePromoDialogOpenChange}
 				promotion={editingPromotion}
 				onSubmit={handlePromoSubmit}
 				isSubmitting={createPromoMutation.isPending || updatePromoMutation.isPending}
