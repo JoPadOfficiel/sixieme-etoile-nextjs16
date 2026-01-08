@@ -184,14 +184,14 @@ export function SeasonalMultiplierList({
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem
-													onClick={() => onEdit(multiplier)}
+													onClick={() => setTimeout(() => onEdit(multiplier), 0)}
 													data-testid="edit-button"
 												>
 													<Pencil className="mr-2 size-4" />
 													{t("actions.edit")}
 												</DropdownMenuItem>
 												<DropdownMenuItem
-													onClick={() => onDelete(multiplier)}
+													onClick={() => setTimeout(() => onDelete(multiplier), 0)}
 													className="text-destructive focus:text-destructive"
 													data-testid="delete-button"
 												>

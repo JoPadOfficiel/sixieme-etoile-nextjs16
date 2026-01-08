@@ -219,14 +219,14 @@ export function PromotionList({
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem
-													onClick={() => onEdit(promotion)}
+													onClick={() => setTimeout(() => onEdit(promotion), 0)}
 													data-testid="edit-button"
 												>
 													<Pencil className="mr-2 size-4" />
 													{t("actions.edit")}
 												</DropdownMenuItem>
 												<DropdownMenuItem
-													onClick={() => onDelete(promotion)}
+													onClick={() => setTimeout(() => onDelete(promotion), 0)}
 													className="text-destructive focus:text-destructive"
 													data-testid="delete-button"
 												>

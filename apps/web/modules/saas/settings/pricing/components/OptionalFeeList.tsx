@@ -218,14 +218,14 @@ export function OptionalFeeList({
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem
-													onClick={() => onEdit(fee)}
+													onClick={() => setTimeout(() => onEdit(fee), 0)}
 													data-testid="edit-button"
 												>
 													<Pencil className="mr-2 size-4" />
 													{t("actions.edit")}
 												</DropdownMenuItem>
 												<DropdownMenuItem
-													onClick={() => onDelete(fee)}
+													onClick={() => setTimeout(() => onDelete(fee), 0)}
 													className="text-destructive focus:text-destructive"
 													data-testid="delete-button"
 												>
