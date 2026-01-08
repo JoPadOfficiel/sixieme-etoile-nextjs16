@@ -21,7 +21,7 @@ import { Label } from "@ui/components/label";
 import { Switch } from "@ui/components/switch";
 import { Textarea } from "@ui/components/textarea";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type {
 	SeasonalMultiplier,
 	CreateSeasonalMultiplierRequest,
@@ -61,53 +61,33 @@ export function SeasonalMultiplierFormDialog({
 	// Validation errors
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
-	// Handle dialog open state change
-	const handleOpenChange = useCallback(
-		(newOpen: boolean) => {
-			if (newOpen) {
-				// Reset form when opening
-				if (multiplier) {
-					setName(multiplier.name);
-					setDescription(multiplier.description || "");
-					setStartDate(multiplier.startDate.split("T")[0]);
-					setEndDate(multiplier.endDate.split("T")[0]);
-					setMultiplierValue(multiplier.multiplier);
-					setPriority(multiplier.priority);
-					setIsActive(multiplier.isActive);
-				} else {
-					// Default values for new multiplier
-					setName("");
-					setDescription("");
-					const today = new Date();
-					setStartDate(toISODateString(today));
-					const nextMonth = new Date(today);
-					nextMonth.setMonth(nextMonth.getMonth() + 1);
-					setEndDate(toISODateString(nextMonth));
-					setMultiplierValue(1.0);
-					setPriority(0);
-					setIsActive(true);
-				}
-				setErrors({});
-			}
-			onOpenChange(newOpen);
-		},
-		[multiplier, onOpenChange]
-	);
-
-	// Also reset when multiplier prop changes while dialog is open
+	// Reset form when dialog opens or multiplier changes
 	useEffect(() => {
-		if (!open) return;
-		if (multiplier) {
-			setName(multiplier.name);
-			setDescription(multiplier.description || "");
-			setStartDate(multiplier.startDate.split("T")[0]);
-			setEndDate(multiplier.endDate.split("T")[0]);
-			setMultiplierValue(multiplier.multiplier);
-			setPriority(multiplier.priority);
-			setIsActive(multiplier.isActive);
+		if (open) {
+			if (multiplier) {
+				setName(multiplier.name);
+				setDescription(multiplier.description || "");
+				setStartDate(multiplier.startDate.split("T")[0]);
+				setEndDate(multiplier.endDate.split("T")[0]);
+				setMultiplierValue(multiplier.multiplier);
+				setPriority(multiplier.priority);
+				setIsActive(multiplier.isActive);
+			} else {
+				// Default values for new multiplier
+				setName("");
+				setDescription("");
+				const today = new Date();
+				setStartDate(toISODateString(today));
+				const nextMonth = new Date(today);
+				nextMonth.setMonth(nextMonth.getMonth() + 1);
+				setEndDate(toISODateString(nextMonth));
+				setMultiplierValue(1.0);
+				setPriority(0);
+				setIsActive(true);
+			}
+			setErrors({});
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [multiplier?.id]);
+	}, [open, multiplier]);
 
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
@@ -157,7 +137,7 @@ export function SeasonalMultiplierFormDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={handleOpenChange}>
+		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]" data-testid="multiplier-dialog">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>

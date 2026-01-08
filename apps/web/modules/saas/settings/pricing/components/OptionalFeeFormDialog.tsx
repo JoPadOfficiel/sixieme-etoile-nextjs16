@@ -28,7 +28,7 @@ import {
 import { Switch } from "@ui/components/switch";
 import { Textarea } from "@ui/components/textarea";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type {
 	OptionalFee,
 	CreateOptionalFeeRequest,
@@ -78,57 +78,32 @@ export function OptionalFeeFormDialog({
 	// Validation errors
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
-	// Handle dialog open state change
-	const handleOpenChange = useCallback(
-		(newOpen: boolean) => {
-			if (newOpen) {
-				// Reset form when opening
-				if (fee) {
-					setName(fee.name);
-					setDescription(fee.description || "");
-					setAmountType(fee.amountType);
-					setAmount(fee.amount);
-					setIsTaxable(fee.isTaxable);
-					setVatRate(fee.vatRate);
-					setAutoApplyRules(
-						fee.autoApplyRules?.map((r) => r.type) || []
-					);
-					setIsActive(fee.isActive);
-				} else {
-					// Default values for new fee
-					setName("");
-					setDescription("");
-					setAmountType("FIXED");
-					setAmount(0);
-					setIsTaxable(true);
-					setVatRate(20);
-					setAutoApplyRules([]);
-					setIsActive(true);
-				}
-				setErrors({});
-			}
-			onOpenChange(newOpen);
-		},
-		[fee, onOpenChange]
-	);
-
-	// Also reset when fee prop changes while dialog is open
+	// Reset form when dialog opens or fee changes
 	useEffect(() => {
-		if (!open) return;
-		if (fee) {
-			setName(fee.name);
-			setDescription(fee.description || "");
-			setAmountType(fee.amountType);
-			setAmount(fee.amount);
-			setIsTaxable(fee.isTaxable);
-			setVatRate(fee.vatRate);
-			setAutoApplyRules(
-				fee.autoApplyRules?.map((r) => r.type) || []
-			);
-			setIsActive(fee.isActive);
+		if (open) {
+			if (fee) {
+				setName(fee.name);
+				setDescription(fee.description || "");
+				setAmountType(fee.amountType);
+				setAmount(fee.amount);
+				setIsTaxable(fee.isTaxable);
+				setVatRate(fee.vatRate);
+				setAutoApplyRules(fee.autoApplyRules?.map((r) => r.type) || []);
+				setIsActive(fee.isActive);
+			} else {
+				// Default values for new fee
+				setName("");
+				setDescription("");
+				setAmountType("FIXED");
+				setAmount(0);
+				setIsTaxable(true);
+				setVatRate(20);
+				setAutoApplyRules([]);
+				setIsActive(true);
+			}
+			setErrors({});
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [fee?.id]);
+	}, [open, fee]);
 
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
@@ -184,7 +159,7 @@ export function OptionalFeeFormDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={handleOpenChange}>
+		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]" data-testid="fee-dialog">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>

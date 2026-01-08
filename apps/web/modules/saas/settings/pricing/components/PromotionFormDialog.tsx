@@ -28,7 +28,7 @@ import {
 import { Switch } from "@ui/components/switch";
 import { Textarea } from "@ui/components/textarea";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type {
 	Promotion,
 	CreatePromotionRequest,
@@ -76,73 +76,43 @@ export function PromotionFormDialog({
 		return new Date().toISOString().split("T")[0];
 	};
 
-	// Handle dialog open state change
-	const handleOpenChange = useCallback(
-		(newOpen: boolean) => {
-			if (newOpen) {
-				// Reset form when opening
-				if (promotion) {
-					setCode(promotion.code);
-					setDescription(promotion.description || "");
-					setDiscountType(promotion.discountType);
-					setValue(promotion.value);
-					setValidFrom(formatDateForInput(promotion.validFrom));
-					setValidTo(formatDateForInput(promotion.validTo));
-					setMaxTotalUses(
-						promotion.maxTotalUses !== null
-							? promotion.maxTotalUses.toString()
-							: ""
-					);
-					setMaxUsesPerContact(
-						promotion.maxUsesPerContact !== null
-							? promotion.maxUsesPerContact.toString()
-							: ""
-					);
-					setIsActive(promotion.isActive);
-				} else {
-					// Default values for new promotion
-					const today = getTodayDate();
-					setCode("");
-					setDescription("");
-					setDiscountType("FIXED");
-					setValue(0);
-					setValidFrom(today);
-					setValidTo(today);
-					setMaxTotalUses("");
-					setMaxUsesPerContact("");
-					setIsActive(true);
-				}
-				setErrors({});
-			}
-			onOpenChange(newOpen);
-		},
-		[promotion, onOpenChange]
-	);
-
-	// Also reset when promotion prop changes while dialog is open
+	// Reset form when dialog opens or promotion changes
 	useEffect(() => {
-		if (!open) return;
-		if (promotion) {
-			setCode(promotion.code);
-			setDescription(promotion.description || "");
-			setDiscountType(promotion.discountType);
-			setValue(promotion.value);
-			setValidFrom(formatDateForInput(promotion.validFrom));
-			setValidTo(formatDateForInput(promotion.validTo));
-			setMaxTotalUses(
-				promotion.maxTotalUses !== null
-					? promotion.maxTotalUses.toString()
-					: ""
-			);
-			setMaxUsesPerContact(
-				promotion.maxUsesPerContact !== null
-					? promotion.maxUsesPerContact.toString()
-					: ""
-			);
-			setIsActive(promotion.isActive);
+		if (open) {
+			if (promotion) {
+				setCode(promotion.code);
+				setDescription(promotion.description || "");
+				setDiscountType(promotion.discountType);
+				setValue(promotion.value);
+				setValidFrom(formatDateForInput(promotion.validFrom));
+				setValidTo(formatDateForInput(promotion.validTo));
+				setMaxTotalUses(
+					promotion.maxTotalUses !== null
+						? promotion.maxTotalUses.toString()
+						: ""
+				);
+				setMaxUsesPerContact(
+					promotion.maxUsesPerContact !== null
+						? promotion.maxUsesPerContact.toString()
+						: ""
+				);
+				setIsActive(promotion.isActive);
+			} else {
+				// Default values for new promotion
+				const today = getTodayDate();
+				setCode("");
+				setDescription("");
+				setDiscountType("FIXED");
+				setValue(0);
+				setValidFrom(today);
+				setValidTo(today);
+				setMaxTotalUses("");
+				setMaxUsesPerContact("");
+				setIsActive(true);
+			}
+			setErrors({});
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [promotion?.id]);
+	}, [open, promotion]);
 
 	const validate = (): boolean => {
 		const newErrors: Record<string, string> = {};
@@ -202,7 +172,7 @@ export function PromotionFormDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={handleOpenChange}>
+		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]" data-testid="promotion-dialog">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
