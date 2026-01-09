@@ -271,7 +271,7 @@ development_status:
   epic-24: in-progress
   24-1-create-endcustomer-data-model: done
   24-2-implement-endcustomer-crud-api: done
-  24-3-add-endcustomer-section-to-partner-contact-detail-page: backlog
+  24-3-add-endcustomer-section-to-partner-contact-detail-page: done
   24-4-add-endcustomer-selector-to-quote-creation-form: backlog
   24-5-display-endcustomer-name-on-quote-summary-and-pdf: backlog
   24-6-display-endcustomer-name-on-invoice-documents: backlog

@@ -2210,8 +2210,34 @@
 			"details": "Details",
 			"timeline": "Activity",
 			"commercial": "Commercial",
-			"contract": "Contract"
+			"contract": "Contract",
+			"endCustomers": "End Customers"
 		},
+		"endCustomers": {
+			"tabTitle": "End Customers",
+			"add": "Add customer",
+			"edit": "Edit",
+			"delete": "Delete",
+			"search": "Search...",
+			"listTitle": "Linked End Customers",
+			"listDescription": "Manage specific end customers for this agency.",
+			"noResults": "No end customers found",
+			"emptyDescription": "This partner does not have any linked end customers yet.",
+			"confirmDeleteTitle": "Delete end customer?",
+			"confirmDeleteDescription": "Are you sure you want to delete this end customer? This action is irreversible.",
+			"deleteSuccess": "End customer deleted successfully",
+			"deleteError": "Error deleting (check for linked quotes)",
+			"createSuccess": "End customer created successfully",
+			"updateSuccess": "End customer updated successfully",
+			"columns": {
+				"name": "Name",
+				"email": "Email",
+				"phone": "Phone",
+				"quotes": "Quotes",
+				"actions": "Actions"
+			}
+		},
+
 		"margin": {
 			"profitable": "Profitable ({margin} margin)",
 			"lowMargin": "Low margin ({margin})",

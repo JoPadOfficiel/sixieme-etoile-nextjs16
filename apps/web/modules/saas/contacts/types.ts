@@ -23,6 +23,25 @@ export interface Contact {
   updatedAt?: string;
 }
 
+export interface EndCustomer {
+  id: string;
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  difficultyScore: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EndCustomerWithCounts extends EndCustomer {
+  _count: {
+    quotes: number;
+  };
+}
+
 export interface ContactWithCounts extends Contact {
   _count: {
     quotes: number;

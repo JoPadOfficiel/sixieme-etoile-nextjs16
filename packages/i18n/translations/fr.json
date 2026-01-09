@@ -2210,8 +2210,34 @@
 			"details": "Détails",
 			"timeline": "Activité",
 			"commercial": "Commercial",
-			"contract": "Contrat"
+			"contract": "Contrat",
+			"endCustomers": "Clients Finaux"
 		},
+		"endCustomers": {
+			"tabTitle": "Clients Finaux",
+			"add": "Ajouter un client",
+			"edit": "Modifier",
+			"delete": "Supprimer",
+			"search": "Rechercher...",
+			"listTitle": "Clients finaux rattachés",
+			"listDescription": "Gérez les clients finaux spécifiques à cette agence.",
+			"noResults": "Aucun client final trouvé",
+			"emptyDescription": "Ce partenaire n'a pas encore de clients finaux rattachés.",
+			"confirmDeleteTitle": "Supprimer le client final ?",
+			"confirmDeleteDescription": "Êtes-vous sûr de vouloir supprimer ce client final ? Cette action est irréversible.",
+			"deleteSuccess": "Client final supprimé avec succès",
+			"deleteError": "Erreur lors de la suppression (vérifiez les devis liés)",
+			"createSuccess": "Client final créé avec succès",
+			"updateSuccess": "Client final mis à jour avec succès",
+			"columns": {
+				"name": "Nom",
+				"email": "Email",
+				"phone": "Téléphone",
+				"quotes": "Devis",
+				"actions": "Actions"
+			}
+		},
+
 		"margin": {
 			"profitable": "Rentable ({margin} de marge)",
 			"lowMargin": "Marge faible ({margin})",

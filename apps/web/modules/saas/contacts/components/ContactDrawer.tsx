@@ -15,6 +15,7 @@ import { ContactForm } from "./ContactForm";
 import { PartnerContractForm } from "./PartnerContractForm";
 import { ContactTimeline } from "./ContactTimeline";
 import { ContactCommercialSummary } from "./ContactCommercialSummary";
+import { EndCustomerList } from "./EndCustomerList";
 import type { Contact } from "../types";
 
 interface ContactDrawerProps {
@@ -59,7 +60,7 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
 
         {contact ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className={`grid w-full ${contact.isPartner ? "grid-cols-5" : "grid-cols-3"}`}>
               <TabsTrigger value="details" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 {t("contacts.tabs.details")}
@@ -73,10 +74,16 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
                 {t("contacts.tabs.commercial")}
               </TabsTrigger>
               {contact.isPartner && (
-                <TabsTrigger value="contract" className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  {t("contacts.tabs.contract")}
-                </TabsTrigger>
+                <>
+                  <TabsTrigger value="end-customers" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    {t("contacts.tabs.endCustomers")}
+                  </TabsTrigger>
+                  <TabsTrigger value="contract" className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    {t("contacts.tabs.contract")}
+                  </TabsTrigger>
+                </>
               )}
             </TabsList>
 
@@ -100,12 +107,17 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
             </TabsContent>
 
             {contact.isPartner && (
-              <TabsContent value="contract" className="mt-4">
-                <PartnerContractForm
-                  contactId={contact.id}
-                  isPartner={contact.isPartner}
-                />
-              </TabsContent>
+              <>
+                <TabsContent value="end-customers" className="mt-4">
+                  <EndCustomerList contactId={contact.id} />
+                </TabsContent>
+                <TabsContent value="contract" className="mt-4">
+                  <PartnerContractForm
+                    contactId={contact.id}
+                    isPartner={contact.isPartner}
+                  />
+                </TabsContent>
+              </>
             )}
           </Tabs>
         ) : (
