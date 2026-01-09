@@ -267,7 +267,6 @@ development_status:
   23-9-add-vehicle-category-filter-to-quote-fee-promotion-catalog: done
   23-10-implement-automated-e2e-tests-for-bug-fixes: done
   23-11-implement-vehicle-category-filter-tests: done
-  23-12-update-documentation-and-user-guide: done
   epic-23-retrospective: optional
   epic-24: backlog
   24-1-create-endcustomer-data-model: backlog
