@@ -268,8 +268,8 @@ development_status:
   23-10-implement-automated-e2e-tests-for-bug-fixes: done
   23-11-implement-vehicle-category-filter-tests: done
   epic-23-retrospective: optional
-  epic-24: backlog
-  24-1-create-endcustomer-data-model: backlog
+  epic-24: in-progress
+  24-1-create-endcustomer-data-model: review
   24-2-implement-endcustomer-crud-api: backlog
   24-3-add-endcustomer-section-to-partner-contact-detail-page: backlog
   24-4-add-endcustomer-selector-to-quote-creation-form: backlog

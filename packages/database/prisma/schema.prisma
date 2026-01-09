@@ -152,6 +152,7 @@ model Organization {
   quoteStatusAuditLogs        QuoteStatusAuditLog[]
   quoteNotesAuditLogs         QuoteNotesAuditLog[]
   subcontractorFeedbacks      SubcontractorFeedback[]
+  endCustomers                EndCustomer[]
 
   @@unique([slug])
   @@map("organization")
@@ -448,11 +449,44 @@ model Contact {
   partnerContract        PartnerContract?
   subcontractorProfile   SubcontractorProfile? @relation(fields: [subcontractorProfileId], references: [id])
   subcontractorProfileId String?
+  endCustomers           EndCustomer[]
 
   @@index([organizationId])
   @@index([email])
   @@index([isPartner])
   @@map("contact")
+}
+/// EndCustomer - Individual end-customers within agency partner profiles (Story 24.1)
+model EndCustomer {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Identity
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+
+  // Story 24.8: Difficulty score for "Patience Tax" pricing adjustment
+  // Scale 1-5, null means no difficulty adjustment applied
+  difficultyScore Int?
+
+  // Notes
+  notes String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  quotes Quote[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@map("end_customer")
 }
 
 /// PartnerContract - Commercial settings for partner contacts
@@ -1616,6 +1650,10 @@ model Quote {
   contactId String
   contact   Contact @relation(fields: [contactId], references: [id])
 
+  // Story 24.4: End-customer attribution for agency sub-contacts
+  endCustomerId String?
+  endCustomer   EndCustomer? @relation(fields: [endCustomerId], references: [id])
+
   // Status
   status QuoteStatus @default(DRAFT)
 
@@ -1738,6 +1776,7 @@ model Quote {
   @@index([isSubcontracted])
   @@index([subcontractorId])
   @@index([stayStartDate])
+  @@index([endCustomerId])
   @@map("quote")
 }
 

@@ -98,6 +98,8 @@ export const PurchaseScalarFieldEnumSchema = z.enum(['id','organizationId','user
 
 export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','defaultClientType','difficultyScore','notes','createdAt','updatedAt','subcontractorProfileId']);
 
+export const EndCustomerScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','firstName','lastName','email','phone','difficultyScore','notes','createdAt','updatedAt']);
+
 export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
 
 export const PartnerContractZoneRouteScalarFieldEnumSchema = z.enum(['id','partnerContractId','zoneRouteId','overridePrice']);
@@ -160,7 +162,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','costBreakdown','notes','createdAt','updatedAt']);
 
@@ -503,6 +505,29 @@ export const ContactSchema = z.object({
 })
 
 export type Contact = z.infer<typeof ContactSchema>
+
+/////////////////////////////////////////
+// END CUSTOMER SCHEMA
+/////////////////////////////////////////
+
+/**
+ * EndCustomer - Individual end-customers within agency partner profiles (Story 24.1)
+ */
+export const EndCustomerSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  contactId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  difficultyScore: z.number().int().nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type EndCustomer = z.infer<typeof EndCustomerSchema>
 
 /////////////////////////////////////////
 // PARTNER CONTRACT SCHEMA
@@ -1284,6 +1309,7 @@ export const QuoteSchema = z.object({
   id: z.string().cuid(),
   organizationId: z.string(),
   contactId: z.string(),
+  endCustomerId: z.string().nullable(),
   pickupAt: z.coerce.date(),
   pickupAddress: z.string(),
   pickupLatitude: z.instanceof(Prisma.Decimal, { message: "Field 'pickupLatitude' must be a Decimal. Location: ['Models', 'Quote']"}).nullable(),
