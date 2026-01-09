@@ -439,6 +439,7 @@ export function QuotePricingPanel({
               disabled={isSubmitting}
               existingFeeIds={addedFees.filter(f => f.type === "fee").map(f => f.id)}
               existingPromotionIds={addedFees.filter(f => f.type === "promotion").map(f => f.id)}
+              vehicleCategoryId={formData.vehicleCategoryId}
             />
           </div>
           <AddedFeesList

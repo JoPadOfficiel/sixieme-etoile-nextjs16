@@ -19,6 +19,7 @@ interface OptionalFeeAPIResponse {
   vatRate: number | null;
   autoApplyRules: Record<string, unknown> | null;
   isActive: boolean;
+  vehicleCategoryIds: string[];
 }
 
 interface OptionalFeesListResponse {
@@ -44,6 +45,7 @@ function transformFee(fee: OptionalFeeAPIResponse): OptionalFeeWithRules {
     isTaxable: fee.isTaxable,
     vatRate: fee.vatRate || 20,
     autoApplyRules: fee.autoApplyRules as OptionalFeeWithRules["autoApplyRules"],
+    vehicleCategoryIds: fee.vehicleCategoryIds,
   };
 }
 

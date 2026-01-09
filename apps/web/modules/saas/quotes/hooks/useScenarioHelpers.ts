@@ -68,6 +68,7 @@ export interface OptionalFeeWithRules {
   isTaxable: boolean;
   vatRate: number;
   autoApplyRules: AutoApplyRules | null;
+  vehicleCategoryIds?: string[];
 }
 
 /**

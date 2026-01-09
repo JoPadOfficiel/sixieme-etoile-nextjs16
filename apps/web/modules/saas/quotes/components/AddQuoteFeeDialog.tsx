@@ -42,6 +42,7 @@ interface AddQuoteFeeDialogProps {
   disabled?: boolean;
   existingFeeIds?: string[];
   existingPromotionIds?: string[];
+  vehicleCategoryId?: string;
 }
 
 /**
@@ -53,6 +54,7 @@ export function AddQuoteFeeDialog({
   disabled,
   existingFeeIds = [],
   existingPromotionIds = [],
+  vehicleCategoryId,
 }: AddQuoteFeeDialogProps) {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
@@ -72,9 +74,26 @@ export function AddQuoteFeeDialog({
   const { fees, isLoading: feesLoading } = useOptionalFees();
   const { promotions, isLoading: promotionsLoading } = usePromotions();
 
-  // Filter out already selected fees/promotions
-  const availableFees = fees.filter((f) => !existingFeeIds.includes(f.id));
-  const availablePromotions = promotions.filter((p) => !existingPromotionIds.includes(p.id));
+  // Helper to check if item is compatible with selected vehicle category
+  const isCompatibleWithVehicle = (itemVehicleCategoryIds?: string[]) => {
+    // If no specific categories defined, it applies to all (Global)
+    if (!itemVehicleCategoryIds || itemVehicleCategoryIds.length === 0) return true;
+    // If no vehicle selected in quote, show all to be safe (or could hide specific ones)
+    if (!vehicleCategoryId) return true;
+    // Otherwise, must match
+    return itemVehicleCategoryIds.includes(vehicleCategoryId);
+  };
+
+  // Filter out already selected fees/promotions AND incompatible ones
+  const availableFees = fees.filter((f) => 
+    !existingFeeIds.includes(f.id) && 
+    isCompatibleWithVehicle(f.vehicleCategoryIds)
+  );
+  
+  const availablePromotions = promotions.filter((p) => 
+    !existingPromotionIds.includes(p.id) &&
+    isCompatibleWithVehicle(p.vehicleCategoryIds)
+  );
 
   const selectedFee = fees.find((f) => f.id === selectedFeeId);
   const selectedPromotion = promotions.find((p) => p.id === selectedPromotionId);

@@ -21,6 +21,7 @@ export interface Promotion {
   currentUses: number;
   isActive: boolean;
   status: "active" | "expired" | "upcoming" | "inactive";
+  vehicleCategoryIds: string[];
 }
 
 interface PromotionsListResponse {
