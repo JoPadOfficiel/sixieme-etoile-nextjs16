@@ -19,6 +19,7 @@ vi.mock("@repo/database", () => ({
 			create: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
+			findUnique: vi.fn(),
 		},
 	},
 }));
@@ -250,6 +251,7 @@ describe("Seasonal Multipliers API", () => {
 				id: "new-multiplier",
 			};
 			vi.mocked(db.seasonalMultiplier.create).mockResolvedValue(newMultiplier);
+			vi.mocked(db.seasonalMultiplier.findUnique).mockResolvedValue(newMultiplier);
 
 			const res = await client.pricing["seasonal-multipliers"].$post({
 				json: {

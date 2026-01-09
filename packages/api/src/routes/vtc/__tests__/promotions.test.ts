@@ -19,6 +19,7 @@ vi.mock("@repo/database", () => ({
 			create: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
+			findUnique: vi.fn(),
 		},
 	},
 }));
@@ -437,6 +438,7 @@ describe("Promotions API", () => {
 			};
 			vi.mocked(db.promotion.findFirst).mockResolvedValue(null); // No duplicate
 			vi.mocked(db.promotion.create).mockResolvedValue(newPromo);
+			vi.mocked(db.promotion.findUnique).mockResolvedValue(newPromo);
 
 			const res = await client.pricing.promotions.$post({
 				json: {
@@ -465,6 +467,7 @@ describe("Promotions API", () => {
 			};
 			vi.mocked(db.promotion.findFirst).mockResolvedValue(null);
 			vi.mocked(db.promotion.create).mockResolvedValue(newPromo);
+			vi.mocked(db.promotion.findUnique).mockResolvedValue(newPromo);
 
 			const res = await client.pricing.promotions.$post({
 				json: {

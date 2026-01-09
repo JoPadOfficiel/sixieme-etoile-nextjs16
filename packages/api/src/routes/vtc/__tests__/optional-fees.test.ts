@@ -19,6 +19,7 @@ vi.mock("@repo/database", () => ({
 			create: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
+			findUnique: vi.fn(),
 		},
 	},
 }));
@@ -283,6 +284,7 @@ describe("Optional Fees API", () => {
 				id: "new-fee",
 			};
 			vi.mocked(db.optionalFee.create).mockResolvedValue(newFee);
+			vi.mocked(db.optionalFee.findUnique).mockResolvedValue(newFee);
 
 			const res = await client.pricing["optional-fees"].$post({
 				json: {
@@ -307,6 +309,7 @@ describe("Optional Fees API", () => {
 				id: "new-percentage-fee",
 			};
 			vi.mocked(db.optionalFee.create).mockResolvedValue(newFee);
+			vi.mocked(db.optionalFee.findUnique).mockResolvedValue(newFee);
 
 			const res = await client.pricing["optional-fees"].$post({
 				json: {
@@ -325,6 +328,7 @@ describe("Optional Fees API", () => {
 
 		it("should create fee with auto-apply rules", async () => {
 			vi.mocked(db.optionalFee.create).mockResolvedValue(mockFeeWithAutoApply);
+			vi.mocked(db.optionalFee.findUnique).mockResolvedValue(mockFeeWithAutoApply);
 
 			const res = await client.pricing["optional-fees"].$post({
 				json: {

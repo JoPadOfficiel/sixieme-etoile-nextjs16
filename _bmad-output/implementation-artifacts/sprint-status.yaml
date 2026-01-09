@@ -263,7 +263,7 @@ development_status:
   23-5-add-vehicle-category-field-to-pricing-adjustment-data-models: done
   23-6-implement-vehicle-category-filter-ui-in-pricing-adjustment-forms: done
   23-7-update-pricing-engine-to-filter-by-vehicle-category: done
-  23-8-display-vehicle-category-column-in-pricing-adjustment-lists: backlog
+  23-8-display-vehicle-category-column-in-pricing-adjustment-lists: done
   23-9-add-vehicle-category-filter-to-quote-fee-promotion-catalog: backlog
   23-10-implement-automated-e2e-tests-for-bug-fixes: backlog
   23-11-implement-vehicle-category-filter-tests: backlog
