@@ -1435,13 +1435,11 @@ model AdvancedRate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Story 23.5: Vehicle category constraint (optional)
-  vehicleCategoryId String?
-  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
 
   @@index([organizationId])
   @@index([appliesTo])
-  @@index([vehicleCategoryId])
   @@map("advanced_rate")
 }
 
@@ -1470,13 +1468,11 @@ model SeasonalMultiplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Story 23.5: Vehicle category constraint (optional)
-  vehicleCategoryId String?
-  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
 
   @@index([organizationId])
   @@index([startDate, endDate])
-  @@index([vehicleCategoryId])
   @@map("seasonal_multiplier")
 }
 
@@ -1506,12 +1502,10 @@ model OptionalFee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Story 23.5: Vehicle category constraint (optional)
-  vehicleCategoryId String?
-  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
 
   @@index([organizationId])
-  @@index([vehicleCategoryId])
   @@map("optional_fee")
 }
 
@@ -1543,14 +1537,12 @@ model Promotion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Story 23.5: Vehicle category constraint (optional)
-  vehicleCategoryId String?
-  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([validFrom, validTo])
-  @@index([vehicleCategoryId])
   @@map("promotion")
 }
 

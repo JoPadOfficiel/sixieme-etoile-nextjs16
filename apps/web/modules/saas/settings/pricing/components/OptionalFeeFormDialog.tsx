@@ -29,6 +29,7 @@ import { Switch } from "@ui/components/switch";
 import { Textarea } from "@ui/components/textarea";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { VehicleCategorySelector } from "../../../quotes/components/VehicleCategorySelector";
 import type {
 	OptionalFee,
 	CreateOptionalFeeRequest,
@@ -74,6 +75,7 @@ export function OptionalFeeFormDialog({
 	const [vatRate, setVatRate] = useState(20);
 	const [autoApplyRules, setAutoApplyRules] = useState<AutoApplyRuleType[]>([]);
 	const [isActive, setIsActive] = useState(true);
+	const [vehicleCategoryIds, setVehicleCategoryIds] = useState<string[]>([]);
 
 	// Validation errors
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -90,6 +92,7 @@ export function OptionalFeeFormDialog({
 				setVatRate(fee.vatRate);
 				setAutoApplyRules(fee.autoApplyRules?.map((r) => r.type) || []);
 				setIsActive(fee.isActive);
+				setVehicleCategoryIds(fee.vehicleCategoryIds || []);
 			} else {
 				// Default values for new fee
 				setName("");
@@ -100,6 +103,7 @@ export function OptionalFeeFormDialog({
 				setVatRate(20);
 				setAutoApplyRules([]);
 				setIsActive(true);
+				setVehicleCategoryIds([]);
 			}
 			setErrors({});
 		}
@@ -145,6 +149,7 @@ export function OptionalFeeFormDialog({
 			vatRate: isTaxable ? vatRate : 20,
 			autoApplyRules: rules,
 			isActive,
+			vehicleCategoryIds,
 		};
 
 		await onSubmit(data);
@@ -171,7 +176,7 @@ export function OptionalFeeFormDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-4 py-4">
+					<div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
 						{/* Name */}
 						<div className="grid gap-2">
 							<Label htmlFor="name">{t("form.name")} *</Label>
@@ -185,6 +190,15 @@ export function OptionalFeeFormDialog({
 							{errors.name && (
 								<p className="text-sm text-destructive">{errors.name}</p>
 							)}
+						</div>
+
+						{/* Vehicle Category */}
+						<div className="grid gap-2">
+							<VehicleCategorySelector
+								mode="multiple"
+								value={vehicleCategoryIds}
+								onMultiChange={setVehicleCategoryIds}
+							/>
 						</div>
 
 						{/* Description */}

@@ -31,6 +31,8 @@ export interface OptionalFee {
 	vatRate: number;
 	autoApplyRules: AutoApplyRule[] | null;
 	isActive: boolean;
+	vehicleCategoryIds: string[];
+	vehicleCategoryNames: string[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -71,6 +73,7 @@ export interface CreateOptionalFeeRequest {
 	vatRate?: number;
 	autoApplyRules?: AutoApplyRule[] | null;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 export interface UpdateOptionalFeeRequest {
@@ -82,6 +85,7 @@ export interface UpdateOptionalFeeRequest {
 	vatRate?: number;
 	autoApplyRules?: AutoApplyRule[] | null;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 // ============================================================================

@@ -18,6 +18,8 @@ export interface SeasonalMultiplier {
 	multiplier: number;
 	priority: number;
 	isActive: boolean;
+	vehicleCategoryIds: string[];
+	vehicleCategoryNames: string[];
 	status: SeasonalMultiplierStatus;
 	createdAt: string;
 	updatedAt: string;
@@ -57,6 +59,7 @@ export interface CreateSeasonalMultiplierRequest {
 	multiplier: number;
 	priority?: number;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 export interface UpdateSeasonalMultiplierRequest {
@@ -67,6 +70,7 @@ export interface UpdateSeasonalMultiplierRequest {
 	multiplier?: number;
 	priority?: number;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 // ============================================================================

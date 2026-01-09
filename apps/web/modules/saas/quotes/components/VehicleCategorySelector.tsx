@@ -9,6 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@ui/components/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@ui/components/dropdown-menu";
+import { Button } from "@ui/components/button";
 import { Skeleton } from "@ui/components/skeleton";
 import { apiClient } from "@shared/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
@@ -17,12 +24,14 @@ import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import type { VehicleCategory } from "../types";
 
-interface VehicleCategorySelectorProps {
-  value: string;
-  onChange: (categoryId: string, category: VehicleCategory | null) => void;
+export interface VehicleCategorySelectorProps {
+  value: string | string[];
+  onChange?: (categoryId: string, category: VehicleCategory | null) => void;
+  onMultiChange?: (categoryIds: string[]) => void;
   disabled?: boolean;
   required?: boolean;
   className?: string;
+  mode?: "single" | "multiple";
 }
 
 interface VehicleCategoriesResponse {
@@ -45,9 +54,11 @@ interface VehicleCategoriesResponse {
 export function VehicleCategorySelector({
   value,
   onChange,
+  onMultiChange,
   disabled = false,
   required = false,
   className,
+  mode = "single",
 }: VehicleCategorySelectorProps) {
   const t = useTranslations();
 
@@ -67,12 +78,28 @@ export function VehicleCategorySelector({
 
   const categories = data?.data ?? [];
 
-  const handleChange = (categoryId: string) => {
+  const handleSingleChange = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId) ?? null;
-    onChange(categoryId, category);
+    onChange?.(categoryId, category);
   };
 
-  const selectedCategory = categories.find((c) => c.id === value);
+  const handleMultiChange = (categoryId: string, checked: boolean) => {
+    if (!onMultiChange) return;
+    const currentValues = Array.isArray(value) ? value : [];
+    if (checked) {
+      onMultiChange([...currentValues, categoryId]);
+    } else {
+      onMultiChange(currentValues.filter((id) => id !== categoryId));
+    }
+  };
+
+  const selectedCategory = !Array.isArray(value) 
+    ? categories.find((c) => c.id === value) 
+    : null;
+    
+  const selectedCategories = Array.isArray(value)
+    ? categories.filter((c) => value.includes(c.id))
+    : [];
 
   if (isLoading) {
     return (
@@ -92,7 +119,71 @@ export function VehicleCategorySelector({
         {t("quotes.create.vehicleCategory")}
         {required && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <Select value={value} onValueChange={handleChange} disabled={disabled}>
+      <Label>
+        {t("quotes.create.vehicleCategory")}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
+      
+      {mode === "multiple" ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={disabled}>
+            <Button variant="outline" className="w-full justify-start text-left font-normal">
+              {selectedCategories.length === 0 ? (
+                <span className="text-muted-foreground">{t("quotes.create.selectVehicleCategory")}</span>
+              ) : selectedCategories.length === categories.length ? (
+                 <span>Tous ({selectedCategories.length})</span>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {selectedCategories.length > 2 ? (
+                    <span>{selectedCategories.length} sélectionnés</span>
+                  ) : (
+                    selectedCategories.map((cat) => (
+                      <Badge key={cat.id} variant="secondary" className="mr-1">
+                        {cat.name}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-full min-w-[300px]" align="start">
+             {categories.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground text-center">
+                  {t("quotes.create.noVehicleCategories")}
+                </div>
+              ) : (
+                categories.map((category) => (
+                  <DropdownMenuCheckboxItem
+                    key={category.id}
+                    checked={Array.isArray(value) && value.includes(category.id)}
+                    onCheckedChange={(checked) => handleMultiChange(category.id, checked)}
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      {category.regulatoryCategory === "HEAVY" ? (
+                        <TruckIcon className="size-4 text-muted-foreground" />
+                      ) : (
+                        <CarIcon className="size-4 text-muted-foreground" />
+                      )}
+                      <span>{category.name}</span>
+                       <Badge
+                        variant={
+                          category.regulatoryCategory === "HEAVY"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                        className="text-xs ml-auto"
+                      >
+                        {category.regulatoryCategory}
+                      </Badge>
+                    </div>
+                  </DropdownMenuCheckboxItem>
+                ))
+              )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Select value={value as string} onValueChange={handleSingleChange} disabled={disabled}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={t("quotes.create.selectVehicleCategory")}>
             {selectedCategory && (
@@ -147,7 +238,8 @@ export function VehicleCategorySelector({
             ))
           )}
         </SelectContent>
-      </Select>
+        </Select>
+      )}
     </div>
   );
 }

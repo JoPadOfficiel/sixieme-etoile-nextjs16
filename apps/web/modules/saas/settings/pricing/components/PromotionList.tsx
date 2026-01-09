@@ -119,6 +119,7 @@ export function PromotionList({
 							<TableHead>{t("table.validFrom")}</TableHead>
 							<TableHead>{t("table.validTo")}</TableHead>
 							<TableHead className="text-center">{t("table.usage")}</TableHead>
+							<TableHead>{t("table.category") || "Category"}</TableHead>
 							<TableHead>{t("table.status")}</TableHead>
 							<TableHead className="w-[70px]">{t("table.actions")}</TableHead>
 						</TableRow>
@@ -156,7 +157,7 @@ export function PromotionList({
 							))
 						) : promotions.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={8} className="h-24 text-center">
+								<TableCell colSpan={9} className="h-24 text-center">
 									<div className="text-muted-foreground">
 										<p className="font-medium">{t("empty.title")}</p>
 										<p className="text-sm">{t("empty.description")}</p>
@@ -195,6 +196,11 @@ export function PromotionList({
 									</TableCell>
 									<TableCell className="text-center font-mono text-sm">
 										{formatUsage(promotion.currentUses, promotion.maxTotalUses)}
+									</TableCell>
+									<TableCell>
+										{promotion.vehicleCategoryNames?.length
+											? promotion.vehicleCategoryNames.join(", ")
+											: "All Categories"}
 									</TableCell>
 									<TableCell>
 										<Badge

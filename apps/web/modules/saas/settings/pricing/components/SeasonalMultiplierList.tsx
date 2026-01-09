@@ -94,6 +94,7 @@ export function SeasonalMultiplierList({
 							<TableHead>{t("table.period")}</TableHead>
 							<TableHead className="text-right">{t("table.multiplier")}</TableHead>
 							<TableHead className="text-center">{t("table.priority")}</TableHead>
+							<TableHead>{t("table.category") || "Category"}</TableHead>
 							<TableHead>{t("table.status")}</TableHead>
 							<TableHead className="w-[70px]">{t("table.actions")}</TableHead>
 						</TableRow>
@@ -125,7 +126,7 @@ export function SeasonalMultiplierList({
 							))
 						) : multipliers.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={6} className="h-24 text-center">
+								<TableCell colSpan={7} className="h-24 text-center">
 									<div className="text-muted-foreground">
 										<p className="font-medium">{t("empty.title")}</p>
 										<p className="text-sm">{t("empty.description")}</p>
@@ -160,6 +161,11 @@ export function SeasonalMultiplierList({
 									</TableCell>
 									<TableCell className="text-center">
 										{multiplier.priority}
+									</TableCell>
+									<TableCell>
+										{multiplier.vehicleCategoryNames?.length
+											? multiplier.vehicleCategoryNames.join(", ")
+											: "All Categories"}
 									</TableCell>
 									<TableCell>
 										<Badge

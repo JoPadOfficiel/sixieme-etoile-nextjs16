@@ -27,7 +27,8 @@ import type {
 	CreateSeasonalMultiplierRequest,
 	UpdateSeasonalMultiplierRequest,
 } from "../types/seasonal-multiplier";
-import { toISODateString, formatMultiplierAsPercent } from "../types/seasonal-multiplier";
+import { toISODateString, formatMultiplierAsFactor, formatMultiplierAsPercent } from "../types/seasonal-multiplier";
+import { VehicleCategorySelector } from "../../../quotes/components/VehicleCategorySelector";
 
 interface SeasonalMultiplierFormDialogProps {
 	open: boolean;
@@ -57,6 +58,7 @@ export function SeasonalMultiplierFormDialog({
 	const [multiplierValue, setMultiplierValue] = useState(1.0);
 	const [priority, setPriority] = useState(0);
 	const [isActive, setIsActive] = useState(true);
+	const [vehicleCategoryIds, setVehicleCategoryIds] = useState<string[]>([]);
 
 	// Validation errors
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,6 +74,7 @@ export function SeasonalMultiplierFormDialog({
 				setMultiplierValue(multiplier.multiplier);
 				setPriority(multiplier.priority);
 				setIsActive(multiplier.isActive);
+				setVehicleCategoryIds(multiplier.vehicleCategoryIds || []);
 			} else {
 				// Default values for new multiplier
 				setName("");
@@ -84,6 +87,7 @@ export function SeasonalMultiplierFormDialog({
 				setMultiplierValue(1.0);
 				setPriority(0);
 				setIsActive(true);
+				setVehicleCategoryIds([]);
 			}
 			setErrors({});
 		}
@@ -131,6 +135,7 @@ export function SeasonalMultiplierFormDialog({
 			multiplier: multiplierValue,
 			priority,
 			isActive,
+			vehicleCategoryIds,
 		};
 
 		await onSubmit(data);
@@ -149,7 +154,7 @@ export function SeasonalMultiplierFormDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-4 py-4">
+					<div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
 						{/* Name */}
 						<div className="grid gap-2">
 							<Label htmlFor="name">{t("form.name")} *</Label>
@@ -163,6 +168,18 @@ export function SeasonalMultiplierFormDialog({
 							{errors.name && (
 								<p className="text-sm text-destructive">{errors.name}</p>
 							)}
+						</div>
+
+						{/* Vehicle Category */}
+						<div className="grid gap-2">
+							<VehicleCategorySelector
+								mode="multiple"
+								value={vehicleCategoryIds}
+								onMultiChange={setVehicleCategoryIds}
+							/>
+							<p className="text-xs text-muted-foreground">
+								{t("form.vehicleCategoryHelp")}
+							</p>
 						</div>
 
 						{/* Description */}
@@ -236,6 +253,7 @@ export function SeasonalMultiplierFormDialog({
 									value={multiplierValue}
 									onChange={(e) => setMultiplierValue(parseFloat(e.target.value) || 1.0)}
 									className="w-20"
+                                    data-testid="multiplier-input"
 								/>
 							</div>
 							<p className="text-xs text-muted-foreground">{t("form.multiplierHelp")}</p>

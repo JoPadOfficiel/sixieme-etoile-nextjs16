@@ -36,6 +36,7 @@ import type {
 	DiscountType,
 } from "../types/promotion";
 import { formatDateForInput } from "../types/promotion";
+import { VehicleCategorySelector } from "../../../quotes/components/VehicleCategorySelector";
 
 interface PromotionFormDialogProps {
 	open: boolean;
@@ -67,6 +68,7 @@ export function PromotionFormDialog({
 	const [maxTotalUses, setMaxTotalUses] = useState<string>("");
 	const [maxUsesPerContact, setMaxUsesPerContact] = useState<string>("");
 	const [isActive, setIsActive] = useState(true);
+	const [vehicleCategoryIds, setVehicleCategoryIds] = useState<string[]>([]);
 
 	// Validation errors
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,6 +99,7 @@ export function PromotionFormDialog({
 						: ""
 				);
 				setIsActive(promotion.isActive);
+				setVehicleCategoryIds(promotion.vehicleCategoryIds || []);
 			} else {
 				// Default values for new promotion
 				const today = getTodayDate();
@@ -109,6 +112,7 @@ export function PromotionFormDialog({
 				setMaxTotalUses("");
 				setMaxUsesPerContact("");
 				setIsActive(true);
+				setVehicleCategoryIds([]);
 			}
 			setErrors({});
 		}
@@ -166,6 +170,7 @@ export function PromotionFormDialog({
 			maxTotalUses: maxTotalUses ? parseInt(maxTotalUses) : null,
 			maxUsesPerContact: maxUsesPerContact ? parseInt(maxUsesPerContact) : null,
 			isActive,
+			vehicleCategoryIds,
 		};
 
 		await onSubmit(data);
@@ -184,7 +189,7 @@ export function PromotionFormDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-4 py-4">
+					<div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
 						{/* Code */}
 						<div className="grid gap-2">
 							<Label htmlFor="code">{t("form.code")} *</Label>
@@ -205,6 +210,15 @@ export function PromotionFormDialog({
 									{t("form.currentUses")}: {promotion.currentUses}
 								</p>
 							)}
+						</div>
+
+						{/* Vehicle Category */}
+						<div className="grid gap-2">
+							<VehicleCategorySelector
+								mode="multiple"
+								value={vehicleCategoryIds}
+								onMultiChange={setVehicleCategoryIds}
+							/>
 						</div>
 
 						{/* Description */}

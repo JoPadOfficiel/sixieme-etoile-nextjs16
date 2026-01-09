@@ -44,6 +44,7 @@ import {
 	requiresTimeFields,
 	requiresZoneField,
 } from "../types/advanced-rate";
+import { VehicleCategorySelector } from "../../../quotes/components/VehicleCategorySelector";
 
 interface PricingZone {
 	id: string;
@@ -105,6 +106,7 @@ export function AdvancedRateFormDialog({
 	const [value, setValue] = useState(initialValue);
 	const [priority, setPriority] = useState(initialPriority);
 	const [isActive, setIsActive] = useState(initialIsActive);
+	const [vehicleCategoryIds, setVehicleCategoryIds] = useState<string[]>(rate?.vehicleCategoryIds || []);
 
 	// Reset form when rate changes (for edit mode switching)
 	useEffect(() => {
@@ -120,6 +122,7 @@ export function AdvancedRateFormDialog({
 		setValue(initialValue);
 		setPriority(initialPriority);
 		setIsActive(initialIsActive);
+		setVehicleCategoryIds(rate?.vehicleCategoryIds || []);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [rate?.id]);
 
@@ -141,6 +144,7 @@ export function AdvancedRateFormDialog({
 			value: parseFloat(value),
 			priority: parseInt(priority, 10),
 			isActive,
+			vehicleCategoryIds,
 		};
 
 		// Add conditional fields based on type
@@ -182,7 +186,7 @@ export function AdvancedRateFormDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-4 py-4">
+					<div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
 						{/* Name */}
 						<div className="grid gap-2">
 							<Label htmlFor="name">{t("form.name")}</Label>
@@ -194,6 +198,15 @@ export function AdvancedRateFormDialog({
 								placeholder={t("form.namePlaceholder")}
 								maxLength={100}
 								required
+							/>
+						</div>
+
+						{/* Vehicle Category */}
+						<div className="grid gap-2">
+							<VehicleCategorySelector
+								mode="multiple"
+								value={vehicleCategoryIds}
+								onMultiChange={setVehicleCategoryIds}
 							/>
 						</div>
 

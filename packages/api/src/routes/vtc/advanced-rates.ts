@@ -70,6 +70,8 @@ const transformAdvancedRate = (rate: any) => ({
 	value: decimalToNumber(rate.value),
 	priority: rate.priority,
 	isActive: rate.isActive,
+	vehicleCategoryIds: rate.vehicleCategories?.map((c: any) => c.id) ?? [],
+	vehicleCategoryNames: rate.vehicleCategories?.map((c: any) => c.name) ?? [],
 	createdAt: rate.createdAt.toISOString(),
 	updatedAt: rate.updatedAt.toISOString(),
 });
@@ -106,6 +108,7 @@ const createRateSchema = z
 		value: z.coerce.number(),
 		priority: z.coerce.number().int().default(0),
 		isActive: z.boolean().default(true),
+		vehicleCategoryIds: z.array(z.string()).optional(),
 	})
 	.refine(
 		(data) => {
@@ -170,6 +173,7 @@ const updateRateSchema = z
 		value: z.coerce.number().optional(),
 		priority: z.coerce.number().int().optional(),
 		isActive: z.boolean().optional(),
+		vehicleCategoryIds: z.array(z.string()).optional(),
 	})
 	.refine(
 		(data) => {
@@ -294,6 +298,9 @@ export const advancedRatesRouter = new Hono()
 						zone: {
 							select: { name: true },
 						},
+						vehicleCategories: {
+							select: { id: true, name: true },
+						},
 					},
 				}),
 				db.advancedRate.count({ where }),
@@ -330,6 +337,9 @@ export const advancedRatesRouter = new Hono()
 				include: {
 					zone: {
 						select: { name: true },
+					},
+					vehicleCategories: {
+						select: { id: true, name: true },
 					},
 				},
 			});
@@ -378,6 +388,12 @@ export const advancedRatesRouter = new Hono()
 						value: data.value,
 						priority: data.priority,
 						isActive: data.isActive,
+						...(data.vehicleCategoryIds &&
+							data.vehicleCategoryIds.length > 0 && {
+								vehicleCategories: {
+									connect: data.vehicleCategoryIds.map((id) => ({ id })),
+								},
+							}),
 					},
 					organizationId
 				),
@@ -443,6 +459,11 @@ export const advancedRatesRouter = new Hono()
 					...(data.value !== undefined && { value: data.value }),
 					...(data.priority !== undefined && { priority: data.priority }),
 					...(data.isActive !== undefined && { isActive: data.isActive }),
+					...(data.vehicleCategoryIds !== undefined && {
+						vehicleCategories: {
+							set: data.vehicleCategoryIds.map((id) => ({ id })),
+						},
+					}),
 				},
 				include: {
 					zone: {

@@ -28,6 +28,8 @@ export interface AdvancedRate {
 	value: number;
 	priority: number;
 	isActive: boolean;
+	vehicleCategoryIds: string[];
+	vehicleCategoryNames: string[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -76,6 +78,7 @@ export interface CreateAdvancedRateRequest {
 	value: number;
 	priority?: number;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 export interface UpdateAdvancedRateRequest {
@@ -91,6 +94,7 @@ export interface UpdateAdvancedRateRequest {
 	value?: number;
 	priority?: number;
 	isActive?: boolean;
+	vehicleCategoryId?: string | null;
 }
 
 // ============================================================================

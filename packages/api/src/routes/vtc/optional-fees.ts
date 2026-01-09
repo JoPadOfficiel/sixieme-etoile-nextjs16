@@ -47,6 +47,8 @@ const transformOptionalFee = (fee: any) => ({
 	vatRate: decimalToNumber(fee.vatRate),
 	autoApplyRules: fee.autoApplyRules,
 	isActive: fee.isActive,
+	vehicleCategoryIds: fee.vehicleCategories?.map((c: any) => c.id) ?? [],
+	vehicleCategoryNames: fee.vehicleCategories?.map((c: any) => c.name) ?? [],
 	createdAt: fee.createdAt.toISOString(),
 	updatedAt: fee.updatedAt.toISOString(),
 });
@@ -87,6 +89,7 @@ const createOptionalFeeSchema = z.object({
 		.default(20),
 	autoApplyRules: z.array(autoApplyRuleSchema).optional().nullable(),
 	isActive: z.boolean().default(true),
+	vehicleCategoryIds: z.array(z.string()).optional(),
 });
 
 const updateOptionalFeeSchema = z.object({
@@ -98,6 +101,7 @@ const updateOptionalFeeSchema = z.object({
 	vatRate: z.coerce.number().min(0).max(100).optional(),
 	autoApplyRules: z.array(autoApplyRuleSchema).optional().nullable(),
 	isActive: z.boolean().optional(),
+	vehicleCategoryIds: z.array(z.string()).optional(),
 });
 
 // ============================================================================
@@ -224,6 +228,11 @@ export const optionalFeesRouter = new Hono()
 					skip,
 					take: limit,
 					orderBy: [{ name: "asc" }],
+					include: {
+						vehicleCategories: {
+							select: { id: true, name: true },
+						},
+					},
 				}),
 				db.optionalFee.count({ where }),
 			]);
@@ -256,6 +265,11 @@ export const optionalFeesRouter = new Hono()
 
 			const fee = await db.optionalFee.findFirst({
 				where: withTenantFilter({ id }, organizationId),
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			if (!fee) {
@@ -296,6 +310,12 @@ export const optionalFeesRouter = new Hono()
 							? (data.autoApplyRules as Prisma.InputJsonValue)
 							: Prisma.JsonNull,
 						isActive: data.isActive,
+						...(data.vehicleCategoryIds &&
+							data.vehicleCategoryIds.length > 0 && {
+								vehicleCategories: {
+									connect: data.vehicleCategoryIds.map((id) => ({ id })),
+								},
+							}),
 					},
 					organizationId
 				),
@@ -346,6 +366,11 @@ export const optionalFeesRouter = new Hono()
 					: Prisma.JsonNull;
 			}
 			if (data.isActive !== undefined) updateData.isActive = data.isActive;
+			if (data.vehicleCategoryIds !== undefined) {
+				updateData.vehicleCategories = {
+					set: data.vehicleCategoryIds.map((id) => ({ id })),
+				};
+			}
 
 			const fee = await db.optionalFee.update({
 				where: withTenantId(id, organizationId),

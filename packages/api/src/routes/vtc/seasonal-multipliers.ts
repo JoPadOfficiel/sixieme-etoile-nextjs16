@@ -71,6 +71,8 @@ const transformMultiplier = (multiplier: any) => ({
 	multiplier: decimalToNumber(multiplier.multiplier),
 	priority: multiplier.priority,
 	isActive: multiplier.isActive,
+	vehicleCategoryIds: multiplier.vehicleCategories?.map((c: any) => c.id) ?? [],
+	vehicleCategoryNames: multiplier.vehicleCategories?.map((c: any) => c.name) ?? [],
 	status: calculateStatus(
 		multiplier.startDate,
 		multiplier.endDate,
@@ -106,6 +108,7 @@ const createMultiplierSchema = z.object({
 		.max(3.0, "Multiplier cannot exceed 3.0"),
 	priority: z.coerce.number().int().default(0),
 	isActive: z.boolean().default(true),
+	vehicleCategoryIds: z.array(z.string()).optional(),
 });
 
 const updateMultiplierSchema = z.object({
@@ -126,6 +129,7 @@ const updateMultiplierSchema = z.object({
 	multiplier: z.coerce.number().min(0.1).max(3.0).optional(),
 	priority: z.coerce.number().int().optional(),
 	isActive: z.boolean().optional(),
+	vehicleCategoryIds: z.array(z.string()).optional(),
 });
 
 // ============================================================================
@@ -251,6 +255,11 @@ export const seasonalMultipliersRouter = new Hono()
 					skip,
 					take: limit,
 					orderBy: [{ priority: "desc" }, { startDate: "asc" }],
+					include: {
+						vehicleCategories: {
+							select: { id: true, name: true },
+						},
+					},
 				}),
 				db.seasonalMultiplier.count({ where }),
 			]);
@@ -283,6 +292,11 @@ export const seasonalMultipliersRouter = new Hono()
 
 			const multiplier = await db.seasonalMultiplier.findFirst({
 				where: withTenantFilter({ id }, organizationId),
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			if (!multiplier) {
@@ -331,6 +345,12 @@ export const seasonalMultipliersRouter = new Hono()
 						multiplier: data.multiplier,
 						priority: data.priority,
 						isActive: data.isActive,
+						...(data.vehicleCategoryIds &&
+							data.vehicleCategoryIds.length > 0 && {
+								vehicleCategories: {
+									connect: data.vehicleCategoryIds.map((id) => ({ id })),
+								},
+							}),
 					},
 					organizationId
 				),
@@ -393,6 +413,11 @@ export const seasonalMultipliersRouter = new Hono()
 					...(data.multiplier !== undefined && { multiplier: data.multiplier }),
 					...(data.priority !== undefined && { priority: data.priority }),
 					...(data.isActive !== undefined && { isActive: data.isActive }),
+					...(data.vehicleCategoryIds !== undefined && {
+						vehicleCategories: {
+							set: data.vehicleCategoryIds.map((id) => ({ id })),
+						},
+					}),
 				},
 			});
 

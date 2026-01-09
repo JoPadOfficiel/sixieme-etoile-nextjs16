@@ -116,6 +116,7 @@ export function OptionalFeeList({
 							<TableHead className="text-right">{t("table.amount")}</TableHead>
 							<TableHead className="text-center">{t("table.vat")}</TableHead>
 							<TableHead className="text-center">{t("table.autoApply")}</TableHead>
+							<TableHead>{t("table.category") || "Category"}</TableHead>
 							<TableHead>{t("table.status")}</TableHead>
 							<TableHead className="w-[70px]">{t("table.actions")}</TableHead>
 						</TableRow>
@@ -150,7 +151,7 @@ export function OptionalFeeList({
 							))
 						) : fees.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={7} className="h-24 text-center">
+								<TableCell colSpan={8} className="h-24 text-center">
 									<div className="text-muted-foreground">
 										<p className="font-medium">{t("empty.title")}</p>
 										<p className="text-sm">{t("empty.description")}</p>
@@ -194,6 +195,11 @@ export function OptionalFeeList({
 												{t("autoApply.disabled")}
 											</span>
 										)}
+									</TableCell>
+									<TableCell>
+										{fee.vehicleCategoryNames?.length
+											? fee.vehicleCategoryNames.join(", ")
+											: "All Categories"}
 									</TableCell>
 									<TableCell>
 										<Badge

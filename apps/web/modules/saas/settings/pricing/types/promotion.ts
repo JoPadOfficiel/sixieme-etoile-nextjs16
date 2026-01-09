@@ -23,6 +23,8 @@ export interface Promotion {
 	maxUsesPerContact: number | null;
 	currentUses: number;
 	isActive: boolean;
+	vehicleCategoryIds: string[];
+	vehicleCategoryNames: string[];
 	status: PromotionStatus;
 	createdAt: string;
 	updatedAt: string;
@@ -71,6 +73,7 @@ export interface CreatePromotionRequest {
 	maxTotalUses?: number | null;
 	maxUsesPerContact?: number | null;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 export interface UpdatePromotionRequest {
@@ -83,6 +86,7 @@ export interface UpdatePromotionRequest {
 	maxTotalUses?: number | null;
 	maxUsesPerContact?: number | null;
 	isActive?: boolean;
+	vehicleCategoryIds?: string[];
 }
 
 // ============================================================================

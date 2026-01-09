@@ -85,6 +85,8 @@ const transformPromotion = (promotion: any) => ({
 	currentUses: promotion.currentUses,
 	isActive: promotion.isActive,
 	status: computePromotionStatus(promotion),
+	vehicleCategoryIds: promotion.vehicleCategories?.map((c: any) => c.id) ?? [],
+	vehicleCategoryNames: promotion.vehicleCategories?.map((c: any) => c.name) ?? [],
 	createdAt: promotion.createdAt.toISOString(),
 	updatedAt: promotion.updatedAt.toISOString(),
 });
@@ -116,11 +118,20 @@ const createPromotionSchema = z
 		maxTotalUses: z.coerce.number().int().positive().optional().nullable(),
 		maxUsesPerContact: z.coerce.number().int().positive().optional().nullable(),
 		isActive: z.boolean().default(true),
+		vehicleCategoryIds: z.array(z.string()).optional(),
 	})
-	.refine((data) => data.validTo >= data.validFrom, {
-		message: "Valid To must be after or equal to Valid From",
-		path: ["validTo"],
-	});
+	.refine(
+		(data) => {
+			if (data.validFrom && data.validTo) {
+				return data.validTo >= data.validFrom;
+			}
+			return true;
+		},
+		{
+			message: "Valid To must be after or equal to Valid From",
+			path: ["validTo"],
+		}
+	);
 
 const updatePromotionSchema = z
 	.object({
@@ -138,6 +149,7 @@ const updatePromotionSchema = z
 		maxTotalUses: z.coerce.number().int().positive().optional().nullable(),
 		maxUsesPerContact: z.coerce.number().int().positive().optional().nullable(),
 		isActive: z.boolean().optional(),
+		vehicleCategoryIds: z.array(z.string()).optional(),
 	})
 	.refine(
 		(data) => {
@@ -332,6 +344,11 @@ export const promotionsRouter = new Hono()
 					skip,
 					take: limit,
 					orderBy: [{ createdAt: "desc" }],
+					include: {
+						vehicleCategories: {
+							select: { id: true, name: true },
+						},
+					},
 				}),
 				db.promotion.count({ where }),
 			]);
@@ -372,6 +389,11 @@ export const promotionsRouter = new Hono()
 
 			const promotion = await db.promotion.findFirst({
 				where: withTenantFilter({ id }, organizationId),
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			if (!promotion) {
@@ -423,6 +445,12 @@ export const promotionsRouter = new Hono()
 						maxUsesPerContact: data.maxUsesPerContact ?? null,
 						currentUses: 0,
 						isActive: data.isActive,
+						...(data.vehicleCategoryIds &&
+							data.vehicleCategoryIds.length > 0 && {
+								vehicleCategories: {
+									connect: data.vehicleCategoryIds.map((id) => ({ id })),
+								},
+							}),
 					},
 					organizationId
 				),
@@ -501,6 +529,11 @@ export const promotionsRouter = new Hono()
 			if (data.maxUsesPerContact !== undefined)
 				updateData.maxUsesPerContact = data.maxUsesPerContact;
 			if (data.isActive !== undefined) updateData.isActive = data.isActive;
+			if (data.vehicleCategoryIds !== undefined) {
+				updateData.vehicleCategories = {
+					set: data.vehicleCategoryIds.map((id) => ({ id })),
+				};
+			}
 			// Note: currentUses is NOT updatable via API
 
 			const promotion = await db.promotion.update({
