@@ -255,7 +255,7 @@ development_status:
   22-12-implement-comprehensive-testing-suite: done
   22-13-update-documentation-and-training-materials: done
   epic-22-retrospective: optional
-  epic-23: in-progress
+  epic-23: done
   23-1-fix-pricing-routes-excursions-disposals-loading-state-bug: done
   23-2-fix-multizoneselect-click-bug: done
   23-3-fix-pricing-adjustment-dialogs-freeze-on-cancel-save: done
