@@ -29,6 +29,41 @@ import type {
 import { DEFAULT_DIFFICULTY_MULTIPLIERS } from "./constants";
 
 // ============================================================================
+// Vehicle Category Matching (Story 23-7)
+// ============================================================================
+
+/**
+ * Story 23-7: Check if an adjustment's vehicle category matches the quote's category
+ * @param adjustmentCategoryId - The category ID(s) from the adjustment (null = applies to all)
+ * @param adjustmentCategoryIds - Array of category IDs (for multi-category support)
+ * @param quoteCategoryId - The vehicle category ID of the quote being calculated
+ * @returns true if the adjustment should be applied to this quote
+ */
+export function matchesVehicleCategory(
+	adjustmentCategoryId: string | null | undefined,
+	adjustmentCategoryIds: string[] | null | undefined,
+	quoteCategoryId: string | null | undefined
+): boolean {
+	// If no quote category specified, apply all adjustments (fallback behavior)
+	if (!quoteCategoryId) {
+		return true;
+	}
+
+	// Check multi-category array first (takes precedence)
+	if (adjustmentCategoryIds && adjustmentCategoryIds.length > 0) {
+		return adjustmentCategoryIds.includes(quoteCategoryId);
+	}
+
+	// If no single category specified, applies to all (backward compatible)
+	if (!adjustmentCategoryId) {
+		return true;
+	}
+
+	// Single category match
+	return adjustmentCategoryId === quoteCategoryId;
+}
+
+// ============================================================================
 // Time Parsing Utilities
 // ============================================================================
 
@@ -271,12 +306,18 @@ export function calculateWeightedNightRate(
 
 /**
  * Evaluate if an advanced rate applies to the given context
+ * Story 23-7: Added vehicle category filtering
  */
 export function evaluateAdvancedRate(
 	rate: AdvancedRateData,
 	context: MultiplierContext,
 ): boolean {
 	if (!rate.isActive) {
+		return false;
+	}
+
+	// Story 23-7: Check vehicle category match
+	if (!matchesVehicleCategory(rate.vehicleCategoryId, rate.vehicleCategoryIds, context.vehicleCategoryId)) {
 		return false;
 	}
 
@@ -395,12 +436,18 @@ export function evaluateAdvancedRates(
 
 /**
  * Evaluate if a seasonal multiplier applies to the given pickup time
+ * Story 23-7: Added vehicle category filtering
  */
 export function evaluateSeasonalMultiplier(
 	multiplier: SeasonalMultiplierData,
 	pickupAt: Date,
+	vehicleCategoryId?: string | null,
 ): boolean {
 	if (!multiplier.isActive) {
+		return false;
+	}
+	// Story 23-7: Check vehicle category match
+	if (!matchesVehicleCategory(multiplier.vehicleCategoryId, multiplier.vehicleCategoryIds, vehicleCategoryId)) {
 		return false;
 	}
 	return isWithinDateRange(pickupAt, multiplier.startDate, multiplier.endDate);
@@ -418,11 +465,13 @@ export function applySeasonalMultiplier(
 
 /**
  * Evaluate and apply all applicable seasonal multipliers
+ * Story 23-7: Added vehicle category filtering
  */
 export function evaluateSeasonalMultipliers(
 	price: number,
 	pickupAt: Date | null,
 	multipliers: SeasonalMultiplierData[],
+	vehicleCategoryId?: string | null,
 ): MultiplierEvaluationResult {
 	const appliedRules: AppliedMultiplierRule[] = [];
 	let currentPrice = price;
@@ -434,7 +483,8 @@ export function evaluateSeasonalMultipliers(
 	const sortedMultipliers = [...multipliers].sort((a, b) => b.priority - a.priority);
 
 	for (const multiplier of sortedMultipliers) {
-		if (evaluateSeasonalMultiplier(multiplier, pickupAt)) {
+		// Story 23-7: Pass vehicleCategoryId for category filtering
+		if (evaluateSeasonalMultiplier(multiplier, pickupAt, vehicleCategoryId)) {
 			const priceBefore = currentPrice;
 			currentPrice = applySeasonalMultiplier(currentPrice, multiplier);
 
@@ -459,6 +509,7 @@ export function evaluateSeasonalMultipliers(
 
 /**
  * Apply all multipliers to a base price (Story 4.3)
+ * Story 23-7: Added vehicle category filtering for seasonal multipliers
  * Order: Advanced Rates → Seasonal Multipliers
  */
 export function applyAllMultipliers(
@@ -472,10 +523,12 @@ export function applyAllMultipliers(
 	const advancedResult = evaluateAdvancedRates(basePrice, context, advancedRates);
 	allAppliedRules.push(...advancedResult.appliedRules);
 
+	// Story 23-7: Pass vehicleCategoryId for category-specific filtering
 	const seasonalResult = evaluateSeasonalMultipliers(
 		advancedResult.adjustedPrice,
 		context.pickupAt,
 		seasonalMultipliers,
+		context.vehicleCategoryId,
 	);
 	allAppliedRules.push(...seasonalResult.appliedRules);
 

@@ -383,6 +383,9 @@ export interface AdvancedRateData {
 	value: number;
 	priority: number;
 	isActive: boolean;
+	// Story 23-7: Optional vehicle category filter
+	vehicleCategoryId?: string | null;
+	vehicleCategoryIds?: string[] | null;
 }
 
 export interface SeasonalMultiplierData {
@@ -394,6 +397,9 @@ export interface SeasonalMultiplierData {
 	multiplier: number;
 	priority: number;
 	isActive: boolean;
+	// Story 23-7: Optional vehicle category filter
+	vehicleCategoryId?: string | null;
+	vehicleCategoryIds?: string[] | null;
 }
 
 export interface MultiplierContext {
@@ -402,6 +408,8 @@ export interface MultiplierContext {
 	distanceKm: number;
 	pickupZoneId: string | null;
 	dropoffZoneId: string | null;
+	// Story 23-7: Vehicle category for adjustment filtering
+	vehicleCategoryId?: string | null;
 }
 
 export interface WeightedNightRateDetails {

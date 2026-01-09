@@ -2,7 +2,7 @@
 id: "23-2-fix-multizoneselect-click-bug"
 epic: "epic-23"
 name: "Fix MultiZoneSelect Component Click Interaction Bug"
-status: "in-progress"
+status: "done"
 priority: "high"
 complexity: "M"
 ---

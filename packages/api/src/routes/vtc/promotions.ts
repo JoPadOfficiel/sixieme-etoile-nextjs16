@@ -432,7 +432,7 @@ export const promotionsRouter = new Hono()
 				});
 			}
 
-			const promotion = await db.promotion.create({
+			const createdPromotion = await db.promotion.create({
 				data: withTenantCreate(
 					{
 						code: data.code,
@@ -454,6 +454,16 @@ export const promotionsRouter = new Hono()
 					},
 					organizationId
 				),
+			});
+
+			// Refetch with vehicleCategories to include them in response
+			const promotion = await db.promotion.findUnique({
+				where: { id: createdPromotion.id },
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			return c.json(transformPromotion(promotion), 201);
@@ -539,6 +549,11 @@ export const promotionsRouter = new Hono()
 			const promotion = await db.promotion.update({
 				where: withTenantId(id, organizationId),
 				data: updateData,
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			return c.json(transformPromotion(promotion));

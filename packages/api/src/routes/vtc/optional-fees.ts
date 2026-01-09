@@ -297,7 +297,7 @@ export const optionalFeesRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
-			const fee = await db.optionalFee.create({
+			const createdFee = await db.optionalFee.create({
 				data: withTenantCreate(
 					{
 						name: data.name,
@@ -319,6 +319,16 @@ export const optionalFeesRouter = new Hono()
 					},
 					organizationId
 				),
+			});
+
+			// Refetch with vehicleCategories to include them in response
+			const fee = await db.optionalFee.findUnique({
+				where: { id: createdFee.id },
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			return c.json(transformOptionalFee(fee), 201);
@@ -375,6 +385,11 @@ export const optionalFeesRouter = new Hono()
 			const fee = await db.optionalFee.update({
 				where: withTenantId(id, organizationId),
 				data: updateData,
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			return c.json(transformOptionalFee(fee));

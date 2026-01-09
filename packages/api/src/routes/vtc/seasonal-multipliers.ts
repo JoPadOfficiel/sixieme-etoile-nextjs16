@@ -335,7 +335,7 @@ export const seasonalMultipliersRouter = new Hono()
 				});
 			}
 
-			const multiplier = await db.seasonalMultiplier.create({
+			const createdMultiplier = await db.seasonalMultiplier.create({
 				data: withTenantCreate(
 					{
 						name: data.name,
@@ -354,6 +354,16 @@ export const seasonalMultipliersRouter = new Hono()
 					},
 					organizationId
 				),
+			});
+
+			// Refetch with vehicleCategories to include them in response
+			const multiplier = await db.seasonalMultiplier.findUnique({
+				where: { id: createdMultiplier.id },
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
+				},
 			});
 
 			return c.json(transformMultiplier(multiplier), 201);
@@ -418,6 +428,11 @@ export const seasonalMultipliersRouter = new Hono()
 							set: data.vehicleCategoryIds.map((id) => ({ id })),
 						},
 					}),
+				},
+				include: {
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
 				},
 			});
 

@@ -77,6 +77,8 @@ export {
 // ============================================================================
 
 export {
+	// Story 23-7: Vehicle category matching helper
+	matchesVehicleCategory,
 	isTimeInRange,
 	isDayInRange,
 	isNightTime,

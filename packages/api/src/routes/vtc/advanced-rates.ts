@@ -401,6 +401,9 @@ export const advancedRatesRouter = new Hono()
 					zone: {
 						select: { name: true },
 					},
+					vehicleCategories: {
+						select: { id: true, name: true },
+					},
 				},
 			});
 
@@ -468,6 +471,9 @@ export const advancedRatesRouter = new Hono()
 				include: {
 					zone: {
 						select: { name: true },
+					},
+					vehicleCategories: {
+						select: { id: true, name: true },
 					},
 				},
 			});

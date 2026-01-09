@@ -188,6 +188,7 @@ export function calculatePrice(
 	}
 	
 	// Apply advanced rates and seasonal multipliers
+	// Story 23-7: Pass vehicleCategoryId for category-specific filtering
 	if ((advancedRates && advancedRates.length > 0) || (seasonalMultipliers && seasonalMultipliers.length > 0)) {
 		const pickupAt = request.pickupAt ? new Date(request.pickupAt) : null;
 		const multiplierResult = applyAllMultipliers(
@@ -198,6 +199,7 @@ export function calculatePrice(
 				distanceKm,
 				pickupZoneId: pickupZone?.id ?? null,
 				dropoffZoneId: dropoffZone?.id ?? null,
+				vehicleCategoryId: request.vehicleCategoryId, // Story 23-7
 			},
 			advancedRates ?? [],
 			seasonalMultipliers ?? [],
@@ -497,6 +499,7 @@ export async function calculatePriceWithRealTolls(
 	}
 	
 	// Apply advanced rates and seasonal multipliers
+	// Story 23-7: Pass vehicleCategoryId for category-specific filtering
 	if ((advancedRates && advancedRates.length > 0) || (seasonalMultipliers && seasonalMultipliers.length > 0)) {
 		const pickupAt = request.pickupAt ? new Date(request.pickupAt) : null;
 		const multiplierResult = applyAllMultipliers(
@@ -507,6 +510,7 @@ export async function calculatePriceWithRealTolls(
 				distanceKm,
 				pickupZoneId: pickupZone?.id ?? null,
 				dropoffZoneId: dropoffZone?.id ?? null,
+				vehicleCategoryId: request.vehicleCategoryId, // Story 23-7
 			},
 			advancedRates ?? [],
 			seasonalMultipliers ?? [],
