@@ -121,4 +121,11 @@ describe("AdvancedRateFormDialog", () => {
 			}));
 		});
 	});
+	it("calls onOpenChange(false) when cancelled", () => {
+		render(<AdvancedRateFormDialog {...defaultProps} />);
+		
+		fireEvent.click(screen.getByText("form.cancel"));
+		
+		expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+	});
 });
