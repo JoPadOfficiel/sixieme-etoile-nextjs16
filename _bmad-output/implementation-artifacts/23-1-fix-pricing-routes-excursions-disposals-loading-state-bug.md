@@ -6,7 +6,7 @@
 | -------------------- | ------------------------------------------------------------------ |
 | **Story ID**         | 23-1                                                               |
 | **Epic**             | Epic 23: Critical Bug Fixes & Vehicle Category Pricing Filters     |
-| **Status**           | Ready for Dev                                                      |
+| **Status**           | Done                                                               |
 | **Priority**         | Critical                                                           |
 | **Estimated Effort** | Small (0.5-1 day)                                                  |
 | **Created**          | 2026-01-08                                                         |

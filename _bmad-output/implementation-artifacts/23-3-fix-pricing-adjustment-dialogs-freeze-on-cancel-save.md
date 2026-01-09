@@ -2,7 +2,7 @@
 id: "23-3-fix-pricing-adjustment-dialogs-freeze-on-cancel-save"
 epic: "epic-23"
 name: "Fix Pricing Adjustment Dialogs Freeze on Cancel/Save"
-status: "in-progress"
+status: "done"
 priority: "high"
 complexity: "S"
 ---
