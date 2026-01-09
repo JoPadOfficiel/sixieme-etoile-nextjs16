@@ -37,6 +37,8 @@ import { stayQuotesRouter } from "./stay-quotes";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
+// Story 24.2: EndCustomer CRUD API
+import { endCustomersRouter, contactEndCustomersRouter } from "./end-customers";
 
 /**
  * VTC ERP Router
@@ -85,6 +87,9 @@ export const vtcRouter = new Hono()
 	.route("/", dispoAssignmentsRouter)
 	.route("/", partnersListRouter)
 	// Story 22.5: Stay quotes (multi-day packages)
-	.route("/", stayQuotesRouter);
+	.route("/", stayQuotesRouter)
+	// Story 24.2: EndCustomer CRUD API
+	.route("/", endCustomersRouter)
+	.route("/", contactEndCustomersRouter);
 
 export type VtcRouter = typeof vtcRouter;
