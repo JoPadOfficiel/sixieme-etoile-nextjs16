@@ -1,6 +1,6 @@
 # Story 24.2: Implement EndCustomer CRUD API
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
