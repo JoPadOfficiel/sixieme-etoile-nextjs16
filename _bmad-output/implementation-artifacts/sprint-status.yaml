@@ -279,6 +279,6 @@ development_status:
   24-8-link-difficulty-score-to-endcustomer-for-pricing: done
   24-9-implement-bidirectional-pricing-toggle-in-quote-form: done
   24-10-add-endcustomer-search-and-filtering: done
-  24-11-implement-automated-e2e-tests-for-mini-crm: backlog
-  24-12-update-documentation-for-mini-crm-feature: backlog
+  24-11-implement-automated-e2e-tests-for-mini-crm: done
+  24-12-update-documentation-for-mini-crm-feature: in-progress
   epic-24-retrospective: optional
