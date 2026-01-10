@@ -25,7 +25,7 @@ import type {
 import { calculateCostBreakdown, calculateCostBreakdownWithTolls, calculateCostBreakdownWithRealCosts, type RealCostConfig } from "./cost-calculator";
 import type { TollConfig, FuelPriceSourceInfo } from "./types";
 import { calculateDynamicBasePrice, resolveRates } from "./dynamic-pricing";
-import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyRoundTripMultiplier } from "./multiplier-engine";
+import { applyAllMultipliers, applyVehicleCategoryMultiplier, applyClientDifficultyMultiplier, applyRoundTripMultiplier } from "./multiplier-engine";
 import { applyZoneMultiplier, buildZoneTransparencyInfo } from "./zone-resolver";
 import { calculateProfitabilityIndicator, getProfitabilityIndicatorData, getThresholdsFromSettings } from "./profitability";
 import { applyTripTypePricing } from "./trip-type-pricing";
@@ -184,6 +184,34 @@ export function calculatePrice(
 		price = categoryResult.adjustedPrice;
 		if (categoryResult.appliedRule) {
 			appliedRules.push(categoryResult.appliedRule);
+		}
+	}
+
+	// Story 24.8: Apply client difficulty multiplier (Patience Tax)
+	// Priority: 1. Resolved score from context (if available), 2. Contact score (legacy/fallback)
+	const difficultyScoreToUse = context.resolvedDifficultyScore;
+	
+	if (difficultyScoreToUse) {
+		const result = applyClientDifficultyMultiplier(
+			price,
+			difficultyScoreToUse.score,
+			pricingSettings.difficultyMultipliers,
+			difficultyScoreToUse.source,
+			difficultyScoreToUse.endCustomerId
+		);
+		price = result.adjustedPrice;
+		if (result.appliedRule) {
+			appliedRules.push(result.appliedRule);
+		}
+	} else if (contact.difficultyScore) {
+		const result = applyClientDifficultyMultiplier(
+			price,
+			contact.difficultyScore,
+			pricingSettings.difficultyMultipliers
+		);
+		price = result.adjustedPrice;
+		if (result.appliedRule) {
+			appliedRules.push(result.appliedRule);
 		}
 	}
 	
@@ -495,6 +523,33 @@ export async function calculatePriceWithRealTolls(
 		price = categoryResult.adjustedPrice;
 		if (categoryResult.appliedRule) {
 			appliedRules.push(categoryResult.appliedRule);
+		}
+	}
+
+	// Story 24.8: Apply client difficulty multiplier (Patience Tax)
+	const difficultyScoreToUse = context.resolvedDifficultyScore;
+	
+	if (difficultyScoreToUse) {
+		const result = applyClientDifficultyMultiplier(
+			price,
+			difficultyScoreToUse.score,
+			pricingSettings.difficultyMultipliers,
+			difficultyScoreToUse.source,
+			difficultyScoreToUse.endCustomerId
+		);
+		price = result.adjustedPrice;
+		if (result.appliedRule) {
+			appliedRules.push(result.appliedRule);
+		}
+	} else if (contact.difficultyScore) {
+		const result = applyClientDifficultyMultiplier(
+			price,
+			contact.difficultyScore,
+			pricingSettings.difficultyMultipliers
+		);
+		price = result.adjustedPrice;
+		if (result.appliedRule) {
+			appliedRules.push(result.appliedRule);
 		}
 	}
 	

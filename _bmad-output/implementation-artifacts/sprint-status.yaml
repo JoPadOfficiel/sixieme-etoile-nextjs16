@@ -276,7 +276,7 @@ development_status:
   24-5-display-endcustomer-name-on-quote-summary-and-pdf: done
   24-6-display-endcustomer-name-on-invoice-documents: done
   24-7-integrate-endcustomer-in-dispatch-interface: done
-  24-8-link-difficulty-score-to-endcustomer-for-pricing: backlog
+  24-8-link-difficulty-score-to-endcustomer-for-pricing: done
   24-9-implement-bidirectional-pricing-toggle-in-quote-form: backlog
   24-10-add-endcustomer-search-and-filtering: backlog
   24-11-implement-automated-e2e-tests-for-mini-crm: backlog

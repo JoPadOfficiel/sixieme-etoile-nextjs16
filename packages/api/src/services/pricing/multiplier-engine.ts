@@ -25,6 +25,9 @@ import type {
 	RoundTripMultiplierResult,
 	AppliedRoundTripRule,
 	WeightedNightRateResult,
+	// Story 24.8: Score source tracking
+	DifficultyScoreSource,
+	ResolvedDifficultyScore,
 } from "./types";
 import { DEFAULT_DIFFICULTY_MULTIPLIERS } from "./constants";
 
@@ -597,12 +600,52 @@ export function applyVehicleCategoryMultiplier(
 // ============================================================================
 
 /**
+ * Story 24.8: Resolve difficulty score with priority
+ * Priority: EndCustomer score > Contact score > null
+ * @param endCustomerScore - The end-customer's difficulty score (if any)
+ * @param contactScore - The contact's difficulty score (if any)
+ * @param endCustomerId - The end-customer ID (for logging)
+ * @returns Resolved score with source tracking
+ */
+export function resolveDifficultyScore(
+	endCustomerScore: number | null | undefined,
+	contactScore: number | null | undefined,
+	endCustomerId?: string | null,
+): ResolvedDifficultyScore {
+	// Priority 1: EndCustomer score (if exists and valid: 1-5)
+	if (endCustomerScore != null && endCustomerScore >= 1 && endCustomerScore <= 5) {
+		return {
+			score: endCustomerScore,
+			source: "END_CUSTOMER",
+			endCustomerId: endCustomerId ?? undefined,
+		};
+	}
+
+	// Priority 2: Contact score (fallback)
+	if (contactScore != null && contactScore >= 1 && contactScore <= 5) {
+		return {
+			score: contactScore,
+			source: "CONTACT",
+		};
+	}
+
+	// No valid score available
+	return {
+		score: null,
+		source: "NONE",
+	};
+}
+
+/**
  * Story 17.15: Apply client difficulty multiplier (Patience Tax)
+ * Story 24.8: Updated to accept resolved score with source tracking
  */
 export function applyClientDifficultyMultiplier(
 	price: number,
 	difficultyScore: number | null | undefined,
 	configuredMultipliers?: Record<string, number> | null,
+	scoreSource?: DifficultyScoreSource,
+	endCustomerId?: string,
 ): ClientDifficultyMultiplierResult {
 	if (difficultyScore == null || difficultyScore < 1 || difficultyScore > 5) {
 		return { adjustedPrice: price, appliedRule: null };
@@ -622,15 +665,24 @@ export function applyClientDifficultyMultiplier(
 	const adjustedPrice = Math.round(price * multiplier * 100) / 100;
 	const percentChange = Math.round((multiplier - 1) * 100 * 100) / 100;
 
+	// Story 24.8: Build description with source info
+	const sourceLabel = scoreSource === "END_CUSTOMER" ? "end-customer" : "contact";
+	const description = scoreSource
+		? `Client difficulty adjustment: +${percentChange}% (${sourceLabel} score ${difficultyScore}/5)`
+		: `Client difficulty adjustment: +${percentChange}% (score ${difficultyScore}/5)`;
+
 	return {
 		adjustedPrice,
 		appliedRule: {
 			type: "CLIENT_DIFFICULTY_MULTIPLIER",
-			description: `Client difficulty adjustment: +${percentChange}% (score ${difficultyScore}/5)`,
+			description,
 			difficultyScore,
 			multiplier,
 			priceBefore: price,
 			priceAfter: adjustedPrice,
+			// Story 24.8: Include score source tracking
+			scoreSource,
+			endCustomerId,
 		},
 	};
 }

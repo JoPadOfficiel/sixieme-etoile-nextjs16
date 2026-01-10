@@ -47,6 +47,8 @@ import {
 	type VehicleCategoryInfo,
 	type ZoneRouteAssignment,
 	type VehicleSelectionInfo,
+	// Story 24.8: Difficulty score resolution
+	resolveDifficultyScore,
 	type ShadowCalculationInput,
 	buildShadowInputFromVehicleSelection,
 } from "../../services/pricing-engine";
@@ -97,6 +99,8 @@ const excursionStopSchema = z.object({
 
 const calculatePricingSchema = z.object({
 	contactId: z.string().min(1, "Contact ID is required"),
+	// Story 24.8: Optional end-customer ID for difficulty score resolution
+	endCustomerId: z.string().optional(),
 	pickup: geoPointSchema,
 	// Story 16.8: Dropoff is optional for DISPO trips
 	dropoff: geoPointSchema.optional(),
@@ -410,6 +414,37 @@ async function loadContactWithContract(
 	}
 
 	return contactData;
+}
+
+/**
+ * Story 24.8: Load end-customer difficulty score for pricing
+ * Returns the difficulty score if the end-customer exists, otherwise null
+ */
+async function loadEndCustomerDifficultyScore(
+	endCustomerId: string | undefined,
+	organizationId: string,
+): Promise<{ score: number | null; endCustomerId?: string } | null> {
+	if (!endCustomerId) {
+		return null;
+	}
+
+	const endCustomer = await db.endCustomer.findFirst({
+		where: withTenantFilter({ id: endCustomerId }, organizationId),
+		select: {
+			id: true,
+			difficultyScore: true,
+		},
+	});
+
+	if (!endCustomer) {
+		console.log(`[PRICING] EndCustomer ${endCustomerId} not found, falling back to contact score`);
+		return null;
+	}
+
+	return {
+		score: endCustomer.difficultyScore,
+		endCustomerId: endCustomer.id,
+	};
 }
 
 /**
@@ -879,6 +914,18 @@ export const pricingCalculateRouter = new Hono()
 				maxKilometers: data.maxKilometers,
 			};
 
+			// Story 24.8: Resolve difficulty score (EndCustomer > Contact)
+			const endCustomerDifficultyData = await loadEndCustomerDifficultyScore(
+				data.endCustomerId,
+				organizationId
+			);
+			
+			const resolvedDifficultyScore = resolveDifficultyScore(
+				endCustomerDifficultyData?.score,
+				contact.difficultyScore,
+				endCustomerDifficultyData?.endCustomerId
+			);
+
 			// Calculate price (Story 4.3: now includes multipliers, Story 15.3: vehicle category, Story 19.2: RSE compliance)
 			const result = calculatePrice(pricingRequest, {
 				contact,
@@ -906,6 +953,8 @@ export const pricingCalculateRouter = new Hono()
 				} : undefined,
 				// Story 21.6: Pass vehicle selection input for accurate positioning costs
 				vehicleSelectionInput: vehicleSelectionInputForPricing,
+				// Story 24.8: Pass resolved difficulty score
+				resolvedDifficultyScore,
 			});
 
 			// Story 4.5: Add vehicle selection info to tripAnalysis

@@ -96,6 +96,8 @@ export {
 	applyAllMultipliers,
 	applyVehicleCategoryMultiplier,
 	applyClientDifficultyMultiplier,
+	// Story 24.8: Resolve difficulty score with priority
+	resolveDifficultyScore,
 	applyRoundTripMultiplier,
 } from "./multiplier-engine";
 

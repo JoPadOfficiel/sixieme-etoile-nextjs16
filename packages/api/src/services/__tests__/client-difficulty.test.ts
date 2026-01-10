@@ -6,8 +6,9 @@
 import { describe, it, expect } from "vitest";
 import {
 	applyClientDifficultyMultiplier,
-	DEFAULT_DIFFICULTY_MULTIPLIERS,
-} from "../pricing-engine";
+	resolveDifficultyScore,
+} from "../pricing/multiplier-engine";
+import { DEFAULT_DIFFICULTY_MULTIPLIERS } from "../pricing/constants";
 
 describe("Story 17.15: Client Difficulty Score (Patience Tax)", () => {
 	describe("applyClientDifficultyMultiplier", () => {
@@ -143,6 +144,71 @@ describe("Story 17.15: Client Difficulty Score (Patience Tax)", () => {
 				expect(result.appliedRule?.description).toContain("Client difficulty adjustment");
 				expect(result.appliedRule?.description).toContain("+8%");
 				expect(result.appliedRule?.description).toContain("score 4/5");
+			});
+		});
+	});
+
+	describe("Story 24.8: Difficulty Score Resolution & Source Tracking", () => {
+		describe("resolveDifficultyScore", () => {
+			it("should prioritize EndCustomer score when present and valid", () => {
+				const result = resolveDifficultyScore(4, 2, "end-cust-123");
+				expect(result.score).toBe(4);
+				expect(result.source).toBe("END_CUSTOMER");
+				expect(result.endCustomerId).toBe("end-cust-123");
+			});
+
+			it("should fallback to Contact score when EndCustomer score is null", () => {
+				const result = resolveDifficultyScore(null, 3, "end-cust-123");
+				expect(result.score).toBe(3);
+				expect(result.source).toBe("CONTACT");
+				expect(result.endCustomerId).toBeUndefined();
+			});
+
+			it("should fallback to Contact score when EndCustomer score is invalid (< 1)", () => {
+				const result = resolveDifficultyScore(0, 3, "end-cust-123");
+				expect(result.score).toBe(3);
+				expect(result.source).toBe("CONTACT");
+			});
+
+			it("should fallback to Contact score when EndCustomer score is invalid (> 5)", () => {
+				const result = resolveDifficultyScore(6, 3, "end-cust-123");
+				expect(result.score).toBe(3);
+				expect(result.source).toBe("CONTACT");
+			});
+
+			it("should return NONE when no valid score exists", () => {
+				const result = resolveDifficultyScore(null, null);
+				expect(result.score).toBeNull();
+				expect(result.source).toBe("NONE");
+			});
+
+			it("should return NONE when both scores are invalid", () => {
+				const result = resolveDifficultyScore(6, 0);
+				expect(result.score).toBeNull();
+				expect(result.source).toBe("NONE");
+			});
+		});
+
+		describe("applyClientDifficultyMultiplier with source", () => {
+			it("should include source info in description for EndCustomer", () => {
+				const result = applyClientDifficultyMultiplier(100, 4, null, "END_CUSTOMER", "cust-1");
+				expect(result.appliedRule?.description).toContain("end-customer");
+				expect(result.appliedRule?.scoreSource).toBe("END_CUSTOMER");
+				expect(result.appliedRule?.endCustomerId).toBe("cust-1");
+			});
+
+			it("should use generic description when source is CONTACT", () => {
+				const result = applyClientDifficultyMultiplier(100, 4, null, "CONTACT");
+				expect(result.appliedRule?.description).not.toContain("end-customer");
+				expect(result.appliedRule?.description).toContain("score 4/5");
+				expect(result.appliedRule?.scoreSource).toBe("CONTACT");
+			});
+
+			it("should use generic description when source is implicit (legacy)", () => {
+				const result = applyClientDifficultyMultiplier(100, 4);
+				expect(result.appliedRule?.description).not.toContain("end-customer");
+				expect(result.appliedRule?.description).toContain("score 4/5");
+				expect(result.appliedRule?.scoreSource).toBeUndefined();
 			});
 		});
 	});

@@ -685,6 +685,16 @@ export interface ExcursionReturnCostResult {
 // Client Difficulty Interfaces
 // ============================================================================
 
+// Story 24.8: Score source tracking for difficulty multiplier
+export type DifficultyScoreSource = "END_CUSTOMER" | "CONTACT" | "NONE";
+
+// Story 24.8: Resolved difficulty score with source tracking
+export interface ResolvedDifficultyScore {
+	score: number | null;
+	source: DifficultyScoreSource;
+	endCustomerId?: string;
+}
+
 export interface AppliedClientDifficultyRule extends AppliedRule {
 	type: "CLIENT_DIFFICULTY_MULTIPLIER";
 	description: string;
@@ -692,6 +702,9 @@ export interface AppliedClientDifficultyRule extends AppliedRule {
 	multiplier: number;
 	priceBefore: number;
 	priceAfter: number;
+	// Story 24.8: Score source tracking
+	scoreSource?: DifficultyScoreSource;
+	endCustomerId?: string;
 }
 
 export interface ClientDifficultyMultiplierResult {
@@ -1398,6 +1411,8 @@ export interface PricingEngineContext {
 	vehicleCategory?: VehicleCategoryInfo;
 	// Story 21.6: Vehicle selection result for accurate positioning costs
 	vehicleSelectionInput?: ShadowCalculationInput;
+	// Story 24.8: Resolved difficulty score
+	resolvedDifficultyScore?: ResolvedDifficultyScore;
 }
 
 // ============================================================================
