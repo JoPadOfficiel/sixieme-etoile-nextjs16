@@ -437,6 +437,8 @@ export const missionsRouter = new Hono()
 						secondDriver: true as any, // Temporary fix for type issue
 						// Story 22.12: Include subcontractor for subcontracted missions
 						subcontractor: true,
+						// Story 24.5: Include endCustomer for dispatch display
+						endCustomer: true,
 					},
 				}),
 				db.quote.count({ where }),
@@ -468,12 +470,22 @@ export const missionsRouter = new Hono()
 					id: (quote as any).contact.id,
 					displayName: (quote as any).contact.displayName,
 					isPartner: (quote as any).contact.isPartner,
+					email: (quote as any).contact.email,
+					phone: (quote as any).contact.phone,
 				},
 				vehicleCategory: {
 					id: (quote as any).vehicleCategory.id,
 					name: (quote as any).vehicleCategory.name,
 					code: (quote as any).vehicleCategory.code,
 				},
+				// Story 24.5: Map endCustomer
+				endCustomer: (quote as any).endCustomer ? {
+					id: (quote as any).endCustomer.id,
+					firstName: (quote as any).endCustomer.firstName,
+					lastName: (quote as any).endCustomer.lastName,
+					email: (quote as any).endCustomer.email,
+					phone: (quote as any).endCustomer.phone,
+				} : null,
 				assignment: getAssignmentFromQuote(quote),
 				profitability: {
 					marginPercent: quote.marginPercent
@@ -547,6 +559,8 @@ export const missionsRouter = new Hono()
 					secondDriver: true as any, // Temporary fix for type issue
 					// Story 22.12: Include subcontractor for subcontracted missions
 					subcontractor: true,
+					// Story 24.5: Include endCustomer
+					endCustomer: true,
 				},
 			});
 
@@ -595,6 +609,14 @@ export const missionsRouter = new Hono()
 					name: (quote as any).vehicleCategory.name,
 					code: (quote as any).vehicleCategory.code,
 				},
+				// Story 24.5: Map endCustomer
+				endCustomer: (quote as any).endCustomer ? {
+					id: (quote as any).endCustomer.id,
+					firstName: (quote as any).endCustomer.firstName,
+					lastName: (quote as any).endCustomer.lastName,
+					email: (quote as any).endCustomer.email,
+					phone: (quote as any).endCustomer.phone,
+				} : null,
 				tripAnalysis: quote.tripAnalysis,
 				appliedRules: quote.appliedRules,
 				assignment: getAssignmentFromQuote(quote),
@@ -1230,9 +1252,9 @@ export const missionsRouter = new Hono()
 			"json",
 			z.object({
 				vehicleId: z.string().min(1),
-				driverId: z.string().optional(),
+				driverId: z.string().nullable().optional(),
 				// Story 20.8: Second driver for RSE double crew missions
-				secondDriverId: z.string().optional(),
+				secondDriverId: z.string().nullable().optional(),
 			}),
 		),
 		describeRoute({
@@ -1244,7 +1266,13 @@ export const missionsRouter = new Hono()
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const id = c.req.param("id");
-			const { vehicleId, driverId, secondDriverId } = c.req.valid("json");
+			// Normalize empty strings to null/undefined
+			const body = c.req.valid("json");
+			const vehicleId = body.vehicleId;
+			let driverId = body.driverId || null;
+			let secondDriverId = body.secondDriverId || null;
+			if (driverId === "") driverId = null;
+			if (secondDriverId === "") secondDriverId = null;
 
 			// Verify mission exists
 			const quote = await db.quote.findFirst({
@@ -1348,8 +1376,8 @@ export const missionsRouter = new Hono()
 					assignment: {
 						vehicleId,
 						vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
-						baseId: vehicle.operatingBaseId,
-						baseName: vehicle.operatingBase.name,
+						baseId: vehicle.operatingBaseId ?? "",
+						baseName: vehicle.operatingBase?.name ?? null,
 						driverId: driver?.id ?? null,
 						driverName: driver
 							? `${driver.firstName} ${driver.lastName}`

@@ -2762,6 +2762,10 @@
 				"weightedNightRate": "Tarif nuit appliqué à {percentage}% de la durée du trajet",
 				"nightRateDetails": "Période de nuit : {start} - {end}",
 				"addedFeesTitle": "Frais & Promotions",
+				"client": "Client",
+				"agency": "Agence",
+				"difficultyScore": "Score difficulté",
+				"partnerContact": "Contact partenaire",
 				"tripDetails": "Détails du trajet",
 				"pickup": "Prise en charge",
 				"dropoff": "Dépose"
@@ -3535,6 +3539,7 @@
 			"private": "Privé",
 			"unassigned": "Non assigné",
 			"days": "{count, plural, one {jour} other {jours}}",
+			"via": "via",
 			"columns": {
 				"timeWindow": "Heure",
 				"route": "Trajet",

@@ -52,6 +52,13 @@ export interface QuotePdfData {
 	notes?: string | null;
 	contact: ContactPdfData;
 	createdAt: Date;
+	// Story 24.5: EndCustomer for partner agency sub-contacts
+	endCustomer?: {
+		firstName: string;
+		lastName: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
 }
 
 export interface InvoiceLinePdfData {
@@ -210,22 +217,57 @@ export async function generateQuotePdf(
 	}
 
 	// Client section
+	// Story 24.5: Show endCustomer as recipient when present, with agency as billed-to
 	y -= 40;
 	draw("Client", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
 	y -= 16;
-	draw(quote.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-	y -= 14;
-	if (quote.contact.companyName) {
-		draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+	
+	if (quote.endCustomer) {
+		// EndCustomer exists: show as primary recipient
+		const endCustomerName = `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`;
+		draw(endCustomerName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
 		y -= 14;
-	}
-	if (quote.contact.billingAddress) {
-		draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		
+		// Show endCustomer contact info if available
+		if (quote.endCustomer.email) {
+			draw(quote.endCustomer.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (quote.endCustomer.phone) {
+			draw(`Tel: ${quote.endCustomer.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		
+		// Show agency as billed-to
+		y -= 6;
+		draw("Facture a:", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
 		y -= 14;
-	}
-	if (quote.contact.email) {
-		draw(quote.contact.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw(quote.contact.displayName, { x: leftMargin, y, size: 10, font: helvetica, color: BLACK });
 		y -= 14;
+		if (quote.contact.companyName && quote.contact.companyName !== quote.contact.displayName) {
+			draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (quote.contact.billingAddress) {
+			draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+	} else {
+		// No endCustomer: use existing behavior with contact
+		draw(quote.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
+		y -= 14;
+		if (quote.contact.companyName) {
+			draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (quote.contact.billingAddress) {
+			draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (quote.contact.email) {
+			draw(quote.contact.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
 	}
 
 	// Trip details section

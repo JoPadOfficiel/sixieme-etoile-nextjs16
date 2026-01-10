@@ -129,6 +129,13 @@ function transformQuoteToPdfData(quote: {
 	vehicleCategory?: {
 		name: string;
 	} | null;
+	// Story 24.5: EndCustomer for partner agency sub-contacts
+	endCustomer?: {
+		firstName: string;
+		lastName: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
 }): QuotePdfData {
 	return {
 		id: quote.id,
@@ -148,6 +155,13 @@ function transformQuoteToPdfData(quote: {
 		notes: quote.notes,
 		contact: transformContactToPdfData(quote.contact),
 		createdAt: quote.createdAt,
+		// Story 24.5: Include endCustomer for PDF display
+		endCustomer: quote.endCustomer ? {
+			firstName: quote.endCustomer.firstName,
+			lastName: quote.endCustomer.lastName,
+			email: quote.endCustomer.email,
+			phone: quote.endCustomer.phone,
+		} : null,
 	};
 }
 
@@ -442,11 +456,20 @@ export const documentsRouter = new Hono()
 			const quoteId = c.req.param("quoteId");
 
 			// Fetch quote with all details
+			// Story 24.5: Include endCustomer for PDF display
 			const quote = await db.quote.findFirst({
 				where: withTenantId(quoteId, organizationId),
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					endCustomer: {
+						select: {
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+						},
+					},
 				},
 			});
 

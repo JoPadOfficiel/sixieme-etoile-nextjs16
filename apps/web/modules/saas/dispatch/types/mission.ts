@@ -36,6 +36,14 @@ export interface MissionContact {
 	phone?: string | null;
 }
 
+export interface MissionEndCustomer {
+	id: string;
+	firstName: string;
+	lastName: string;
+	email?: string | null;
+	phone?: string | null;
+}
+
 export interface MissionVehicleCategory {
 	id: string;
 	name: string;
@@ -57,6 +65,8 @@ export interface MissionListItem {
 	finalPrice: number;
 	contact: MissionContact;
 	vehicleCategory: MissionVehicleCategory;
+	// Story 24.5: End Customer display for partner missions
+	endCustomer?: MissionEndCustomer | null;
 	assignment: MissionAssignment | null;
 	profitability: MissionProfitability;
 	compliance: MissionCompliance;

@@ -2762,6 +2762,10 @@
 				"weightedNightRate": "Night rate applied to {percentage}% of trip duration",
 				"nightRateDetails": "Night period: {start} - {end}",
 				"addedFeesTitle": "Fees & Promotions",
+				"client": "Client",
+				"agency": "Agency",
+				"difficultyScore": "Difficulty Score",
+				"partnerContact": "Partner Contact",
 				"tripDetails": "Trip Details",
 				"pickup": "Pickup",
 				"dropoff": "Dropoff"
@@ -3535,6 +3539,7 @@
 			"private": "Private",
 			"unassigned": "Unassigned",
 			"days": "{count, plural, one {day} other {days}}",
+			"via": "via",
 			"columns": {
 				"timeWindow": "Time",
 				"route": "Route",

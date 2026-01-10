@@ -8,12 +8,14 @@ import {
   ClockIcon,
   MapPinIcon,
   UsersIcon,
+  UserIcon,
+  BuildingIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import type { Quote } from "../types";
-import { formatPrice, formatMargin } from "../types";
+import { formatPrice, formatMargin, getQuoteClientDisplay } from "../types";
 
 interface QuoteCommercialSummaryProps {
   quote: Quote;
@@ -28,6 +30,7 @@ interface QuoteCommercialSummaryProps {
  * 
  * @see Story 6.3: Quote Detail with Stored tripAnalysis
  * @see FR32: Sent quotes remain commercially fixed
+ * @see Story 24.5: EndCustomer name display on quote summary
  */
 export function QuoteCommercialSummary({
   quote,
@@ -188,6 +191,70 @@ export function QuoteCommercialSummary({
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Story 24.5: Client Display Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            {t("quotes.detail.commercial.client")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {(() => {
+            const clientDisplay = getQuoteClientDisplay(quote);
+            return (
+              <>
+                {/* Main client name */}
+                <div className="flex items-start gap-2">
+                  <UserIcon className="size-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <div className="font-medium">{clientDisplay.clientName}</div>
+                    {/* Show difficulty score if endCustomer exists and has score */}
+                    {clientDisplay.hasEndCustomer && quote.endCustomer?.difficultyScore && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {t("quotes.detail.commercial.difficultyScore")}: {quote.endCustomer.difficultyScore}/5
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Agency name (only if endCustomer exists) */}
+                {clientDisplay.hasEndCustomer && clientDisplay.agencyName && (
+                  <div className="flex items-start gap-2 pl-6">
+                    <BuildingIcon className="size-3 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-sm text-muted-foreground">
+                        {t("quotes.detail.commercial.agency")}: {clientDisplay.agencyName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contact email and phone */}
+                {quote.contact.email && (
+                  <div className="text-sm text-muted-foreground pl-6">
+                    {quote.contact.email}
+                  </div>
+                )}
+                {quote.contact.phone && (
+                  <div className="text-sm text-muted-foreground pl-6">
+                    {quote.contact.phone}
+                  </div>
+                )}
+
+                {/* Partner badge */}
+                {quote.contact.isPartner && (
+                  <Badge variant="secondary" className="text-xs mt-2">
+                    {t("quotes.detail.commercial.partnerContact")}
+                  </Badge>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 

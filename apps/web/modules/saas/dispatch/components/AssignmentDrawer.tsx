@@ -27,6 +27,7 @@ import { CandidateFilters } from "./CandidateFilters";
 import { CandidatesList } from "./CandidatesList";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useAssignMission } from "../hooks/useAssignMission";
+import { useSubcontractMission } from "../hooks/useSubcontracting";
 import type {
 	CandidateSortBy,
 	ComplianceFilter,
@@ -121,6 +122,9 @@ export function AssignmentDrawer({
 		},
 	});
 
+	// Subcontract mutation
+	const subcontractMutation = useSubcontractMission();
+
 	// Filter and sort candidates
 	const candidates = candidatesData?.candidates;
 	const filteredCandidates = useMemo(() => {
@@ -214,17 +218,59 @@ export function AssignmentDrawer({
 
 	// Handle confirm assignment
 	// Story 20.8: Include secondDriverId for RSE double crew missions
+	// Story 18.9: Handle Shadow Fleet assignment (Subcontracting)
 	const handleConfirmAssignment = useCallback(() => {
 		if (!missionId || !selectedCandidate) return;
 
-		assignMutation.mutate({
-			missionId,
-			vehicleId: selectedCandidate.vehicleId,
-			driverId: selectedCandidate.driverId ?? undefined,
-			// Story 20.8: Pass second driver if selected
-			secondDriverId: secondDriverId ?? undefined,
-		});
-	}, [missionId, selectedCandidate, secondDriverId, assignMutation]);
+		if (selectedCandidate.isShadowFleet) {
+			// Subcontracting flow
+			if (!selectedCandidate.subcontractorId) {
+				toast({
+					title: t("error"),
+					description: "Invalid subcontractor data",
+					variant: "error",
+				});
+				return;
+			}
+
+			subcontractMutation.mutate({
+				missionId,
+				data: {
+					subcontractorId: selectedCandidate.subcontractorId,
+					agreedPrice: selectedCandidate.estimatedCost.total ?? 0, // Use estimated/indicative price
+					notes: "Assigned via Dispatch",
+				},
+			}, {
+				onSuccess: () => {
+					toast({
+						title: t("success"),
+						variant: "default",
+					});
+					onClose();
+					onAssignmentComplete?.();
+				},
+				onError: (error) => {
+					toast({
+						title: t("error"),
+						description: error.message,
+						variant: "error",
+					});
+				}
+			});
+		} else {
+			// Internal assignment flow
+			const payload = {
+				missionId,
+				vehicleId: selectedCandidate.vehicleId,
+				driverId: selectedCandidate.driverId || undefined,
+				// Story 20.8: Pass second driver if selected
+				secondDriverId: secondDriverId || undefined,
+			};
+			assignMutation.mutate(payload);
+		}
+	}, [missionId, selectedCandidate, secondDriverId, assignMutation, subcontractMutation, toast, t, onClose, onAssignmentComplete]);
+
+	const isPending = assignMutation.isPending || subcontractMutation.isPending;
 
 	// Reset state when drawer closes
 	const handleOpenChange = useCallback(
@@ -300,7 +346,7 @@ export function AssignmentDrawer({
 					/>
 
 					{/* Story 20.8: Second driver selection for double crew missions */}
-					{requiresDoubleCrew && selectedCandidate && (
+					{requiresDoubleCrew && selectedCandidate && !selectedCandidate.isShadowFleet && (
 						<div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20">
 							<div className="flex items-center gap-2 mb-3">
 								<Users className="size-4 text-amber-600" />
@@ -339,10 +385,10 @@ export function AssignmentDrawer({
 					</Button>
 					<Button
 						onClick={handleConfirmAssignment}
-						disabled={!selectedCandidateId || assignMutation.isPending}
+						disabled={!selectedCandidateId || isPending}
 						data-testid="confirm-assignment"
 					>
-						{assignMutation.isPending && (
+						{isPending && (
 							<Loader2 className="size-4 mr-2 animate-spin" />
 						)}
 						{t("confirm")}

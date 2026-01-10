@@ -303,6 +303,17 @@ export const quotesRouter = new Hono()
 						vehicleCategory: true,
 						// Story 22.4: Include subcontractor info
 						subcontractor: true,
+						// Story 24.5: Include endCustomer for quote summary display
+						endCustomer: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+								phone: true,
+								difficultyScore: true,
+							},
+						},
 					},
 				}),
 				db.quote.count({ where }),
@@ -340,6 +351,17 @@ export const quotesRouter = new Hono()
 					invoice: true,
 					// Story 22.4: Include subcontractor info
 					subcontractor: true,
+					// Story 24.5: Include endCustomer for quote summary and PDF display
+					endCustomer: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+							difficultyScore: true,
+						},
+					},
 				},
 			});
 
@@ -438,6 +460,17 @@ export const quotesRouter = new Hono()
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					// Story 24.5: Include endCustomer for response
+					endCustomer: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+							difficultyScore: true,
+						},
+					},
 				},
 			});
 
@@ -642,6 +675,17 @@ export const quotesRouter = new Hono()
 					contact: true,
 					vehicleCategory: true,
 					invoice: true,
+					// Story 24.5: Include endCustomer for response
+					endCustomer: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+							difficultyScore: true,
+						},
+					},
 				},
 			});
 

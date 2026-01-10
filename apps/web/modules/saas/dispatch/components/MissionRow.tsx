@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@ui/components/badge";
-import { MapPin, ArrowRight, Clock, Car, User, Calendar } from "lucide-react";
+import { MapPin, ArrowRight, Clock, Car, User, Calendar, Phone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
@@ -64,43 +64,73 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 				</div>
 				{/* Client */}
 				<div className="flex items-center gap-1.5 min-w-0 flex-1">
-					<span className="font-medium truncate">
-						{mission.contact.displayName}
-					</span>
-					<Badge
-						variant={mission.contact.isPartner ? "default" : "secondary"}
-						className="text-xs px-1.5 py-0 flex-shrink-0"
-					>
-						{mission.contact.isPartner ? t("partner") : t("private")}
-					</Badge>
-					{/* Story 22.9: STAY trip type indicator */}
-					{mission.tripType === "STAY" && mission.stayDays && (
-						<Badge
-							variant="outline"
-							className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400 flex-shrink-0"
-						>
-							<Calendar className="size-3 mr-1" />
-							{mission.stayDays.length} {t("days")}
-						</Badge>
-					)}
+					<div className="flex flex-col min-w-0">
+						<div className="flex items-center gap-1.5">
+							<span className="font-medium truncate">
+								{mission.endCustomer 
+									? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`
+									: mission.contact.displayName
+								}
+							</span>
+							<Badge
+								variant={mission.contact.isPartner ? "default" : "secondary"}
+								className="text-xs px-1.5 py-0 flex-shrink-0"
+							>
+								{mission.contact.isPartner ? t("partner") : t("private")}
+							</Badge>
+							{/* Story 22.9: STAY trip type indicator */}
+							{mission.tripType === "STAY" && mission.stayDays && (
+								<Badge
+									variant="outline"
+									className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400 flex-shrink-0"
+								>
+									<Calendar className="size-3 mr-1" />
+									{mission.stayDays.length} {t("days")}
+								</Badge>
+							)}
+						</div>
+						{/* Show Agency name if End Customer is displayed */}
+						{mission.endCustomer && (
+							<span className="text-xs text-muted-foreground truncate">
+								{t("via")} {mission.contact.displayName}
+							</span>
+						)}
+						{/* Contact Phone */}
+						{(mission.contact.phone || (mission.endCustomer && mission.endCustomer.phone)) && (
+							<div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+								<Phone className="size-3" />
+								<span>
+									{mission.endCustomer?.phone || mission.contact.phone}
+								</span>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 
-			{/* Row 1.5: Badges (scrollable) */}
-			<div className="flex items-center gap-1 overflow-x-auto mb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-				{/* Story 22.11: Notes indicator */}
-				<NotesIndicator notes={mission.notes ?? null} />
-				{/* Story 22.9: Staffing indicators */}
-				<StaffingIndicators staffingSummary={mission.staffingSummary} />
-				{/* Story 22.4: Subcontracted badge */}
-				{mission.isSubcontracted && mission.subcontractor && (
-					<SubcontractedBadge subcontractor={mission.subcontractor} />
-				)}
+			{/* Row 1.5: Badges */}
+			<div className="flex items-center gap-2 mb-3 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 				<DispatchBadges
 					profitability={mission.profitability}
 					compliance={mission.compliance}
 					assignment={mission.assignment}
+					className="shrink-0"
 				/>
+				
+				{(mission.notes || mission.staffingSummary || (mission.isSubcontracted && mission.subcontractor)) && (
+					<div className="h-4 w-px bg-border shrink-0 mx-1" />
+				)}
+
+				<div className="flex items-center gap-1 shrink-0">
+					{/* Story 22.11: Notes indicator */}
+					<NotesIndicator notes={mission.notes ?? null} />
+					{/* Story 22.9: Staffing indicators */}
+					<StaffingIndicators staffingSummary={mission.staffingSummary} />
+					{/* Story 22.4: Subcontracted badge */}
+					{mission.isSubcontracted && mission.subcontractor && (
+						<SubcontractedBadge subcontractor={mission.subcontractor} />
+					)}
+				</div>
 			</div>
 
 			{/* Row 2: Route (pickup → dropoff) */}

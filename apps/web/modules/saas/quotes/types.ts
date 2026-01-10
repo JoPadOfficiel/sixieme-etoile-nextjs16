@@ -185,6 +185,9 @@ export interface Quote {
   organizationId: string;
   contactId: string;
   contact: Contact;
+  // Story 24.5: EndCustomer for partner agency sub-contacts
+  endCustomerId?: string | null;
+  endCustomer?: EndCustomer | null;
   status: QuoteStatus;
   pricingMode: PricingMode;
   tripType: TripType;
@@ -238,6 +241,40 @@ export interface Quote {
     agreedPrice: number;
     subcontractedAt: string;
   } | null;
+}
+
+/**
+ * Story 24.5: Get the display name for an end-customer
+ * Returns "FirstName LastName" format
+ */
+export function getEndCustomerDisplayName(endCustomer: EndCustomer | null | undefined): string | null {
+  if (!endCustomer) return null;
+  return `${endCustomer.firstName} ${endCustomer.lastName}`;
+}
+
+/**
+ * Story 24.5: Get the full client display for a quote
+ * Returns { clientName, agencyName } for proper UI display
+ * - If endCustomer exists: clientName = endCustomer, agencyName = contact
+ * - If no endCustomer: clientName = contact, agencyName = null
+ */
+export function getQuoteClientDisplay(quote: Quote): {
+  clientName: string;
+  agencyName: string | null;
+  hasEndCustomer: boolean;
+} {
+  if (quote.endCustomer) {
+    return {
+      clientName: `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`,
+      agencyName: quote.contact.displayName,
+      hasEndCustomer: true,
+    };
+  }
+  return {
+    clientName: quote.contact.displayName,
+    agencyName: null,
+    hasEndCustomer: false,
+  };
 }
 
 // ============================================================================
