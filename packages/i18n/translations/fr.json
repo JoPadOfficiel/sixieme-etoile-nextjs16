@@ -2462,17 +2462,7 @@
 			"noVehicleCategories": "Aucune catégorie de véhicule disponible",
 			"passengers": "Passagers",
 			"luggage": "Bagages",
-			"pricing": {
-				"manualPricingMode": "Mode Manuel",
-				"manualPricingHint": "Tarification manuelle / Hors grille",
-				"manualPricePlaceholder": "0.00",
-				"contractPriceTooltip": "Prix contractuel verrouillé",
-				"contractPriceTooltipAdmin": "Prix contractuel (Cliquer pour déverrouiller)",
-				"pricingStrategy": "Stratégie de prix",
-				"partnerGrid": "Grille Partenaire",
-				"clientDirect": "Prix Public"
-			},
-			"suggestedPrice": "Prix suggéré",
+			"suggestedPrice": "Prix Suggéré",
 			"useSuggested": "Utiliser",
 			"finalPrice": "Prix final",
 			"basePrice": "Prix de base",
@@ -2532,6 +2522,9 @@
 				"dynamic": "Dynamique"
 			},
 			"pricing": {
+				"pricingStrategy": "Stratégie de prix",
+				"partnerGrid": "Grille Partenaire",
+				"clientDirect": "Direct Client",
 				"contractPrice": "Prix Contractuel",
 				"contractPriceTooltip": "Ce prix est défini par le contrat partenaire et ne peut pas être modifié",
 				"contractPriceTooltipAdmin": "Cliquez pour modifier ce prix contractuel (admin uniquement)",

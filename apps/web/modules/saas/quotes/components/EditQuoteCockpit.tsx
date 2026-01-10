@@ -61,9 +61,11 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
       setFormData({
         contactId: quote.contactId,
         contact: quote.contact,
-        // Story 24.4: EndCustomer fields (will be null for existing quotes)
-        endCustomerId: null,
-        endCustomer: null,
+        // Story 24.4: EndCustomer fields
+        endCustomerId: quote.endCustomerId || null,
+        endCustomer: quote.endCustomer || null,
+        // Story 24.9: Selected pricing mode
+        pricingMode: quote.pricingMode,
         pickupAddress: quote.pickupAddress,
         pickupLatitude: quote.pickupLatitude ? parseFloat(quote.pickupLatitude) : null,
         pickupLongitude: quote.pickupLongitude ? parseFloat(quote.pickupLongitude) : null,
@@ -199,6 +201,9 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
           vehicleCategoryId: formData.vehicleCategoryId,
           passengerCount: formData.passengerCount,
           luggageCount: formData.luggageCount,
+          pricingMode: formData.pricingMode || pricingResult?.pricingMode || "DYNAMIC",
+          partnerGridPrice: pricingResult?.bidirectionalPricing?.partnerGridPrice ?? null,
+          clientDirectPrice: pricingResult?.bidirectionalPricing?.clientDirectPrice ?? null,
           finalPrice: computedFinalPrice,
           notes: formData.notes || undefined,
           // Include pricing data if available

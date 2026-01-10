@@ -1492,7 +1492,7 @@ export const pricingCalculateRouter = new Hono()
 						? Number(((clientDirectPrice - (isPartnerMode ? partnerPrice : result.price)) / (isPartnerMode ? partnerPrice : result.price) * 100).toFixed(2)) 
 						: 0
 				};
-
+				
 				// 4. Update pricing mode to new explicit enums
 				if (result.pricingMode === "FIXED_GRID") {
 					result.pricingMode = "PARTNER_GRID";

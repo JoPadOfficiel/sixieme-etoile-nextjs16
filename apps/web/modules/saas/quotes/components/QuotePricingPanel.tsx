@@ -95,9 +95,7 @@ export function QuotePricingPanel({
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
   const [priceOverridden, setPriceOverridden] = useState(false);
   
-  // Story 16.4: Check if this is a contract price (FIXED_GRID or PARTNER_GRID)
-  const isContractPrice = pricingResult?.pricingMode === "FIXED_GRID" || pricingResult?.pricingMode === "PARTNER_GRID";
-  const isPriceLocked = isContractPrice && !priceOverridden;
+
   
   // Story 19.5: Check if this is an OFF_GRID trip (manual pricing only)
   const isManualPricingMode = formData.tripType === "OFF_GRID" || pricingResult?.pricingMode === "MANUAL";
@@ -112,12 +110,17 @@ export function QuotePricingPanel({
   
   // Story 24.9: Bidirectional Pricing Logic
   const bidirectionalInfo = pricingResult?.bidirectionalPricing;
+  // Fix: Show toggle if bidirectional info exists, even if partnerGridPrice is null (indicates "No Grid" vs "Direct")
   const showBidirectionalToggle = !!bidirectionalInfo && 
-                                  bidirectionalInfo.partnerGridPrice !== null && 
                                   bidirectionalInfo.clientDirectPrice !== null;
                                   
   // Determine effective pricing mode (user selected > result default > DYNAMIC)
   const effectivePricingMode = formData.pricingMode || pricingResult?.pricingMode || "DYNAMIC";
+
+  // Story 16.4: Check if this is a contract price (FIXED_GRID or PARTNER_GRID)
+  // Story 24.9: Relaxed check to depend on effectivePricingMode
+  const isContractPrice = effectivePricingMode === "FIXED_GRID" || effectivePricingMode === "PARTNER_GRID";
+  const isPriceLocked = isContractPrice && !priceOverridden;
   
   // Determine effective suggested price
   let suggestedPrice = pricingResult?.price ?? 0;
@@ -134,11 +137,16 @@ export function QuotePricingPanel({
   const handlePricingModeChange = (mode: PricingMode) => {
     onFormChange("pricingMode", mode);
     
-    // Auto-update final price if it matches the OLD suggested price? 
-    // Or just let the user decide. 
-    // Better UX: If the user hasn't manually edited the "Final Price" away from the suggestion, update it.
-    // But checking "if manually edited" is hard without dirtiness state.
-    // Let's just update the suggested display, and let them click "Use Suggested" or type it.
+    // Story 24.9: Auto-update final price to matched selected mode
+    if (bidirectionalInfo) {
+      if ((mode === "PARTNER_GRID" || mode === "FIXED_GRID") && bidirectionalInfo.partnerGridPrice !== null) {
+        onFormChange("finalPrice", bidirectionalInfo.partnerGridPrice);
+        // Reset override state since we're switching to a potentially locked grid price
+        setPriceOverridden(false);
+      } else if ((mode === "CLIENT_DIRECT" || mode === "DYNAMIC") && bidirectionalInfo.clientDirectPrice !== null) {
+        onFormChange("finalPrice", bidirectionalInfo.clientDirectPrice);
+      }
+    }
   };
   
   // Calculate total of added fees (positive for fees, negative for promotions)

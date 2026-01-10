@@ -211,6 +211,8 @@ export interface Quote {
   vehicleCategory: VehicleCategory;
   suggestedPrice: string;
   finalPrice: string;
+  partnerGridPrice?: string | null;
+  clientDirectPrice?: string | null;
   internalCost: string | null;
   marginPercent: string | null;
   tripAnalysis: TripAnalysis | null;

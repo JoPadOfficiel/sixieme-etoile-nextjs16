@@ -27,7 +27,11 @@ export function BidirectionalPriceToggle({
     priceDifferencePercent,
   } = pricingInfo;
 
-  if (partnerGridPrice === null || clientDirectPrice === null) return null;
+  // Use 0 or null checks
+  const hasPartnerPrice = partnerGridPrice !== null && partnerGridPrice !== undefined;
+  const hasClientPrice = clientDirectPrice !== null && clientDirectPrice !== undefined;
+
+  if (!hasClientPrice) return null;
 
   const isPositiveDiff = (priceDifferencePercent || 0) > 0;
 
@@ -36,10 +40,12 @@ export function BidirectionalPriceToggle({
       {/* Partner Grid Option */}
       <button
         type="button"
-        onClick={() => onModeChange("PARTNER_GRID")}
+        onClick={() => hasPartnerPrice && onModeChange("PARTNER_GRID")}
+        disabled={!hasPartnerPrice}
         className={cn(
           "relative flex flex-col items-start gap-1 p-2 rounded-md border text-left transition-all",
-          currentMode === "PARTNER_GRID" || currentMode === "FIXED_GRID"
+          !hasPartnerPrice && "opacity-50 cursor-not-allowed",
+          hasPartnerPrice && (currentMode === "PARTNER_GRID" || currentMode === "FIXED_GRID")
             ? "bg-background border-primary shadow-sm ring-1 ring-primary"
             : "bg-transparent border-transparent hover:bg-background/50 text-muted-foreground"
         )}
@@ -51,7 +57,7 @@ export function BidirectionalPriceToggle({
           </span>
         </div>
         <div className="text-sm font-bold">
-          {formatPrice(partnerGridPrice)}
+          {hasPartnerPrice ? formatPrice(partnerGridPrice!) : "N/A"}
         </div>
       </button>
 
@@ -72,7 +78,7 @@ export function BidirectionalPriceToggle({
             {t("quotes.create.pricing.clientDirect")}
           </span>
           {/* Difference Badge */}
-          {priceDifferencePercent !== 0 && (
+          {hasPartnerPrice && priceDifferencePercent !== 0 && (
             <span className={cn(
               "ml-auto text-[10px] font-bold px-1 rounded flex items-center",
               isPositiveDiff 

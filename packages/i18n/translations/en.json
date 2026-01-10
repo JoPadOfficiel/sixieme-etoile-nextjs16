@@ -2522,6 +2522,9 @@
 				"dynamic": "Dynamic"
 			},
 			"pricing": {
+				"pricingStrategy": "Pricing Strategy",
+				"partnerGrid": "Partner Grid",
+				"clientDirect": "Client Direct",
 				"contractPrice": "Contract Price",
 				"contractPriceTooltip": "This price is set by the partner contract and cannot be modified",
 				"contractPriceTooltipAdmin": "Click to override this contract price (admin only)",

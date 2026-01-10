@@ -245,7 +245,7 @@ export function CreateQuoteCockpit() {
           // Story 24.4: Include endCustomerId for partner agency sub-contacts
           endCustomerId: formData.endCustomerId || null,
           vehicleCategoryId: formData.vehicleCategoryId,
-          pricingMode: pricingResult?.pricingMode ?? "DYNAMIC",
+          pricingMode: formData.pricingMode || pricingResult?.pricingMode || "DYNAMIC",
           tripType: formData.tripType,
           pickupAt: formData.pickupAt!.toISOString(),
           pickupAddress: formData.pickupAddress,
@@ -270,6 +270,8 @@ export function CreateQuoteCockpit() {
           luggageCount: formData.luggageCount,
           suggestedPrice: pricingResult?.price ?? formData.finalPrice,
           finalPrice: computedFinalPrice,
+          partnerGridPrice: pricingResult?.bidirectionalPricing?.partnerGridPrice ?? null,
+          clientDirectPrice: pricingResult?.bidirectionalPricing?.clientDirectPrice ?? null,
           internalCost: pricingResult?.internalCost ?? null,
           marginPercent: pricingResult?.marginPercent ?? null,
           tripAnalysis: pricingResult?.tripAnalysis as unknown as Record<string, unknown> | null ?? null,

@@ -105,3 +105,12 @@ Enable operators to view and switch between "Partner Grid Price" (contractual) a
 - [x] Tests Passed
 - [x] Story Verified
 - [x] **DONE**
+
+## Fix Implementation Notes (Post-Merge)
+- **Issue:** The bidirectional toggle was not visible in the UI due to missing data transfer from API to Frontend.
+- **Fix:** 
+  - Updated `PricingApiResponse` interface in `usePricingCalculation.ts` to include `bidirectionalPricing`.
+  - Updated `PricingResult` mapping in `usePricingCalculation.ts` to correctly pass `bidirectionalPricing`.
+  - Relaxed visibility condition in `QuotePricingPanel.tsx`: Toggle now appears even if only Client Direct price is available (for Partners without grid), allowing fallback to Direct pricing.
+  - Fixed Price Locking logic to depend on the *effective* pricing mode selected by the user, rather than the initial API result. This allows unlocking the price field when switching from "Partner Grid" to "Client Direct".
+- **Verified:** Browser tests confirmed toggle visibility and correct price locking behavior on Jan 10, 2026.

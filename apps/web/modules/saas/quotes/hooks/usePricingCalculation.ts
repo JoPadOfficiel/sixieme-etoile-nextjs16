@@ -10,6 +10,7 @@ import type {
   ProfitabilityLevel,
   ComplianceValidationResult,
   RegulatoryCategory,
+  BidirectionalPricingInfo,
 } from "../types";
 import { getProfitabilityLevel } from "../types";
 
@@ -87,6 +88,7 @@ interface PricingApiResponse {
   fallbackReason: string | null;
   gridSearchDetails?: Record<string, unknown> | null;
   tripAnalysis: TripAnalysis;
+  bidirectionalPricing?: BidirectionalPricingInfo;
 }
 
 // Story 19.1: Removed ComplianceValidationInput and ComplianceApiResponse
@@ -156,7 +158,7 @@ export function usePricingCalculation(
       // This ensures violations are resolved by staffing plans (DOUBLE_CREW, etc.)
       let complianceResult: ComplianceValidationResult | null = null;
       
-      // Story 19.1: Build complianceResult from tripAnalysis.compliancePlan
+  // Story 19.1: Build complianceResult from tripAnalysis.compliancePlan
       // If a staffing plan was selected, the violations are resolved
       if (
         vehicleCategoryRef.current?.regulatoryCategory === "HEAVY" &&
@@ -205,6 +207,7 @@ export function usePricingCalculation(
         fallbackReason: data.fallbackReason,
         tripAnalysis: data.tripAnalysis,
         complianceResult,
+        bidirectionalPricing: data.bidirectionalPricing,
       };
       setPricingResult(result);
       setError(null);

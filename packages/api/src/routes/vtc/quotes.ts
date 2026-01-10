@@ -150,6 +150,10 @@ const updateQuoteSchema = z.object({
 	// Full edit fields (only for DRAFT quotes)
 	contactId: z.string().min(1).optional().describe("Contact ID for the quote"),
 	vehicleCategoryId: z.string().min(1).optional().describe("Vehicle category ID"),
+	pricingMode: z
+		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
+		.optional()
+		.describe("Pricing mode"),
 	tripType: z
 		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
 		.optional()
@@ -553,6 +557,7 @@ export const quotesRouter = new Hono()
 			// Check if trying to modify fields that require DRAFT status
 			const isFullEdit = data.contactId !== undefined ||
 				data.vehicleCategoryId !== undefined ||
+				data.pricingMode !== undefined ||
 				data.tripType !== undefined ||
 				data.pickupAt !== undefined ||
 				data.pickupAddress !== undefined ||
@@ -646,6 +651,7 @@ export const quotesRouter = new Hono()
 					// Full edit fields (only for DRAFT) - use connect for relations
 					...(data.contactId !== undefined && { contact: { connect: { id: data.contactId } } }),
 					...(data.vehicleCategoryId !== undefined && { vehicleCategory: { connect: { id: data.vehicleCategoryId } } }),
+					...(data.pricingMode !== undefined && { pricingMode: data.pricingMode }),
 					...(data.tripType !== undefined && { tripType: data.tripType }),
 					...(data.pickupAt !== undefined && { pickupAt: new Date(data.pickupAt) }),
 					...(data.pickupAddress !== undefined && { pickupAddress: data.pickupAddress }),
