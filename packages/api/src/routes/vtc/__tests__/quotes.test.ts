@@ -14,6 +14,13 @@ vi.mock("@repo/database", () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    quoteStatusAuditLog: {
+      create: vi.fn(),
+    },
+    quoteNotesAuditLog: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn((promises) => Promise.all(promises)),
     contact: {
       findFirst: vi.fn(),
     },
@@ -241,6 +248,67 @@ describe("Quotes API", () => {
       });
 
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe("PATCH /quotes/:id", () => {
+    it("updates quote status", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findFirst: ReturnType<typeof vi.fn>;
+          update: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findFirst.mockResolvedValue(mockQuote);
+      mockDb.quote.update.mockResolvedValue({ ...mockQuote, status: "ACCEPTED" });
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes[":id"].$patch({
+        param: { id: "quote-1" },
+        json: { status: "ACCEPTED" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.quote.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "quote-1" },
+          data: expect.objectContaining({
+            status: "ACCEPTED",
+          }),
+        })
+      );
+    });
+
+    it("updates quote notes", async () => {
+      const mockDb = db as unknown as {
+        quote: {
+          findFirst: ReturnType<typeof vi.fn>;
+          update: ReturnType<typeof vi.fn>;
+        };
+      };
+      
+      mockDb.quote.findFirst.mockResolvedValue(mockQuote);
+      mockDb.quote.update.mockResolvedValue({ ...mockQuote, notes: "New notes" });
+
+      const app = new Hono().route("/", quotesRouter);
+      const client = testClient(app);
+
+      const response = await client.quotes[":id"].$patch({
+        param: { id: "quote-1" },
+        json: { notes: "New notes" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockDb.quote.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            notes: "New notes",
+          }),
+        })
+      );
     });
   });
 

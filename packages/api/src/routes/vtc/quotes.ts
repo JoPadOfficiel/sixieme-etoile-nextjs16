@@ -29,8 +29,8 @@ const createQuoteSchema = z.object({
 	endCustomerId: z.string().optional().nullable().describe("End-customer ID for partner agency sub-contacts"),
 	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
 	pricingMode: z
-		.enum(["FIXED_GRID", "DYNAMIC"])
-		.describe("Pricing mode: FIXED_GRID (Method 1) or DYNAMIC (Method 2)"),
+		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
+		.describe("Pricing mode: FIXED_GRID, DYNAMIC, PARTNER_GRID, CLIENT_DIRECT, or MANUAL"),
 	tripType: z
 		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
 		.describe("Type of trip"),
@@ -70,8 +70,11 @@ const createQuoteSchema = z.object({
 		.nonnegative()
 		.default(0)
 		.describe("Number of luggage pieces"),
-	suggestedPrice: z.number().positive().describe("Suggested price in EUR"),
-	finalPrice: z.number().positive().describe("Final price in EUR"),
+	suggestedPrice: z.number().nonnegative().describe("Suggested price in EUR"),
+	finalPrice: z.number().nonnegative().describe("Final price in EUR"),
+	// Story 24.9: Bidirectional pricing storage
+	partnerGridPrice: z.number().nonnegative().optional().nullable().describe("Partner grid price in EUR"),
+	clientDirectPrice: z.number().nonnegative().optional().nullable().describe("Client direct price in EUR"),
 	internalCost: z
 		.number()
 		.optional()
@@ -164,8 +167,11 @@ const updateQuoteSchema = z.object({
 	dropoffLongitude: z.number().optional().nullable().describe("Dropoff longitude"),
 	passengerCount: z.number().int().positive().optional().describe("Number of passengers"),
 	luggageCount: z.number().int().nonnegative().optional().describe("Number of luggage pieces"),
-	suggestedPrice: z.number().positive().optional().describe("Suggested price in EUR"),
-	finalPrice: z.number().positive().optional().describe("Final price in EUR"),
+	suggestedPrice: z.number().nonnegative().optional().describe("Suggested price in EUR"),
+	finalPrice: z.number().nonnegative().optional().describe("Final price in EUR"),
+	// Story 24.9: Bidirectional pricing storage
+	partnerGridPrice: z.number().nonnegative().optional().nullable().describe("Partner grid price in EUR"),
+	clientDirectPrice: z.number().nonnegative().optional().nullable().describe("Client direct price in EUR"),
 	internalCost: z.number().optional().nullable().describe("Internal cost in EUR"),
 	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
 	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details"),
@@ -195,7 +201,7 @@ const listQuotesSchema = z.object({
 		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"])
 		.optional(),
 	contactId: z.string().optional(),
-	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC"]).optional(),
+	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"]).optional(),
 	// Story 6.1: Additional filters for quotes list
 	search: z
 		.string()
@@ -443,6 +449,9 @@ export const quotesRouter = new Hono()
 						luggageCount: data.luggageCount,
 						suggestedPrice: data.suggestedPrice,
 						finalPrice: data.finalPrice,
+						// Story 24.9: Store bidirectional prices
+						partnerGridPrice: data.partnerGridPrice ?? null,
+						clientDirectPrice: data.clientDirectPrice ?? null,
 						internalCost: data.internalCost,
 						marginPercent: data.marginPercent,
 						tripAnalysis: data.tripAnalysis as
@@ -668,6 +677,9 @@ export const quotesRouter = new Hono()
 					}),
 					// Standard update fields
 					...(data.finalPrice !== undefined && { finalPrice: data.finalPrice }),
+					// Story 24.9: Update bidirectional prices
+					...(data.partnerGridPrice !== undefined && { partnerGridPrice: data.partnerGridPrice }),
+					...(data.clientDirectPrice !== undefined && { clientDirectPrice: data.clientDirectPrice }),
 					...(data.notes !== undefined && { notes: data.notes }),
 					...(data.validUntil !== undefined && {
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,

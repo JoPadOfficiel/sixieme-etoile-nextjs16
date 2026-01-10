@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { withTenantFilter, withTenantId } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import { startOfDay } from "date-fns";
 import {
 	calculateFlexibilityScoreSimple,
 	DEFAULT_MAX_DISTANCE_KM,
@@ -396,7 +397,7 @@ export const missionsRouter = new Hono()
 			const baseWhere: Prisma.QuoteWhereInput = {
 				status: "ACCEPTED",
 				pickupAt: {
-					gte: dateFrom ? new Date(dateFrom) : now,
+					gte: dateFrom ? new Date(dateFrom) : startOfDay(now),
 					...(dateTo && { lte: new Date(dateTo) }),
 				},
 				...(vehicleCategoryId && { vehicleCategoryId }),

@@ -95,12 +95,12 @@ export function QuotePricingPanel({
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
   const [priceOverridden, setPriceOverridden] = useState(false);
   
-  // Story 16.4: Check if this is a contract price (FIXED_GRID)
-  const isContractPrice = pricingResult?.pricingMode === "FIXED_GRID";
+  // Story 16.4: Check if this is a contract price (FIXED_GRID or PARTNER_GRID)
+  const isContractPrice = pricingResult?.pricingMode === "FIXED_GRID" || pricingResult?.pricingMode === "PARTNER_GRID";
   const isPriceLocked = isContractPrice && !priceOverridden;
   
   // Story 19.5: Check if this is an OFF_GRID trip (manual pricing only)
-  const isManualPricingMode = formData.tripType === "OFF_GRID";
+  const isManualPricingMode = formData.tripType === "OFF_GRID" || pricingResult?.pricingMode === "MANUAL";
 
   // Calculate margin based on final price and internal cost
   const calculateMargin = (finalPrice: number, internalCost: number): number => {

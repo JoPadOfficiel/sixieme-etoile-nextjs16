@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { formatPrice } from "../types";
 import { ArrowUpRightIcon, ArrowDownRightIcon, Building2Icon, UserIcon } from "lucide-react";
-import type { BidirectionalPricingInfo, PricingMode } from "@saas/shared/types"; // Assuming shared types path
+import type { BidirectionalPricingInfo, PricingMode } from "../types";
 
 interface BidirectionalPriceToggleProps {
   pricingInfo: BidirectionalPricingInfo;

@@ -15,7 +15,7 @@ import type { Quote, QuoteStatus } from "@prisma/client";
  * Each key is a current status, and the value is an array of valid next statuses
  */
 const VALID_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
-	DRAFT: ["SENT", "EXPIRED"],
+	DRAFT: ["SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
 	SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"],
 	VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED"],
 	ACCEPTED: [], // Terminal state

@@ -1479,12 +1479,17 @@ export const pricingCalculateRouter = new Hono()
 				const clientDirectPrice = directResult.price;
 
 				// 3. Attach bidirectional info
+				// Story 24.9: If isPartnerMode is true, we already have the partnerPrice from GRID
+				// If isPartnerMode is false (DYNAMIC fallback), we set partnerGridPrice to null
+				// because it means no grid matched for this trip. 
+				// However, the toggle might still want to show "N/A" or hide logic.
+				// For now, we follow the logic: if no grid matched, partnerGridPrice is null.
 				result.bidirectionalPricing = {
-					partnerGridPrice: isPartnerMode ? partnerPrice : null, // If dynamic fallback, we don't really have a grid price
+					partnerGridPrice: isPartnerMode ? partnerPrice : null,
 					clientDirectPrice: clientDirectPrice,
-					priceDifference: Number((clientDirectPrice - partnerPrice).toFixed(2)),
-					priceDifferencePercent: partnerPrice > 0 
-						? Number(((clientDirectPrice - partnerPrice) / partnerPrice * 100).toFixed(2)) 
+					priceDifference: Number((clientDirectPrice - (isPartnerMode ? partnerPrice : result.price)).toFixed(2)),
+					priceDifferencePercent: (isPartnerMode ? partnerPrice : result.price) > 0 
+						? Number(((clientDirectPrice - (isPartnerMode ? partnerPrice : result.price)) / (isPartnerMode ? partnerPrice : result.price) * 100).toFixed(2)) 
 						: 0
 				};
 
@@ -1492,14 +1497,11 @@ export const pricingCalculateRouter = new Hono()
 				if (result.pricingMode === "FIXED_GRID") {
 					result.pricingMode = "PARTNER_GRID";
 				} else if (result.pricingMode === "DYNAMIC") {
-					// Even if it fell back to dynamic, for a partner it's arguably "CLIENT_DIRECT" logic applied
-					// but let's keep it as DYNAMIC or map to CLIENT_DIRECT if that's the intent.
-					// For now, if it fell back, it effectively IS client direct price.
 					result.pricingMode = "CLIENT_DIRECT";
 				}
 			} else {
 				// For non-partners, it's always CLIENT_DIRECT (standard dynamic)
-				if (result.pricingMode === "DYNAMIC") {
+				if (result.pricingMode === "DYNAMIC" || result.pricingMode === "FIXED_GRID") {
 					result.pricingMode = "CLIENT_DIRECT";
 				}
 			}
