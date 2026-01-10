@@ -40,3 +40,4 @@ dist/
 *.tsbuildinfo
 
 # *Grille_Tarifaire_Sixieme_Etoile_2025_VAP.pdf
+*.context-engine
