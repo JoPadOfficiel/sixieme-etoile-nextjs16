@@ -326,6 +326,12 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
                             <Badge variant={quote.contact.isPartner ? "default" : "secondary"} className="text-xs">
                               {quote.contact.isPartner ? t("quotes.partner") : t("quotes.private")}
                             </Badge>
+                            {quote.endCustomer && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                <UserIcon className="size-3" />
+                                <span>{quote.endCustomer.firstName} {quote.endCustomer.lastName}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>

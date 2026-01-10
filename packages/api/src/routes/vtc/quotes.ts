@@ -269,6 +269,12 @@ export const quotesRouter = new Hono()
 					{
 						contact: { companyName: { contains: search, mode: "insensitive" } },
 					},
+					{
+						endCustomer: { firstName: { contains: search, mode: "insensitive" } },
+					},
+					{
+						endCustomer: { lastName: { contains: search, mode: "insensitive" } },
+					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
 				];
