@@ -2287,6 +2287,14 @@
 		"title": "Quotes",
 		"description": "Manage your quotes and pricing.",
 		"search": "Search quotes...",
+		"end_customer": {
+			"label": "End Customer",
+			"placeholder": "Select an end customer...",
+			"create_new": "+ Create new customer",
+			"via_agency": "via {agencyName}",
+			"no_end_customers": "No end customers for this agency",
+			"difficultyScore": "Difficulty score"
+		},
 		"zoneTransparency": {
 			"title": "Zone Transparency",
 			"conflictsResolved": "Conflicts resolved",

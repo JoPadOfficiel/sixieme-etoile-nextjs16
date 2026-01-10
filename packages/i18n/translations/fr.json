@@ -2287,6 +2287,14 @@
 		"title": "Devis",
 		"description": "Gérez vos devis et tarifications.",
 		"search": "Rechercher des devis...",
+		"end_customer": {
+			"label": "Client Final",
+			"placeholder": "Sélectionner un client final...",
+			"create_new": "+ Créer un nouveau client",
+			"via_agency": "via {agencyName}",
+			"no_end_customers": "Aucun client final pour cette agence",
+			"difficultyScore": "Score de difficulté"
+		},
 		"zoneTransparency": {
 			"title": "Transparence des zones",
 			"conflictsResolved": "Conflits résolus",

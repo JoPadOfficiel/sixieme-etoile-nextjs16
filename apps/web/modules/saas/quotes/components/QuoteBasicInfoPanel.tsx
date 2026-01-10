@@ -23,8 +23,10 @@ import { AddressAutocomplete } from "@saas/shared/components/AddressAutocomplete
 import { ContactSelector } from "./ContactSelector";
 import { VehicleCategorySelector } from "./VehicleCategorySelector";
 import { TripTypeFormFields } from "./TripTypeFormFields";
+import { EndCustomerSelector } from "./EndCustomerSelector";
 import { getAutoSelectResult } from "../hooks/useScenarioHelpers";
-import type { CreateQuoteFormData, TripType, Contact, VehicleCategory, AddressWithCoordinates } from "../types";
+import type { CreateQuoteFormData, TripType, Contact, VehicleCategory, AddressWithCoordinates, EndCustomer } from "../types";
+
 
 interface QuoteBasicInfoPanelProps {
   formData: CreateQuoteFormData;
@@ -70,7 +72,16 @@ export function QuoteBasicInfoPanel({
   const handleContactChange = (contact: Contact | null) => {
     onFormChange("contact", contact);
     onFormChange("contactId", contact?.id ?? "");
+    // Story 24.4: Clear end-customer when contact changes
+    onFormChange("endCustomerId", null);
+    onFormChange("endCustomer", null);
   };
+
+  // Story 24.4: Handle end-customer selection
+  const handleEndCustomerChange = useCallback((endCustomerId: string | null, endCustomer: EndCustomer | null) => {
+    onFormChange("endCustomerId", endCustomerId);
+    onFormChange("endCustomer", endCustomer);
+  }, [onFormChange]);
 
   const handlePickupChange = (result: AddressWithCoordinates) => {
     onFormChange("pickupAddress", result.address);
@@ -188,6 +199,16 @@ export function QuoteBasicInfoPanel({
             disabled={disabled}
             required
           />
+          
+          {/* Story 24.4: EndCustomer Selector for Partner contacts */}
+          {formData.contact?.isPartner && (
+            <EndCustomerSelector
+              contactId={formData.contactId}
+              value={formData.endCustomerId}
+              onChange={handleEndCustomerChange}
+              disabled={disabled}
+            />
+          )}
         </CardContent>
       </Card>
 

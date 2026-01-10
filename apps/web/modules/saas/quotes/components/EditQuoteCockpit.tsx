@@ -61,6 +61,9 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
       setFormData({
         contactId: quote.contactId,
         contact: quote.contact,
+        // Story 24.4: EndCustomer fields (will be null for existing quotes)
+        endCustomerId: null,
+        endCustomer: null,
         pickupAddress: quote.pickupAddress,
         pickupLatitude: quote.pickupLatitude ? parseFloat(quote.pickupLatitude) : null,
         pickupLongitude: quote.pickupLongitude ? parseFloat(quote.pickupLongitude) : null,

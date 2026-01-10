@@ -242,6 +242,8 @@ export function CreateQuoteCockpit() {
       const response = await apiClient.vtc.quotes.$post({
         json: {
           contactId: formData.contactId,
+          // Story 24.4: Include endCustomerId for partner agency sub-contacts
+          endCustomerId: formData.endCustomerId || null,
           vehicleCategoryId: formData.vehicleCategoryId,
           pricingMode: pricingResult?.pricingMode ?? "DYNAMIC",
           tripType: formData.tripType,

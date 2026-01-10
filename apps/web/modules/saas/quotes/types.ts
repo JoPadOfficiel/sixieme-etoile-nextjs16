@@ -156,6 +156,19 @@ export interface Contact {
 }
 
 /**
+ * Story 24.4: EndCustomer type for quote attribution
+ * Simplified version for quote form usage
+ */
+export interface EndCustomer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  difficultyScore: number | null;
+}
+
+/**
  * Story 16.1: Stop structure for excursion trips
  * Story 16.2: Added id for React key and nullable coordinates
  */
@@ -403,6 +416,9 @@ export function formatTripSummary(pickupAddress: string, dropoffAddress: string 
 export interface CreateQuoteFormData {
   contactId: string;
   contact: Contact | null;
+  // Story 24.4: EndCustomer for partner agency sub-contacts
+  endCustomerId: string | null;
+  endCustomer: EndCustomer | null;
   tripType: TripType;
   pickupAddress: string;
   pickupLatitude: number | null;
@@ -440,6 +456,9 @@ export interface CreateQuoteFormData {
 export const initialCreateQuoteFormData: CreateQuoteFormData = {
   contactId: "",
   contact: null,
+  // Story 24.4: EndCustomer defaults
+  endCustomerId: null,
+  endCustomer: null,
   tripType: "TRANSFER",
   pickupAddress: "",
   pickupLatitude: null,

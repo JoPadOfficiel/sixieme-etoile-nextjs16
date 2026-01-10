@@ -25,6 +25,8 @@ const stopSchema = z.object({
 // Validation schemas with EUR documentation
 const createQuoteSchema = z.object({
 	contactId: z.string().min(1).describe("Contact ID for the quote"),
+	// Story 24.4: Optional end-customer for partner agency sub-contacts
+	endCustomerId: z.string().optional().nullable().describe("End-customer ID for partner agency sub-contacts"),
 	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
 	pricingMode: z
 		.enum(["FIXED_GRID", "DYNAMIC"])
@@ -390,6 +392,8 @@ export const quotesRouter = new Hono()
 				data: withTenantCreate(
 					{
 						contactId: data.contactId,
+						// Story 24.4: Link end-customer for partner agency sub-contacts
+						endCustomerId: data.endCustomerId ?? null,
 						vehicleCategoryId: data.vehicleCategoryId,
 						pricingMode: data.pricingMode,
 						tripType: data.tripType,

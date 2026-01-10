@@ -55,6 +55,7 @@ export function EndCustomerList({ contactId }: EndCustomerListProps) {
     queryFn: async () => {
       const response = await apiClient.vtc.contacts[":contactId"]["end-customers"].$get({
         param: { contactId },
+        query: {}, // Empty query for default pagination
       });
       if (!response.ok) throw new Error("Failed to fetch end customers");
       const json = await response.json();
