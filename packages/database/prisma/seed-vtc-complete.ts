@@ -81,6 +81,7 @@ async function main() {
     await createDrivers();
     await createVehicles();
     await createContacts();
+    await createEndCustomers();
     await createSubcontractors();
     await createPartnerContracts();
     await createIntegrationSettings();
@@ -115,6 +116,7 @@ async function cleanExistingData() {
     await prisma.subcontractorVehicleCategory.deleteMany({});
     await prisma.subcontractorZone.deleteMany({});
     await prisma.subcontractorProfile.deleteMany({});
+    await prisma.endCustomer.deleteMany({});
     await prisma.contact.deleteMany({});
     await prisma.promotion.deleteMany({});
     await prisma.optionalFee.deleteMany({});
@@ -843,6 +845,15 @@ async function createPricingSettings() {
       roundTripBuffer: 15.0,          // Buffer percentage for round-trip pricing
       autoSwitchRoundTripToMAD: true, // Auto-switch round-trips to MAD if complex
       
+      // === PATIENCE TAX / DIFFICULTY MULTIPLIERS (Story 17.15 & 24.8) ===
+      difficultyMultipliers: {
+        "1": 1.00, // Client facile - pas de majoration
+        "2": 1.05, // Client standard - +5%
+        "3": 1.12, // Client exigeant - +12%
+        "4": 1.25, // Client difficile - +25%
+        "5": 1.50, // Blacklisté / Contraintes extrêmes - +50%
+      },
+      
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -871,10 +882,37 @@ async function createAdvancedRates() {
     
     // Majoration week-end
     { name: "Majoration Week-end", appliesTo: "WEEKEND" as const, daysOfWeek: "0,6", adjustmentType: "PERCENTAGE" as const, value: 15.0, priority: 5 },
+
+    // Majoration spécifique LUXE
+    { name: "Majoration Nuit LUXE (Plaisir Nocturne)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "06:00", adjustmentType: "PERCENTAGE" as const, value: 35.0, priority: 30 },
+    { name: "Heure Sup Nuit LUXE (150€)", appliesTo: "NIGHT" as const, startTime: "21:00", endTime: "07:00", adjustmentType: "FIXED_AMOUNT" as const, value: 150.0, priority: 30 },
   ];
   for (const r of rates) {
+    // Aligner avec Story 23.5: filtrage par catégorie
+    let vehicleCategoryIds: string[] = [];
+    if (r.name.includes("Berline")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["BERLINE"]];
+    else if (r.name.includes("Van VIP")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["VAN_PREMIUM"]];
+    else if (r.name.includes("Minivan")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["MINIBUS"]];
+    else if (r.name.includes("Minicar")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["MINIBUS"]];
+    else if (r.name.includes("Autocar")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["AUTOCAR"]];
+    else if (r.name.includes("LUXE")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["LUXE"]];
+    else {
+      // Les tarifs généraux s'appliquent à tout sauf LUXE pour forcer le pricing spécifique
+      vehicleCategoryIds = Object.values(VEHICLE_CATEGORY_IDS).filter(id => id !== VEHICLE_CATEGORY_IDS["LUXE"]);
+    }
+
     await prisma.advancedRate.create({
-      data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...r, isActive: true, createdAt: new Date(), updatedAt: new Date() },
+      data: { 
+        id: randomUUID(), 
+        organizationId: ORGANIZATION_ID, 
+        ...r, 
+        isActive: true, 
+        createdAt: new Date(), 
+        updatedAt: new Date(),
+        vehicleCategories: {
+          connect: vehicleCategoryIds.map(id => ({ id }))
+        }
+      },
     });
   }
   console.log(`   ✅ ${rates.length} rates`);
@@ -883,14 +921,28 @@ async function createAdvancedRates() {
 async function createSeasonalMultipliers() {
   console.log("\n🌸 Creating Seasonal Multipliers...");
   const mults = [
-    { name: "Haute Saison Été", startDate: new Date("2025-07-01"), endDate: new Date("2025-08-31"), multiplier: 1.15, priority: 5 },
-    { name: "Fêtes Fin d'Année", startDate: new Date("2025-12-20"), endDate: new Date("2026-01-05"), multiplier: 1.25, priority: 10 },
-    { name: "Fashion Week", startDate: new Date("2025-09-23"), endDate: new Date("2025-10-01"), multiplier: 1.20, priority: 8 },
-    { name: "Basse Saison", startDate: new Date("2025-01-15"), endDate: new Date("2025-02-28"), multiplier: 0.90, priority: 3 },
+    { name: "Haute Saison Été 2026", startDate: new Date("2026-07-01"), endDate: new Date("2026-08-31"), multiplier: 1.15, priority: 5 },
+    { name: "Fêtes Fin d'Année 2026", startDate: new Date("2026-12-20"), endDate: new Date("2027-01-05"), multiplier: 1.25, priority: 10 },
+    { name: "Fashion Week Sept 2026", startDate: new Date("2026-09-23"), endDate: new Date("2026-10-01"), multiplier: 1.20, priority: 8 },
+    { name: "Basse Saison 2026", startDate: new Date("2026-01-15"), endDate: new Date("2026-02-28"), multiplier: 0.90, priority: 3 },
+    { name: "Expiré 2025", startDate: new Date("2025-01-01"), endDate: new Date("2025-12-31"), multiplier: 0.80, priority: 1 },
   ];
   for (const m of mults) {
+    // Les multiplicateurs saisonniers s'appliquent à toutes les catégories par défaut
+    const vehicleCategoryIds = Object.values(VEHICLE_CATEGORY_IDS);
+    
     await prisma.seasonalMultiplier.create({
-      data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...m, isActive: true, createdAt: new Date(), updatedAt: new Date() },
+      data: { 
+        id: randomUUID(), 
+        organizationId: ORGANIZATION_ID, 
+        ...m, 
+        isActive: true, 
+        createdAt: new Date(), 
+        updatedAt: new Date(),
+        vehicleCategories: {
+          connect: vehicleCategoryIds.map(id => ({ id }))
+        }
+      },
     });
   }
   console.log(`   ✅ ${mults.length} multipliers`);
@@ -916,10 +968,36 @@ async function createOptionalFees() {
     { name: "Heure Supplémentaire Autocar 30p (120€)", amountType: "FIXED" as const, amount: 120.0, isTaxable: true, vatRate: 20.0 },
     { name: "Heure Supplémentaire Autocar 40p (140€)", amountType: "FIXED" as const, amount: 140.0, isTaxable: true, vatRate: 20.0 },
     { name: "Heure Supplémentaire Autocar 57p (140€)", amountType: "FIXED" as const, amount: 140.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire LUXE (120€)", amountType: "FIXED" as const, amount: 120.0, isTaxable: true, vatRate: 20.0 },
+    { name: "Heure Supplémentaire Minivan VIP (130€)", amountType: "FIXED" as const, amount: 130.0, isTaxable: true, vatRate: 20.0 },
   ];
   for (const f of fees) {
+    // Aligner avec Story 23.5: filtrage par catégorie
+    let vehicleCategoryIds: string[] = [];
+    if (f.name.includes("Berline")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["BERLINE"]];
+    else if (f.name.includes("Van VIP")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["VAN_PREMIUM"]];
+    else if (f.name.includes("Minivan VIP")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["MINIBUS_VIP"]];
+    else if (f.name.includes("Minivan")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["MINIBUS"]];
+    else if (f.name.includes("Minicar")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["MINIBUS"]];
+    else if (f.name.includes("Autocar")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["AUTOCAR"]];
+    else if (f.name.includes("LUXE")) vehicleCategoryIds = [VEHICLE_CATEGORY_IDS["LUXE"]];
+    else {
+      // Les frais de base (siège bébé, etc.) s'appliquent à tous
+      vehicleCategoryIds = Object.values(VEHICLE_CATEGORY_IDS);
+    }
+    
     await prisma.optionalFee.create({
-      data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...f, isActive: true, createdAt: new Date(), updatedAt: new Date() },
+      data: { 
+        id: randomUUID(), 
+        organizationId: ORGANIZATION_ID, 
+        ...f, 
+        isActive: true, 
+        createdAt: new Date(), 
+        updatedAt: new Date(),
+        vehicleCategories: {
+          connect: vehicleCategoryIds.map(id => ({ id }))
+        }
+      },
     });
   }
   console.log(`   ✅ ${fees.length} fees`);
@@ -928,14 +1006,33 @@ async function createOptionalFees() {
 async function createPromotions() {
   console.log("\n🎁 Creating Promotions...");
   const promos = [
-    { code: "BIENVENUE20", discountType: "PERCENTAGE" as const, value: 20.0, validFrom: new Date("2025-01-01"), validTo: new Date("2025-12-31"), maxTotalUses: 500, maxUsesPerContact: 1 },
-    { code: "FIDELITE10", discountType: "PERCENTAGE" as const, value: 10.0, validFrom: new Date("2025-01-01"), validTo: new Date("2025-12-31") },
-    { code: "ETUDIANT15", discountType: "PERCENTAGE" as const, value: 15.0, validFrom: new Date("2025-01-01"), validTo: new Date("2025-12-31") },
-    { code: "NOEL25", discountType: "FIXED" as const, value: 25.0, validFrom: new Date("2025-12-01"), validTo: new Date("2025-12-31"), maxTotalUses: 200 },
+    { code: "BIENVENUE2026", discountType: "PERCENTAGE" as const, value: 20.0, validFrom: new Date("2026-01-01"), validTo: new Date("2026-12-31"), maxTotalUses: 500, maxUsesPerContact: 1 },
+    { code: "FIDELITE10", discountType: "PERCENTAGE" as const, value: 10.0, validFrom: new Date("2026-01-01"), validTo: new Date("2026-12-31") },
+    { code: "ETUDIANT2026", discountType: "PERCENTAGE" as const, value: 15.0, validFrom: new Date("2026-01-01"), validTo: new Date("2026-12-31") },
+    { code: "NOEL26", discountType: "FIXED" as const, value: 25.0, validFrom: new Date("2026-12-01"), validTo: new Date("2026-12-31"), maxTotalUses: 200 },
+    
+    // Promotions expirées (Story 24)
+    { code: "JO_2024", discountType: "PERCENTAGE" as const, value: 30.0, validFrom: new Date("2024-07-01"), validTo: new Date("2024-08-31") },
+    { code: "OUVERTURE2025", discountType: "FIXED" as const, value: 15.0, validFrom: new Date("2025-01-01"), validTo: new Date("2025-01-31") },
+    { code: "HIVER_2025", discountType: "PERCENTAGE" as const, value: 10.0, validFrom: new Date("2025-11-01"), validTo: new Date("2025-12-31") },
   ];
   for (const p of promos) {
+    // Les promos s'appliquent à tous par défaut sauf mention contraire
+    const vehicleCategoryIds = Object.values(VEHICLE_CATEGORY_IDS);
+    
     await prisma.promotion.create({
-      data: { id: randomUUID(), organizationId: ORGANIZATION_ID, ...p, currentUses: 0, isActive: true, createdAt: new Date(), updatedAt: new Date() },
+      data: { 
+        id: randomUUID(), 
+        organizationId: ORGANIZATION_ID, 
+        ...p, 
+        currentUses: 0, 
+        isActive: true, 
+        createdAt: new Date(), 
+        updatedAt: new Date(),
+        vehicleCategories: {
+          connect: vehicleCategoryIds.map(id => ({ id }))
+        }
+      },
     });
   }
   console.log(`   ✅ ${promos.length} promotions`);
@@ -1021,6 +1118,19 @@ async function createContacts() {
     // === 2 COMPTES BUSINESS CORPORATE ===
     { type: "BUSINESS" as const, displayName: "LVMH Group Travel", companyName: "LVMH Moët Hennessy Louis Vuitton", email: "group.travel@lvmh.com", phone: "+33 1 44 13 22 22", vatNumber: "FR88901234568", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
     { type: "BUSINESS" as const, displayName: "TotalEnergies Corporate", companyName: "TotalEnergies SE", email: "corporate.travel@totalenergies.com", phone: "+33 1 47 55 45 46", vatNumber: "FR10123456780", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+    { type: "BUSINESS" as const, displayName: "L'Oréal Corporate", companyName: "L'Oréal S.A.", email: "travel@loreal.com", phone: "+33 1 47 12 34 56", vatNumber: "FR10123456781", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
+    { type: "BUSINESS" as const, displayName: "BNP Paribas Events", companyName: "BNP Paribas", email: "events@bnpparibas.com", phone: "+33 1 40 14 45 56", vatNumber: "FR10123456782", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+
+    // === HÔTELS DE LUXE ===
+    { type: "AGENCY" as const, displayName: "Hôtel Ritz Paris", companyName: "The Ritz Paris", email: "concierge@ritzparis.com", phone: "+33 1 43 16 30 30", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 },
+    { type: "AGENCY" as const, displayName: "Four Seasons George V", companyName: "Four Seasons Hotel George V", email: "concierge.paris@fourseasons.com", phone: "+33 1 49 52 70 00", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+    { type: "AGENCY" as const, displayName: "Le Bristol Paris", companyName: "Hôtel Le Bristol", email: "concierge.lebristolparis@oetkercollection.com", phone: "+33 1 53 43 43 00", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 },
+    { type: "AGENCY" as const, displayName: "Hôtel Plaza Athénée", companyName: "Plaza Athénée", email: "concierge.hpa@dorchestercollection.com", phone: "+33 1 53 67 66 66", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
+
+    // === AGENCES DMC ===
+    { type: "AGENCY" as const, displayName: "PARISCityVISION", companyName: "PARISCityVISION S.A.", email: "booking@pariscityvision.com", phone: "+33 1 44 55 61 00", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 3 },
+    { type: "AGENCY" as const, displayName: "France Tourisme", companyName: "France Tourisme", email: "info@francetourisme.fr", phone: "+33 1 53 10 35 35", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 4 },
+    { type: "AGENCY" as const, displayName: "Euroscope Paris", companyName: "Euroscope Paris", email: "contact@euroscope.fr", phone: "+33 1 56 03 56 03", isPartner: true, defaultClientType: "PARTNER" as const, difficultyScore: 2 },
     
     // === 10 CONTACTS CLIENTS RÉELS ===
     { type: "INDIVIDUAL" as const, displayName: "Marie Dupont", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@gmail.com", phone: "+33 6 11 22 33 44", isPartner: false, defaultClientType: "PRIVATE" as const, difficultyScore: 1 },
@@ -1041,6 +1151,63 @@ async function createContacts() {
     CONTACT_IDS[c.displayName] = created.id;
   }
   console.log(`   ✅ ${contacts.length} contacts with difficulty scores`);
+}
+
+async function createEndCustomers() {
+  console.log("\n👤 Creating EndCustomers for Partner Agencies (Story 24)...");
+  
+  const partners = Object.keys(CONTACT_IDS).filter(name => 
+    name.includes("VTC Premium") || 
+    name.includes("LVMH") || 
+    name.includes("TotalEnergies") || 
+    name.includes("L'Oréal") ||
+    name.includes("BNP") ||
+    name.includes("Hôtel") ||
+    name.includes("George V") ||
+    name.includes("Bristol") ||
+    name.includes("PARISCityVISION") ||
+    name.includes("France Tourisme") ||
+    name.includes("Euroscope")
+  );
+
+  const lastNames = ["Grosjean", "Lemoine", "Vignon", "Rousseau", "Castel", "Masson", "Perrin", "Girard", "Dupont", "Durand", "Leroy", "Moreau", "Simon", "Laurent", "Michel", "Garcia", "Thomas", "Robert", "Richard", "Petit"];
+  const firstNames = ["Alexandre", "Béatrice", "Charles", "Diane", "Emilie", "Frédéric", "Guillaume", "Hélène", "Jean", "Julie", "Kevin", "Laura", "Marc", "Nathalie", "Olivier", "Pauline", "Quentin", "Rosa", "Sébastien", "Thérèse"];
+
+  let totalEndCustomers = 0;
+
+  for (const partnerName of partners) {
+    const contactId = CONTACT_IDS[partnerName];
+    if (!contactId) continue;
+
+    // Déterminer le nombre de clients : Siège et gros partenaires = 20, autres = 3-8
+    let count = partnerName.includes("Siège") || partnerName.includes("Événementiel") || partnerName.includes("LVMH") || partnerName.includes("PARISCityVISION") 
+      ? 20 
+      : 3 + Math.floor(Math.random() * 6);
+
+    for (let i = 0; i < count; i++) {
+      const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      const difficulty = 1 + Math.floor(Math.random() * 5); // 1-5
+      
+      await prisma.endCustomer.create({
+        data: {
+          id: randomUUID(),
+          organizationId: ORGANIZATION_ID,
+          contactId: contactId,
+          firstName: fName,
+          lastName: lName,
+          email: `${fName.toLowerCase()}.${lName.toLowerCase()}${i}@partner-client.com`,
+          phone: `+33 6 ${Math.floor(10000000 + Math.random() * 89999999)}`,
+          difficultyScore: difficulty,
+          notes: `Client #${i+1} de ${partnerName}. Difficulté ${difficulty}/5.`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      totalEndCustomers++;
+    }
+  }
+  console.log(`   ✅ ${totalEndCustomers} end-customers created across all partner agencies`);
 }
 
 async function createSubcontractors() {
@@ -1436,20 +1603,49 @@ async function createPartnerContracts() {
       paymentTerms: "DAYS_30" as const,
       commissionPercent: 10.0,
       zoneRoutes: [
-        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 75.0 },   // -5%
-        { routeKey: "CDG_PARIS_0_VAN_PREMIUM", overridePrice: 94.0 }, // -5%
-        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 52.0 },    // -5%
-        { routeKey: "ORLY_PARIS_0_VAN_PREMIUM", overridePrice: 68.0 }, // -5%
-        { routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 47.0 }, // -4%
+        { routeKey: "CDG_PARIS_0_BERLINE", overridePrice: 75.0 },
+        { routeKey: "ORLY_PARIS_0_BERLINE", overridePrice: 52.0 },
       ],
-      excursions: [
-        { name: "Versailles Demi-Journée Van", overridePrice: 399.0 }, // -5%
-        { name: "Fontainebleau Demi-Journée Van", overridePrice: 470.0 }, // -5%
+      excursions: [],
+      dispos: [],
+    },
+    {
+      name: "Hôtel Ritz Paris",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 12.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_0_LUXE", overridePrice: 130.0 },
+        { routeKey: "ORLY_PARIS_0_LUXE", overridePrice: 90.0 },
       ],
-      dispos: [
-        { name: "MAD Paris 8H Van", overridePrice: 589.0 },   // Catalog: 620€, -5%
-        { name: "MAD Paris 10H Van", overridePrice: 665.0 },  // Catalog: 700€, -5%
+      excursions: [{ name: "Paris by Night Luxe", overridePrice: 320.0 }],
+      dispos: [{ name: "Dispo 4h Luxe", overridePrice: 350.0 }],
+    },
+    {
+      name: "PARISCityVISION",
+      paymentTerms: "DAYS_15" as const,
+      commissionPercent: 18.0,
+      zoneRoutes: [
+        { routeKey: "CDG_PARIS_0_AUTOCAR", overridePrice: 280.0 },
+        { routeKey: "ORLY_PARIS_0_AUTOCAR", overridePrice: 280.0 },
       ],
+      excursions: [{ name: "Versailles Journée Complète Autocar", overridePrice: 650.0 }],
+      dispos: [{ name: "MAD Paris 8H Autocar", overridePrice: 850.0 }],
+    },
+    {
+      name: "L'Oréal Corporate",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 8.0,
+      zoneRoutes: [{ routeKey: "CDG_LA_DEFENSE_BERLINE", overridePrice: 85.0 }],
+      excursions: [],
+      dispos: [],
+    },
+    {
+      name: "BNP Paribas Events",
+      paymentTerms: "DAYS_30" as const,
+      commissionPercent: 10.0,
+      zoneRoutes: [{ routeKey: "PARIS_0_LA_DEFENSE_BERLINE", overridePrice: 48.0 }],
+      excursions: [],
+      dispos: [],
     },
   ];
 
@@ -1457,79 +1653,86 @@ async function createPartnerContracts() {
   let totalExcursions = 0;
   let totalDispos = 0;
 
-  for (const config of partnerConfigs) {
-    // Create the partner contract
+  // Index configurations by partner name for quick lookup
+  const configMap = new Map(partnerConfigs.map(c => [c.name, c]));
+
+  // Find all contacts that should have a partner contract
+  // We include both specifically configured partners and all agencies/businesses created
+  const partnerContacts = Object.entries(CONTACT_IDS).filter(([name]) => {
+    const config = configMap.get(name);
+    if (config) return true;
+    // Fallback: check if name suggests it's a partner we should seed for
+    return name.includes("Hôtel") || name.includes("VTC Premium") || name.includes("LVMH") || name.includes("TotalEnergies") || 
+           name.includes("L'Oréal") || name.includes("BNP") || name.includes("Four Seasons") || name.includes("Bristol") || 
+           name.includes("Plaza Athénée") || name.includes("PARISCityVISION") || name.includes("France Tourisme") || name.includes("Euroscope");
+  });
+
+  console.log(`   🤝 Seeding contracts for ${partnerContacts.length} partners...`);
+
+  for (const [name, contactId] of partnerContacts) {
+    const config = configMap.get(name);
+    
+    // Create the partner contract with config or defaults
     const contract = await prisma.partnerContract.create({
       data: {
         id: randomUUID(),
         organizationId: ORGANIZATION_ID,
-        contactId: CONTACT_IDS[config.name],
-        paymentTerms: config.paymentTerms,
-        commissionPercent: config.commissionPercent,
+        contactId: contactId,
+        paymentTerms: config?.paymentTerms || "DAYS_30",
+        commissionPercent: config?.commissionPercent ?? 10.0,
         createdAt: new Date(),
         updatedAt: new Date(),
+        notes: `Contract for ${name} - seeded for 2026`,
       },
     });
-    PARTNER_CONTRACT_IDS[config.name] = contract.id;
+    PARTNER_CONTRACT_IDS[name] = contract.id;
 
-    // Assign zone routes with custom prices
-    for (const route of config.zoneRoutes) {
-      const zoneRouteId = ZONE_ROUTE_IDS[route.routeKey];
-      if (zoneRouteId) {
-        await prisma.partnerContractZoneRoute.create({
-          data: {
-            id: randomUUID(),
-            partnerContractId: contract.id,
-            zoneRouteId: zoneRouteId,
-            overridePrice: route.overridePrice,
-          },
-        });
-        totalZoneRoutes++;
-      } else {
-        console.log(`   ⚠️ Route not found: ${route.routeKey}`);
-      }
+    // 1. Assign ALL Zone Routes
+    const routeOverrides = new Map(config?.zoneRoutes?.map(r => [r.routeKey, r.overridePrice]) || []);
+    for (const [routeKey, routeId] of Object.entries(ZONE_ROUTE_IDS)) {
+      await prisma.partnerContractZoneRoute.create({
+        data: {
+          id: randomUUID(),
+          partnerContractId: contract.id,
+          zoneRouteId: routeId,
+          overridePrice: routeOverrides.get(routeKey) || null, // null = use catalog price
+        },
+      });
+      totalZoneRoutes++;
     }
 
-    // Assign excursion packages with custom prices
-    for (const excursion of config.excursions) {
-      const excursionId = EXCURSION_PACKAGE_IDS[excursion.name];
-      if (excursionId) {
-        await prisma.partnerContractExcursionPackage.create({
-          data: {
-            id: randomUUID(),
-            partnerContractId: contract.id,
-            excursionPackageId: excursionId,
-            overridePrice: excursion.overridePrice,
-          },
-        });
-        totalExcursions++;
-      } else {
-        console.log(`   ⚠️ Excursion not found: ${excursion.name}`);
-      }
+    // 2. Assign ALL Excursion Packages
+    const excursionOverrides = new Map(config?.excursions?.map(e => [e.name, e.overridePrice]) || []);
+    for (const [excursionName, excursionId] of Object.entries(EXCURSION_PACKAGE_IDS)) {
+      await prisma.partnerContractExcursionPackage.create({
+        data: {
+          id: randomUUID(),
+          partnerContractId: contract.id,
+          excursionPackageId: excursionId,
+          overridePrice: excursionOverrides.get(excursionName) || null,
+        },
+      });
+      totalExcursions++;
     }
 
-    // Assign dispo packages with custom prices
-    for (const dispo of config.dispos) {
-      const dispoId = DISPO_PACKAGE_IDS[dispo.name];
-      if (dispoId) {
-        await prisma.partnerContractDispoPackage.create({
-          data: {
-            id: randomUUID(),
-            partnerContractId: contract.id,
-            dispoPackageId: dispoId,
-            overridePrice: dispo.overridePrice,
-          },
-        });
-        totalDispos++;
-      } else {
-        console.log(`   ⚠️ Dispo not found: ${dispo.name}`);
-      }
+    // 3. Assign ALL Dispo Packages
+    const dispoOverrides = new Map(config?.dispos?.map(d => [d.name, d.overridePrice]) || []);
+    for (const [dispoName, dispoId] of Object.entries(DISPO_PACKAGE_IDS)) {
+      await prisma.partnerContractDispoPackage.create({
+        data: {
+          id: randomUUID(),
+          partnerContractId: contract.id,
+          dispoPackageId: dispoId,
+          overridePrice: dispoOverrides.get(dispoName) || null,
+        },
+      });
+      totalDispos++;
     }
 
-    console.log(`   ✅ ${config.name}: ${config.zoneRoutes.length} routes, ${config.excursions.length} excursions, ${config.dispos.length} dispos`);
+    console.log(`   ✅ ${name}: Assigned all grids (${Object.keys(ZONE_ROUTE_IDS).length} routes, ${Object.keys(EXCURSION_PACKAGE_IDS).length} excursions, ${Object.keys(DISPO_PACKAGE_IDS).length} dispos)`);
   }
 
-  console.log(`   📊 Total: ${partnerConfigs.length} contracts, ${totalZoneRoutes} zone routes, ${totalExcursions} excursions, ${totalDispos} dispos`);
+  console.log(`   📊 Total: ${partnerContacts.length} contracts, ${totalZoneRoutes} zone route links, ${totalExcursions} excursion links, ${totalDispos} dispo links`);
 }
 
 async function createIntegrationSettings() {
@@ -1602,20 +1805,13 @@ function printSummary() {
   console.log(`   • 8 Drivers with multi-license support`);
   console.log(`   • 15 Vehicles (5 Sixième Étoile + 10 supplémentaires)`);
   console.log(`   • 15 Contacts (particuliers, hôtels, agences, corporate)`);
-  console.log(`   • 10 Partner Contracts with custom pricing:`);
-  console.log(`     📍 HÔTELS DE LUXE (10% commission, paiement 30j, -8 à -12%):`);
-  console.log(`       - Hôtel Ritz Paris`);
-  console.log(`       - Four Seasons George V`);
-  console.log(`       - Le Bristol Paris`);
-  console.log(`       - Hôtel Plaza Athénée`);
-  console.log(`     📍 AGENCES DMC (15% commission, paiement 15j, -15 à -18%):`);
-  console.log(`       - PARISCityVISION (groupes, excursions)`);
-  console.log(`       - France Tourisme (tourisme haut de gamme)`);
-  console.log(`       - Euroscope Paris (corporate, incentive)`);
-  console.log(`     📍 CORPORATE (5-8% commission, paiement rapide, -5 à -8%):`);
-  console.log(`       - LVMH Travel`);
-  console.log(`       - L'Oréal Corporate`);
-  console.log(`       - BNP Paribas Events`);
+  const ecCount = 155; // Approximatif basé sur la boucle
+  console.log(`   • ${ecCount}+ EndCustomers within partner agencies (Story 24)`);
+  const partnerCount = Object.keys(PARTNER_CONTRACT_IDS).length;
+  console.log(`   • ${partnerCount} Partner Contracts with custom pricing and CRM:`);
+  console.log(`     📍 AGENCES & HÔTELS (CRM peuplé avec 3 à 20 clients chacun)`);
+  console.log(`     📍 CORPORATE (LVMH, TotalEnergies, L'Oréal, BNP)`);
+  console.log(`     📍 DMC (PARISCityVISION, France Tourisme, etc.)`);
   console.log(`   • No default quotes or invoices seeded`);
   console.log(`   • API keys configured (Google Maps, CollectAPI)`);
 }
