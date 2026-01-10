@@ -1426,6 +1426,84 @@ export const pricingCalculateRouter = new Hono()
 				}
 			}
 
+
+
+			// Story 24.9: Bidirectional pricing calculation
+			// If the contact is a partner, we calculate both 'PARTNER_GRID' (actual) and 'CLIENT_DIRECT' (theoretical)
+			if (contact.isPartner) {
+				const isPartnerMode = result.pricingMode === "FIXED_GRID";
+				
+				// 1. Determine Partner Price
+				const partnerPrice = result.price;
+
+				// 2. Calculate Client Direct Price (Dynamic, ignoring partner status)
+				// Create a "private client" view of the contact
+				const clientDirectContact = { 
+					...contact, 
+					isPartner: false, 
+					partnerContract: null 
+				};
+
+				// Re-run calculation with private client contact
+				// Use the same context object structure
+				const vehicleContext = vehicleCategory ? {
+					id: vehicleCategory.id,
+					code: vehicleCategory.code,
+					name: vehicleCategory.name,
+					priceMultiplier: Number(vehicleCategory.priceMultiplier),
+					defaultRatePerKm: vehicleCategory.defaultRatePerKm ? Number(vehicleCategory.defaultRatePerKm) : null,
+					defaultRatePerHour: vehicleCategory.defaultRatePerHour ? Number(vehicleCategory.defaultRatePerHour) : null,
+					fuelType: null,
+					regulatoryCategory: vehicleCategory.regulatoryCategory as "LIGHT" | "HEAVY" | null,
+				} : undefined;
+
+				const directResult = calculatePrice(pricingRequest, {
+					contact: clientDirectContact,
+					zones,
+					pricingSettings: effectivePricingSettings,
+					advancedRates,
+					seasonalMultipliers,
+					vehicleCategory: vehicleContext,
+					vehicleSelectionInput: vehicleSelectionInputForPricing,
+					resolvedDifficultyScore,
+				});
+
+				// If the main result used real tolls/costs that differ from the estimate used in directResult,
+				// we should ideally align them, but for now the minimal divergence in estimate vs real 
+				// is acceptable for the "comparison" price. 
+				// However, if we want apple-to-apple comparing only margin logic:
+				// directResult uses calculated internalCost. 
+				// If result.internalCost is different (due to real tolls), directPrice might be slightly off.
+				// Let's rely on the engine's consistency for now.
+
+				const clientDirectPrice = directResult.price;
+
+				// 3. Attach bidirectional info
+				result.bidirectionalPricing = {
+					partnerGridPrice: isPartnerMode ? partnerPrice : null, // If dynamic fallback, we don't really have a grid price
+					clientDirectPrice: clientDirectPrice,
+					priceDifference: Number((clientDirectPrice - partnerPrice).toFixed(2)),
+					priceDifferencePercent: partnerPrice > 0 
+						? Number(((clientDirectPrice - partnerPrice) / partnerPrice * 100).toFixed(2)) 
+						: 0
+				};
+
+				// 4. Update pricing mode to new explicit enums
+				if (result.pricingMode === "FIXED_GRID") {
+					result.pricingMode = "PARTNER_GRID";
+				} else if (result.pricingMode === "DYNAMIC") {
+					// Even if it fell back to dynamic, for a partner it's arguably "CLIENT_DIRECT" logic applied
+					// but let's keep it as DYNAMIC or map to CLIENT_DIRECT if that's the intent.
+					// For now, if it fell back, it effectively IS client direct price.
+					result.pricingMode = "CLIENT_DIRECT";
+				}
+			} else {
+				// For non-partners, it's always CLIENT_DIRECT (standard dynamic)
+				if (result.pricingMode === "DYNAMIC") {
+					result.pricingMode = "CLIENT_DIRECT";
+				}
+			}
+
 			return c.json({
 				...result,
 				estimatedEndAt,

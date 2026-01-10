@@ -12,7 +12,7 @@ import type { TollSource } from "../toll-service";
 // Core Types
 // ============================================================================
 
-export type PricingMode = "FIXED_GRID" | "DYNAMIC";
+export type PricingMode = "FIXED_GRID" | "DYNAMIC" | "PARTNER_GRID" | "CLIENT_DIRECT" | "MANUAL";
 export type GridType = "ZoneRoute" | "ExcursionPackage" | "DispoPackage";
 export type TripType = "transfer" | "excursion" | "dispo";
 export type ProfitabilityIndicator = "green" | "orange" | "red";
@@ -197,7 +197,17 @@ export interface PricingResult {
 	previousPrice?: number;
 	commissionData?: CommissionData;
 	// Story 21.9: Validation result
+	// Story 21.9: Validation result
 	validation?: ValidationResult;
+	// Story 24.9: Bidirectional pricing info
+	bidirectionalPricing?: BidirectionalPricingInfo;
+}
+
+export interface BidirectionalPricingInfo {
+	partnerGridPrice: number | null;
+	clientDirectPrice: number | null;
+	priceDifference: number | null;
+	priceDifferencePercent: number | null;
 }
 
 // ============================================================================

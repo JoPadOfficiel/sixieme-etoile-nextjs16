@@ -6,7 +6,7 @@
  */
 
 export type QuoteStatus = "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";
-export type PricingMode = "FIXED_GRID" | "DYNAMIC";
+export type PricingMode = "FIXED_GRID" | "DYNAMIC" | "PARTNER_GRID" | "CLIENT_DIRECT" | "MANUAL";
 export type TripType = "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
 export type StayServiceType = "TRANSFER" | "DISPO" | "EXCURSION";
 export type ProfitabilityLevel = "green" | "orange" | "red";
@@ -484,6 +484,8 @@ export interface CreateQuoteFormData {
   maxKilometers: number | null;   // For DISPO (calculated: durationHours × 50)
   // Story 22.6: STAY trip type fields
   stayDays: CreateStayDayInput[]; // For STAY
+  // Story 24.9: Selected pricing mode
+  pricingMode?: PricingMode;
 }
 
 /**
@@ -523,6 +525,8 @@ export const initialCreateQuoteFormData: CreateQuoteFormData = {
   maxKilometers: null,          // For DISPO (calculated: durationHours × 50)
   // Story 22.6: STAY trip type defaults
   stayDays: [],                 // For STAY
+  // Story 24.9: Default pricing mode
+  pricingMode: undefined,
 };
 
 /**
@@ -966,6 +970,15 @@ export interface PricingResult {
   commissionData?: CommissionData;
   // Story 21.9: Validation result
   validation?: ValidationResult;
+  // Story 24.9: Bidirectional pricing
+  bidirectionalPricing?: BidirectionalPricingInfo;
+}
+
+export interface BidirectionalPricingInfo {
+  partnerGridPrice: number | null;
+  clientDirectPrice: number | null;
+  priceDifference: number | null;
+  priceDifferencePercent: number | null;
 }
 
 /**

@@ -29,7 +29,8 @@ import { AddQuoteFeeDialog, type AddedFee } from "./AddQuoteFeeDialog";
 import { AddedFeesList } from "./AddedFeesList";
 import { ContractPriceBadge } from "./ContractPriceBadge";
 import { ConfirmOverrideDialog } from "./ConfirmOverrideDialog";
-import type { CreateQuoteFormData, PricingResult } from "../types";
+import { BidirectionalPriceToggle } from "./BidirectionalPriceToggle";
+import type { CreateQuoteFormData, PricingResult, PricingMode } from "../types";
 import { formatPrice } from "../types";
 
 interface QuotePricingPanelProps {
@@ -108,7 +109,37 @@ export function QuotePricingPanel({
   };
 
   const internalCost = pricingResult?.internalCost ?? 0;
-  const suggestedPrice = pricingResult?.price ?? 0;
+  
+  // Story 24.9: Bidirectional Pricing Logic
+  const bidirectionalInfo = pricingResult?.bidirectionalPricing;
+  const showBidirectionalToggle = !!bidirectionalInfo && 
+                                  bidirectionalInfo.partnerGridPrice !== null && 
+                                  bidirectionalInfo.clientDirectPrice !== null;
+                                  
+  // Determine effective pricing mode (user selected > result default > DYNAMIC)
+  const effectivePricingMode = formData.pricingMode || pricingResult?.pricingMode || "DYNAMIC";
+  
+  // Determine effective suggested price
+  let suggestedPrice = pricingResult?.price ?? 0;
+  
+  if (showBidirectionalToggle && bidirectionalInfo) {
+    if ((effectivePricingMode === "PARTNER_GRID" || effectivePricingMode === "FIXED_GRID") && bidirectionalInfo.partnerGridPrice) {
+      suggestedPrice = bidirectionalInfo.partnerGridPrice;
+    } else if ((effectivePricingMode === "CLIENT_DIRECT" || effectivePricingMode === "DYNAMIC") && bidirectionalInfo.clientDirectPrice) {
+      suggestedPrice = bidirectionalInfo.clientDirectPrice;
+    }
+  }
+
+  // Handle pricing mode toggle
+  const handlePricingModeChange = (mode: PricingMode) => {
+    onFormChange("pricingMode", mode);
+    
+    // Auto-update final price if it matches the OLD suggested price? 
+    // Or just let the user decide. 
+    // Better UX: If the user hasn't manually edited the "Final Price" away from the suggestion, update it.
+    // But checking "if manually edited" is hard without dirtiness state.
+    // Let's just update the suggested display, and let them click "Use Suggested" or type it.
+  };
   
   // Calculate total of added fees (positive for fees, negative for promotions)
   const addedFeesTotal = addedFees.reduce((sum, fee) => {
@@ -187,6 +218,18 @@ export function QuotePricingPanel({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Story 24.9: Bidirectional Pricing Toggle */}
+          {showBidirectionalToggle && bidirectionalInfo && (
+            <div className="mb-4">
+              <Label className="mb-2 block">{t("quotes.create.pricing.pricingStrategy")}</Label>
+              <BidirectionalPriceToggle
+                pricingInfo={bidirectionalInfo}
+                currentMode={effectivePricingMode}
+                onModeChange={handlePricingModeChange}
+              />
+            </div>
+          )}
+
           {/* Suggested Price */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">

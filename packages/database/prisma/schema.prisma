@@ -249,6 +249,9 @@ enum InvoiceStatus {
 enum PricingMode {
   FIXED_GRID
   DYNAMIC
+  PARTNER_GRID
+  CLIENT_DIRECT
+  MANUAL
 }
 
 /// Trip type classification
@@ -1694,6 +1697,10 @@ model Quote {
   finalPrice     Decimal  @db.Decimal(10, 2)
   internalCost   Decimal? @db.Decimal(10, 2)
   marginPercent  Decimal? @db.Decimal(5, 2)
+
+  // Story 24.9: Bidirectional pricing fields
+  partnerGridPrice  Decimal? @db.Decimal(10, 2)
+  clientDirectPrice Decimal? @db.Decimal(10, 2)
 
   // Commission data (Story 7.4)
   commissionPercent Decimal? @db.Decimal(5, 2) // Snapshot from partner contract at quote time
