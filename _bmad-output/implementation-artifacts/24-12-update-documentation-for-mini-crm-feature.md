@@ -1,6 +1,6 @@
 # Story 24.12: Update Documentation for Mini-CRM Feature
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -69,11 +69,17 @@ so that operators understand how to use end-customer management and bidirectiona
 - Antigravity (claude-3-7-sonnet-20250219)
 
 ### Completion Notes List
+### Completion Notes List
 - [2026-01-10] Story generated and initialized as **in-progress**. 
-- Automated tests (24.11) were confirmed as "Done" by the user.
+- [2026-01-10] Automated tests (24.11) were confirmed as "Done" by the user.
+- [2026-01-10] Documentation created and Tech Spec updated. Story marked as **done**.
 
 ## File List
 
-**To be created:**
+**Created:**
 - `docs/user-guides/fr/gestion-clients-finaux.md`
 - `docs/user-guides/fr/tarification-bidirectionnelle.md`
+
+**Modified:**
+- `docs/bmad/tech-spec.md`
+

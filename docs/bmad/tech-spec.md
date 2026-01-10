@@ -392,6 +392,20 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
   - Relationships:
     - `quotes` → `Quote[]`.
     - `invoices` → `Invoice[]`.
+    - `endCustomers` → `EndCustomer[]` (Mini-CRM).
+
+- **EndCustomer** (new, Mini-CRM)
+
+  - Purpose: Represent the actual beneficiary/passenger when the Contact is an Agency/Partner.
+  - Key fields:
+    - `id`, `organizationId`.
+    - `contactId` (Parent Contact FK).
+    - `firstName`, `lastName`, `email`, `phone`, `companyName`.
+    - `difficultyScore` (1-10) for "Patience Tax" pricing logic.
+    - `notes`.
+  - Relationships:
+    - `parentContact` → `Contact`.
+    - `quotes` → `Quote[]` (linked as beneficiary).
 
 ### 3. Fleet & Regulatory Models
 
@@ -610,6 +624,15 @@ All date/time fields are `DateTime` values interpreted as **Europe/Paris busines
   - Relationships:
     - `contact` → `Contact`.
     - `invoice` → `Invoice?`.
+    - `endCustomer` → `EndCustomer?` (optional link to specific beneficiary).
+
+### 6. Bidirectional Pricing (Partner vs Direct)
+
+- **Concept**: For a given Quote, if the Client is a Partner with a Fixed Grid (Method 1), the system calculates _both_:
+  1.  **Grid Price**: The contractual price.
+  2.  **Direct Price**: The dynamic shadow price (Method 2) as if they were a public client.
+- **UI**: A toggle allows the operator to choose which price to apply (`pricingMode` switch).
+- **Storage**: The `Quote` stores the final selected mode/price, but `tripAnalysis` may contain details on the alternative calculation for reporting.
 
 ---
 

@@ -268,7 +268,7 @@ development_status:
   23-10-implement-automated-e2e-tests-for-bug-fixes: done
   23-11-implement-vehicle-category-filter-tests: done
   epic-23-retrospective: optional
-  epic-24: in-progress
+  epic-24: done
   24-1-create-endcustomer-data-model: done
   24-2-implement-endcustomer-crud-api: done
   24-3-add-endcustomer-section-to-partner-contact-detail-page: done
@@ -280,5 +280,5 @@ development_status:
   24-9-implement-bidirectional-pricing-toggle-in-quote-form: done
   24-10-add-endcustomer-search-and-filtering: done
   24-11-implement-automated-e2e-tests-for-mini-crm: done
-  24-12-update-documentation-for-mini-crm-feature: in-progress
+  24-12-update-documentation-for-mini-crm-feature: done
   epic-24-retrospective: optional
