@@ -10,7 +10,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@ui/components/sheet";
-import { MapPin, ArrowRight, Loader2, Users, AlertTriangle } from "lucide-react";
+import { MapPin, ArrowRight, Loader2, Users, AlertTriangle, User } from "lucide-react";
 import { Badge } from "@ui/components/badge";
 import {
 	Select,
@@ -56,6 +56,7 @@ interface AssignmentDrawerProps {
 		pickupAddress: string;
 		dropoffAddress: string;
 		pickupAt: string;
+		endCustomerName?: string;
 	};
 	onAssignmentComplete?: () => void;
 	// Story 8.3: Hover state callbacks for map preview
@@ -310,6 +311,12 @@ export function AssignmentDrawer({
 					{missionSummary && (
 						<SheetDescription asChild>
 							<div className="space-y-1">
+								{missionSummary.endCustomerName && (
+									<div className="flex items-center gap-1.5 text-foreground font-medium mb-1">
+										<User className="size-3.5 text-muted-foreground" />
+										<span>{missionSummary.endCustomerName}</span>
+									</div>
+								)}
 								<span className="flex items-center gap-1 text-sm">
 									<MapPin className="size-3.5 text-green-600" />
 									<span className="truncate">{missionSummary.pickupAddress}</span>

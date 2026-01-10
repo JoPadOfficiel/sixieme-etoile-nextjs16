@@ -3540,6 +3540,9 @@
 			"unassigned": "Non assigné",
 			"days": "{count, plural, one {jour} other {jours}}",
 			"via": "via",
+			"contactTitle": "Contacts",
+			"endCustomerLabel": "Client Final (Passager)",
+			"passenger": "Passager",
 			"columns": {
 				"timeWindow": "Heure",
 				"route": "Trajet",

@@ -17,6 +17,7 @@ import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingTimeline } from "./StaffingTimeline";
 import { useMissions, useMissionDetail, useMissionNotesUpdate } from "../hooks/useMissions";
 import { MissionNotesSection } from "./MissionNotesSection";
+import { MissionContactPanel } from "./MissionContactPanel";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
@@ -278,6 +279,13 @@ export function DispatchPage() {
 							pricingResult={pricingResult}
 							isLoading={missionDetailLoading}
 						/>
+						{/* Story 24.7: Mission Contact Panel (Agency + EndCustomer) */}
+						{selectedMissionId && (
+							<MissionContactPanel
+								mission={selectedMission || null}
+								isLoading={missionDetailLoading}
+							/>
+						)}
 						{/* Story 22.11: Mission Notes Section */}
 						{selectedMissionId && selectedMission && (
 							<MissionNotesSection
@@ -334,6 +342,9 @@ export function DispatchPage() {
 								pickupAddress: selectedMission.pickupAddress,
 								dropoffAddress: selectedMission.dropoffAddress,
 								pickupAt: selectedMission.pickupAt,
+								endCustomerName: selectedMission.endCustomer 
+									? `${selectedMission.endCustomer.firstName} ${selectedMission.endCustomer.lastName}`
+									: undefined,
 							}
 						: undefined
 				}

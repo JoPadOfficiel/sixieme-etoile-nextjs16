@@ -133,6 +133,14 @@ interface MissionListItem {
 		name: string;
 		code: string;
 	};
+	// Story 24.5: End Customer display for partner missions
+	endCustomer: {
+		id: string;
+		firstName: string;
+		lastName: string;
+		email: string | null;
+		phone: string | null;
+	} | null;
 	assignment: MissionAssignment | null;
 	profitability: MissionProfitability;
 	compliance: MissionCompliance;
@@ -409,6 +417,12 @@ export const missionsRouter = new Hono()
 					},
 					{
 						contact: { companyName: { contains: search, mode: "insensitive" } },
+					},
+					{
+						endCustomer: { firstName: { contains: search, mode: "insensitive" } },
+					},
+					{
+						endCustomer: { lastName: { contains: search, mode: "insensitive" } },
 					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
