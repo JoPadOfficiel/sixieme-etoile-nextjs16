@@ -48,6 +48,7 @@ const createInvoiceSchema = z.object({
 	totalInclVat: z.number().nonnegative().describe("Total including VAT in EUR"),
 	commissionAmount: z.number().optional().nullable().describe("Commission amount for partner invoices"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
+	endCustomerId: z.string().optional().nullable().describe("End Customer ID for the invoice"),
 	lines: z.array(z.object({
 		description: z.string().min(1),
 		quantity: z.number().positive().default(1),
@@ -165,6 +166,7 @@ export const invoicesRouter = new Hono()
 					orderBy: { issueDate: "desc" },
 					include: {
 						contact: true,
+						endCustomer: true,
 						quote: {
 							select: {
 								id: true,
@@ -213,6 +215,7 @@ export const invoicesRouter = new Hono()
 							partnerContract: true,
 						},
 					},
+					endCustomer: true,
 					quote: true,
 					lines: {
 						orderBy: { id: "asc" },
@@ -321,6 +324,7 @@ export const invoicesRouter = new Hono()
 							totalInclVat: data.totalInclVat,
 							commissionAmount,
 							notes: data.notes,
+							endCustomerId: data.endCustomerId,
 						},
 						organizationId,
 					),
@@ -354,6 +358,7 @@ export const invoicesRouter = new Hono()
 				where: { id: invoice.id },
 				include: {
 					contact: true,
+					endCustomer: true,
 					quote: true,
 					lines: true,
 				},
@@ -540,6 +545,7 @@ export const invoicesRouter = new Hono()
 							// Story 15.7 + 22.8: Deep-copy cost breakdown from quote
 							costBreakdown: costBreakdown as Prisma.InputJsonValue,
 							notes: invoiceNotes,
+							endCustomerId: quote.endCustomerId,
 						},
 						organizationId,
 					),
@@ -569,6 +575,7 @@ export const invoicesRouter = new Hono()
 				where: { id: invoice.id },
 				include: {
 					contact: true,
+					endCustomer: true,
 					quote: true,
 					lines: {
 						orderBy: { sortOrder: "asc" },

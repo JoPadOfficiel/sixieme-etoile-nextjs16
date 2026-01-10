@@ -83,6 +83,13 @@ export interface InvoicePdfData {
 	contact: ContactPdfData;
 	lines: InvoiceLinePdfData[];
 	paymentTerms?: string | null;
+	// Story 24.6: EndCustomer for partner agency invoices
+	endCustomer?: {
+		firstName: string;
+		lastName: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
 }
 
 // ============================================================================
@@ -401,19 +408,46 @@ export async function generateInvoicePdf(
 	y -= 40;
 	draw("Facture a", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
 	y -= 16;
-	draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-	y -= 14;
-	if (invoice.contact.companyName) {
-		draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+	
+	if (invoice.endCustomer) {
+		// Story 24.6: EndCustomer exists: display "Prestation pour" (Service For)
+		// but maintain Agency as the billed entity ("Facturé à")
+
+		// Agency details (Billed To)
+		draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
 		y -= 14;
-	}
-	if (invoice.contact.billingAddress) {
-		draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		if (invoice.contact.companyName) {
+			draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (invoice.contact.billingAddress) {
+			draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+
+		// End Customer details (Service For)
+		y -= 10;
+		draw("Prestation pour:", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
 		y -= 14;
-	}
-	if (invoice.contact.vatNumber) {
-		draw(`TVA: ${invoice.contact.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		const endCustomerName = `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`;
+		draw(endCustomerName, { x: leftMargin, y, size: 10, font: helvetica, color: BLACK });
 		y -= 14;
+	} else {
+		// Standard display
+		draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
+		y -= 14;
+		if (invoice.contact.companyName) {
+			draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (invoice.contact.billingAddress) {
+			draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
+		if (invoice.contact.vatNumber) {
+			draw(`TVA: ${invoice.contact.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+			y -= 14;
+		}
 	}
 
 	// Line items section

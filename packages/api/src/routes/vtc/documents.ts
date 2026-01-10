@@ -191,14 +191,16 @@ function transformInvoiceToPdfData(invoice: {
 			paymentTerms?: string | null;
 		} | null;
 	};
-	lines: Array<{
-		description: string;
-		quantity: unknown;
-		unitPriceExclVat: unknown;
-		vatRate: unknown;
 		totalExclVat: unknown;
 		totalVat: unknown;
 	}>;
+	// Story 24.6: EndCustomer for partner agency invoices
+	endCustomer?: {
+		firstName: string;
+		lastName: string;
+		email?: string | null;
+		phone?: string | null;
+	} | null;
 }): InvoicePdfData {
 	return {
 		id: invoice.id,
@@ -220,6 +222,12 @@ function transformInvoiceToPdfData(invoice: {
 			totalVat: Number(line.totalVat),
 		})),
 		paymentTerms: invoice.contact.partnerContract?.paymentTerms || null,
+		endCustomer: invoice.endCustomer ? {
+			firstName: invoice.endCustomer.firstName,
+			lastName: invoice.endCustomer.lastName,
+			email: invoice.endCustomer.email,
+			phone: invoice.endCustomer.phone,
+		} : null,
 	};
 }
 
@@ -552,6 +560,14 @@ export const documentsRouter = new Hono()
 					contact: {
 						include: {
 							partnerContract: true,
+						},
+					},
+					endCustomer: {
+						select: {
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
 						},
 					},
 					lines: {

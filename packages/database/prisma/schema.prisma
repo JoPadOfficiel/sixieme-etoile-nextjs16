@@ -482,7 +482,8 @@ model EndCustomer {
   updatedAt DateTime @updatedAt
 
   // Relations
-  quotes Quote[]
+  quotes   Quote[]
+  invoices Invoice[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1827,9 +1828,14 @@ model Invoice {
   lines     InvoiceLine[]
   documents Document[]
 
+  // Story 24.6: End-customer attribution for invoices
+  endCustomerId String?
+  endCustomer   EndCustomer? @relation(fields: [endCustomerId], references: [id])
+
   @@unique([organizationId, number])
   @@index([organizationId])
   @@index([contactId])
+  @@index([endCustomerId])
   @@index([status])
   @@index([issueDate])
   @@map("invoice")

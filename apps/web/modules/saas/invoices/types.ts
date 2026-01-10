@@ -109,6 +109,12 @@ export interface InvoiceListItem {
   _count?: {
     lines: number;
   };
+  endCustomerId: string | null;
+  endCustomer?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
 }
 
 /**

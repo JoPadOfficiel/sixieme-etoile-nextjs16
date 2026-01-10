@@ -182,16 +182,29 @@ export function InvoicesTable() {
                             ) : (
                               <UserIcon className="size-4 text-muted-foreground" />
                             )}
-                            <div>
-                              <div className="font-medium">{invoice.contact.displayName}</div>
-                              <Badge
-                                variant={invoice.contact.isPartner ? "default" : "secondary"}
-                                className="text-xs"
-                              >
-                                {invoice.contact.isPartner
-                                  ? t("invoices.partner")
-                                  : t("invoices.private")}
-                              </Badge>
+                            <div className="flex flex-col">
+                              {invoice.endCustomer ? (
+                                <>
+                                  <div className="font-medium">
+                                    {invoice.endCustomer.firstName} {invoice.endCustomer.lastName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {invoice.contact.displayName}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="font-medium">{invoice.contact.displayName}</div>
+                              )}
+                              <div className="mt-1">
+                                <Badge
+                                  variant={invoice.contact.isPartner ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {invoice.contact.isPartner
+                                    ? t("invoices.partner")
+                                    : t("invoices.private")}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                         </TableCell>
