@@ -191,9 +191,14 @@ function transformInvoiceToPdfData(invoice: {
 			paymentTerms?: string | null;
 		} | null;
 	};
+	lines: {
+		description: string;
+		quantity: unknown;
+		unitPriceExclVat: unknown;
+		vatRate: unknown;
 		totalExclVat: unknown;
 		totalVat: unknown;
-	}>;
+	}[];
 	// Story 24.6: EndCustomer for partner agency invoices
 	endCustomer?: {
 		firstName: string;
