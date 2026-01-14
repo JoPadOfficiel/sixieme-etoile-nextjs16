@@ -327,6 +327,9 @@ importers:
       mdx:
         specifier: ^0.3.1
         version: 0.3.1
+      mdx-bundler:
+        specifier: ^10.1.1
+        version: 10.1.1(acorn@8.15.0)(esbuild@0.21.5)
       postcss:
         specifier: 8.4.49
         version: 8.4.49
@@ -7283,8 +7286,8 @@ packages:
   mdn-data@2.12.2:
     resolution: {integrity: sha512-IEn+pegP1aManZuckezWCO+XZQDplx1366JoVhTpMpBB1sPey/SbveZQUosKiKiGYjg1wH4pMlNgXbCiYgihQA==}
 
-  mdx-bundler@10.0.3:
-    resolution: {integrity: sha512-vRtVZ5t+nUP0QtoRVgjDFO10YDjRgKe/19ie0IR8FqE8SugNn5RP4sCWBPzKoEwoGbqfQOrgHy+PHCVyfaCDQQ==}
+  mdx-bundler@10.1.1:
+    resolution: {integrity: sha512-87FtxC7miUPznwqEaAlJARinHJ6Qin9kDuG2E2BCCNEOszr62kHpqivI/IF/CmwObVSpvApVFFxN1ftM/Gykvw==}
     engines: {node: '>=18', npm: '>=6'}
     peerDependencies:
       esbuild: 0.*
@@ -10566,7 +10569,7 @@ snapshots:
     dependencies:
       '@content-collections/core': 0.7.3(typescript@5.6.3)
       esbuild: 0.21.5
-      mdx-bundler: 10.0.3(acorn@8.15.0)(esbuild@0.21.5)
+      mdx-bundler: 10.1.1(acorn@8.15.0)(esbuild@0.21.5)
       react: 19.2.1
       react-dom: 19.2.1(react@19.2.1)
       unified: 11.0.5
@@ -10671,7 +10674,7 @@ snapshots:
   '@esbuild-plugins/node-resolve@0.2.2(esbuild@0.21.5)':
     dependencies:
       '@types/resolve': 1.20.6
-      debug: 4.3.7(supports-color@8.1.1)
+      debug: 4.4.0
       esbuild: 0.21.5
       escape-string-regexp: 4.0.0
       resolve: 1.22.8
@@ -16237,7 +16240,7 @@ snapshots:
 
   estree-util-value-to-estree@3.1.2:
     dependencies:
-      '@types/estree': 1.0.5
+      '@types/estree': 1.0.8
 
   estree-util-visit@2.0.0:
     dependencies:
@@ -17461,7 +17464,7 @@ snapshots:
 
   mdn-data@2.12.2: {}
 
-  mdx-bundler@10.0.3(acorn@8.15.0)(esbuild@0.21.5):
+  mdx-bundler@10.1.1(acorn@8.15.0)(esbuild@0.21.5):
     dependencies:
       '@babel/runtime': 7.24.8
       '@esbuild-plugins/node-resolve': 0.2.2(esbuild@0.21.5)

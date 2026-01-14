@@ -6,10 +6,7 @@ import * as React from "react";
 import { cn } from "@ui/lib";
 import { XIcon } from "lucide-react";
 
-const Dialog = React.forwardRef<
-	React.ElementRef<typeof DialogPrimitive.Root>,
-	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>
->(({ onOpenChange, ...props }, ref) => {
+const Dialog = ({ onOpenChange, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) => {
 	// Fix for global dialog freeze issue
 	// Radix UI sometimes doesn't restore pointer-events on main element after dialog close
 	const handleOpenChange = (open: boolean) => {
@@ -38,12 +35,11 @@ const Dialog = React.forwardRef<
 
 	return (
 		<DialogPrimitive.Root
-			ref={ref}
 			onOpenChange={handleOpenChange}
 			{...props}
 		/>
 	);
-});
+};
 Dialog.displayName = DialogPrimitive.Root.displayName;
 
 const DialogTrigger = DialogPrimitive.Trigger;

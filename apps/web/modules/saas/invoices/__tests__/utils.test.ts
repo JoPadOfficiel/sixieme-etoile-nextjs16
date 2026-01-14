@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import {
   calculateLineTotals,
   formatPrice,
@@ -8,7 +7,7 @@ import {
   isOverdue,
   getDaysUntilDue,
 } from "../types";
-import type { InvoiceLine, Invoice, InvoiceListItem } from "../types";
+import type { InvoiceLine, InvoiceListItem } from "../types";
 
 describe("Invoice Utilities", () => {
   describe("calculateLineTotals", () => {
@@ -46,16 +45,16 @@ describe("Invoice Utilities", () => {
 
       const result = calculateLineTotals(lines);
 
-      assert.strictEqual(result.totalExclVat, 200);
-      assert.strictEqual(result.totalVat, 30);
-      assert.strictEqual(result.totalInclVat, 230);
+      expect(result.totalExclVat).toBe(200);
+      expect(result.totalVat).toBe(30);
+      expect(result.totalInclVat).toBe(230);
       
-      assert.deepStrictEqual(result.vatBreakdown["20"], {
+      expect(result.vatBreakdown["20"]).toEqual({
         rate: 20,
         base: 100,
         vat: 20,
       });
-      assert.deepStrictEqual(result.vatBreakdown["10"], {
+      expect(result.vatBreakdown["10"]).toEqual({
         rate: 10,
         base: 100,
         vat: 10,
@@ -64,10 +63,10 @@ describe("Invoice Utilities", () => {
 
     it("should handle empty lines", () => {
       const result = calculateLineTotals([]);
-      assert.strictEqual(result.totalExclVat, 0);
-      assert.strictEqual(result.totalVat, 0);
-      assert.strictEqual(result.totalInclVat, 0);
-      assert.strictEqual(Object.keys(result.vatBreakdown).length, 0);
+      expect(result.totalExclVat).toBe(0);
+      expect(result.totalVat).toBe(0);
+      expect(result.totalInclVat).toBe(0);
+      expect(Object.keys(result.vatBreakdown).length).toBe(0);
     });
   });
 
@@ -75,17 +74,17 @@ describe("Invoice Utilities", () => {
     it("formatPrice should format EUR currency", () => {
       const formatted = formatPrice(1234.56);
       // Check for non-breaking spaces which are common in currency formatting
-      assert.ok(formatted.includes("1") || formatted.includes("€")); 
+      expect(formatted.includes("1") || formatted.includes("€")).toBe(true); 
     });
 
     it("formatVatRate should format percentage", () => {
-      assert.strictEqual(formatVatRate(20), "20%");
-      assert.strictEqual(formatVatRate("10"), "10%");
+      expect(formatVatRate(20)).toBe("20%");
+      expect(formatVatRate("10")).toBe("10%");
     });
 
     it("getLineTypeLabel should return correct labels", () => {
-      assert.strictEqual(getLineTypeLabel("SERVICE"), "Service");
-      assert.strictEqual(getLineTypeLabel("OPTIONAL_FEE"), "Frais optionnel");
+      expect(getLineTypeLabel("SERVICE")).toBe("Service");
+      expect(getLineTypeLabel("OPTIONAL_FEE")).toBe("Frais optionnel");
     });
   });
 
@@ -99,7 +98,7 @@ describe("Invoice Utilities", () => {
         status: "ISSUED",
       } as InvoiceListItem;
 
-      assert.strictEqual(isOverdue(invoice), true);
+      expect(isOverdue(invoice)).toBe(true);
     });
 
     it("isOverdue should return false if paid", () => {
@@ -111,7 +110,7 @@ describe("Invoice Utilities", () => {
         status: "PAID",
       } as InvoiceListItem;
 
-      assert.strictEqual(isOverdue(invoice), false);
+      expect(isOverdue(invoice)).toBe(false);
     });
 
     it("getDaysUntilDue should return positive for future dates", () => {
@@ -122,7 +121,7 @@ describe("Invoice Utilities", () => {
         dueDate: futureDate.toISOString(),
       } as InvoiceListItem;
 
-      assert.ok(getDaysUntilDue(invoice) > 0);
+      expect(getDaysUntilDue(invoice) > 0).toBe(true);
     });
   });
 });

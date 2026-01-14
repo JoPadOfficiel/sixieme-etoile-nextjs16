@@ -5,21 +5,7 @@ import type { MissionListItem } from "../../types";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
-	useTranslations: () => (key: string) => {
-		const translations: Record<string, string> = {
-			"columns.timeWindow": "Time",
-			"columns.route": "Route",
-			"columns.client": "Client",
-			"columns.vehicleDriver": "Vehicle / Driver",
-			"columns.badges": "Status",
-			"empty.title": "No missions found",
-			"empty.description": "Adjust your filters",
-			"partner": "Partner",
-			"private": "Private",
-			"unassigned": "Unassigned",
-		};
-		return translations[key] || key;
-	},
+	useTranslations: (scope?: string) => (key: string) => scope ? `${scope}.${key}` : key,
 }));
 
 // Mock date-fns
@@ -64,6 +50,8 @@ describe("MissionsList", () => {
 			status: "OK",
 			warnings: [],
 		},
+		isSubcontracted: false,
+		subcontractor: null,
 	};
 
 	const mockOnSelectMission = vi.fn();
@@ -123,7 +111,7 @@ describe("MissionsList", () => {
 		);
 
 		expect(screen.getByTestId("missions-list-empty")).toBeInTheDocument();
-		expect(screen.getByText("No missions found")).toBeInTheDocument();
+		expect(screen.getByText(/dispatch\.missions\.empty\.title/i)).toBeInTheDocument();
 	});
 
 	it("shows loading skeleton when isLoading", () => {

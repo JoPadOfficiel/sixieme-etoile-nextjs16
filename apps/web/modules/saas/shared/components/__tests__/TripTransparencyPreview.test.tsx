@@ -4,7 +4,7 @@
  * @see Story 6.7: Integrate TripTransparencyPanel & Profitability Indicator Across Screens
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TripTransparencyPreview } from "../TripTransparencyPreview";
 import type { TripAnalysis } from "../../types/pricing";
@@ -144,8 +144,7 @@ describe("TripTransparencyPreview", () => {
       );
 
       // In hover mode, there should be a trigger element
-      const trigger = screen.getByRole("button", { hidden: true }) || 
-                      document.querySelector("[data-state]");
+      const trigger = document.querySelector('[data-state]');
       expect(trigger).toBeTruthy();
     });
   });
