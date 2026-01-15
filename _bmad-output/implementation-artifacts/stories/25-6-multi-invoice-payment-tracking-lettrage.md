@@ -30,26 +30,26 @@ This feature streamlines the payment reconciliation process for contacts with mu
 ## ✅ Acceptance Criteria
 
 ### AC1: Multi-Select Unpaid Invoices
-- [ ] Users can view a list of all unpaid invoices (status: ISSUED) for a contact
-- [ ] Each invoice row displays a checkbox for selection
-- [ ] A "Select All" checkbox is available to select all unpaid invoices
-- [ ] Selected invoices total is displayed in real-time
-- [ ] Only invoices with status `ISSUED` or `PARTIAL` can be selected
+- [x] Users can view a list of all unpaid invoices (status: ISSUED) for a contact
+- [x] Each invoice row displays a checkbox for selection
+- [x] A "Select All" checkbox is available to select all unpaid invoices
+- [x] Selected invoices total is displayed in real-time
+- [x] Only invoices with status `ISSUED` or `PARTIAL` can be selected
 
 ### AC2: FIFO Payment Application
-- [ ] A "Lettrage / Apply Bulk Payment" button opens a payment modal
-- [ ] User enters a single payment amount
-- [ ] Payment is distributed across selected invoices in chronological order (oldest first)
-- [ ] Fully paid invoices transition to status `PAID`
-- [ ] Partially paid invoices transition to status `PARTIAL`
-- [ ] Remaining payment overage is displayed (if payment exceeds total)
-- [ ] Server action validates the payment and updates all invoices atomically
+- [x] A "Lettrage / Apply Bulk Payment" button opens a payment modal
+- [x] User enters a single payment amount
+- [x] Payment is distributed across selected invoices in chronological order (oldest first)
+- [x] Fully paid invoices transition to status `PAID`
+- [x] Partially paid invoices transition to status `PARTIAL`
+- [x] Remaining payment overage is displayed (if payment exceeds total)
+- [x] Server action validates the payment and updates all invoices atomically
 
 ### AC3: Global Balance Display
-- [ ] Contact drawer/detail shows total outstanding balance
-- [ ] Balance includes all `ISSUED` and `PARTIAL` invoices
-- [ ] Balance updates after payment application
-- [ ] Visual indicator (badge) for contacts with outstanding balance
+- [x] Contact drawer/detail shows total outstanding balance
+- [x] Balance includes all `ISSUED` and `PARTIAL` invoices
+- [x] Balance updates after payment application
+- [x] Visual indicator (badge) for contacts with outstanding balance
 
 ---
 
@@ -200,21 +200,21 @@ describe("Bulk Payment UI", () => {
 ## 📁 Files to Create/Modify
 
 ### New Files
-- `packages/database/prisma/migrations/XXXXXXXX_add_invoice_partial_payment/migration.sql`
 - `packages/api/src/routes/vtc/invoices-bulk-payment.ts`
 - `packages/api/src/routes/vtc/__tests__/invoices-bulk-payment.test.ts`
 - `apps/web/modules/saas/contacts/components/ContactInvoicesTab.tsx`
-- `apps/web/modules/saas/contacts/components/UnpaidInvoicesList.tsx`
-- `apps/web/modules/saas/contacts/components/BulkPaymentModal.tsx`
+- `apps/web/modules/saas/invoices/components/BulkPaymentModal.tsx`
+- `apps/web/modules/saas/invoices/hooks/useBulkPayment.ts`
+- `apps/web/modules/saas/invoices/hooks/useContactBalance.ts`
 - `apps/web/modules/saas/invoices/types/payment.ts`
+- `apps/web/cypress/e2e/bulk-payment.cy.ts`
 
 ### Modified Files
 - `packages/database/prisma/schema.prisma` (add PARTIAL status, paidAmount field)
-- `packages/api/src/routes/vtc/invoices.ts` (add balance endpoint)
+- `packages/database/src/zod/index.ts`
+- `packages/api/src/routes/vtc/router.ts` (registered bulk payment route)
 - `apps/web/modules/saas/contacts/components/ContactDrawer.tsx` (add invoices tab)
-- `apps/web/modules/saas/contacts/types.ts` (add balance types)
-- `apps/web/messages/en.json` (translations)
-- `apps/web/messages/fr.json` (translations)
+- `packages/i18n/translations/fr.json` (translations)
 
 ---
 
@@ -238,12 +238,12 @@ describe("Bulk Payment UI", () => {
 ## 📅 Timeline
 
 - [x] Branch created: `feature/25-6-bulk-payment-lettrage`
-- [ ] Schema updated with PARTIAL status and paidAmount
-- [ ] Server action implemented
-- [ ] Unit tests passing
-- [ ] UI components created
-- [ ] Integration tests passing
-- [ ] Code review completed
+- [x] Schema updated with PARTIAL status and paidAmount
+- [x] Server action implemented
+- [x] Unit tests passing
+- [x] UI components created
+- [x] Integration tests passing
+- [x] Code review completed
 - [ ] Merged to main
 
 ---
