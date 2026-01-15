@@ -108,7 +108,12 @@ export function DocumentSettingsForm() {
 
 			setUploading(true);
 			try {
-				const path = `${activeOrganization.id}/${uuid()}.png`;
+				// Get file extension from mime type
+				const ext = file.type === "image/svg+xml" ? "svg" 
+					: file.type === "image/png" ? "png" 
+					: file.type === "image/jpeg" ? "jpg" 
+					: "png";
+				const path = `${activeOrganization.id}/${uuid()}.${ext}`;
 				const { signedUrl } = await getSignedUploadUrlMutation.mutateAsync({
 					path,
 					bucket: config.storage.bucketNames.documentLogos,
@@ -155,6 +160,7 @@ export function DocumentSettingsForm() {
 		accept: {
 			"image/png": [".png"],
 			"image/jpeg": [".jpg", ".jpeg"],
+			"image/svg+xml": [".svg"],
 		},
 		multiple: false,
 		maxSize: 2 * 1024 * 1024,
