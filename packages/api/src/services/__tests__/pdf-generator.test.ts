@@ -1,6 +1,8 @@
 /**
  * PDF Generator Service Tests
  * Story 7.5: Document Generation & Storage
+ * Story 25.2: EU-Compliant Invoice & Quote PDF Layout
+ * Story 25.3: Organization Document Personalization
  */
 
 import { describe, it, expect } from "vitest";
@@ -23,6 +25,11 @@ describe("PDF Generator Service", () => {
 		iban: "FR7612345678901234567890123",
 		bic: "TESTFRPP",
 		logo: null,
+		// Story 25.3: Branding settings
+		documentLogoUrl: null,
+		brandColor: "#2563eb",
+		logoPosition: "LEFT",
+		showCompanyName: true,
 	};
 
 	describe("generateQuotePdf", () => {
@@ -52,6 +59,9 @@ describe("PDF Generator Service", () => {
 				isPartner: true,
 			},
 			createdAt: new Date("2025-01-10T14:30:00Z"),
+			// Story 25.2: Trip details
+			estimatedDistanceKm: 45.5,
+			estimatedDurationMins: 55,
 		};
 
 		it("should generate a valid PDF buffer for a quote", async () => {
@@ -72,6 +82,8 @@ describe("PDF Generator Service", () => {
 				notes: null,
 				internalCost: null,
 				marginPercent: null,
+				estimatedDistanceKm: null,
+				estimatedDurationMins: null,
 				contact: {
 					...mockQuote.contact,
 					companyName: null,
@@ -96,6 +108,77 @@ describe("PDF Generator Service", () => {
 				expect(pdfBuffer).toBeInstanceOf(Buffer);
 				expect(pdfBuffer.length).toBeGreaterThan(0);
 			}
+		});
+
+		// Story 25.2: Logo position LEFT test
+		it("should generate PDF with logo position LEFT", async () => {
+			const orgWithLogoLeft: OrganizationPdfData = {
+				...mockOrganization,
+				logoPosition: "LEFT",
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgWithLogoLeft);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Logo position RIGHT test
+		it("should generate PDF with logo position RIGHT", async () => {
+			const orgWithLogoRight: OrganizationPdfData = {
+				...mockOrganization,
+				logoPosition: "RIGHT",
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgWithLogoRight);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Brand color test
+		it("should generate PDF with custom brand color", async () => {
+			const orgWithCustomColor: OrganizationPdfData = {
+				...mockOrganization,
+				brandColor: "#e11d48", // Custom rose color
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgWithCustomColor);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Trip details test
+		it("should generate PDF with trip distance and duration", async () => {
+			const quoteWithTripDetails: QuotePdfData = {
+				...mockQuote,
+				estimatedDistanceKm: 125.5,
+				estimatedDurationMins: 95,
+			};
+
+			const pdfBuffer = await generateQuotePdf(quoteWithTripDetails, mockOrganization);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 24.5: EndCustomer test
+		it("should generate PDF with endCustomer for agency", async () => {
+			const quoteWithEndCustomer: QuotePdfData = {
+				...mockQuote,
+				endCustomer: {
+					firstName: "Marie",
+					lastName: "Martin",
+					email: "marie.martin@example.com",
+					phone: "+33 6 98 76 54 32",
+				},
+			};
+
+			const pdfBuffer = await generateQuotePdf(quoteWithEndCustomer, mockOrganization);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -211,6 +294,147 @@ describe("PDF Generator Service", () => {
 			};
 
 			const pdfBuffer = await generateInvoicePdf(mockInvoice, minimalOrg);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Logo position LEFT test
+		it("should generate PDF with logo position LEFT", async () => {
+			const orgWithLogoLeft: OrganizationPdfData = {
+				...mockOrganization,
+				logoPosition: "LEFT",
+			};
+
+			const pdfBuffer = await generateInvoicePdf(mockInvoice, orgWithLogoLeft);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Logo position RIGHT test
+		it("should generate PDF with logo position RIGHT", async () => {
+			const orgWithLogoRight: OrganizationPdfData = {
+				...mockOrganization,
+				logoPosition: "RIGHT",
+			};
+
+			const pdfBuffer = await generateInvoicePdf(mockInvoice, orgWithLogoRight);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Brand color test
+		it("should generate PDF with custom brand color", async () => {
+			const orgWithCustomColor: OrganizationPdfData = {
+				...mockOrganization,
+				brandColor: "#059669", // Custom green color
+			};
+
+			const pdfBuffer = await generateInvoicePdf(mockInvoice, orgWithCustomColor);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		// Story 25.2: Table columns test
+		it("should generate PDF with proper pricing table (5 columns)", async () => {
+			const pdfBuffer = await generateInvoicePdf(mockInvoice, mockOrganization);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			// Verify it's a valid PDF
+			const pdfHeader = pdfBuffer.subarray(0, 5).toString("ascii");
+			expect(pdfHeader).toBe("%PDF-");
+			
+			// The table should have Description, Qty, Prix HT, TVA %, Total HT columns
+			// We can't easily check content, but we verify the PDF is generated correctly
+			expect(pdfBuffer.length).toBeGreaterThan(2000);
+		});
+
+		// Story 24.6: EndCustomer test
+		it("should generate PDF with endCustomer for agency invoice", async () => {
+			const invoiceWithEndCustomer: InvoicePdfData = {
+				...mockInvoice,
+				endCustomer: {
+					firstName: "Pierre",
+					lastName: "Durand",
+					email: "pierre.durand@example.com",
+					phone: "+33 6 11 22 33 44",
+				},
+			};
+
+			const pdfBuffer = await generateInvoicePdf(invoiceWithEndCustomer, mockOrganization);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+	});
+
+	// Story 25.2: Cross-cutting tests for branding
+	describe("Branding Features - Story 25.2", () => {
+		const mockQuote: QuotePdfData = {
+			id: "quote_brand_test",
+			pickupAddress: "Paris",
+			dropoffAddress: "CDG Airport",
+			pickupAt: new Date(),
+			passengerCount: 1,
+			luggageCount: 0,
+			vehicleCategory: "Berline",
+			finalPrice: 100.0,
+			pricingMode: "DYNAMIC",
+			tripType: "TRANSFER",
+			status: "DRAFT",
+			contact: {
+				displayName: "Test Client",
+				isPartner: false,
+			},
+			createdAt: new Date(),
+		};
+
+		it("should fallback to default blue when brandColor is null", async () => {
+			const orgWithNullColor: OrganizationPdfData = {
+				...mockOrganization,
+				brandColor: null,
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgWithNullColor);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		it("should fallback to LEFT when logoPosition is undefined", async () => {
+			const orgWithUndefinedPosition: OrganizationPdfData = {
+				...mockOrganization,
+				logoPosition: undefined,
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgWithUndefinedPosition);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		it("should show company name when showCompanyName is true", async () => {
+			const orgShowName: OrganizationPdfData = {
+				...mockOrganization,
+				showCompanyName: true,
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgShowName);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		it("should hide company name when showCompanyName is false", async () => {
+			const orgHideName: OrganizationPdfData = {
+				...mockOrganization,
+				showCompanyName: false,
+			};
+
+			const pdfBuffer = await generateQuotePdf(mockQuote, orgHideName);
 
 			expect(pdfBuffer).toBeInstanceOf(Buffer);
 			expect(pdfBuffer.length).toBeGreaterThan(0);

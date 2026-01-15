@@ -121,11 +121,11 @@ ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
 ## Story 25.3: Organisation Document Personalization
 
 ### 🎯 Assignment Box
-- [ ] **AGENT:** Claude 3.5 Sonnet
-- [ ] **STATUS:** À faire (LA FONDATION)
-- [ ] **STARTED:** 
-- [ ] **COMPLETED:** 
-- [ ] **REVIEW:** 
+- [x] **AGENT:** Claude 3.5 Sonnet
+- [x] **STATUS:** À faire (LA FONDATION)
+- [x] **STARTED:** 
+- [x] **COMPLETED:** 
+- [x] **REVIEW:** 
 
 ### 📋 System Prompt for Agent
 

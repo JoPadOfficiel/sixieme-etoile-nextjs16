@@ -284,7 +284,7 @@ development_status:
   epic-24-retrospective: optional
   epic-25: in-progress
   25-1-generate-manage-mission-sheets-fiche-mission: backlog
-  25-2-eu-compliant-invoice-quote-pdf-layout: backlog
+  25-2-eu-compliant-invoice-quote-pdf-layout: review
   25-3-organisation-document-personalization: review
   25-4-b2c-invoicing-address-agency-transparency: backlog
   25-5-deep-linking-navigation-crm-ux-improvements: backlog

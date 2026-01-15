@@ -1,12 +1,14 @@
 /**
  * PDF Generator Service
  * Story 7.5: Document Generation & Storage
+ * Story 25.2: EU-Compliant Invoice & Quote PDF Layout
+ * Story 25.3: Organization Document Personalization
  *
  * Generates PDF documents for quotes, invoices, and mission orders.
  * Uses pdf-lib for server-side PDF generation (pure JS, no DOM required).
  */
 
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage, PDFImage } from "pdf-lib";
 
 // ============================================================================
 // Types
@@ -22,6 +24,11 @@ export interface OrganizationPdfData {
 	iban?: string | null;
 	bic?: string | null;
 	logo?: string | null;
+	// Story 25.3: Branding settings
+	documentLogoUrl?: string | null;
+	brandColor?: string | null;
+	logoPosition?: "LEFT" | "RIGHT";
+	showCompanyName?: boolean;
 }
 
 export interface ContactPdfData {
@@ -59,6 +66,9 @@ export interface QuotePdfData {
 		email?: string | null;
 		phone?: string | null;
 	} | null;
+	// Story 25.2: Trip Details for EU compliance
+	estimatedDistanceKm?: number | null;
+	estimatedDurationMins?: number | null;
 }
 
 export interface InvoiceLinePdfData {
@@ -143,15 +153,76 @@ function sanitizeText(text: string): string {
 		.replace(/[^\x00-\x7F]/g, ""); // Remove any remaining non-ASCII
 }
 
-// Colors
-const BLUE = rgb(0.145, 0.388, 0.922);
+/**
+ * Story 25.2: Convert HEX color to RGB for pdf-lib
+ */
+function hexToRgb(hex: string | null | undefined): { r: number; g: number; b: number } {
+	if (!hex) {
+		return { r: 0.145, g: 0.388, b: 0.922 }; // Default blue
+	}
+	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	return result
+		? {
+				r: parseInt(result[1], 16) / 255,
+				g: parseInt(result[2], 16) / 255,
+				b: parseInt(result[3], 16) / 255,
+			}
+		: { r: 0.145, g: 0.388, b: 0.922 };
+}
+
+/**
+ * Story 25.2: Embed logo image from URL
+ */
+async function embedLogoIfAvailable(
+	pdfDoc: PDFDocument,
+	logoUrl: string | null | undefined
+): Promise<PDFImage | null> {
+	if (!logoUrl) return null;
+	try {
+		const response = await fetch(logoUrl);
+		if (!response.ok) return null;
+		const imageBytes = await response.arrayBuffer();
+
+		// Detect image type and embed
+		if (logoUrl.toLowerCase().endsWith(".png")) {
+			return await pdfDoc.embedPng(imageBytes);
+		} else {
+			return await pdfDoc.embedJpg(imageBytes);
+		}
+	} catch (error) {
+		console.error("Failed to embed logo:", error);
+		return null;
+	}
+}
+
+// Default Colors
+const DEFAULT_BLUE = rgb(0.145, 0.388, 0.922);
 const GREEN = rgb(0.086, 0.639, 0.290);
 const GRAY = rgb(0.4, 0.4, 0.4);
 const DARK = rgb(0.216, 0.255, 0.318);
 const BLACK = rgb(0, 0, 0);
+const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
+const ORANGE = rgb(0.976, 0.451, 0.086);
 
 // ============================================================================
-// Quote PDF Generator
+// PDF Layout Constants - Story 25.2
+// ============================================================================
+
+const PAGE_WIDTH = 595; // A4
+const PAGE_HEIGHT = 842; // A4
+const LEFT_MARGIN = 50;
+const RIGHT_MARGIN = 545; // PAGE_WIDTH - 50
+const CONTENT_WIDTH = 495; // RIGHT_MARGIN - LEFT_MARGIN
+
+// Column positions for pricing table
+const COL_DESC = LEFT_MARGIN + 5;
+const COL_QTY = 300;
+const COL_PRICE = 345;
+const COL_VAT = 410;
+const COL_TOTAL = 470;
+
+// ============================================================================
+// Quote PDF Generator - Story 25.2 Refactored
 // ============================================================================
 
 export async function generateQuotePdf(
@@ -159,182 +230,351 @@ export async function generateQuotePdf(
 	organization: OrganizationPdfData
 ): Promise<Buffer> {
 	const pdfDoc = await PDFDocument.create();
-	const page = pdfDoc.addPage([595, 842]); // A4
-	const { width, height } = page.getSize();
+	const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+	const { height } = page.getSize();
 
 	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
+	// Story 25.3: Get branding settings
+	const logoPosition = organization.logoPosition ?? "LEFT";
+	const showCompanyName = organization.showCompanyName ?? true;
+	const brandColorRgb = hexToRgb(organization.brandColor);
+	const brandColor = rgb(brandColorRgb.r, brandColorRgb.g, brandColorRgb.b);
+
+	// Story 25.2: Embed logo if available
+	const logoImage = await embedLogoIfAvailable(
+		pdfDoc,
+		organization.documentLogoUrl ?? organization.logo
+	);
+
 	let y = height - 50;
-	const leftMargin = 50;
-	const rightMargin = width - 50;
 
 	// Helper to draw sanitized text
 	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
 		page.drawText(sanitizeText(text), options);
 	};
 
-	// Header - Organization name
-	draw(organization.name, {
-		x: leftMargin,
-		y,
-		size: 20,
-		font: helveticaBold,
-		color: BLACK,
-	});
-	y -= 20;
+	// =========================================================================
+	// HEADER SECTION - Story 25.2: Dynamic Logo Positioning
+	// =========================================================================
+	
+	const headerY = y;
+	const logoMaxHeight = 50;
+	const logoMaxWidth = 120;
 
-	// Organization details
+	if (logoPosition === "LEFT") {
+		// Logo on LEFT, Document Info on RIGHT
+		if (logoImage) {
+			const logoDims = logoImage.scale(
+				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
+			);
+			page.drawImage(logoImage, {
+				x: LEFT_MARGIN,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				draw(organization.name, {
+					x: LEFT_MARGIN + logoDims.width + 10,
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			// No logo - just company name
+			draw(organization.name, {
+				x: LEFT_MARGIN,
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+
+		// Document title on RIGHT
+		draw("DEVIS", {
+			x: RIGHT_MARGIN - 80,
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: brandColor,
+		});
+		draw(`Ref: ${quote.id.slice(-8).toUpperCase()}`, {
+			x: RIGHT_MARGIN - 100,
+			y: headerY - 18,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`Date: ${formatDate(quote.createdAt)}`, {
+			x: RIGHT_MARGIN - 100,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		if (quote.validUntil) {
+			draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
+				x: RIGHT_MARGIN - 100,
+				y: headerY - 46,
+				size: 10,
+				font: helvetica,
+				color: GRAY,
+			});
+		}
+	} else {
+		// Logo on RIGHT, Document Info on LEFT
+		draw("DEVIS", {
+			x: LEFT_MARGIN,
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: brandColor,
+		});
+		draw(`Ref: ${quote.id.slice(-8).toUpperCase()}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 18,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`Date: ${formatDate(quote.createdAt)}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		if (quote.validUntil) {
+			draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
+				x: LEFT_MARGIN,
+				y: headerY - 46,
+				size: 10,
+				font: helvetica,
+				color: GRAY,
+			});
+		}
+
+		if (logoImage) {
+			const logoDims = logoImage.scale(
+				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
+			);
+			page.drawImage(logoImage, {
+				x: RIGHT_MARGIN - logoDims.width,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				draw(organization.name, {
+					x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14),
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			draw(organization.name, {
+				x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18),
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+	}
+
+	y = headerY - 70;
+
+	// =========================================================================
+	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
+	// =========================================================================
+
+	const blockY = y;
+	const blockWidth = 230;
+	const lineHeight = 14;
+
+	// FROM Block (Left side)
+	draw("DE / FROM:", { x: LEFT_MARGIN, y: blockY, size: 10, font: helveticaBold, color: DARK });
+	let fromY = blockY - 16;
+	draw(organization.name, { x: LEFT_MARGIN, y: fromY, size: 10, font: helveticaBold, color: BLACK });
+	fromY -= lineHeight;
 	if (organization.address) {
-		draw(organization.address, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(organization.address.substring(0, 45), { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.phone) {
-		draw(`Tel: ${organization.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.email) {
-		draw(organization.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(organization.email, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.siret) {
-		draw(`SIRET: ${organization.siret}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`SIRET: ${organization.siret}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
+	}
+	if (organization.vatNumber) {
+		draw(`TVA: ${organization.vatNumber}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
 	}
 
-	// Document title
-	y -= 20;
-	draw("DEVIS", {
-		x: leftMargin,
-		y,
-		size: 18,
-		font: helveticaBold,
-		color: BLUE,
-	});
+	// BILL TO Block (Right side)
+	const rightBlockX = LEFT_MARGIN + blockWidth + 30;
+	draw("A / BILL TO:", { x: rightBlockX, y: blockY, size: 10, font: helveticaBold, color: DARK });
+	let toY = blockY - 16;
 
-	// Reference and date on the right
-	const refText = `Ref: ${quote.id.slice(-8).toUpperCase()}`;
-	const dateText = `Date: ${formatDate(quote.createdAt)}`;
-	draw(refText, { x: rightMargin - 100, y: y + 10, size: 10, font: helvetica, color: GRAY });
-	draw(dateText, { x: rightMargin - 100, y: y - 4, size: 10, font: helvetica, color: GRAY });
-	if (quote.validUntil) {
-		draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
-			x: rightMargin - 100, y: y - 18, size: 10, font: helvetica, color: GRAY
-		});
-	}
-
-	// Client section
-	// Story 24.5: Show endCustomer as recipient when present, with agency as billed-to
-	y -= 40;
-	draw("Client", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
-	y -= 16;
-	
 	if (quote.endCustomer) {
 		// EndCustomer exists: show as primary recipient
 		const endCustomerName = `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`;
-		draw(endCustomerName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-		y -= 14;
-		
-		// Show endCustomer contact info if available
+		draw(endCustomerName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+		toY -= lineHeight;
 		if (quote.endCustomer.email) {
-			draw(quote.endCustomer.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(quote.endCustomer.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (quote.endCustomer.phone) {
-			draw(`Tel: ${quote.endCustomer.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(`Tel: ${quote.endCustomer.phone}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
-		
 		// Show agency as billed-to
-		y -= 6;
-		draw("Facture a:", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
-		y -= 14;
-		draw(quote.contact.displayName, { x: leftMargin, y, size: 10, font: helvetica, color: BLACK });
-		y -= 14;
-		if (quote.contact.companyName && quote.contact.companyName !== quote.contact.displayName) {
-			draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
-		}
-		if (quote.contact.billingAddress) {
-			draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
-		}
+		toY -= 6;
+		draw("Facture a:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
+		toY -= lineHeight;
+		draw(quote.contact.displayName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		toY -= lineHeight;
 	} else {
-		// No endCustomer: use existing behavior with contact
-		draw(quote.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-		y -= 14;
+		draw(quote.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+		toY -= lineHeight;
 		if (quote.contact.companyName) {
-			draw(quote.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(quote.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (quote.contact.billingAddress) {
-			draw(quote.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(quote.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (quote.contact.email) {
-			draw(quote.contact.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(quote.contact.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
+		}
+		if (quote.contact.vatNumber) {
+			draw(`TVA: ${quote.contact.vatNumber}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
 		}
 	}
 
-	// Trip details section
-	y -= 20;
-	draw("Details du trajet", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	y = Math.min(fromY, toY) - 20;
+
+	// =========================================================================
+	// TRIP DETAILS SECTION - Story 25.2
+	// =========================================================================
+
+	draw("DETAILS DU TRAJET / TRIP DETAILS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
 	y -= 18;
 
 	const tripDetails = [
-		["Depart", quote.pickupAddress],
-		["Arrivee", quote.dropoffAddress],
-		["Date et heure", formatDateTime(quote.pickupAt)],
-		["Passagers", String(quote.passengerCount)],
-		["Bagages", String(quote.luggageCount)],
-		["Categorie vehicule", quote.vehicleCategory],
-		["Type de trajet", quote.tripType],
+		["Depart / From", quote.pickupAddress.substring(0, 55)],
+		["Arrivee / To", quote.dropoffAddress.substring(0, 55)],
+		["Date et heure / Date & Time", formatDateTime(quote.pickupAt)],
+		["Passagers / Passengers", String(quote.passengerCount)],
+		["Bagages / Luggage", String(quote.luggageCount)],
+		["Categorie vehicule / Vehicle", quote.vehicleCategory],
+		["Type de trajet / Trip type", quote.tripType],
 	];
 
+	// Story 25.2: Add estimated distance and duration if available
+	if (quote.estimatedDistanceKm) {
+		tripDetails.push(["Distance estimee / Est. Distance", `${quote.estimatedDistanceKm.toFixed(1)} km`]);
+	}
+	if (quote.estimatedDurationMins) {
+		const hours = Math.floor(quote.estimatedDurationMins / 60);
+		const mins = quote.estimatedDurationMins % 60;
+		const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins} min`;
+		tripDetails.push(["Duree estimee / Est. Duration", durationStr]);
+	}
+
 	for (const [label, value] of tripDetails) {
-		draw(label, { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
-		draw(value.substring(0, 60), { x: leftMargin + 120, y, size: 10, font: helvetica, color: BLACK });
-		y -= 16;
+		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
+		y -= 14;
 	}
 
-	// Pricing section
-	y -= 20;
-	draw("Tarification", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
+	// =========================================================================
+	// PRICING SECTION
+	// =========================================================================
+
+	y -= 15;
+	draw("TARIFICATION / PRICING", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
 	y -= 18;
-	draw(
-		`Mode: ${quote.pricingMode === "FIXED_GRID" ? "Grille tarifaire" : "Tarif dynamique"}`,
-		{ x: leftMargin, y, size: 10, font: helvetica, color: BLACK }
-	);
-	y -= 20;
-	draw(`Prix total TTC: ${formatPrice(quote.finalPrice)}`, {
-		x: leftMargin, y, size: 14, font: helveticaBold, color: BLUE
-	});
 
-	// Notes
+	// Pricing mode
+	const pricingModeText = quote.pricingMode === "FIXED_GRID" ? "Grille tarifaire / Fixed Grid" : "Tarif dynamique / Dynamic";
+	draw(`Mode: ${pricingModeText}`, { x: LEFT_MARGIN, y, size: 10, font: helvetica, color: BLACK });
+	y -= 25;
+
+	// Total price box
+	page.drawRectangle({
+		x: LEFT_MARGIN,
+		y: y - 4,
+		width: 200,
+		height: 24,
+		color: LIGHT_GRAY,
+	});
+	draw("PRIX TOTAL TTC / TOTAL INCL. VAT:", { x: LEFT_MARGIN + 5, y, size: 10, font: helveticaBold, color: DARK });
+	draw(formatPrice(quote.finalPrice), { x: LEFT_MARGIN + 5, y: y - 14, size: 14, font: helveticaBold, color: brandColor });
+
+	y -= 40;
+
+	// Notes section
 	if (quote.notes) {
-		y -= 30;
-		draw("Notes", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
-		y -= 16;
-		draw(quote.notes.substring(0, 100), { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw("NOTES", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
+		y -= 14;
+		draw(quote.notes.substring(0, 100), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
+		y -= 20;
 	}
 
-	// Footer
+	// =========================================================================
+	// FOOTER - Story 25.2: Legal Mentions
+	// =========================================================================
+
+	const footerY = 70;
+	
+	// Acceptance block
+	draw("BON POUR ACCORD / ACCEPTANCE", { x: LEFT_MARGIN, y: footerY + 40, size: 9, font: helveticaBold, color: DARK });
+	page.drawRectangle({
+		x: LEFT_MARGIN,
+		y: footerY + 15,
+		width: 200,
+		height: 20,
+		borderColor: GRAY,
+		borderWidth: 0.5,
+	});
+	draw("Signature:", { x: LEFT_MARGIN + 5, y: footerY + 22, size: 8, font: helvetica, color: GRAY });
+
+	// Legal mentions
 	draw(
 		"Ce devis est valable pour une duree de 30 jours a compter de sa date d'emission.",
-		{ x: leftMargin, y: 50, size: 8, font: helvetica, color: GRAY }
+		{ x: LEFT_MARGIN, y: footerY, size: 8, font: helvetica, color: GRAY }
 	);
 	draw(
-		"Les prix indiques sont en euros TTC.",
-		{ x: leftMargin, y: 38, size: 8, font: helvetica, color: GRAY }
+		"Les prix indiques sont en euros TTC. / Prices are in EUR including VAT.",
+		{ x: LEFT_MARGIN, y: footerY - 12, size: 8, font: helvetica, color: GRAY }
 	);
+
+	// Page number
+	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: footerY - 12, size: 8, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);
 }
 
 // ============================================================================
-// Invoice PDF Generator
+// Invoice PDF Generator - Story 25.2 Refactored
 // ============================================================================
 
 export async function generateInvoicePdf(
@@ -342,208 +582,358 @@ export async function generateInvoicePdf(
 	organization: OrganizationPdfData
 ): Promise<Buffer> {
 	const pdfDoc = await PDFDocument.create();
-	const page = pdfDoc.addPage([595, 842]); // A4
-	const { width, height } = page.getSize();
+	const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+	const { height } = page.getSize();
 
 	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
+	// Story 25.3: Get branding settings
+	const logoPosition = organization.logoPosition ?? "LEFT";
+	const showCompanyName = organization.showCompanyName ?? true;
+	const brandColorRgb = hexToRgb(organization.brandColor);
+	const brandColor = rgb(brandColorRgb.r, brandColorRgb.g, brandColorRgb.b);
+
+	// Story 25.2: Embed logo if available
+	const logoImage = await embedLogoIfAvailable(
+		pdfDoc,
+		organization.documentLogoUrl ?? organization.logo
+	);
+
 	let y = height - 50;
-	const leftMargin = 50;
-	const rightMargin = width - 50;
 
 	// Helper to draw sanitized text
 	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
 		page.drawText(sanitizeText(text), options);
 	};
 
-	// Header - Organization name
-	draw(organization.name, {
-		x: leftMargin,
-		y,
-		size: 20,
-		font: helveticaBold,
-		color: BLACK,
-	});
-	y -= 20;
+	// =========================================================================
+	// HEADER SECTION - Story 25.2: Dynamic Logo Positioning
+	// =========================================================================
 
-	// Organization details
+	const headerY = y;
+	const logoMaxHeight = 50;
+	const logoMaxWidth = 120;
+
+	if (logoPosition === "LEFT") {
+		// Logo on LEFT, Document Info on RIGHT
+		if (logoImage) {
+			const logoDims = logoImage.scale(
+				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
+			);
+			page.drawImage(logoImage, {
+				x: LEFT_MARGIN,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				draw(organization.name, {
+					x: LEFT_MARGIN + logoDims.width + 10,
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			draw(organization.name, {
+				x: LEFT_MARGIN,
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+
+		// Document title on RIGHT
+		draw("FACTURE", {
+			x: RIGHT_MARGIN - 80,
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: brandColor,
+		});
+		draw(`N: ${invoice.number}`, {
+			x: RIGHT_MARGIN - 100,
+			y: headerY - 18,
+			size: 10,
+			font: helveticaBold,
+			color: BLACK,
+		});
+		draw(`Emise le: ${formatDate(invoice.issueDate)}`, {
+			x: RIGHT_MARGIN - 100,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
+			x: RIGHT_MARGIN - 100,
+			y: headerY - 46,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+	} else {
+		// Logo on RIGHT, Document Info on LEFT
+		draw("FACTURE", {
+			x: LEFT_MARGIN,
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: brandColor,
+		});
+		draw(`N: ${invoice.number}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 18,
+			size: 10,
+			font: helveticaBold,
+			color: BLACK,
+		});
+		draw(`Emise le: ${formatDate(invoice.issueDate)}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 46,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+
+		if (logoImage) {
+			const logoDims = logoImage.scale(
+				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
+			);
+			page.drawImage(logoImage, {
+				x: RIGHT_MARGIN - logoDims.width,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				draw(organization.name, {
+					x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14),
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			draw(organization.name, {
+				x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18),
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+	}
+
+	y = headerY - 70;
+
+	// =========================================================================
+	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
+	// =========================================================================
+
+	const blockY = y;
+	const blockWidth = 230;
+	const lineHeight = 14;
+
+	// FROM Block (Left side)
+	draw("DE / FROM:", { x: LEFT_MARGIN, y: blockY, size: 10, font: helveticaBold, color: DARK });
+	let fromY = blockY - 16;
+	draw(organization.name, { x: LEFT_MARGIN, y: fromY, size: 10, font: helveticaBold, color: BLACK });
+	fromY -= lineHeight;
 	if (organization.address) {
-		draw(organization.address, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(organization.address.substring(0, 45), { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.phone) {
-		draw(`Tel: ${organization.phone}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.email) {
-		draw(organization.email, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(organization.email, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.siret) {
-		draw(`SIRET: ${organization.siret}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`SIRET: ${organization.siret}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		fromY -= lineHeight;
 	}
 	if (organization.vatNumber) {
-		draw(`TVA: ${organization.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`TVA: ${organization.vatNumber}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
 	}
 
-	// Document title
-	y -= 20;
-	draw("FACTURE", {
-		x: leftMargin,
-		y,
-		size: 18,
-		font: helveticaBold,
-		color: GREEN,
-	});
+	// BILL TO Block (Right side)
+	const rightBlockX = LEFT_MARGIN + blockWidth + 30;
+	draw("FACTURE A / BILL TO:", { x: rightBlockX, y: blockY, size: 10, font: helveticaBold, color: DARK });
+	let toY = blockY - 16;
 
-	// Invoice number and dates on the right
-	draw(`N° ${invoice.number}`, { x: rightMargin - 100, y: y + 10, size: 10, font: helveticaBold, color: BLACK });
-	draw(`Emise le: ${formatDate(invoice.issueDate)}`, { x: rightMargin - 100, y: y - 4, size: 10, font: helvetica, color: GRAY });
-	draw(`Echeance: ${formatDate(invoice.dueDate)}`, { x: rightMargin - 100, y: y - 18, size: 10, font: helvetica, color: GRAY });
-
-	// Client section
-	y -= 40;
-	draw("Facture a", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
-	y -= 16;
-	
 	if (invoice.endCustomer) {
 		// Story 24.6: EndCustomer exists: display "Prestation pour" (Service For)
-		// but maintain Agency as the billed entity ("Facturé à")
-
-		// Agency details (Billed To)
-		draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-		y -= 14;
+		draw(invoice.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+		toY -= lineHeight;
 		if (invoice.contact.companyName) {
-			draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(invoice.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (invoice.contact.billingAddress) {
-			draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(invoice.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
-
 		// End Customer details (Service For)
-		y -= 10;
-		draw("Prestation pour:", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
-		y -= 14;
+		toY -= 6;
+		draw("Prestation pour:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
+		toY -= lineHeight;
 		const endCustomerName = `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`;
-		draw(endCustomerName, { x: leftMargin, y, size: 10, font: helvetica, color: BLACK });
-		y -= 14;
+		draw(endCustomerName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		toY -= lineHeight;
 	} else {
-		// Standard display
-		draw(invoice.contact.displayName, { x: leftMargin, y, size: 11, font: helveticaBold, color: BLACK });
-		y -= 14;
+		draw(invoice.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+		toY -= lineHeight;
 		if (invoice.contact.companyName) {
-			draw(invoice.contact.companyName, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(invoice.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (invoice.contact.billingAddress) {
-			draw(invoice.contact.billingAddress, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(invoice.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
+			toY -= lineHeight;
 		}
 		if (invoice.contact.vatNumber) {
-			draw(`TVA: ${invoice.contact.vatNumber}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
-			y -= 14;
+			draw(`TVA: ${invoice.contact.vatNumber}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
 		}
 	}
 
-	// Line items section
-	y -= 20;
-	draw("Detail des prestations", { x: leftMargin, y, size: 12, font: helveticaBold, color: DARK });
-	y -= 20;
+	y = Math.min(fromY, toY) - 25;
 
-	// Table header
+	// =========================================================================
+	// PRICING TABLE - Story 25.2: EU-Compliant Columns
+	// =========================================================================
+
+	draw("DETAIL DES PRESTATIONS / LINE ITEMS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
+	y -= 18;
+
+	// Table header background
 	page.drawRectangle({
-		x: leftMargin,
+		x: LEFT_MARGIN,
 		y: y - 4,
-		width: rightMargin - leftMargin,
+		width: CONTENT_WIDTH,
 		height: 18,
-		color: rgb(0.95, 0.95, 0.95),
+		color: LIGHT_GRAY,
 	});
-	draw("Description", { x: leftMargin + 5, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Qte", { x: 300, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Prix HT", { x: 340, y, size: 9, font: helveticaBold, color: DARK });
-	draw("TVA", { x: 400, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Total HT", { x: 450, y, size: 9, font: helveticaBold, color: DARK });
+
+	// Table header columns - Story 25.2: Description, Qty, Price HT, VAT%, Total HT
+	draw("Description", { x: COL_DESC, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Qte", { x: COL_QTY, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Prix HT", { x: COL_PRICE, y, size: 9, font: helveticaBold, color: DARK });
+	draw("TVA %", { x: COL_VAT, y, size: 9, font: helveticaBold, color: DARK });
+	draw("Total HT", { x: COL_TOTAL, y, size: 9, font: helveticaBold, color: DARK });
 	y -= 20;
 
 	// Table rows
 	for (const line of invoice.lines) {
-		draw(line.description.substring(0, 40), { x: leftMargin + 5, y, size: 9, font: helvetica, color: BLACK });
-		draw(String(line.quantity), { x: 300, y, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(line.unitPriceExclVat), { x: 340, y, size: 9, font: helvetica, color: BLACK });
-		draw(`${line.vatRate}%`, { x: 400, y, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(line.totalExclVat), { x: 450, y, size: 9, font: helvetica, color: BLACK });
+		draw(line.description.substring(0, 40), { x: COL_DESC, y, size: 9, font: helvetica, color: BLACK });
+		draw(String(line.quantity), { x: COL_QTY, y, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.unitPriceExclVat), { x: COL_PRICE, y, size: 9, font: helvetica, color: BLACK });
+		draw(`${line.vatRate}%`, { x: COL_VAT, y, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.totalExclVat), { x: COL_TOTAL, y, size: 9, font: helvetica, color: BLACK });
 		y -= 16;
 	}
 
-	// Totals
-	y -= 20;
+	// =========================================================================
+	// TOTALS SECTION - Story 25.2
+	// =========================================================================
+
+	y -= 15;
 	const totalsX = 380;
+
+	// Subtotal
 	draw("Total HT:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
 	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
 	y -= 16;
+
+	// VAT
 	draw("TVA:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
 	draw(formatPrice(invoice.totalVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
 	y -= 16;
+
+	// Total TTC with highlight
 	page.drawRectangle({
 		x: totalsX - 5,
 		y: y - 4,
-		width: 130,
-		height: 18,
-		color: rgb(0.95, 0.95, 0.95),
+		width: 140,
+		height: 20,
+		color: LIGHT_GRAY,
 	});
 	draw("Total TTC:", { x: totalsX, y, size: 10, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 70, y, size: 12, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 70, y, size: 12, font: helveticaBold, color: brandColor });
+	y -= 30;
 
 	// Commission info for partners
 	if (invoice.commissionAmount && invoice.commissionAmount > 0) {
-		y -= 30;
 		draw(`Commission partenaire: ${formatPrice(invoice.commissionAmount)}`, {
-			x: leftMargin, y, size: 10, font: helveticaBold, color: rgb(0.976, 0.451, 0.086)
+			x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: ORANGE
 		});
 		y -= 14;
 		draw(`Montant net: ${formatPrice(invoice.totalExclVat - invoice.commissionAmount)}`, {
-			x: leftMargin, y, size: 10, font: helvetica, color: GRAY
+			x: LEFT_MARGIN, y, size: 10, font: helvetica, color: GRAY
 		});
+		y -= 20;
 	}
 
-	// Notes
+	// =========================================================================
+	// NOTES SECTION
+	// =========================================================================
+
 	if (invoice.notes) {
-		y -= 30;
-		draw("Notes", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
+		draw("NOTES", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
 		y -= 14;
-		draw(invoice.notes.substring(0, 100), { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw(invoice.notes.substring(0, 100), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
+		y -= 20;
 	}
 
-	// Payment info
-	y -= 30;
-	draw("Informations de paiement", { x: leftMargin, y, size: 10, font: helveticaBold, color: DARK });
+	// =========================================================================
+	// PAYMENT INFO SECTION
+	// =========================================================================
+
+	draw("INFORMATIONS DE PAIEMENT / PAYMENT INFO", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
 	y -= 14;
 	if (invoice.paymentTerms) {
-		draw(`Conditions: ${invoice.paymentTerms}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw(`Conditions: ${invoice.paymentTerms}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
 		y -= 14;
 	}
 	if (organization.iban) {
-		draw(`IBAN: ${organization.iban}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw(`IBAN: ${organization.iban}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
 		y -= 14;
 	}
 	if (organization.bic) {
-		draw(`BIC: ${organization.bic}`, { x: leftMargin, y, size: 10, font: helvetica, color: GRAY });
+		draw(`BIC: ${organization.bic}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
 	}
 
-	// Footer
+	// =========================================================================
+	// FOOTER - Story 25.2: Legal Mentions (EU/FR Compliance)
+	// =========================================================================
+
+	const footerY = 50;
+	
 	draw(
 		"En cas de retard de paiement, des penalites de retard seront appliquees au taux legal en vigueur.",
-		{ x: leftMargin, y: 50, size: 8, font: helvetica, color: GRAY }
+		{ x: LEFT_MARGIN, y: footerY + 12, size: 7, font: helvetica, color: GRAY }
 	);
 	draw(
-		"Une indemnite forfaitaire de 40EUR pour frais de recouvrement sera egalement due.",
-		{ x: leftMargin, y: 38, size: 8, font: helvetica, color: GRAY }
+		"Une indemnite forfaitaire de 40 EUR pour frais de recouvrement sera egalement due.",
+		{ x: LEFT_MARGIN, y: footerY, size: 7, font: helvetica, color: GRAY }
 	);
+
+	// Page number
+	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: footerY, size: 8, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);
@@ -570,7 +960,7 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<Buffer> 
 		case "INVOICE_PDF":
 			return generateInvoicePdf(data as InvoicePdfData, organization);
 		case "MISSION_ORDER":
-			// TODO: Implement mission order PDF
+			// TODO: Implement mission order PDF (Story 25.1)
 			throw new Error("Mission order PDF not yet implemented");
 		default:
 			throw new Error(`Unknown document type: ${type}`);
