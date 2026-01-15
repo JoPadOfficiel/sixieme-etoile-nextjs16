@@ -397,6 +397,7 @@ export const invoicesRouter = new Hono()
 						},
 						orderBy: { dayNumber: "asc" },
 					},
+					endCustomer: true,
 				},
 			});
 
@@ -429,6 +430,11 @@ export const invoicesRouter = new Hono()
 			// Story 7.3: Parse appliedRules to extract optional fees and promotions
 			const parsedRules = parseAppliedRules(quote.appliedRules);
 
+            // Story 25.4: Inject end customer name for Agency invoices
+            const endCustomerName = quote.contact.type === "AGENCY" && quote.endCustomer
+                ? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
+                : null;
+
 			// Story 22.8: Build invoice lines based on trip type
 			let invoiceLines;
 			let invoiceNotes: string;
@@ -455,7 +461,7 @@ export const invoicesRouter = new Hono()
 					})),
 				}));
 
-				invoiceLines = buildStayInvoiceLines(stayDaysInput, parsedRules);
+				invoiceLines = buildStayInvoiceLines(stayDaysInput, parsedRules, endCustomerName);
 
 				// Build notes for STAY invoice
 				const totalDays = quote.stayDays.length;
@@ -472,6 +478,7 @@ export const invoicesRouter = new Hono()
 					quote.pickupAddress,
 					quote.dropoffAddress,
 					parsedRules,
+					endCustomerName,
 				);
 
 				invoiceNotes = `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`;

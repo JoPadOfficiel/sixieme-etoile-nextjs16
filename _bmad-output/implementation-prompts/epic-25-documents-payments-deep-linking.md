@@ -19,11 +19,11 @@
 ## Story 25.1: Generate & Manage Mission Sheets (Fiche Mission)
 
 ### 🎯 Assignment Box
-- [ ] **AGENT:** Claude 3.5 Sonnet
-- [ ] **STATUS:** À faire
-- [ ] **STARTED:** 
-- [ ] **COMPLETED:** 
-- [ ] **REVIEW:** 
+- [x] **AGENT:** Claude 3.5 Sonnet
+- [x] **STATUS:** À faire
+- [x] **STARTED:** 
+- [x] **COMPLETED:** 
+- [x] **REVIEW:** 
 
 ### 📋 System Prompt for Agent
 

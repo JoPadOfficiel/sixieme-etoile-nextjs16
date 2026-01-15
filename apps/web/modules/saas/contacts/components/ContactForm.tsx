@@ -253,6 +253,15 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="billingAddress">{t("contacts.form.billingAddress")}</Label>
+            <Textarea
+              id="billingAddress"
+              value={formData.billingAddress}
+              onChange={(e) => updateField("billingAddress", e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
       )}
 

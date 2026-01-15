@@ -213,6 +213,7 @@ export function buildInvoiceLines(
 	pickupAddress: string,
 	dropoffAddress: string | null,
 	parsedRules: ParsedAppliedRules,
+	endCustomerName?: string | null,
 ): InvoiceLineInput[] {
 	const lines: InvoiceLineInput[] = [];
 	let sortOrder = 0;
@@ -223,7 +224,7 @@ export function buildInvoiceLines(
 
 	lines.push({
 		lineType: "SERVICE",
-		description: `Transport: ${pickupAddress} → ${dropoffAddress ?? "N/A"}`,
+		description: `Transport: ${pickupAddress} → ${dropoffAddress ?? "N/A"}${endCustomerName ? ` (End Customer: ${endCustomerName})` : ""}`,
 		quantity: 1,
 		unitPriceExclVat: transportExclVat,
 		vatRate: TRANSPORT_VAT_RATE,
@@ -534,6 +535,7 @@ function buildStayServiceLineWithStaffing(
 export function buildStayInvoiceLines(
 	stayDays: StayDayInput[],
 	parsedRules: ParsedAppliedRules,
+	endCustomerName?: string | null,
 ): InvoiceLineInput[] {
 	const lines: InvoiceLineInput[] = [];
 	let sortOrder = 0;
@@ -556,7 +558,11 @@ export function buildStayInvoiceLines(
 		for (const service of sortedServices) {
 			const serviceCost = Number(service.serviceCost) || 0;
 			if (serviceCost > 0 || dayStaffingCost > 0) {
-				lines.push(buildStayServiceLineWithStaffing(day, service, dayStaffingCost, sortOrder++));
+				const line = buildStayServiceLineWithStaffing(day, service, dayStaffingCost, sortOrder++);
+				if (endCustomerName) {
+					line.description += ` (End Customer: ${endCustomerName})`;
+				}
+				lines.push(line);
 			}
 		}
 	}

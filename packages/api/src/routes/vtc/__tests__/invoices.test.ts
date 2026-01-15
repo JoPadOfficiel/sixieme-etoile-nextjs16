@@ -113,6 +113,7 @@ describe("Invoices API", () => {
 		id: "contact_123",
 		organizationId: "org_123",
 		displayName: "Test Contact",
+		type: "INDIVIDUAL",
 		isPartner: false,
 		partnerContract: null,
 	};
@@ -125,6 +126,7 @@ describe("Invoices API", () => {
 		finalPrice: 150.0,
 		pickupAddress: "Paris CDG",
 		dropoffAddress: "Paris Center",
+		endCustomer: null,
 		contact: {
 			...sampleContact,
 			partnerContract: null,
@@ -337,7 +339,13 @@ describe("Invoices API", () => {
 				.mockResolvedValueOnce({
 					...sampleInvoice,
 					quoteId: "quote_123",
-				} as any); // Created invoice
+				} as any) // For generateInvoiceNumber
+				.mockResolvedValueOnce({
+					...sampleInvoice,
+					id: "new_invoice_123",
+					quoteId: "quote_123",
+					lines: [],
+				} as any); // Created invoice fetch
 
 			const mockTransaction = vi.fn().mockImplementation(async (fn) => {
 				const mockTx = {
@@ -350,6 +358,7 @@ describe("Invoices API", () => {
 					},
 					invoiceLine: {
 						create: vi.fn().mockResolvedValue({}),
+						createMany: vi.fn().mockResolvedValue({ count: 1 }),
 					},
 				};
 				return fn(mockTx);
