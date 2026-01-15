@@ -409,6 +409,71 @@ describe("Invoices API", () => {
 			const text = await res.text();
 			expect(text).toContain("already exists");
 		});
+
+		it("should include end customer name for agency invoices", async () => {
+			mockAuthenticatedUser();
+
+			const agencyQuote = {
+				...sampleQuote,
+				contact: {
+					...sampleContact,
+					type: "AGENCY",
+				},
+				endCustomer: {
+					firstName: "John",
+					lastName: "Doe",
+				},
+			};
+
+			vi.mocked(db.quote.findFirst).mockResolvedValue(agencyQuote as any);
+			
+			// Mock sequence: check existing (null), generate number (ignored), create return (with lines)
+			vi.mocked(db.invoice.findFirst)
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce({ ...sampleInvoice, quoteId: "quote_123" } as any)
+				.mockResolvedValueOnce({ 
+					...sampleInvoice, 
+					quoteId: "quote_123",
+					lines: [
+						{
+							description: "Transport: Paris CDG → Paris Center (End Customer: John Doe)",
+						}
+					]
+				} as any);
+
+			let createdLines: any[] = [];
+
+			const mockTransaction = vi.fn().mockImplementation(async (fn) => {
+				const mockTx = {
+					invoice: {
+						create: vi.fn().mockResolvedValue({
+							...sampleInvoice,
+							id: "new_invoice_123",
+							quoteId: "quote_123",
+						}),
+					},
+					invoiceLine: {
+						create: vi.fn().mockResolvedValue({}),
+						createMany: vi.fn().mockImplementation((args) => {
+							createdLines = args.data;
+							return { count: args.data.length };
+						}),
+					},
+				};
+				return fn(mockTx);
+			});
+			vi.mocked(db.$transaction).mockImplementation(mockTransaction);
+
+			const app = createTestApp();
+			const res = await app.request("/vtc/invoices/from-quote/quote_123", {
+				method: "POST",
+				headers: { Cookie: "session=test" },
+			});
+
+			expect(res.status).toBe(201);
+			expect(createdLines).toHaveLength(1);
+			expect(createdLines[0].description).toContain("(End Customer: John Doe)");
+		});
 	});
 
 	describe("PATCH /invoices/:id", () => {
