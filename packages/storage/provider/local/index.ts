@@ -70,8 +70,25 @@ export async function saveLocalFile(
 }
 
 /**
+ * Delete a file from local storage
+ */
+export async function deleteLocalFile(
+	bucket: string,
+	path: string,
+): Promise<void> {
+	const { unlink } = await import("fs/promises");
+	const filePath = join(LOCAL_STORAGE_DIR, bucket, path);
+	try {
+		await unlink(filePath);
+	} catch {
+		// File doesn't exist or already deleted, ignore
+	}
+}
+
+/**
  * Check if local storage is enabled
  */
 export function isLocalStorageEnabled(): boolean {
 	return process.env.STORAGE_PROVIDER === "local" || !process.env.S3_ENDPOINT;
 }
+

@@ -93,8 +93,21 @@ export function DocumentSettingsForm() {
 			}
 		};
 
+
 		loadSettings();
 	}, [activeOrganization]);
+
+	// Helper to delete a file from storage
+	const deleteFileFromStorage = async (path: string) => {
+		try {
+			// For local storage, call the local-delete endpoint
+			const deleteUrl = `/api/local-delete?bucket=${encodeURIComponent(config.storage.bucketNames.documentLogos)}&path=${encodeURIComponent(path)}`;
+			await fetch(deleteUrl, { method: "DELETE" });
+		} catch (error) {
+			console.warn("Failed to delete old logo:", error);
+			// Continue anyway - old file cleanup is best-effort
+		}
+	};
 
 	// Handle logo upload
 	const onDrop = useCallback(
@@ -112,6 +125,11 @@ export function DocumentSettingsForm() {
 
 			setUploading(true);
 			try {
+				// Delete old logo if exists
+				if (documentLogoUrl) {
+					await deleteFileFromStorage(documentLogoUrl);
+				}
+
 				// Get file extension from mime type
 				const ext = file.type === "image/svg+xml" ? "svg" 
 					: file.type === "image/png" ? "png" 
@@ -159,7 +177,7 @@ export function DocumentSettingsForm() {
 				setUploading(false);
 			}
 		},
-		[activeOrganization, getSignedUploadUrlMutation, t, toast]
+		[activeOrganization, documentLogoUrl, getSignedUploadUrlMutation, t, toast]
 	);
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -179,6 +197,11 @@ export function DocumentSettingsForm() {
 
 		setSaving(true);
 		try {
+			// Delete the file from storage first
+			if (documentLogoUrl) {
+				await deleteFileFromStorage(documentLogoUrl);
+			}
+
 			const success = await updatePricingSettings(activeOrganization.id, {
 				documentLogoUrl: null,
 			});

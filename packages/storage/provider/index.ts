@@ -50,4 +50,4 @@ export const getSignedUrl: typeof localProvider.getSignedUrl = async (
 };
 
 // Re-export local storage utilities for direct use
-export { saveLocalFile, isLocalStorageEnabled } from "./local";
+export { saveLocalFile, deleteLocalFile, isLocalStorageEnabled } from "./local";
