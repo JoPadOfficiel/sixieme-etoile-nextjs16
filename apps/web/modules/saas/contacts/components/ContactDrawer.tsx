@@ -18,7 +18,19 @@ import { ContactCommercialSummary } from "./ContactCommercialSummary";
 import { EndCustomerList } from "./EndCustomerList";
 import type { Contact } from "../types";
 
-// Valid tab values for deep linking
+/**
+ * Valid tab values for ContactDrawer deep linking.
+ * Used to control which tab is displayed when opening a contact via URL.
+ * 
+ * @example URL: /contacts?id=abc123&tab=end-customers
+ * 
+ * Tabs available:
+ * - `details`: Contact form/details (default)
+ * - `timeline`: Activity history (quotes/invoices)
+ * - `commercial`: Commercial summary with margins
+ * - `end-customers`: End customer list (partners only)
+ * - `contract`: Partner contract settings (partners only)
+ */
 export type ContactTab = "details" | "timeline" | "commercial" | "end-customers" | "contract";
 
 interface ContactDrawerProps {

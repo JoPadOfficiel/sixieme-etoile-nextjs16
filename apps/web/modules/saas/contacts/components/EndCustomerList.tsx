@@ -124,8 +124,10 @@ export function EndCustomerList({ contactId }: EndCustomerListProps) {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  Loading...
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex justify-center">
+                    <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                  </div>
                 </TableCell>
               </TableRow>
             ) : !data || data.length === 0 ? (

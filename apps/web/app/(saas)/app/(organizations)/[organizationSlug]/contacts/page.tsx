@@ -2,11 +2,12 @@
 
 import { ContactsTable, ContactDrawer, type ContactTab } from "@saas/contacts/components";
 import type { ContactWithCounts } from "@saas/contacts/types";
-import { useState, useCallback, Suspense, useMemo } from "react";
+import { useState, useCallback, Suspense, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { apiClient } from "@shared/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@ui/hooks/use-toast";
 
 /**
  * Story 25.5: Deep Linking Navigation for Contacts
@@ -27,6 +28,7 @@ function isValidTab(tab: string | null): tab is ContactTab {
 
 function ContactsPageContent() {
   const t = useTranslations();
+  const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -54,14 +56,16 @@ function ContactsPageContent() {
 
   // Fetch specific contact if URL has id param (for deep linking)
   // Note: The single contact API doesn't return _count, so we add it for type compatibility
-  const { data: deepLinkContact, isLoading: isLoadingDeepLink } = useQuery({
+  const { data: deepLinkContact, isLoading: isLoadingDeepLink, isError: isDeepLinkError } = useQuery({
     queryKey: ["contact", urlContactId],
     queryFn: async () => {
       if (!urlContactId) return null;
       const response = await apiClient.vtc.contacts[":id"].$get({
         param: { id: urlContactId },
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        throw new Error("Contact not found");
+      }
       const contact = await response.json();
       // Add _count for type compatibility with ContactWithCounts
       // The actual counts are not needed for drawer display
@@ -71,7 +75,21 @@ function ContactsPageContent() {
       } as ContactWithCounts;
     },
     enabled: !!urlContactId,
+    retry: false, // Don't retry on 404
   });
+
+  // MED-2 fix: Show error toast and clear URL when deep link contact not found
+  useEffect(() => {
+    if (isDeepLinkError && urlContactId) {
+      toast({
+        title: t("contacts.loadError"),
+        description: `Contact ID: ${urlContactId}`,
+        variant: "error",
+      });
+      // Clear the invalid URL params
+      router.replace(pathname, { scroll: false });
+    }
+  }, [isDeepLinkError, urlContactId, toast, t, router, pathname]);
 
   // Story 25.5: Derive drawer state from URL or manual control
   // If URL has a contact ID and we have fetched the contact, show the drawer
@@ -153,7 +171,13 @@ function ContactsPageContent() {
 // Wrap in Suspense for useSearchParams
 export default function ContactsPage() {
   return (
-    <Suspense fallback={<div className="py-4">Loading...</div>}>
+    <Suspense fallback={
+      <div className="py-4 animate-pulse">
+        <div className="h-8 w-48 bg-muted rounded mb-4" />
+        <div className="h-4 w-64 bg-muted rounded mb-8" />
+        <div className="h-64 w-full bg-muted rounded" />
+      </div>
+    }>
       <ContactsPageContent />
     </Suspense>
   );
