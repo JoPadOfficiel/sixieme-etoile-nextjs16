@@ -61,20 +61,22 @@ const listDocumentsSchema = z.object({
 function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 	const settings = org.organizationPricingSettings;
 	return {
-		name: org.name,
-		address: null, // TODO: Add address to organization model
-		phone: null,
-		email: null,
-		siret: null,
-		vatNumber: null,
-		iban: null,
-		bic: null,
 		logo: org.logo,
 		// Story 25.3: Branding
 		documentLogoUrl: settings?.documentLogoUrl,
 		brandColor: settings?.brandColor,
 		logoPosition: settings?.logoPosition,
 		showCompanyName: settings?.showCompanyName,
+		// Story 25.2: EU Compliance - Real data
+		// Legal name fallback to org name if not set
+		name: settings?.legalName ?? org.name,
+		address: settings?.address ?? null,
+		phone: settings?.phone ?? null,
+		email: settings?.email ?? null,
+		siret: settings?.siret ?? null,
+		vatNumber: settings?.vatNumber ?? null,
+		iban: settings?.iban ?? null,
+		bic: settings?.bic ?? null,
 	};
 }
 
@@ -742,6 +744,25 @@ export const documentsRouter = new Hono()
 					documentType: true,
 				},
 			});
+
+			// Story 25.1: Create Activity record
+			if (quote.assignedDriverId) {
+				await db.activity.create({
+					data: {
+						organizationId,
+						driverId: quote.assignedDriverId,
+						quoteId: quote.id,
+						entityType: "QUOTE",
+						entityId: quote.id,
+						type: "DOCUMENT_GENERATED",
+						description: "Génération Fiche Mission",
+						metadata: {
+							documentId: document.id,
+							filename,
+						},
+					},
+				});
+			}
 
 			return c.json(document, 201);
 		}

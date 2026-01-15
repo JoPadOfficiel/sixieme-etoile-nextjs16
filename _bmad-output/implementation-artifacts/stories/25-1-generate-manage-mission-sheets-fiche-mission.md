@@ -81,3 +81,14 @@ As a **dispatcher**, I want to generate a PDF "Fiche Mission" for assigned drive
 1. Updated PDF Service
 2. New UI button in Dispatch
 3. Activity logging integration
+
+## 🔍 Review Findings & Action Items
+
+### 🔴 Critical Issues
+- **[RESOLVED] [AI-Review] AC3 Implementation Missing**: The automated activity log entry was skipped in `documents.ts` because the `Activity` model is missing in the current Prisma schema. This result in non-compliance with AC3 ("Upon generation, create an activity record").
+  - *Action*: Implement the `Activity` model in Prisma or define an alternative logging strategy immediately. -> **Done** (Added Activity model and logging)
+
+### 🟡 Medium Issues
+- **[AI-Review] UX - AssignmentDrawer**: The "Print Mission Sheet" button is accessible when a candidate is merely selected but not yet assigned. Generating a mission sheet for an unconfirmed driver is risky.
+  - *Action*: Disable the button until the assignment is confirmed/saved, or change the flow to assigning before printing.
+

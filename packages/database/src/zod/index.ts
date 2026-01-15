@@ -146,7 +146,7 @@ export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','exc
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','legalName','address','phone','email','siret','vatNumber','iban','bic','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -189,6 +189,8 @@ export const TollCacheScalarFieldEnumSchema = z.enum(['id','originHash','destina
 export const StayDayScalarFieldEnumSchema = z.enum(['id','quoteId','dayNumber','date','hotelRequired','hotelCost','mealCount','mealCost','driverCount','driverOvernightCost','dayTotalCost','dayTotalInternalCost','notes','createdAt','updatedAt']);
 
 export const StayServiceScalarFieldEnumSchema = z.enum(['id','stayDayId','serviceOrder','serviceType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','durationHours','stops','distanceKm','durationMinutes','serviceCost','serviceInternalCost','tripAnalysis','notes','createdAt','updatedAt']);
+
+export const ActivityScalarFieldEnumSchema = z.enum(['id','organizationId','driverId','quoteId','entityType','entityId','type','description','metadata','createdAt']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -1119,6 +1121,14 @@ export const OrganizationPricingSettingsSchema = z.object({
   documentLogoUrl: z.string().nullable(),
   brandColor: z.string().nullable(),
   showCompanyName: z.boolean(),
+  legalName: z.string().nullable(),
+  address: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  siret: z.string().nullable(),
+  vatNumber: z.string().nullable(),
+  iban: z.string().nullable(),
+  bic: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })
@@ -1684,3 +1694,25 @@ export const StayServiceSchema = z.object({
 })
 
 export type StayService = z.infer<typeof StayServiceSchema>
+
+/////////////////////////////////////////
+// ACTIVITY SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Activity - Tracks business events (e.g. document generation) for CRM
+ */
+export const ActivitySchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  driverId: z.string().nullable(),
+  quoteId: z.string().nullable(),
+  entityType: z.string(),
+  entityId: z.string(),
+  type: z.string(),
+  description: z.string(),
+  metadata: JsonValueSchema.nullable(),
+  createdAt: z.coerce.date(),
+})
+
+export type Activity = z.infer<typeof ActivitySchema>

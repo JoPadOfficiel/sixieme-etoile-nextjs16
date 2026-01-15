@@ -269,3 +269,23 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     : { r: 0.145, g: 0.388, b: 0.922 }; // Default blue
 }
 ```
+
+## 🔍 Review Findings & Action Items
+
+### 🔴 Critical Issues
+- **[RESOLVED] [AI-Review] Legal Non-Compliance (AC3)**: `transformOrganizationToPdfData` in `documents.ts` hardcodes `null` for mandatory fields: SIRET, VAT, Phone, Email.
+  - *Context*: These are legally required on invoices in the EU/FR.
+  - *Action*: Update `transformOrganizationToPdfData` to fetch these values from the Organization model or Settings. -> **Done** (Added fields to OrganizationPricingSettings + Documents.ts update)
+
+### 🟡 Medium Issues
+- **[RESOLVED] [AI-Review] DRY Violation**: The header logic (logo positioning, title, ref) is duplicated 3 times in `pdf-generator.ts` (Quote, Invoice, Mission Order).
+  - *Action*: Refactor into a reusable `drawHeader` function as originally planned. -> **Done**
+- **[RESOLVED] [AI-Review] Text Sanitization**: The `sanitizeText` function may be overly aggressive, potentially stripping legitimate characters from names/addresses.
+  - *Action*: Review and improve sanitization logic or use a robust font that supports needed charsets. -> **Done** (Improved sanitizeText)
+
+### 🟢 Low Issues
+- **[AI-Review] Pagination**: Page numbering is hardcoded as "Page 1 / 1".
+  - *Action*: Implement dynamic page numbering if multi-page documents are expected.
+- **[RESOLVED] [AI-Review] Logo Fetch**: No timeout configured for logo fetching.
+  - *Action*: Add a timeout to `fetch(logoUrl)` to prevent hanging PDF generation. -> **Done**
+

@@ -139,24 +139,17 @@ function formatDateTime(date: Date): string {
  * Sanitize text for PDF rendering (remove non-ASCII characters)
  * pdf-lib only supports WinAnsi encoding (basic Latin characters)
  */
-function sanitizeText(text: string): string {
+function sanitizeText(text: string | null | undefined): string {
+	if (!text) return "";
 	return text
-		.replace(/→/g, "->")
-		.replace(/←/g, "<-")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "") // Remove accents
+		.replace(/[’‘]/g, "'") // Smart quotes
+		.replace(/[“”]/g, '"') // Smart double quotes
+		.replace(/–/g, "-") // En dash
+		.replace(/—/g, "-") // Em dash
 		.replace(/€/g, "EUR")
-		.replace(/[éèêë]/g, "e")
-		.replace(/[àâä]/g, "a")
-		.replace(/[ùûü]/g, "u")
-		.replace(/[îï]/g, "i")
-		.replace(/[ôö]/g, "o")
-		.replace(/ç/g, "c")
-		.replace(/[ÉÈÊË]/g, "E")
-		.replace(/[ÀÂÄÃ]/g, "A")
-		.replace(/[ÙÛÜ]/g, "U")
-		.replace(/[ÎÏ]/g, "I")
-		.replace(/[ÔÖ]/g, "O")
-		.replace(/Ç/g, "C")
-		.replace(/[^\x00-\x7F]/g, ""); // Remove any remaining non-ASCII
+		.replace(/[^\x20-\x7E\n\r]/g, ""); // Keep only printable ASCII + newlines
 }
 
 /**
@@ -184,8 +177,12 @@ async function embedLogoIfAvailable(
 	logoUrl: string | null | undefined
 ): Promise<PDFImage | null> {
 	if (!logoUrl) return null;
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
 	try {
-		const response = await fetch(logoUrl);
+		const response = await fetch(logoUrl, { signal: controller.signal });
+		clearTimeout(timeoutId);
 		if (!response.ok) return null;
 		const imageBytes = await response.arrayBuffer();
 
@@ -196,6 +193,7 @@ async function embedLogoIfAvailable(
 			return await pdfDoc.embedJpg(imageBytes);
 		}
 	} catch (error) {
+		clearTimeout(timeoutId);
 		console.error("Failed to embed logo:", error);
 		return null;
 	}
@@ -226,6 +224,152 @@ const COL_QTY = 300;
 const COL_PRICE = 345;
 const COL_VAT = 410;
 const COL_TOTAL = 470;
+
+// ============================================================================
+// PDF Layout Components - Story 25.2 Refactored
+// ============================================================================
+
+interface DrawHeaderOptions {
+	page: PDFPage;
+	helvetica: PDFFont;
+	helveticaBold: PDFFont;
+	organization: OrganizationPdfData;
+	logoImage: PDFImage | null;
+	title: string;
+	referenceLabel: string; // e.g. "Ref:" or "ID:"
+	referenceValue: string;
+	dateLabel: string; // e.g. "Date:"
+	dateValue: string;
+	color: typeof DEFAULT_BLUE; // Use Color type if imported, else default color var logic handled inside
+}
+
+function drawHeader(options: DrawHeaderOptions): number {
+	const {
+		page,
+		helvetica,
+		helveticaBold,
+		organization,
+		logoImage,
+		title,
+		referenceLabel,
+		referenceValue,
+		dateLabel,
+		dateValue,
+		color,
+	} = options;
+	const { height } = page.getSize();
+	const logoPosition = organization.logoPosition ?? "LEFT";
+	const showCompanyName = organization.showCompanyName ?? true;
+
+	const headerY = height - 50;
+	const draw = (text: string, opts: any) => page.drawText(sanitizeText(text), opts);
+
+	if (logoPosition === "LEFT") {
+		// LOGO LEFT, INFO RIGHT
+		if (logoImage) {
+			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			page.drawImage(logoImage, {
+				x: LEFT_MARGIN,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				draw(organization.name, {
+					x: LEFT_MARGIN + logoDims.width + 10,
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			draw(organization.name, {
+				x: LEFT_MARGIN,
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+
+		draw(title, {
+			x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(sanitizeText(title), 18),
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: color,
+		});
+		draw(`${referenceLabel} ${referenceValue}`, {
+			x: RIGHT_MARGIN - 130, // Approximate align right block
+			y: headerY - 18,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`${dateLabel} ${dateValue}`, {
+			x: RIGHT_MARGIN - 130,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+	} else {
+		// LOGO RIGHT, INFO LEFT
+		draw(title, {
+			x: LEFT_MARGIN,
+			y: headerY,
+			size: 18,
+			font: helveticaBold,
+			color: color,
+		});
+		draw(`${referenceLabel} ${referenceValue}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 18,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+		draw(`${dateLabel} ${dateValue}`, {
+			x: LEFT_MARGIN,
+			y: headerY - 32,
+			size: 10,
+			font: helvetica,
+			color: GRAY,
+		});
+
+		if (logoImage) {
+			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			page.drawImage(logoImage, {
+				x: RIGHT_MARGIN - logoDims.width,
+				y: headerY - logoDims.height + 20,
+				width: logoDims.width,
+				height: logoDims.height,
+			});
+			if (showCompanyName) {
+				const nameWidth = helveticaBold.widthOfTextAtSize(sanitizeText(organization.name), 14);
+				draw(organization.name, {
+					x: RIGHT_MARGIN - logoDims.width - 10 - nameWidth,
+					y: headerY,
+					size: 14,
+					font: helveticaBold,
+					color: BLACK,
+				});
+			}
+		} else {
+			const nameWidth = helveticaBold.widthOfTextAtSize(sanitizeText(organization.name), 18);
+			draw(organization.name, {
+				x: RIGHT_MARGIN - nameWidth,
+				y: headerY,
+				size: 18,
+				font: helveticaBold,
+				color: BLACK,
+			});
+		}
+	}
+
+	return headerY - 80;
+}
 
 // ============================================================================
 // Quote PDF Generator - Story 25.2 Refactored
@@ -266,136 +410,39 @@ export async function generateQuotePdf(
 	// =========================================================================
 	
 	const headerY = y;
-	const logoMaxHeight = 50;
-	const logoMaxWidth = 120;
+    
+	y = drawHeader({
+		page,
+		helvetica,
+		helveticaBold,
+		organization,
+		logoImage,
+		title: "DEVIS",
+		referenceLabel: "Ref:",
+		referenceValue: quote.id.slice(-8).toUpperCase(),
+		dateLabel: "Date:",
+		dateValue: formatDate(quote.createdAt),
+		color: brandColor,
+	});
 
-	if (logoPosition === "LEFT") {
-		// Logo on LEFT, Document Info on RIGHT
-		if (logoImage) {
-			const logoDims = logoImage.scale(
-				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
-			);
-			page.drawImage(logoImage, {
-				x: LEFT_MARGIN,
-				y: headerY - logoDims.height + 20,
-				width: logoDims.width,
-				height: logoDims.height,
-			});
-			if (showCompanyName) {
-				draw(organization.name, {
-					x: LEFT_MARGIN + logoDims.width + 10,
-					y: headerY,
-					size: 14,
-					font: helveticaBold,
-					color: BLACK,
-				});
-			}
-		} else {
-			// No logo - just company name
-			draw(organization.name, {
-				x: LEFT_MARGIN,
-				y: headerY,
-				size: 18,
-				font: helveticaBold,
-				color: BLACK,
-			});
-		}
-
-		// Document title on RIGHT
-		draw("DEVIS", {
-			x: RIGHT_MARGIN - 80,
-			y: headerY,
-			size: 18,
-			font: helveticaBold,
-			color: brandColor,
-		});
-		draw(`Ref: ${quote.id.slice(-8).toUpperCase()}`, {
-			x: RIGHT_MARGIN - 100,
-			y: headerY - 18,
+	// Additional Quote Info (Valid Until)
+	if (quote.validUntil) {
+		const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
+			page.drawText(sanitizeText(text), options);
+		};
+		// Re-calculate alignment based on logo position
+		const logoPosition = organization.logoPosition ?? "LEFT";
+		// Align with the block from drawHeader (RIGHT_MARGIN - 130 or LEFT_MARGIN)
+		const infoX = logoPosition === "LEFT" ? RIGHT_MARGIN - 130 : LEFT_MARGIN;
+		
+		draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
+			x: infoX,
+			y: headerY - 46, // 14pts below the Date line
 			size: 10,
 			font: helvetica,
 			color: GRAY,
 		});
-		draw(`Date: ${formatDate(quote.createdAt)}`, {
-			x: RIGHT_MARGIN - 100,
-			y: headerY - 32,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-		if (quote.validUntil) {
-			draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
-				x: RIGHT_MARGIN - 100,
-				y: headerY - 46,
-				size: 10,
-				font: helvetica,
-				color: GRAY,
-			});
-		}
-	} else {
-		// Logo on RIGHT, Document Info on LEFT
-		draw("DEVIS", {
-			x: LEFT_MARGIN,
-			y: headerY,
-			size: 18,
-			font: helveticaBold,
-			color: brandColor,
-		});
-		draw(`Ref: ${quote.id.slice(-8).toUpperCase()}`, {
-			x: LEFT_MARGIN,
-			y: headerY - 18,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-		draw(`Date: ${formatDate(quote.createdAt)}`, {
-			x: LEFT_MARGIN,
-			y: headerY - 32,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-		if (quote.validUntil) {
-			draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
-				x: LEFT_MARGIN,
-				y: headerY - 46,
-				size: 10,
-				font: helvetica,
-				color: GRAY,
-			});
-		}
-
-		if (logoImage) {
-			const logoDims = logoImage.scale(
-				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
-			);
-			page.drawImage(logoImage, {
-				x: RIGHT_MARGIN - logoDims.width,
-				y: headerY - logoDims.height + 20,
-				width: logoDims.width,
-				height: logoDims.height,
-			});
-			if (showCompanyName) {
-				draw(organization.name, {
-					x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14),
-					y: headerY,
-					size: 14,
-					font: helveticaBold,
-					color: BLACK,
-				});
-			}
-		} else {
-			draw(organization.name, {
-				x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18),
-				y: headerY,
-				size: 18,
-				font: helveticaBold,
-				color: BLACK,
-			});
-		}
 	}
-
-	y = headerY - 70;
 
 	// =========================================================================
 	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
@@ -618,131 +665,31 @@ export async function generateInvoicePdf(
 	// =========================================================================
 
 	const headerY = y;
-	const logoMaxHeight = 50;
-	const logoMaxWidth = 120;
+	
+	y = drawHeader({
+		page,
+		helvetica,
+		helveticaBold,
+		organization,
+		logoImage,
+		title: "FACTURE",
+		referenceLabel: "N:",
+		referenceValue: invoice.number,
+		dateLabel: "Emise le:",
+		dateValue: formatDate(invoice.issueDate),
+		color: brandColor,
+	});
 
-	if (logoPosition === "LEFT") {
-		// Logo on LEFT, Document Info on RIGHT
-		if (logoImage) {
-			const logoDims = logoImage.scale(
-				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
-			);
-			page.drawImage(logoImage, {
-				x: LEFT_MARGIN,
-				y: headerY - logoDims.height + 20,
-				width: logoDims.width,
-				height: logoDims.height,
-			});
-			if (showCompanyName) {
-				draw(organization.name, {
-					x: LEFT_MARGIN + logoDims.width + 10,
-					y: headerY,
-					size: 14,
-					font: helveticaBold,
-					color: BLACK,
-				});
-			}
-		} else {
-			draw(organization.name, {
-				x: LEFT_MARGIN,
-				y: headerY,
-				size: 18,
-				font: helveticaBold,
-				color: BLACK,
-			});
-		}
+	// Additional Invoice Info (Due Date)
+	const infoX = logoPosition === "LEFT" ? RIGHT_MARGIN - 130 : LEFT_MARGIN;
 
-		// Document title on RIGHT
-		draw("FACTURE", {
-			x: RIGHT_MARGIN - 80,
-			y: headerY,
-			size: 18,
-			font: helveticaBold,
-			color: brandColor,
-		});
-		draw(`N: ${invoice.number}`, {
-			x: RIGHT_MARGIN - 100,
-			y: headerY - 18,
-			size: 10,
-			font: helveticaBold,
-			color: BLACK,
-		});
-		draw(`Emise le: ${formatDate(invoice.issueDate)}`, {
-			x: RIGHT_MARGIN - 100,
-			y: headerY - 32,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-		draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
-			x: RIGHT_MARGIN - 100,
-			y: headerY - 46,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-	} else {
-		// Logo on RIGHT, Document Info on LEFT
-		draw("FACTURE", {
-			x: LEFT_MARGIN,
-			y: headerY,
-			size: 18,
-			font: helveticaBold,
-			color: brandColor,
-		});
-		draw(`N: ${invoice.number}`, {
-			x: LEFT_MARGIN,
-			y: headerY - 18,
-			size: 10,
-			font: helveticaBold,
-			color: BLACK,
-		});
-		draw(`Emise le: ${formatDate(invoice.issueDate)}`, {
-			x: LEFT_MARGIN,
-			y: headerY - 32,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-		draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
-			x: LEFT_MARGIN,
-			y: headerY - 46,
-			size: 10,
-			font: helvetica,
-			color: GRAY,
-		});
-
-		if (logoImage) {
-			const logoDims = logoImage.scale(
-				Math.min(logoMaxWidth / logoImage.width, logoMaxHeight / logoImage.height)
-			);
-			page.drawImage(logoImage, {
-				x: RIGHT_MARGIN - logoDims.width,
-				y: headerY - logoDims.height + 20,
-				width: logoDims.width,
-				height: logoDims.height,
-			});
-			if (showCompanyName) {
-				draw(organization.name, {
-					x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14),
-					y: headerY,
-					size: 14,
-					font: helveticaBold,
-					color: BLACK,
-				});
-			}
-		} else {
-			draw(organization.name, {
-				x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18),
-				y: headerY,
-				size: 18,
-				font: helveticaBold,
-				color: BLACK,
-			});
-		}
-	}
-
-	y = headerY - 70;
+	draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
+		x: infoX,
+		y: headerY - 46,
+		size: 10,
+		font: helvetica,
+		color: GRAY,
+	});
 
 	// =========================================================================
 	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
@@ -978,29 +925,20 @@ export async function generateMissionOrderPdf(
 
 	// --- Header Re-used logic ---
 	const headerY = y;
-	if (logoPosition === "LEFT") {
-		if (logoImage) {
-			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
-			page.drawImage(logoImage, { x: LEFT_MARGIN, y: headerY - logoDims.height + 20, width: logoDims.width, height: logoDims.height });
-			if (showCompanyName) draw(organization.name, { x: LEFT_MARGIN + logoDims.width + 10, y: headerY, size: 14, font: helveticaBold, color: BLACK });
-		} else draw(organization.name, { x: LEFT_MARGIN, y: headerY, size: 18, font: helveticaBold, color: BLACK });
-		
-		draw("FICHE MISSION", { x: RIGHT_MARGIN - 130, y: headerY, size: 18, font: helveticaBold, color: brandColor });
-		draw(`ID: ${mission.id.slice(-8).toUpperCase()}`, { x: RIGHT_MARGIN - 130, y: headerY - 18, size: 10, font: helvetica, color: GRAY });
-		draw(`Date: ${formatDate(mission.createdAt)}`, { x: RIGHT_MARGIN - 130, y: headerY - 32, size: 10, font: helvetica, color: GRAY });
-	} else {
-		draw("FICHE MISSION", { x: LEFT_MARGIN, y: headerY, size: 18, font: helveticaBold, color: brandColor });
-		draw(`ID: ${mission.id.slice(-8).toUpperCase()}`, { x: LEFT_MARGIN, y: headerY - 18, size: 10, font: helvetica, color: GRAY });
-		draw(`Date: ${formatDate(mission.createdAt)}`, { x: LEFT_MARGIN, y: headerY - 32, size: 10, font: helvetica, color: GRAY });
-
-		if (logoImage) {
-			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
-			page.drawImage(logoImage, { x: RIGHT_MARGIN - logoDims.width, y: headerY - logoDims.height + 20, width: logoDims.width, height: logoDims.height });
-			if (showCompanyName) draw(organization.name, { x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14), y: headerY, size: 14, font: helveticaBold, color: BLACK });
-		} else draw(organization.name, { x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18), y: headerY, size: 18, font: helveticaBold, color: BLACK });
-	}
-
-	y = headerY - 80;
+	
+	y = drawHeader({
+		page,
+		helvetica,
+		helveticaBold,
+		organization,
+		logoImage,
+		title: "FICHE MISSION",
+		referenceLabel: "ID:",
+		referenceValue: mission.id.slice(-8).toUpperCase(),
+		dateLabel: "Date:",
+		dateValue: formatDate(mission.createdAt),
+		color: brandColor,
+	});
 
 	// --- Mission Resume ---
 	draw("RESUME MISSION", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });

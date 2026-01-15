@@ -153,6 +153,7 @@ model Organization {
   quoteNotesAuditLogs         QuoteNotesAuditLog[]
   subcontractorFeedbacks      SubcontractorFeedback[]
   endCustomers                EndCustomer[]
+  activities                  Activity[]
 
   @@unique([slug])
   @@map("organization")
@@ -941,6 +942,7 @@ model Driver {
   // Story 20.8: Second driver relation for RSE double crew missions
   secondDriverQuotes   Quote[]               @relation("SecondDriver")
   quotes               Quote[]
+  activities           Activity[]
 
   @@index([organizationId])
   @@index([isActive])
@@ -1378,6 +1380,16 @@ model OrganizationPricingSettings {
   logoPosition    LogoPosition @default(LEFT)
   // Whether to show company name next to the logo in document header
   showCompanyName Boolean      @default(true)
+
+  // Story 25.2: EU-Compliant Invoice Legal Info
+  legalName       String?
+  address         String?
+  phone           String?
+  email           String?
+  siret           String?
+  vatNumber       String?
+  iban            String?
+  bic             String?
 
   // Metadata
   createdAt DateTime @default(now())
@@ -2244,4 +2256,35 @@ model StayService {
   @@unique([stayDayId, serviceOrder])
   @@index([stayDayId])
   @@map("stay_service")
+}
+
+// ----------------------------------------------------------------------------
+// ACTIVITY LOG (Story 25.1)
+// ----------------------------------------------------------------------------
+
+/// Activity - Tracks business events (e.g. document generation) for CRM
+model Activity {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  driverId       String?
+  driver         Driver?      @relation(fields: [driverId], references: [id])
+
+  // Context
+  quoteId        String?
+  entityType     String // QUOTE, DRIVER, etc.
+  entityId       String
+
+  // Event
+  type           String // DOCUMENT_GENERATED, etc.
+  description    String
+  metadata       Json?
+
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([entityId, entityType])
+  @@map("activity")
 }
