@@ -5,7 +5,7 @@
 |-------|-------|
 | **Epic** | 25 - Documents, Payments & Deep Linking Enhancements |
 | **Story ID** | 25.3 |
-| **Status** | in-progress |
+| **Status** | done |
 | **Priority** | HIGH - Foundation for all PDF document branding |
 | **Estimated Time** | 2-3h |
 | **Branch** | `feature/25-3-org-personalization` |
@@ -37,44 +37,44 @@ As an **organization administrator**, I want to configure my company's visual id
 ## ✅ Acceptance Criteria
 
 ### AC1: Database Schema Extension
-- [ ] Add `documentLogoUrl` (String, nullable) to `OrganizationPricingSettings`
-- [ ] Add `brandColor` (String, nullable, default: "#2563eb") to `OrganizationPricingSettings`
-- [ ] Add `logoPosition` (Enum: LEFT/RIGHT, default: LEFT) to `OrganizationPricingSettings`
-- [ ] Create and apply Prisma migration
+- [x] Add `documentLogoUrl` (String, nullable) to `OrganizationPricingSettings`
+- [x] Add `brandColor` (String, nullable, default: "#2563eb") to `OrganizationPricingSettings`
+- [x] Add `logoPosition` (Enum: LEFT/RIGHT, default: LEFT) to `OrganizationPricingSettings`
+- [x] Create and apply Prisma migration
 
 ### AC2: Logo Upload UI
-- [ ] Add "Document Logo" section in `/settings/general` page
-- [ ] Implement drag-and-drop upload (PNG/JPG, max 2MB)
-- [ ] Store uploaded logo in Supabase Storage bucket `document-logos`
-- [ ] Display preview of uploaded logo
-- [ ] Allow removing/replacing logo
+- [x] Add "Document Logo" section in `/settings/general` page
+- [x] Implement drag-and-drop upload (PNG/JPG, max 2MB)
+- [x] Store uploaded logo in Supabase Storage bucket `document-logos`
+- [x] Display preview of uploaded logo
+- [x] Allow removing/replacing logo
 
 ### AC3: Brand Color Configuration
-- [ ] Add color picker input for brand color
-- [ ] Show live preview of color selection
-- [ ] Validate hex color format (#RRGGBB)
+- [x] Add color picker input for brand color
+- [x] Show live preview of color selection
+- [x] Validate hex color format (#RRGGBB)
 
 ### AC4: Logo Position Toggle
-- [ ] Add segmented control or toggle: "Left" / "Right"
-- [ ] Show visual preview of logo position
+- [x] Add segmented control or toggle: "Left" / "Right"
+- [x] Show visual preview of logo position
 
 ### AC5: API Endpoint
-- [ ] Extend `pricing-settings.ts` API to handle new fields
-- [ ] Validate logo URL format
-- [ ] Validate brand color hex format
-- [ ] Validate logo position enum
+- [x] Extend `pricing-settings.ts` API to handle new fields
+- [x] Validate logo URL format
+- [x] Validate brand color hex format
+- [x] Validate logo position enum
 
 ### AC6: PDF Generator Integration
-- [ ] Modify `pdf-generator.ts` to accept `logoPosition` and `brandColor`
-- [ ] Update `OrganizationPdfData` interface with new fields
-- [ ] Apply brand color to document titles (DEVIS, FACTURE)
-- [ ] Position logo according to `logoPosition` setting
-- [ ] Embed logo image in PDF if `documentLogoUrl` is provided
+- [x] Modify `pdf-generator.ts` to accept `logoPosition` and `brandColor`
+- [x] Update `OrganizationPdfData` interface with new fields
+- [x] Apply brand color to document titles (DEVIS, FACTURE)
+- [x] Position logo according to `logoPosition` setting
+- [x] Embed logo image in PDF if `documentLogoUrl` is provided
 
 ### AC7: Persistence Validation
-- [ ] After uploading logo and saving → Refresh page → Settings persist
-- [ ] Generate a Quote PDF → Logo and brand color are visible
-- [ ] Change logo position to RIGHT → Generate PDF → Logo appears on right side
+- [x] After uploading logo and saving → Refresh page → Settings persist
+- [x] Generate a Quote PDF → Logo and brand color are visible
+- [x] Change logo position to RIGHT → Generate PDF → Logo appears on right side
 
 ## 🧪 Test Cases
 

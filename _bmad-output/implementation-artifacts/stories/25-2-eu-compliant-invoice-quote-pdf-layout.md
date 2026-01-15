@@ -5,7 +5,7 @@
 |-------|-------|
 | **Epic** | 25 - Documents, Payments & Deep Linking Enhancements |
 | **Story ID** | 25.2 |
-| **Status** | review |
+| **Status** | done |
 | **Priority** | HIGH - EU Legal/Tax Compliance Requirement |
 | **Estimated Time** | 3-4h |
 | **Branch** | `feature/25-2-compliant-pdf-layout` |
@@ -43,47 +43,47 @@ As an **organization administrator**, I want my PDF documents to comply with EU 
 ## ✅ Acceptance Criteria
 
 ### AC1: Dynamic Logo Positioning
-- [ ] When `logoPosition` = "LEFT": Logo on left, Document Info block on right
-- [ ] When `logoPosition` = "RIGHT": Document Info block on left, Logo on right
-- [ ] Logo respects `showCompanyName` toggle (show/hide company name next to logo)
-- [ ] Logo embedded from `documentLogoUrl` (with fallback to organization name)
+- [x] When `logoPosition` = "LEFT": Logo on left, Document Info block on right
+- [x] When `logoPosition` = "RIGHT": Document Info block on left, Logo on right
+- [x] Logo respects `showCompanyName` toggle (show/hide company name next to logo)
+- [x] Logo embedded from `documentLogoUrl` (with fallback to organization name)
 
 ### AC2: Brand Color Application
-- [ ] Document title (DEVIS/FACTURE) uses `brandColor` from settings
-- [ ] Accent lines and table headers use `brandColor`
-- [ ] Fallback to default blue (#2563eb) if `brandColor` is null
+- [x] Document title (DEVIS/FACTURE) uses `brandColor` from settings
+- [x] Accent lines and table headers use `brandColor`
+- [x] Fallback to default blue (#2563eb) if `brandColor` is null
 
 ### AC3: EU-Compliant Layout Structure
-- [ ] **Header Row**: Logo/CompanyName + Document Title + Reference/Date
-- [ ] **From Block (Left)**: Organization name, address, phone, email, SIRET, VAT#
-- [ ] **Bill To Block (Right)**: Client name, company, billing address, VAT# if applicable
-- [ ] **Main Body**: Pricing table with columns
-- [ ] **Footer**: Legal mentions, page number (Page X/Y)
+- [x] **Header Row**: Logo/CompanyName + Document Title + Reference/Date
+- [x] **From Block (Left)**: Organization name, address, phone, email, SIRET, VAT#
+- [x] **Bill To Block (Right)**: Client name, company, billing address, VAT# if applicable
+- [x] **Main Body**: Pricing table with columns
+- [x] **Footer**: Legal mentions, page number (Page X/Y)
 
 ### AC4: Pricing Table Structure
-- [ ] Column headers: Description | Qty | Unit Price (HT) | VAT % | Total (HT)
-- [ ] Proper column alignment (left-aligned Description, right-aligned amounts)
-- [ ] Subtotal row: Total HT
-- [ ] VAT row: TVA
-- [ ] Total row: **Total TTC** (highlighted)
+- [x] Column headers: Description | Qty | Unit Price (HT) | VAT % | Total (HT)
+- [x] Proper column alignment (left-aligned Description, right-aligned amounts)
+- [x] Subtotal row: Total HT
+- [x] VAT row: TVA
+- [x] Total row: **Total TTC** (highlighted)
 
 ### AC5: Quote-Specific Trip Details Section
-- [ ] Section title: "Détails du trajet / Trip Details"
-- [ ] Display: Departure address, Arrival address, Date/Time
-- [ ] Display: Estimated Distance (km), Estimated Duration (minutes/hours)
-- [ ] Display: Vehicle category, Passenger count, Luggage count
-- [ ] Display: Trip type (TRANSFER, EXCURSION, DISPO, etc.)
+- [x] Section title: "Détails du trajet / Trip Details"
+- [x] Display: Departure address, Arrival address, Date/Time
+- [x] Display: Estimated Distance (km), Estimated Duration (minutes/hours)
+- [x] Display: Vehicle category, Passenger count, Luggage count
+- [x] Display: Trip type (TRANSFER, EXCURSION, DISPO, etc.)
 
 ### AC6: Invoice Footer Legal Mentions (FR)
-- [ ] "En cas de retard de paiement, des pénalités de retard seront appliquées..."
-- [ ] "Une indemnité forfaitaire de 40€ pour frais de recouvrement sera due..."
-- [ ] IBAN and BIC if available
-- [ ] Page numbering: "Page 1 / 1"
+- [x] "En cas de retard de paiement, des pénalités de retard seront appliquées..."
+- [x] "Une indemnité forfaitaire de 40€ pour frais de recouvrement sera due..."
+- [x] IBAN and BIC if available
+- [x] Page numbering: "Page 1 / 1"
 
 ### AC7: Quote Footer
-- [ ] Validity period: "Ce devis est valable 30 jours..."
-- [ ] Acceptance clause: "Bon pour accord" signature area
-- [ ] Page numbering
+- [x] Validity period: "Ce devis est valable 30 jours..."
+- [x] Acceptance clause: "Bon pour accord" signature area
+- [x] Page numbering
 
 ## 🧪 Test Cases
 

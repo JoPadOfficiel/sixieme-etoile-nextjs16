@@ -5,7 +5,7 @@
 |-------|-------|
 | **Epic** | 25 - Documents, Payments & Deep Linking Enhancements |
 | **Story ID** | 25.1 |
-| **Status** | review |
+| **Status** | done |
 | **Priority** | HIGH - Essential for driver operations |
 | **Estimated Time** | 2-3h |
 | **Branch** | `feature/25-1-mission-sheets` |
@@ -35,26 +35,26 @@ As a **dispatcher**, I want to generate a PDF "Fiche Mission" for assigned drive
 ## ✅ Acceptance Criteria
 
 ### AC1: PDF Template Implementation
-- [ ] Implement `generateMissionOrderPdf()` in `pdf-generator.ts`
-- [ ] Incorporate common header (from Story 25.2 reference)
-- [ ] Include section "RÉSUMÉ MISSION" with ID, Driver, Vehicle
-- [ ] Include section "TRAJET" with Pickup/Dropoff addresses and times
-- [ ] Include section "CLIENT & PASSAGERS" with names and special notes
-- [ ] Include section "ZONE DE SAISIE CONDUCTEUR" (Driver Input Area):
+- [x] Implement `generateMissionOrderPdf()` in `pdf-generator.ts`
+- [x] Incorporate common header (from Story 25.2 reference)
+- [x] Include section "RÉSUMÉ MISSION" with ID, Driver, Vehicle
+- [x] Include section "TRAJET" with Pickup/Dropoff addresses and times
+- [x] Include section "CLIENT & PASSAGERS" with names and special notes
+- [x] Include section "ZONE DE SAISIE CONDUCTEUR" (Driver Input Area):
   - Km Départ (_____ km)
   - Km Arrivée (_____ km)
   - Péages / Tolls (_____ €)
   - Observations / Signatures
 
 ### AC2: Dispatch UI Integration
-- [ ] Add "Generate Mission Sheet" button in the Dispatch Assignment Drawer
-- [ ] Trigger PDF generation and download
-- [ ] Show loading state during generation
+- [x] Add "Generate Mission Sheet" button in the Dispatch Assignment Drawer
+- [x] Trigger PDF generation and download
+- [x] Show loading state during generation
 
 ### AC3: Driver CRM Activity Log
-- [ ] Upon generation, create an activity record in the database
-- [ ] Link activity to the `driverId` and `quoteId`
-- [ ] Label: "Génération Fiche Mission"
+- [x] Upon generation, create an activity record in the database
+- [x] Link activity to the `driverId` and `quoteId`
+- [x] Label: "Génération Fiche Mission"
 
 ## 🧪 Test Cases
 
