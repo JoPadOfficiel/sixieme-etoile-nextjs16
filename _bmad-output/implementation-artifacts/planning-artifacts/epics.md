@@ -1,3 +1,17 @@
+---
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
+inputDocuments:
+  - _bmad-output/implementation-artifacts/planning-artifacts/prd.md
+  - _bmad-output/implementation-artifacts/planning-artifacts/tech-spec.md
+  - _bmad-output/implementation-artifacts/planning-artifacts/ux-design-specification.md
+  - docs/bmad/invoice_VTC-INV20260001_Anthony_Davis.pdf
+  - docs/bmad/quote_VTC-QUO-2026-450_Anthony_Davis.pdf
+  - docs/bmad/Billet Co_Exemple.pdf
+---
+
 # sixieme-etoile-nextjs16 - Epic Breakdown
 
 **Author:** JoPad  
@@ -78,6 +92,9 @@ This document decomposes the VTC ERP PRD into **24 functional epics**, aligned w
 
 - **Epic 24 – Agency Mini-CRM & Bidirectional Pricing**  
   Implement EndCustomer sub-contacts within agency profiles, integrate sub-contact selection in quotes and invoices, display end-customer names in dispatch, and add bidirectional pricing toggle for partner clients.
+
+- **Epic 25 – Documents, Payments & Deep Linking Enhancements**
+  Implement PDF mission sheets with editable fields, compliant invoice/quote layouts, document personalization settings, B2C invoicing address support, enhanced deep linking navigation, and multi-invoice payment tracking.
 
 ---
 
@@ -189,6 +206,18 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
 - **FR Group 13 (FR121–FR130) – Agency Mini-CRM, Bidirectional Pricing UX & Dispatch Enhancements**
   - Primary epic: **Epic 24 – Agency Mini-CRM & Bidirectional Pricing**
   - Secondary epics: **Epic 2 – CRM & Partner Contracts**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch & Strategic Optimisation**
+
+- **FR Group 14 (FR131–FR139) – Mission Docs, PDF Compliance, Payment Tracking & Deep Linking**
+  - Primary epic: **Epic 25 – Documents, Payments & Deep Linking Enhancements**
+  - Secondary epics: **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch**, **Epic 2 – CRM**
+
+- **FR Group 13 (FR121–FR130) – Agency Mini-CRM, Bidirectional Pricing UX & Dispatch Enhancements**
+  - Primary epic: **Epic 24 – Agency Mini-CRM & Bidirectional Pricing**
+  - Secondary epics: **Epic 2 – CRM & Partner Contracts**, **Epic 6 – Quotes & Operator Cockpit**, **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch & Strategic Optimisation**
+
+- **FR Group 14 (FR131–FR139) – Mission Docs, PDF Compliance, Payment Tracking & Deep Linking**
+  - Primary epic: **Epic 25 – Documents, Payments & Deep Linking Enhancements**
+  - Secondary epics: **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch**, **Epic 2 – CRM**
 
 ---
 
@@ -7000,5 +7029,137 @@ Epic 24 implements a comprehensive Mini-CRM for agency sub-contacts and bidirect
 - Complete documentation
 
 This epic enables operators to manage individual clients within agency accounts, providing granular CRM data, accurate quoting, and improved dispatch clarity.
+
+---
+
+## Epic 25: Documents, Payments & Deep Linking Enhancements
+
+**Goal:** Implement PDF mission sheets with editable fields, compliant invoice/quote layouts, document personalization settings, B2C invoicing address support, enhanced deep linking navigation, and multi-invoice payment tracking.
+
+### Story 25.1: Generate & Manage Mission Sheets (Fiche Mission)
+
+As a **dispatcher or driver**,
+I want **to generate a PDF Mission Sheet with auto-filled operational data and editable fields**,
+So that **I have a compliant transport order that can be enriched manually with actual execution details.**
+
+**Acceptance Criteria:**
+
+**Given** a confirmed dispatch mission or quote,
+**When** I click "Generate Mission Sheet",
+**Then** a preview opens pre-filled with: Date, Mission Ref, Client (Name/Phone), Driver (Name/Phone), Vehicle (Type/Plate), Service details, Passenger list (Names, Phones, Counts), and Notes (Internal/Driver/Passenger).
+
+**And** the "Dossier créé le" timestamp shows the exact creation date/time of the file.
+
+**And** the fields "Km départ/arrivée", "Heure départ/arrivée garage", "Péage/Parking/Divers" are cleanly displayed but **left empty** (or as fillable form fields) to allow the driver to enter actual values manually.
+
+**Given** the preview (before final generation),
+**When** I edit any field manually (e.g. updating a specialized note or correcting a time),
+**Then** the final generated PDF reflects these manual overrides.
+
+**Given** a generated sheet,
+**When** it is finalized,
+**Then** it is automatically saved in the Driver's activity history (`Contact.Activity`) and can be retrieved later from the CRM.
+
+### Story 25.2: EU-Compliant Invoice & Quote PDF Layout
+
+As an **accountant or admin**,
+I want **PDF documents to strictly follow a specific compliant layout (Logo right, Sender left, Recipient right, Tabular breakdown)**,
+So that **my documents are professional and legally compliant with FR/EU standards.**
+
+**Acceptance Criteria:**
+
+**Given** any Quote or Invoice PDF generation intent,
+**When** the PDF is rendered,
+**Then** the header structure strictly follows the configured "Logo Position" (Left or Right):
+
+*   **IF Logo Position = LEFT (Default):**
+    *   **Top Left:** The Company Logo.
+    *   **Top Right:** Quote/Invoice Number, Date, Valid Until.
+*   **IF Logo Position = RIGHT:**
+    *   **Top Right:** The Company Logo.
+    *   **Top Left:** Quote/Invoice Number, Date, Valid Until.
+
+**And** regardless of logo position, the address blocks follow:
+- **Below Header Left:** "From" block with Company Name, Address, Phone, Email, SIRET, VAT.
+- **Below Header Right (aligned):** "Bill To" block with Client Name, Address, Contact Info.
+
+**And** the main body uses a strict table format with columns: **Description, Qty, Rate, Total**.
+
+**And** if applicable (Quotes), a "Trip Details" block summary (Distance, Duration, Estimated Fuel Cost) is included clearly below the line items.
+
+**And** the legal footer includes the configured SIRET, VAT, Address, and Page Numbers.
+
+### Story 25.3: Organisation Document Personalization
+
+As an **admin**,
+I want **to upload my Logo and set display preferences (Color, Legal Metadata, CGV)**,
+So that **all generated documents reflect my specific brand identity without code changes.**
+
+**Acceptance Criteria:**
+
+**Given** `/dashboard/settings/organization`,
+**When** I upload a high-quality Logo (SVG, PNG) and set a "Primary Brand Color",
+**Then** these assets serve as the source of truth for all PDF headers and borders.
+
+**And** I can select a "Logo Position" preference (Left or Right) that immediately updates the document layout logic.
+
+**And** I can edit "Legal Mentions" (SIRET, VAT, Address) and "Terms & Conditions" text fields.
+
+**And** these settings immediately apply to the next generated PDF for any user in the organization.
+
+### Story 25.4: B2C Invoicing Address & Agency Transparency
+
+As an **operator**,
+I want **to specify billing addresses for private clients and see end-customer names on agency invoices**,
+So that **billing is accurate for all client types and transparent for partners.**
+
+**Acceptance Criteria:**
+
+**Given** a Private Contact (B2C) profile,
+**When** I edit their profile,
+**Then** I can add a specific "Billing Address" distinct from their physical/home address.
+
+**Given** an Agency Quote or Invoice involving a sub-contact (End Customer),
+**When** it is generated,
+**Then** the description line of the service explicitly includes the text `(End Customer: {Name})` to identify who the ride was for.
+
+### Story 25.5: Deep Linking Navigation & CRM UX Improvements
+
+As an **operator**,
+I want **to navigate directly to specific resource states via URL and have a wider workspace**,
+So that **I can share links to specific issues and work more comfortably.**
+
+**Acceptance Criteria:**
+
+**Given** I access a URL like `/dashboard/contacts/123/invoices` or `/dashboard/quotes/456?view=preview`,
+**Then** the application navigates directly to that state (e.g., opens the Contact Drawer immediately on the "Invoices" tab).
+
+**Given** the Contact Drawer or Modal,
+**When** it opens,
+**Then** the width is increased (e.g., `max-w-4xl` or `w-3/4`) to comfortable show multiple columns of data without cramping.
+
+**Given** an Agency Contact view,
+**When** I view the "End Customers" tab/list,
+**Then** I see a "Invoices Count" column for each sub-contact to quickly spot activity volume.
+
+### Story 25.6: Multi-Invoice Payment Tracking (Lettrage)
+
+As a **finance user**,
+I want **to select multiple unpaid invoices for a client and apply a single payment**,
+So that **I can handle bulk virements from large agencies efficiently and track remaining balances.**
+
+**Acceptance Criteria:**
+
+**Given** a Contact's "Invoices" tab,
+**When** I filter for status="Unpaid" or "Partial", and multi-select several invoices,
+**Then** a "Register Payment" action appears.
+
+**Given** I click "Register Payment",
+**When** I enter a total payment amount (e.g., 5000€),
+**Then** the system applies the amount to the **oldest selected invoices first** (chronological order) until the amount is exhausted.
+
+**And** the "Remaining to Pay" status is updated dynamically for the client and for each specific invoice (showing Partial or Paid).
+
+**And** a global "Remaining Balance" indicator is visible in the Contact header.
 
 

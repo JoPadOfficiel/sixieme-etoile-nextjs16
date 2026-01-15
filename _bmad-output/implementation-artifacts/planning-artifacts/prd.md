@@ -325,6 +325,18 @@ Functional requirements are grouped by capability area and numbered sequentially
 - **FR87:** The system shall implement a hierarchical pricing algorithm that evaluates each trip request in strict priority order: (1) intra-central-zone flat rate, (2) defined inter-zone forfait, (3) same-ring dynamic with zone multiplier, (4) fallback horokilometric calculation.
 - **FR88:** The system shall support configurable thresholds for the automatic transfer-to-MAD switch, including minimum waiting time, maximum return distance, and zone density classification.
 
+### FR Group 14   Mission Sheets, PDF Compliance, Payments & Deep Linking
+
+- **FR131:** The system shall support generating a PDF Mission Sheet for drivers/dispatchers, auto-filled with operational data (Service, Passenger, Vehicle, Notes) but with specific execution fields (Km/Time Departure/Arrival, Expenses) left editable/empty for manual entry.
+- **FR132:** The generated Mission Sheet shall be saved automatically to the driver's Activity history for future reference.
+- **FR133:** All generated PDFs (Quotes, Invoices) shall strictly adhere to EU/FR compliance layouts: Sender on left, Recipient on right, standardized tabular breakdown (Description, Qty, Rate, Total), and full legal footer (SIRET, VAT, Address).
+- **FR134:** The system shall verify and include "Start" and "End" timestamp metadata on the mission sheet creation event.
+- **FR135:** Admins shall be able to upload a custom Organization Logo (SVG/PNG), set legal metadata, and configure "Logo Position" (Left/Right) in settings. This preference shall dynamically invert the header layout (Logo vs Quote Metadata) on all generated documents.
+- **FR136:** Operators shall be able to define a specific billing address for private clients (B2C) distinct from their home address.
+- **FR137:** Agency invoices containing sub-contacts (end customers) shall explicitly list the end customer's name in the service description line item for transparency.
+- **FR138:** The system shall support deep linking for all key resources (e.g., `/dashboard/contacts/123/invoices`), opening the application directly in the correct state (e.g., specific tab in a drawer).
+- **FR139:** Finance users shall be able to select multiple unpaid invoices for a single client and register a bulk payment, which the system will apply chronologically to the oldest debts first to calculate the remaining balance.
+
 ---
 
 ## Non-Functional Requirements

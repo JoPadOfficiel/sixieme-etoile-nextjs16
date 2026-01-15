@@ -1,4 +1,4 @@
-# generated: 2026-01-08T20:21:17+01:00
+# generated: 2026-01-15T09:55:00Z
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-08T20:21:17+01:00
+generated: 2026-01-15T09:55:00Z
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -282,3 +282,11 @@ development_status:
   24-11-implement-automated-e2e-tests-for-mini-crm: done
   24-12-update-documentation-for-mini-crm-feature: done
   epic-24-retrospective: optional
+  epic-25: backlog
+  25-1-generate-manage-mission-sheets-fiche-mission: backlog
+  25-2-eu-compliant-invoice-quote-pdf-layout: backlog
+  25-3-organisation-document-personalization: backlog
+  25-4-b2c-invoicing-address-agency-transparency: backlog
+  25-5-deep-linking-navigation-crm-ux-improvements: backlog
+  25-6-multi-invoice-payment-tracking-lettrage: backlog
+  epic-25-retrospective: optional
