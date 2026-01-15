@@ -39,6 +39,8 @@ export interface EndCustomer {
 export interface EndCustomerWithCounts extends EndCustomer {
   _count: {
     quotes: number;
+    /** Story 25.5: Invoice count for End Customer list display */
+    invoices: number;
   };
 }
 

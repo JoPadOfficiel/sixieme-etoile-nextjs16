@@ -117,19 +117,20 @@ export function EndCustomerList({ contactId }: EndCustomerListProps) {
               <TableHead>{t("columns.email")}</TableHead>
               <TableHead>{t("columns.phone")}</TableHead>
               <TableHead>{t("columns.quotes")}</TableHead>
+              <TableHead>{t("columns.invoices")}</TableHead>
               <TableHead className="w-[70px]">{t("columns.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : !data || data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   {t("emptyDescription")}
                 </TableCell>
               </TableRow>
@@ -149,6 +150,11 @@ export function EndCustomerList({ contactId }: EndCustomerListProps) {
                   <TableCell>
                     <Badge variant="secondary">
                        {customer._count.quotes}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                       {customer._count.invoices || 0}
                     </Badge>
                   </TableCell>
                   <TableCell>

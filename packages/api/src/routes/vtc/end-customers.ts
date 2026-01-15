@@ -84,6 +84,7 @@ export const endCustomersRouter = new Hono()
 					_count: {
 						select: {
 							quotes: true,
+							invoices: true,
 						},
 					},
 				},
@@ -138,6 +139,7 @@ export const endCustomersRouter = new Hono()
 					_count: {
 						select: {
 							quotes: true,
+							invoices: true,
 						},
 					},
 				},
@@ -170,6 +172,7 @@ export const endCustomersRouter = new Hono()
 					_count: {
 						select: {
 							quotes: true,
+							invoices: true,
 						},
 					},
 				},
@@ -262,6 +265,7 @@ export const contactEndCustomersRouter = new Hono()
 						_count: {
 							select: {
 								quotes: true,
+								invoices: true,
 							},
 						},
 					},
@@ -338,6 +342,7 @@ export const contactEndCustomersRouter = new Hono()
 					_count: {
 						select: {
 							quotes: true,
+							invoices: true,
 						},
 					},
 				},

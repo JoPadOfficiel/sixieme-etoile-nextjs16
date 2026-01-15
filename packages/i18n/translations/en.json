@@ -2273,6 +2273,7 @@
 				"email": "Email",
 				"phone": "Phone",
 				"quotes": "Quotes",
+				"invoices": "Invoices",
 				"actions": "Actions"
 			}
 		},

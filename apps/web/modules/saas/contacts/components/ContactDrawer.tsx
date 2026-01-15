@@ -18,15 +18,36 @@ import { ContactCommercialSummary } from "./ContactCommercialSummary";
 import { EndCustomerList } from "./EndCustomerList";
 import type { Contact } from "../types";
 
+// Valid tab values for deep linking
+export type ContactTab = "details" | "timeline" | "commercial" | "end-customers" | "contract";
+
 interface ContactDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contact?: Contact | null;
+  /** Story 25.5: Initial tab to open for deep linking */
+  initialTab?: ContactTab;
+  /** Story 25.5: Callback when tab changes for URL sync */
+  onTabChange?: (tab: ContactTab) => void;
 }
 
-export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProps) {
+export function ContactDrawer({ 
+  open, 
+  onOpenChange, 
+  contact,
+  initialTab,
+  onTabChange,
+}: ContactDrawerProps) {
   const t = useTranslations();
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState<ContactTab>("details");
+  // Story 25.5: Use initialTab if provided and drawer is open, otherwise use activeTab state
+  const effectiveTab = (open && initialTab) ? initialTab : activeTab;
+
+  const handleTabChange = (tab: string) => {
+    const newTab = tab as ContactTab;
+    setActiveTab(newTab);
+    onTabChange?.(newTab);
+  };
 
   const handleSuccess = () => {
     onOpenChange(false);
@@ -46,7 +67,7 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="sm:max-w-xl overflow-y-auto">
+      <SheetContent className="sm:max-w-4xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
             {contact ? t("contacts.editContact") : t("contacts.addContact")}
@@ -59,7 +80,7 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
         </SheetHeader>
 
         {contact ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <Tabs value={effectiveTab} onValueChange={handleTabChange} className="mt-6">
             <TabsList className={`grid w-full ${contact.isPartner ? "grid-cols-5" : "grid-cols-3"}`}>
               <TabsTrigger value="details" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
