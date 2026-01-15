@@ -89,6 +89,6 @@ As a **dispatcher**, I want to generate a PDF "Fiche Mission" for assigned drive
   - *Action*: Implement the `Activity` model in Prisma or define an alternative logging strategy immediately. -> **Done** (Added Activity model and logging)
 
 ### 🟡 Medium Issues
-- **[AI-Review] UX - AssignmentDrawer**: The "Print Mission Sheet" button is accessible when a candidate is merely selected but not yet assigned. Generating a mission sheet for an unconfirmed driver is risky.
-  - *Action*: Disable the button until the assignment is confirmed/saved, or change the flow to assigning before printing.
+- **[RESOLVED] [AI-Review] UX - AssignmentDrawer**: The "Print Mission Sheet" button is accessible when a candidate is merely selected but not yet assigned. Generating a mission sheet for an unconfirmed driver is risky.
+  - *Action*: Disable the button until the assignment is confirmed/saved, or change the flow to assigning before printing. -> **Done** (Button now hidden if selection != current assignment)
 

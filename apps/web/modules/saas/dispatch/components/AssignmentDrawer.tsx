@@ -405,8 +405,8 @@ export function AssignmentDrawer({
 						{t("confirm")}
 					</Button>
 
-					{/* Story 25.1: Print Mission Sheet Button */}
-					{(missionId && selectedCandidateId) && (
+					{/* Story 25.1: Print Mission Sheet Button - Only if confirmed assignment */}
+					{(missionId && selectedCandidateId && candidatesData?.currentAssignment?.driverId === candidates?.find(c => c.id === selectedCandidateId)?.driver?.id) && (
 						<Button
 							variant="secondary"
 							onClick={() => generateMissionOrder(missionId)}
@@ -421,6 +421,7 @@ export function AssignmentDrawer({
 							)}
 						</Button>
 					)}
+					{/* Show tooltip or alternative if selected but not assigned? For now just hide to be safe as per Review */}
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>
