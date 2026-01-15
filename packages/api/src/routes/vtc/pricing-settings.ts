@@ -72,9 +72,11 @@ const updatePricingSettingsSchema = z.object({
 	roundTripBuffer: z.number().min(0).max(240).nullable().optional(),
 	autoSwitchRoundTripToMAD: z.boolean().optional(),
 	// Story 25.3: Document personalization fields
-	documentLogoUrl: z.string().url().nullable().optional(),
+	// documentLogoUrl is a storage path, not a full URL (e.g., "orgId/uuid.png")
+	documentLogoUrl: z.string().max(500).nullable().optional(),
 	brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
 	logoPosition: logoPositionEnum.optional(),
+	showCompanyName: z.boolean().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -123,6 +125,7 @@ function serializePricingSettings(settings: {
 	documentLogoUrl?: string | null;
 	brandColor?: string | null;
 	logoPosition?: string | null;
+	showCompanyName?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -195,6 +198,7 @@ function serializePricingSettings(settings: {
 		documentLogoUrl: settings.documentLogoUrl ?? null,
 		brandColor: settings.brandColor ?? "#2563eb",
 		logoPosition: settings.logoPosition ?? "LEFT",
+		showCompanyName: settings.showCompanyName ?? true,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

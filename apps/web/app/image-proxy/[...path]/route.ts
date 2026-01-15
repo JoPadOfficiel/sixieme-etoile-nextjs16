@@ -1,6 +1,11 @@
 import { config } from "@repo/config";
 import { getSignedUrl, isLocalStorageEnabled } from "@repo/storage";
+import { readFile } from "fs/promises";
 import { NextResponse } from "next/server";
+import { join } from "path";
+
+// Local storage directory
+const LOCAL_STORAGE_DIR = process.env.LOCAL_STORAGE_DIR || "./public/uploads";
 
 export const GET = async (
 	req: Request,
@@ -31,21 +36,39 @@ export const GET = async (
 	}
 
 	try {
+		// If using local storage, serve file directly
+		if (isLocalStorageEnabled()) {
+			const localFilePath = join(LOCAL_STORAGE_DIR, bucket, filePath);
+			
+			try {
+				const fileBuffer = await readFile(localFilePath);
+				
+				// Determine content type based on extension
+				const ext = filePath.split(".").pop()?.toLowerCase();
+				let contentType = "application/octet-stream";
+				if (ext === "png") contentType = "image/png";
+				else if (ext === "jpg" || ext === "jpeg") contentType = "image/jpeg";
+				else if (ext === "svg") contentType = "image/svg+xml";
+				else if (ext === "gif") contentType = "image/gif";
+				else if (ext === "webp") contentType = "image/webp";
+				
+				return new Response(fileBuffer, {
+					headers: {
+						"Content-Type": contentType,
+						"Cache-Control": "public, max-age=3600",
+					},
+				});
+			} catch {
+				return new Response("Not found", { status: 404 });
+			}
+		}
+
+		// For S3 storage, redirect to signed URL
 		const signedUrl = await getSignedUrl(filePath, {
 			bucket,
 			expiresIn: 60 * 60,
 		});
 
-		// If using local storage, the URL is a local path - redirect to it
-		// Local URLs start with /uploads/
-		if (signedUrl.startsWith("/uploads/") || isLocalStorageEnabled()) {
-			return NextResponse.redirect(
-				new URL(signedUrl, process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-				{ headers: { "Cache-Control": "max-age=3600" } }
-			);
-		}
-
-		// For S3 URLs, redirect normally
 		return NextResponse.redirect(signedUrl, {
 			headers: { "Cache-Control": "max-age=3600" },
 		});

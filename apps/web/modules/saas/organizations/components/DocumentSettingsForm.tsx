@@ -7,6 +7,7 @@ import { useSignedUploadUrlMutation } from "@saas/shared/lib/api";
 import { Spinner } from "@shared/components/Spinner";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
+import { Switch } from "@ui/components/switch";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
 import { AlignLeft, AlignRight, ImageIcon, Trash2 } from "lucide-react";
@@ -16,12 +17,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { v4 as uuid } from "uuid";
 
-// API client for pricing settings
-async function getPricingSettings(organizationId: string): Promise<{
+// Types for document settings
+interface DocumentSettings {
 	documentLogoUrl: string | null;
 	brandColor: string;
 	logoPosition: "LEFT" | "RIGHT";
-} | null> {
+	showCompanyName: boolean;
+}
+
+// API client for pricing settings
+async function getPricingSettings(organizationId: string): Promise<DocumentSettings | null> {
 	const response = await fetch(`/api/vtc/pricing-settings`, {
 		headers: { "x-organization-id": organizationId },
 	});
@@ -29,20 +34,17 @@ async function getPricingSettings(organizationId: string): Promise<{
 	const data = await response.json();
 	return data
 		? {
-				documentLogoUrl: data.documentLogoUrl,
+				documentLogoUrl: data.documentLogoUrl ?? null,
 				brandColor: data.brandColor ?? "#2563eb",
 				logoPosition: data.logoPosition ?? "LEFT",
+				showCompanyName: data.showCompanyName ?? true,
 		  }
 		: null;
 }
 
 async function updatePricingSettings(
 	organizationId: string,
-	data: {
-		documentLogoUrl?: string | null;
-		brandColor?: string;
-		logoPosition?: "LEFT" | "RIGHT";
-	}
+	data: Partial<DocumentSettings>
 ): Promise<boolean> {
 	const response = await fetch(`/api/vtc/pricing-settings`, {
 		method: "PATCH",
@@ -68,6 +70,7 @@ export function DocumentSettingsForm() {
 	const [documentLogoUrl, setDocumentLogoUrl] = useState<string | null>(null);
 	const [brandColor, setBrandColor] = useState("#2563eb");
 	const [logoPosition, setLogoPosition] = useState<"LEFT" | "RIGHT">("LEFT");
+	const [showCompanyName, setShowCompanyName] = useState(true);
 
 	// Load current settings
 	useEffect(() => {
@@ -81,6 +84,7 @@ export function DocumentSettingsForm() {
 					setDocumentLogoUrl(settings.documentLogoUrl);
 					setBrandColor(settings.brandColor);
 					setLogoPosition(settings.logoPosition);
+					setShowCompanyName(settings.showCompanyName);
 				}
 			} catch (error) {
 				console.error("Failed to load document settings:", error);
@@ -129,6 +133,7 @@ export function DocumentSettingsForm() {
 					throw new Error("Failed to upload image");
 				}
 
+				// Update local state first
 				setDocumentLogoUrl(path);
 				
 				// Auto-save after upload
@@ -141,6 +146,8 @@ export function DocumentSettingsForm() {
 						variant: "success",
 						title: t("settings.documentSettings.logo.uploadSuccess"),
 					});
+				} else {
+					throw new Error("Failed to save logo URL");
 				}
 			} catch (error) {
 				console.error("Upload failed:", error);
@@ -237,6 +244,7 @@ export function DocumentSettingsForm() {
 	const handleLogoPositionChange = async (position: "LEFT" | "RIGHT") => {
 		if (!activeOrganization) return;
 
+		const previousPosition = logoPosition;
 		setLogoPosition(position);
 		setSaving(true);
 		try {
@@ -251,10 +259,39 @@ export function DocumentSettingsForm() {
 				});
 			}
 		} catch {
-			setLogoPosition(logoPosition === "LEFT" ? "RIGHT" : "LEFT"); // Revert
+			setLogoPosition(previousPosition); // Revert
 			toast({
 				variant: "error",
 				title: t("settings.documentSettings.logoPosition.saveError"),
+			});
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	// Handle show company name toggle
+	const handleShowCompanyNameChange = async (show: boolean) => {
+		if (!activeOrganization) return;
+
+		const previousValue = showCompanyName;
+		setShowCompanyName(show);
+		setSaving(true);
+		try {
+			const success = await updatePricingSettings(activeOrganization.id, {
+				showCompanyName: show,
+			});
+
+			if (success) {
+				toast({
+					variant: "success",
+					title: t("settings.documentSettings.showCompanyName.saveSuccess"),
+				});
+			}
+		} catch {
+			setShowCompanyName(previousValue); // Revert
+			toast({
+				variant: "error",
+				title: t("settings.documentSettings.showCompanyName.saveError"),
 			});
 		} finally {
 			setSaving(false);
@@ -388,42 +425,111 @@ export function DocumentSettingsForm() {
 				</div>
 			</SettingsItem>
 
+			{/* Show Company Name Toggle */}
+			<SettingsItem
+				title={t("settings.documentSettings.showCompanyName.title")}
+				description={t("settings.documentSettings.showCompanyName.description")}
+			>
+				<div className="flex items-center gap-3">
+					<Switch
+						checked={showCompanyName}
+						onCheckedChange={handleShowCompanyNameChange}
+						disabled={saving}
+					/>
+					<span className="text-sm text-muted-foreground">
+						{showCompanyName 
+							? t("settings.documentSettings.showCompanyName.enabled")
+							: t("settings.documentSettings.showCompanyName.disabled")}
+					</span>
+				</div>
+			</SettingsItem>
+
 			{/* Preview Section */}
 			<SettingsItem
 				title={t("settings.documentSettings.preview.title")}
 				description={t("settings.documentSettings.preview.description")}
 			>
 				<div className="relative w-full max-w-md rounded-lg border bg-white p-4 shadow-sm">
-					{/* Mini PDF Preview */}
+					{/* Mini PDF Preview - Header */}
 					<div className="flex items-start justify-between gap-4">
-						{/* Left Side */}
-						<div className={cn(logoPosition === "RIGHT" && "order-2")}>
-							{logoUrl ? (
-								<Image
-									src={logoUrl}
-									alt="Logo Preview"
-									width={80}
-									height={40}
-									className="object-contain"
-								/>
+						{/* Left Side - Logo or Title depending on logoPosition */}
+						<div className="flex-1">
+							{logoPosition === "LEFT" ? (
+								// Logo on Left
+								<div className="flex items-center gap-3">
+									{logoUrl ? (
+										<Image
+											src={logoUrl}
+											alt="Logo Preview"
+											width={60}
+											height={30}
+											className="object-contain"
+										/>
+									) : (
+										<div className="flex h-8 w-16 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
+											Logo
+										</div>
+									)}
+									{showCompanyName && (
+										<span className="text-sm font-medium text-gray-700">
+											{activeOrganization.name}
+										</span>
+									)}
+								</div>
 							) : (
-								<div className="flex h-10 w-20 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
-									Logo
+								// Title on Left when logo is on right
+								<div>
+									<div
+										className="text-lg font-bold"
+										style={{ color: brandColor }}
+									>
+										DEVIS
+									</div>
+									<div className="text-xs text-muted-foreground">
+										{new Date().toLocaleDateString("fr-FR")}
+									</div>
 								</div>
 							)}
 						</div>
 
-						{/* Right Side - Title */}
-						<div className={cn("flex-1", logoPosition === "RIGHT" && "order-1")}>
-							<div
-								className="text-lg font-bold"
-								style={{ color: brandColor }}
-							>
-								DEVIS
-							</div>
-							<div className="mt-1 text-xs text-muted-foreground">
-								{activeOrganization.name}
-							</div>
+						{/* Right Side - Title or Logo depending on logoPosition */}
+						<div className="text-right">
+							{logoPosition === "RIGHT" ? (
+								// Logo on Right
+								<div className="flex items-center justify-end gap-3">
+									{showCompanyName && (
+										<span className="text-sm font-medium text-gray-700">
+											{activeOrganization.name}
+										</span>
+									)}
+									{logoUrl ? (
+										<Image
+											src={logoUrl}
+											alt="Logo Preview"
+											width={60}
+											height={30}
+											className="object-contain"
+										/>
+									) : (
+										<div className="flex h-8 w-16 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
+											Logo
+										</div>
+									)}
+								</div>
+							) : (
+								// Title on Right when logo is on left
+								<div>
+									<div
+										className="text-lg font-bold"
+										style={{ color: brandColor }}
+									>
+										DEVIS
+									</div>
+									<div className="text-xs text-muted-foreground">
+										{new Date().toLocaleDateString("fr-FR")}
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 

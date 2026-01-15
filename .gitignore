@@ -45,3 +45,5 @@ dist/
 .context-engine
 *.context-engine
 ctx_config.json
+
+*apps/web/public/uploads

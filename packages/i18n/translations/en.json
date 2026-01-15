@@ -1357,6 +1357,14 @@
 				"saveSuccess": "Logo position saved successfully",
 				"saveError": "Failed to save logo position"
 			},
+			"showCompanyName": {
+				"title": "Display Company Name",
+				"description": "Show the company name next to the logo in document headers.",
+				"enabled": "Company name displayed",
+				"disabled": "Logo only",
+				"saveSuccess": "Setting saved successfully",
+				"saveError": "Failed to save setting"
+			},
 			"preview": {
 				"title": "Document Preview",
 				"description": "Live preview of how your documents will appear."

@@ -1357,6 +1357,14 @@
 				"saveSuccess": "Position du logo enregistrée avec succès",
 				"saveError": "Échec de l'enregistrement de la position"
 			},
+			"showCompanyName": {
+				"title": "Afficher le Nom de l'Entreprise",
+				"description": "Afficher le nom de l'entreprise à côté du logo dans les en-têtes de documents.",
+				"enabled": "Nom de l'entreprise affiché",
+				"disabled": "Logo uniquement",
+				"saveSuccess": "Paramètre enregistré avec succès",
+				"saveError": "Échec de l'enregistrement du paramètre"
+			},
 			"preview": {
 				"title": "Aperçu du Document",
 				"description": "Aperçu en temps réel de l'apparence de vos documents."

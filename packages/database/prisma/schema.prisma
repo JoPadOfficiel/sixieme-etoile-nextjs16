@@ -1376,6 +1376,8 @@ model OrganizationPricingSettings {
   brandColor      String?      @default("#2563eb")
   // Logo position in PDF document header (LEFT or RIGHT)
   logoPosition    LogoPosition @default(LEFT)
+  // Whether to show company name next to the logo in document header
+  showCompanyName Boolean      @default(true)
 
   // Metadata
   createdAt DateTime @default(now())
