@@ -283,9 +283,9 @@ development_status:
   24-12-update-documentation-for-mini-crm-feature: done
   epic-24-retrospective: optional
   epic-25: in-progress
-  25-1-generate-manage-mission-sheets-fiche-mission: review
-  25-2-eu-compliant-invoice-quote-pdf-layout: review
-  25-3-organisation-document-personalization: review
+  25-1-generate-manage-mission-sheets-fiche-mission: done
+  25-2-eu-compliant-invoice-quote-pdf-layout: done
+  25-3-organisation-document-personalization: done
   25-4-b2c-invoicing-address-agency-transparency: backlog
   25-5-deep-linking-navigation-crm-ux-improvements: backlog
   25-6-multi-invoice-payment-tracking-lettrage: backlog
