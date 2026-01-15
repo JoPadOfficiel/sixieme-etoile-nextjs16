@@ -8,7 +8,7 @@
  *
  * Required .env variables:
  * - DATABASE_URL
- * - ADMIN_EMAIL (default: admin@example.com)
+ * - ADMIN_EMAIL (default: admin@vtc.com)
  * - ADMIN_PASSWORD (default: admin123)
  * - GOOGLE_MAPS_API_KEY (optional)
  * - COLLECTAPI_API_KEY (optional)
@@ -16,17 +16,85 @@
 
 import { PrismaClient } from "@prisma/client";
 import { randomUUID, scryptSync, randomBytes } from "crypto";
+import { existsSync, symlinkSync, readlinkSync, unlinkSync } from "fs";
+import { resolve, dirname } from "path";
 
-const prisma = new PrismaClient();
+// =============================================================================
+// PREREQUISITES CHECK
+// =============================================================================
 
-// Better Auth compatible password hashing
-// Uses the EXACT same parameters as Better Auth's default scrypt implementation:
-// N: 16384, r: 16, p: 1, dkLen: 64
+// Check DATABASE_URL is defined
+if (!process.env.DATABASE_URL) {
+  console.error("❌ ERROR: DATABASE_URL environment variable is not defined!");
+  console.error("   Make sure your .env file is properly configured.");
+  console.error("   Expected location: project root/.env");
+  process.exit(1);
+}
+
+console.log("🚀 Starting COMPLETE VTC Database Seed...");
+console.log(`📊 Database: ${process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@')}\n`); // Hide password in URL
+
+// =============================================================================
+// ENSURE APPS/WEB HAS ACCESS TO .ENV (CREATE SYMLINK IF NEEDED)
+// =============================================================================
+
+function ensureWebEnvSymlink() {
+  const scriptDir = dirname(new URL(import.meta.url).pathname);
+  const projectRoot = resolve(scriptDir, "../../..");
+  const rootEnvPath = resolve(projectRoot, ".env");
+  const webEnvPath = resolve(projectRoot, "apps/web/.env");
+
+  if (!existsSync(rootEnvPath)) {
+    console.warn("⚠️  Root .env file not found - skipping symlink creation");
+    return;
+  }
+
+  if (existsSync(webEnvPath)) {
+    // Check if it's already a valid symlink
+    try {
+      const target = readlinkSync(webEnvPath);
+      if (target === "../../.env") {
+        console.log("✅ apps/web/.env symlink already exists and is correct");
+        return;
+      }
+    } catch {
+      // Not a symlink, might be a file - remove it
+      console.log("⚠️  apps/web/.env exists but is not a symlink - replacing");
+      unlinkSync(webEnvPath);
+    }
+  }
+
+  try {
+    symlinkSync("../../.env", webEnvPath);
+    console.log("✅ Created symlink: apps/web/.env -> ../../.env");
+  } catch (e) {
+    console.warn(`⚠️  Could not create symlink: ${e}`);
+    console.warn("   You may need to manually create: ln -sf ../../.env apps/web/.env");
+  }
+}
+
+ensureWebEnvSymlink();
+
+// =============================================================================
+// PRISMA CLIENT
+// =============================================================================
+
+const prisma = new PrismaClient({
+  log: process.env.DEBUG ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
+});
+
+// =============================================================================
+// PASSWORD HASHING (Better Auth Compatible)
+// =============================================================================
+
+/**
+ * Hash password using Better Auth's exact scrypt parameters:
+ * N: 16384, r: 16, p: 1, dkLen: 64
+ * Format: "salt:derivedKey" (both in hex)
+ */
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  // Normalize password like Better Auth does
   const normalizedPassword = password.normalize("NFKC");
-  // Use same scrypt parameters as Better Auth: N=16384, r=16, p=1
   const derivedKey = scryptSync(normalizedPassword, salt, 64, {
     N: 16384,
     r: 16,
@@ -36,13 +104,15 @@ function hashPassword(password: string): string {
   return `${salt}:${derivedKey.toString("hex")}`;
 }
 
-// Configuration from .env with defaults
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@vtc.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || "";
 const COLLECTAPI_API_KEY = process.env.COLLECTAPI_API_KEY || "";
 
-console.log("🚀 Starting COMPLETE VTC Database Seed...");
 console.log(`📧 Admin Email: ${ADMIN_EMAIL}`);
 
 // Store IDs for relationships
@@ -100,50 +170,84 @@ async function main() {
 
 async function cleanExistingData() {
   console.log("\n🧹 Cleaning existing test data...");
-  try {
-    await prisma.quoteStatusAuditLog.deleteMany({});
-    await prisma.quote.deleteMany({});
-    await prisma.invoiceLine.deleteMany({});
-    await prisma.invoice.deleteMany({});
-    await prisma.document.deleteMany({});
-    await prisma.complianceAuditLog.deleteMany({});
-    await prisma.driverRSECounter.deleteMany({});
-    await prisma.emptyLegOpportunity.deleteMany({});
-    await prisma.partnerContractDispoPackage.deleteMany({});
-    await prisma.partnerContractExcursionPackage.deleteMany({});
-    await prisma.partnerContractZoneRoute.deleteMany({});
-    await prisma.partnerContract.deleteMany({});
-    await prisma.subcontractorVehicleCategory.deleteMany({});
-    await prisma.subcontractorZone.deleteMany({});
-    await prisma.subcontractorProfile.deleteMany({});
-    await prisma.endCustomer.deleteMany({});
-    await prisma.contact.deleteMany({});
-    await prisma.promotion.deleteMany({});
-    await prisma.optionalFee.deleteMany({});
-    await prisma.seasonalMultiplier.deleteMany({});
-    await prisma.advancedRate.deleteMany({});
-    await prisma.organizationPricingSettings.deleteMany({});
-    await prisma.dispoPackage.deleteMany({});
-    await prisma.excursionPackage.deleteMany({});
-    await prisma.zoneRoute.deleteMany({});
-    await prisma.pricingZone.deleteMany({});
-    await prisma.vehicle.deleteMany({});
-    await prisma.vehicleCategory.deleteMany({});
-    await prisma.operatingBase.deleteMany({});
-    await prisma.driverLicense.deleteMany({});
-    await prisma.driver.deleteMany({});
-    await prisma.organizationLicenseRule.deleteMany({});
-    await prisma.licenseCategory.deleteMany({});
-    await prisma.organizationIntegrationSettings.deleteMany({});
-    await prisma.member.deleteMany({});
-    await prisma.session.deleteMany({});
-    await prisma.account.deleteMany({});
-    await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
-    await prisma.organization.deleteMany({ where: { slug: { in: ["vtc-premium-paris", "sixieme-etoile-vtc"] } } });
-    console.log("   ✅ Cleaned");
-  } catch (error) {
-    console.log("   ⚠️ Error cleaning:", error);
+  
+  // Helper to safely delete with error handling
+  async function safeDeleteMany(modelName: string, deleteCall: () => Promise<{ count: number }>) {
+    try {
+      const result = await deleteCall();
+      if (result.count > 0) {
+        console.log(`   📦 Deleted ${result.count} ${modelName}`);
+      }
+    } catch (error) {
+      // Ignore errors for models that might not exist or have FK constraints
+      if (process.env.DEBUG) {
+        console.log(`   ⚠️ Could not clean ${modelName}:`, error);
+      }
+    }
   }
+
+  // Delete in order respecting foreign key constraints
+  // Start with the most dependent tables first
+  await safeDeleteMany("quoteStatusAuditLog", () => prisma.quoteStatusAuditLog.deleteMany({}));
+  await safeDeleteMany("quoteNotesAuditLog", () => prisma.quoteNotesAuditLog.deleteMany({}));
+  await safeDeleteMany("stayService", () => prisma.stayService.deleteMany({}));
+  await safeDeleteMany("stayDay", () => prisma.stayDay.deleteMany({}));
+  await safeDeleteMany("quote", () => prisma.quote.deleteMany({}));
+  await safeDeleteMany("invoiceLine", () => prisma.invoiceLine.deleteMany({}));
+  await safeDeleteMany("invoice", () => prisma.invoice.deleteMany({}));
+  await safeDeleteMany("document", () => prisma.document.deleteMany({}));
+  await safeDeleteMany("complianceAuditLog", () => prisma.complianceAuditLog.deleteMany({}));
+  await safeDeleteMany("driverRSECounter", () => prisma.driverRSECounter.deleteMany({}));
+  await safeDeleteMany("driverCalendarEvent", () => prisma.driverCalendarEvent.deleteMany({}));
+  await safeDeleteMany("emptyLegOpportunity", () => prisma.emptyLegOpportunity.deleteMany({}));
+  await safeDeleteMany("partnerContractDispoPackage", () => prisma.partnerContractDispoPackage.deleteMany({}));
+  await safeDeleteMany("partnerContractExcursionPackage", () => prisma.partnerContractExcursionPackage.deleteMany({}));
+  await safeDeleteMany("partnerContractZoneRoute", () => prisma.partnerContractZoneRoute.deleteMany({}));
+  await safeDeleteMany("partnerContract", () => prisma.partnerContract.deleteMany({}));
+  await safeDeleteMany("subcontractorFeedback", () => prisma.subcontractorFeedback.deleteMany({}));
+  await safeDeleteMany("subcontractorVehicleCategory", () => prisma.subcontractorVehicleCategory.deleteMany({}));
+  await safeDeleteMany("subcontractorZone", () => prisma.subcontractorZone.deleteMany({}));
+  await safeDeleteMany("subcontractorProfile", () => prisma.subcontractorProfile.deleteMany({}));
+  await safeDeleteMany("endCustomer", () => prisma.endCustomer.deleteMany({}));
+  await safeDeleteMany("contact", () => prisma.contact.deleteMany({}));
+  await safeDeleteMany("promotion", () => prisma.promotion.deleteMany({}));
+  await safeDeleteMany("optionalFee", () => prisma.optionalFee.deleteMany({}));
+  await safeDeleteMany("seasonalMultiplier", () => prisma.seasonalMultiplier.deleteMany({}));
+  await safeDeleteMany("advancedRate", () => prisma.advancedRate.deleteMany({}));
+  await safeDeleteMany("organizationPricingSettings", () => prisma.organizationPricingSettings.deleteMany({}));
+  await safeDeleteMany("dispoPackage", () => prisma.dispoPackage.deleteMany({}));
+  await safeDeleteMany("excursionPackageOriginZone", () => prisma.excursionPackageOriginZone.deleteMany({}));
+  await safeDeleteMany("excursionPackage", () => prisma.excursionPackage.deleteMany({}));
+  await safeDeleteMany("zoneRouteOriginZone", () => prisma.zoneRouteOriginZone.deleteMany({}));
+  await safeDeleteMany("zoneRouteDestinationZone", () => prisma.zoneRouteDestinationZone.deleteMany({}));
+  await safeDeleteMany("intraCentralFlatRate", () => prisma.intraCentralFlatRate.deleteMany({}));
+  await safeDeleteMany("madTimeBucket", () => prisma.madTimeBucket.deleteMany({}));
+  await safeDeleteMany("zoneRoute", () => prisma.zoneRoute.deleteMany({}));
+  await safeDeleteMany("pricingZone", () => prisma.pricingZone.deleteMany({}));
+  await safeDeleteMany("vehicle", () => prisma.vehicle.deleteMany({}));
+  await safeDeleteMany("vehicleCategory", () => prisma.vehicleCategory.deleteMany({}));
+  await safeDeleteMany("operatingBase", () => prisma.operatingBase.deleteMany({}));
+  await safeDeleteMany("driverLicense", () => prisma.driverLicense.deleteMany({}));
+  await safeDeleteMany("driver", () => prisma.driver.deleteMany({}));
+  await safeDeleteMany("organizationLicenseRule", () => prisma.organizationLicenseRule.deleteMany({}));
+  await safeDeleteMany("licenseCategory", () => prisma.licenseCategory.deleteMany({}));
+  await safeDeleteMany("organizationIntegrationSettings", () => prisma.organizationIntegrationSettings.deleteMany({}));
+  await safeDeleteMany("invitation", () => prisma.invitation.deleteMany({}));
+  await safeDeleteMany("member", () => prisma.member.deleteMany({}));
+  await safeDeleteMany("session", () => prisma.session.deleteMany({}));
+  await safeDeleteMany("passkey", () => prisma.passkey.deleteMany({}));
+  await safeDeleteMany("verification", () => prisma.verification.deleteMany({}));
+  await safeDeleteMany("account", () => prisma.account.deleteMany({}));
+  
+  // Delete admin user specifically
+  await safeDeleteMany(`user (${ADMIN_EMAIL})`, () => prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } }));
+  
+  // Delete organization
+  await safeDeleteMany("organization", () => prisma.organization.deleteMany({ 
+    where: { slug: { in: ["vtc-premium-paris", "sixieme-etoile-vtc"] } } 
+  }));
+  
+  console.log("   ✅ Cleanup completed");
 }
 
 async function createOrganization() {
