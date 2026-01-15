@@ -2268,6 +2268,7 @@
 			"deleteError": "Erreur lors de la suppression (vérifiez les devis liés)",
 			"createSuccess": "Client final créé avec succès",
 			"updateSuccess": "Client final mis à jour avec succès",
+			"cancel": "Annuler",
 			"columns": {
 				"name": "Nom",
 				"email": "Email",

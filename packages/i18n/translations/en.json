@@ -2268,6 +2268,7 @@
 			"deleteError": "Error deleting (check for linked quotes)",
 			"createSuccess": "End customer created successfully",
 			"updateSuccess": "End customer updated successfully",
+			"cancel": "Cancel",
 			"columns": {
 				"name": "Name",
 				"email": "Email",

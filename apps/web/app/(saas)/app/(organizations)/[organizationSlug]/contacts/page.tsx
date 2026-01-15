@@ -37,7 +37,14 @@ function ContactsPageContent() {
   
   // Derive initial tab from URL
   const derivedInitialTab = useMemo<ContactTab>(() => {
-    return isValidTab(urlTab) ? urlTab : "details";
+    if (isValidTab(urlTab)) {
+      return urlTab;
+    }
+    // MED-3 fix: Warn if an invalid tab was specified in URL
+    if (urlTab !== null) {
+      console.warn(`[Deep Linking] Invalid tab parameter: "${urlTab}". Valid tabs: ${VALID_TABS.join(", ")}. Defaulting to "details".`);
+    }
+    return "details";
   }, [urlTab]);
   
   // Local state for manual drawer control (when user adds/edits contact manually)
