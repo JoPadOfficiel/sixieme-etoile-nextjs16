@@ -244,7 +244,7 @@ describe("Bulk Payment UI", () => {
 - [x] UI components created
 - [x] Integration tests passing
 - [x] Code review completed
-- [ ] Merged to main
+- [x] Merged to main
 
 ---
 
