@@ -30,6 +30,8 @@ export type Config = {
 	storage: {
 		bucketNames: {
 			avatars: string;
+			// Story 25.3: Document logos for PDF generation
+			documentLogos: string;
 		};
 	};
 	ui: {

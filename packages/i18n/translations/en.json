@@ -1331,6 +1331,37 @@
 			}
 		},
 		"save": "Save",
+		"documentSettings": {
+			"logo": {
+				"title": "Document Logo",
+				"description": "Upload a logo that will appear on generated PDF documents (Quotes, Invoices, Mission Sheets).",
+				"dropzone": "Drop or click to upload",
+				"uploadSuccess": "Logo uploaded successfully",
+				"uploadError": "Failed to upload logo",
+				"removeSuccess": "Logo removed successfully",
+				"removeError": "Failed to remove logo",
+				"fileTooLarge": "File too large. Maximum size is 2MB."
+			},
+			"brandColor": {
+				"title": "Brand Color",
+				"description": "Choose a color for document titles and accents.",
+				"saveSuccess": "Brand color saved successfully",
+				"saveError": "Failed to save brand color",
+				"invalidFormat": "Invalid color format. Use #RRGGBB."
+			},
+			"logoPosition": {
+				"title": "Logo Position",
+				"description": "Choose where the logo appears in the document header.",
+				"left": "Left",
+				"right": "Right",
+				"saveSuccess": "Logo position saved successfully",
+				"saveError": "Failed to save logo position"
+			},
+			"preview": {
+				"title": "Document Preview",
+				"description": "Live preview of how your documents will appear."
+			}
+		},
 		"pricing": {
 			"seasonalMultipliers": {
 				"title": "Seasonal Multipliers",

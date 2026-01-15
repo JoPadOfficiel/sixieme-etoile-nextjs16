@@ -386,6 +386,13 @@ enum SubcontractorAvailability {
   OFFLINE // Not accepting missions (vacation, maintenance, etc.)
 }
 
+/// Story 25.3: Logo position for PDF documents
+/// Controls where the organization logo appears in generated PDFs
+enum LogoPosition {
+  LEFT  // Logo on left side of header (default)
+  RIGHT // Logo on right side of header
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1361,6 +1368,14 @@ model OrganizationPricingSettings {
   // Story 18.10: Hierarchical pricing algorithm configuration
   // JSON config: { enabled: boolean, skipLevel1?: boolean, skipLevel2?: boolean, skipLevel3?: boolean, centralZoneCodes?: string[] }
   hierarchicalPricingConfig Json?
+
+  // Story 25.3: Document Personalization fields
+  // URL of the logo to display on PDF documents (stored in Supabase Storage)
+  documentLogoUrl String?
+  // Brand color for document highlights (titles, accents) - hex format #RRGGBB
+  brandColor      String?      @default("#2563eb")
+  // Logo position in PDF document header (LEFT or RIGHT)
+  logoPosition    LogoPosition @default(LEFT)
 
   // Metadata
   createdAt DateTime @default(now())

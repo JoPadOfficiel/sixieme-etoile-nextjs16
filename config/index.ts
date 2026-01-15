@@ -91,6 +91,8 @@ export const config = {
 		// define the name of the buckets for the different types of files
 		bucketNames: {
 			avatars: process.env.NEXT_PUBLIC_AVATARS_BUCKET_NAME ?? "avatars",
+			// Story 25.3: Document logos for PDF generation
+			documentLogos: process.env.NEXT_PUBLIC_DOCUMENT_LOGOS_BUCKET_NAME ?? "document-logos",
 		},
 	},
 	// Payments

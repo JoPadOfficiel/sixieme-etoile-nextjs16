@@ -45,6 +45,12 @@ export const uploadsRouter = new Hono().basePath("/uploads").post(
 			return c.json({ signedUrl });
 		}
 
+		// Story 25.3: Allow document logo uploads
+		if (bucket === config.storage.bucketNames.documentLogos) {
+			const signedUrl = await getSignedUploadUrl(path, { bucket });
+			return c.json({ signedUrl });
+		}
+
 		throw new HTTPException(403);
 	},
 );

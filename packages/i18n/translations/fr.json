@@ -1331,6 +1331,37 @@
 			}
 		},
 		"save": "Enregistrer",
+		"documentSettings": {
+			"logo": {
+				"title": "Logo des Documents",
+				"description": "Téléchargez un logo qui apparaîtra sur les documents PDF générés (Devis, Factures, Fiches Mission).",
+				"dropzone": "Déposez ou cliquez pour télécharger",
+				"uploadSuccess": "Logo téléchargé avec succès",
+				"uploadError": "Échec du téléchargement du logo",
+				"removeSuccess": "Logo supprimé avec succès",
+				"removeError": "Échec de la suppression du logo",
+				"fileTooLarge": "Fichier trop volumineux. Taille maximale : 2 Mo."
+			},
+			"brandColor": {
+				"title": "Couleur de Marque",
+				"description": "Choisissez une couleur pour les titres et accents des documents.",
+				"saveSuccess": "Couleur de marque enregistrée avec succès",
+				"saveError": "Échec de l'enregistrement de la couleur",
+				"invalidFormat": "Format de couleur invalide. Utilisez #RRGGBB."
+			},
+			"logoPosition": {
+				"title": "Position du Logo",
+				"description": "Choisissez où le logo apparaît dans l'en-tête du document.",
+				"left": "Gauche",
+				"right": "Droite",
+				"saveSuccess": "Position du logo enregistrée avec succès",
+				"saveError": "Échec de l'enregistrement de la position"
+			},
+			"preview": {
+				"title": "Aperçu du Document",
+				"description": "Aperçu en temps réel de l'apparence de vos documents."
+			}
+		},
 		"pricing": {
 			"seasonalMultipliers": {
 				"title": "Multiplicateurs Saisonniers",

@@ -17,6 +17,9 @@ const staffingSelectionPolicyEnum = z.enum(["CHEAPEST", "FASTEST", "PREFER_INTER
 // Story 17.9: Time bucket interpolation strategy enum
 const timeBucketInterpolationStrategyEnum = z.enum(["ROUND_UP", "ROUND_DOWN", "PROPORTIONAL"]);
 
+// Story 25.3: Logo position enum for PDF documents
+const logoPositionEnum = z.enum(["LEFT", "RIGHT"]);
+
 // Story 17.15: Difficulty multipliers schema
 const difficultyMultipliersSchema = z.object({
 	"1": z.number().min(0.5).max(3),
@@ -68,6 +71,10 @@ const updatePricingSettingsSchema = z.object({
 	maxReturnDistanceKm: z.number().min(0).max(1000).nullable().optional(),
 	roundTripBuffer: z.number().min(0).max(240).nullable().optional(),
 	autoSwitchRoundTripToMAD: z.boolean().optional(),
+	// Story 25.3: Document personalization fields
+	documentLogoUrl: z.string().url().nullable().optional(),
+	brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+	logoPosition: logoPositionEnum.optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -112,6 +119,10 @@ function serializePricingSettings(settings: {
 	maxReturnDistanceKm?: unknown;
 	roundTripBuffer?: number | null;
 	autoSwitchRoundTripToMAD?: boolean;
+	// Story 25.3: Document personalization
+	documentLogoUrl?: string | null;
+	brandColor?: string | null;
+	logoPosition?: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -180,6 +191,10 @@ function serializePricingSettings(settings: {
 			: null,
 		roundTripBuffer: settings.roundTripBuffer ?? null,
 		autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
+		// Story 25.3: Document personalization
+		documentLogoUrl: settings.documentLogoUrl ?? null,
+		brandColor: settings.brandColor ?? "#2563eb",
+		logoPosition: settings.logoPosition ?? "LEFT",
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};

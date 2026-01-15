@@ -146,7 +146,7 @@ export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','exc
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -303,6 +303,10 @@ export type TimeBucketInterpolationStrategyType = `${z.infer<typeof TimeBucketIn
 export const SubcontractorAvailabilitySchema = z.enum(['AVAILABLE','BUSY','OFFLINE']);
 
 export type SubcontractorAvailabilityType = `${z.infer<typeof SubcontractorAvailabilitySchema>}`
+
+export const LogoPositionSchema = z.enum(['LEFT','RIGHT']);
+
+export type LogoPositionType = `${z.infer<typeof LogoPositionSchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -1076,6 +1080,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   zoneMultiplierAggregationStrategy: ZoneMultiplierAggregationStrategySchema.nullable(),
   staffingSelectionPolicy: StaffingSelectionPolicySchema.nullable(),
   timeBucketInterpolationStrategy: TimeBucketInterpolationStrategySchema.nullable(),
+  logoPosition: LogoPositionSchema,
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
@@ -1111,6 +1116,8 @@ export const OrganizationPricingSettingsSchema = z.object({
   minIdleDaysForComparison: z.number().int().nullable(),
   emptyReturnCostPercent: z.number().int().nullable(),
   hierarchicalPricingConfig: JsonValueSchema.nullable(),
+  documentLogoUrl: z.string().nullable(),
+  brandColor: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

@@ -25,6 +25,18 @@ export const GET = async (
 		});
 	}
 
+	// Story 25.3: Support document logos proxying
+	if (bucket === config.storage.bucketNames.documentLogos) {
+		const signedUrl = await getSignedUrl(filePath, {
+			bucket,
+			expiresIn: 60 * 60,
+		});
+
+		return NextResponse.redirect(signedUrl, {
+			headers: { "Cache-Control": "max-age=3600" },
+		});
+	}
+
 	return new Response("Not found", {
 		status: 404,
 	});
