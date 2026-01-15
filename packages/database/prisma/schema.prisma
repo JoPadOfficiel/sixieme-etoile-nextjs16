@@ -242,6 +242,7 @@ enum QuoteStatus {
 enum InvoiceStatus {
   DRAFT
   ISSUED
+  PARTIAL    // Story 25.6: Partially paid invoice
   PAID
   CANCELLED
 }
@@ -1849,6 +1850,9 @@ model Invoice {
 
   // Commission (for partner invoices)
   commissionAmount Decimal? @db.Decimal(10, 2)
+
+  // Story 25.6: Payment tracking for partial payments (Lettrage)
+  paidAmount       Decimal  @default(0) @db.Decimal(10, 2)
 
   // Story 15.7: Deep-copied cost breakdown from quote
   costBreakdown Json? // Immutable snapshot of cost breakdown at invoice creation

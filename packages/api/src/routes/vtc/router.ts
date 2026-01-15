@@ -39,6 +39,8 @@ import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
 // Story 24.2: EndCustomer CRUD API
 import { endCustomersRouter, contactEndCustomersRouter } from "./end-customers";
+// Story 25.6: Bulk Payment / Lettrage
+import { invoicesBulkPaymentRouter } from "./invoices-bulk-payment";
 
 /**
  * VTC ERP Router
@@ -90,6 +92,8 @@ export const vtcRouter = new Hono()
 	.route("/", stayQuotesRouter)
 	// Story 24.2: EndCustomer CRUD API
 	.route("/", endCustomersRouter)
-	.route("/", contactEndCustomersRouter);
+	.route("/", contactEndCustomersRouter)
+	// Story 25.6: Bulk Payment / Lettrage
+	.route("/", invoicesBulkPaymentRouter);
 
 export type VtcRouter = typeof vtcRouter;

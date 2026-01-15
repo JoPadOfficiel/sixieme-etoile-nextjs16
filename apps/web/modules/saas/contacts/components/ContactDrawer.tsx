@@ -10,12 +10,13 @@ import {
 } from "@ui/components/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useTranslations } from "next-intl";
-import { User, TrendingUp, Briefcase, BarChart3 } from "lucide-react";
+import { User, TrendingUp, Briefcase, BarChart3, Receipt } from "lucide-react";
 import { ContactForm } from "./ContactForm";
 import { PartnerContractForm } from "./PartnerContractForm";
 import { ContactTimeline } from "./ContactTimeline";
 import { ContactCommercialSummary } from "./ContactCommercialSummary";
 import { EndCustomerList } from "./EndCustomerList";
+import { ContactInvoicesTab } from "./ContactInvoicesTab";
 import type { Contact } from "../types";
 
 /**
@@ -28,10 +29,11 @@ import type { Contact } from "../types";
  * - `details`: Contact form/details (default)
  * - `timeline`: Activity history (quotes/invoices)
  * - `commercial`: Commercial summary with margins
+ * - `invoices`: Invoice list with bulk payment (Story 25.6)
  * - `end-customers`: End customer list (partners only)
  * - `contract`: Partner contract settings (partners only)
  */
-export type ContactTab = "details" | "timeline" | "commercial" | "end-customers" | "contract";
+export type ContactTab = "details" | "timeline" | "commercial" | "invoices" | "end-customers" | "contract";
 
 interface ContactDrawerProps {
   open: boolean;
@@ -93,7 +95,7 @@ export function ContactDrawer({
 
         {contact ? (
           <Tabs value={effectiveTab} onValueChange={handleTabChange} className="mt-6">
-            <TabsList className={`grid w-full ${contact.isPartner ? "grid-cols-5" : "grid-cols-3"}`}>
+            <TabsList className={`grid w-full ${contact.isPartner ? "grid-cols-6" : "grid-cols-4"}`}>
               <TabsTrigger value="details" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 {t("contacts.tabs.details")}
@@ -105,6 +107,10 @@ export function ContactDrawer({
               <TabsTrigger value="commercial" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 {t("contacts.tabs.commercial")}
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                {t("contacts.tabs.invoices")}
               </TabsTrigger>
               {contact.isPartner && (
                 <>
@@ -136,6 +142,13 @@ export function ContactDrawer({
               <ContactCommercialSummary
                 contactId={contact.id}
                 isPartner={contact.isPartner}
+              />
+            </TabsContent>
+
+            <TabsContent value="invoices" className="mt-4">
+              <ContactInvoicesTab
+                contactId={contact.id}
+                contactName={contact.displayName}
               />
             </TabsContent>
 

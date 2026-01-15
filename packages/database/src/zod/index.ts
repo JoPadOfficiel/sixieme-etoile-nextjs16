@@ -164,7 +164,7 @@ export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizati
 
 export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
 
-export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId']);
+export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId']);
 
 export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sortOrder','createdAt','updatedAt']);
 
@@ -230,7 +230,7 @@ export const QuoteStatusSchema = z.enum(['DRAFT','SENT','VIEWED','ACCEPTED','REJ
 
 export type QuoteStatusType = `${z.infer<typeof QuoteStatusSchema>}`
 
-export const InvoiceStatusSchema = z.enum(['DRAFT','ISSUED','PAID','CANCELLED']);
+export const InvoiceStatusSchema = z.enum(['DRAFT','ISSUED','PARTIAL','PAID','CANCELLED']);
 
 export type InvoiceStatusType = `${z.infer<typeof InvoiceStatusSchema>}`
 
@@ -1405,6 +1405,7 @@ export const InvoiceSchema = z.object({
   totalInclVat: z.instanceof(Prisma.Decimal, { message: "Field 'totalInclVat' must be a Decimal. Location: ['Models', 'Invoice']"}),
   currency: z.string(),
   commissionAmount: z.instanceof(Prisma.Decimal, { message: "Field 'commissionAmount' must be a Decimal. Location: ['Models', 'Invoice']"}).nullable(),
+  paidAmount: z.instanceof(Prisma.Decimal, { message: "Field 'paidAmount' must be a Decimal. Location: ['Models', 'Invoice']"}),
   costBreakdown: JsonValueSchema.nullable(),
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),

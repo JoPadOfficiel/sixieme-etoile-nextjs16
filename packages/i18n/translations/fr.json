@@ -297,6 +297,11 @@
 	"invoices": {
 		"title": "Factures",
 		"description": "Gérez vos factures, suivez les paiements et générez des exports.",
+		"outstandingBalance": "Solde restant dû",
+		"invoiceCount": "Nombre de factures",
+		"breakdown": "Répartition",
+		"noOutstandingInvoices": "Aucune facture impayée pour ce contact.",
+		"retry": "Réessayer",
 		"addInvoice": "Nouvelle facture",
 		"search": "Rechercher une facture...",
 		"overdue": "En retard",
@@ -320,7 +325,9 @@
 			"vat": "TVA",
 			"commission": "Commission",
 			"status": "Statut",
-			"sourceQuote": "Devis source"
+			"sourceQuote": "Devis source",
+			"paid": "Déjà payé",
+			"remaining": "Reste à payer"
 		},
 		"status": {
 			"draft": "Brouillon",
@@ -419,6 +426,22 @@
 		"pagination": {
 			"showing": "Affichage de {from} à {to} sur {total} factures",
 			"page": "Page {current} sur {total}"
+		},
+		"bulkPayment": {
+			"title": "Lettrage / Paiement Groupé",
+			"description": "Appliquer un paiement pour {contactName}",
+			"totalOutstanding": "Reste à payer total",
+			"paymentAmount": "Montant du paiement",
+			"paymentMethod": "Moyen de paiement",
+			"selectMethod": "Sélectionner un moyen",
+			"paymentReference": "Référence (optionnel)",
+			"referencePlaceholder": "ex: Virement #12345",
+			"allocationPreview": "Aperçu de l'allocation",
+			"willBePaid": "soldée(s)",
+			"remaining": "Reste",
+			"overage": "Trop-perçu (sera crédité)",
+			"cancel": "Annuler",
+			"applyPayment": "Appliquer le paiement"
 		}
 	},
 	"newsletter": {
@@ -2250,6 +2273,7 @@
 			"timeline": "Activité",
 			"commercial": "Commercial",
 			"contract": "Contrat",
+			"invoices": "Factures",
 			"endCustomers": "Clients Finaux"
 		},
 		"endCustomers": {
