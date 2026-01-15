@@ -18,6 +18,8 @@ import { ContactCommercialSummary } from "./ContactCommercialSummary";
 import { EndCustomerList } from "./EndCustomerList";
 import { ContactInvoicesTab } from "./ContactInvoicesTab";
 import type { Contact } from "../types";
+import { useContactBalance } from "@saas/invoices/hooks/useContactBalance";
+import { Badge } from "@ui/components/badge";
 
 /**
  * Valid tab values for ContactDrawer deep linking.
@@ -56,6 +58,11 @@ export function ContactDrawer({
   const [activeTab, setActiveTab] = useState<ContactTab>("details");
   // Story 25.5: Use initialTab if provided and drawer is open, otherwise use activeTab state
   const effectiveTab = (open && initialTab) ? initialTab : activeTab;
+
+  const { data: balanceData, isLoading: isBalanceLoading, error: balanceError, refetch: refetchBalance } = useContactBalance({
+    contactId: contact?.id || "",
+    enabled: !!contact && open,
+  });
 
   const handleTabChange = (tab: string) => {
     const newTab = tab as ContactTab;
@@ -111,6 +118,11 @@ export function ContactDrawer({
               <TabsTrigger value="invoices" className="flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
                 {t("contacts.tabs.invoices")}
+                {balanceData && balanceData.totalOutstanding > 0 && (
+                  <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 rounded-full text-xs flex items-center justify-center">
+                    {balanceData.invoiceCount}
+                  </Badge>
+                )}
               </TabsTrigger>
               {contact.isPartner && (
                 <>
@@ -149,6 +161,10 @@ export function ContactDrawer({
               <ContactInvoicesTab
                 contactId={contact.id}
                 contactName={contact.displayName}
+                balanceData={balanceData}
+                isLoading={isBalanceLoading}
+                error={balanceError}
+                refetch={refetchBalance}
               />
             </TabsContent>
 

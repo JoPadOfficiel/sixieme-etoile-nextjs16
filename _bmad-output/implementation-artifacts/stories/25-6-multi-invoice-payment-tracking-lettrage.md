@@ -6,7 +6,7 @@
 |-------|-------|
 | **Story ID** | 25.6 |
 | **Epic** | Epic 25: Documents, Payments & Deep Linking Enhancements |
-| **Status** | in-progress |
+| **Status** | done |
 | **Priority** | HIGH |
 | **Estimated Effort** | 4-6 hours |
 | **Branch** | `feature/25-6-bulk-payment-lettrage` |
@@ -221,7 +221,7 @@ describe("Bulk Payment UI", () => {
 ## 🔗 Dependencies
 
 - Story 25.5: Deep Linking Navigation (for tab URL sync)
-- Epic 7: Invoice system must be in place
+- Epic 7: Invoice system must be in place   
 
 ---
 

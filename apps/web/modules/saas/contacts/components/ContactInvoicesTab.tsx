@@ -30,13 +30,16 @@ import {
   Clock,
   Euro,
 } from "lucide-react";
-import { useContactBalance } from "@saas/invoices/hooks/useContactBalance";
 import { BulkPaymentModal } from "@saas/invoices/components/BulkPaymentModal";
-import type { UnpaidInvoice } from "@saas/invoices/types/payment";
+import type { ContactBalance, UnpaidInvoice } from "@saas/invoices/types/payment";
 
 interface ContactInvoicesTabProps {
   contactId: string;
   contactName: string;
+  balanceData: ContactBalance | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
 function formatCurrency(amount: number): string {
@@ -95,11 +98,12 @@ function InvoicesTabSkeleton() {
 export function ContactInvoicesTab({
   contactId,
   contactName,
+  balanceData,
+  isLoading,
+  error,
+  refetch,
 }: ContactInvoicesTabProps) {
   const t = useTranslations("invoices");
-  const { data: balanceData, isLoading, error, refetch } = useContactBalance({
-    contactId,
-  });
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -196,7 +200,7 @@ export function ContactInvoicesTab({
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">{t("totalOutstanding")}</p>
+              <p className="text-sm text-muted-foreground">{t("bulkPayment.totalOutstanding")}</p>
               <p className="text-2xl font-bold text-destructive">
                 {formatCurrency(balanceData.totalOutstanding)}
               </p>
@@ -237,7 +241,7 @@ export function ContactInvoicesTab({
             data-testid="apply-bulk-payment-btn"
           >
             <CreditCard className="h-4 w-4" />
-            {t("applyPayment")}
+            {t("bulkPayment.applyPayment")}
           </Button>
         </div>
       )}
