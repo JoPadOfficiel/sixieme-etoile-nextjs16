@@ -23,8 +23,10 @@ import { organizationMiddleware } from "../../middleware/organization";
 import {
 	generateQuotePdf,
 	generateInvoicePdf,
+	generateMissionOrderPdf,
 	type QuotePdfData,
 	type InvoicePdfData,
+	type MissionOrderPdfData,
 	type OrganizationPdfData,
 	type ContactPdfData,
 	type InvoiceLinePdfData,
@@ -56,11 +58,8 @@ const listDocumentsSchema = z.object({
 /**
  * Transform organization to PDF data format
  */
-function transformOrganizationToPdfData(org: {
-	name: string;
-	slug?: string | null;
-	logo?: string | null;
-}): OrganizationPdfData {
+function transformOrganizationToPdfData(org: any): OrganizationPdfData {
+	const settings = org.organizationPricingSettings;
 	return {
 		name: org.name,
 		address: null, // TODO: Add address to organization model
@@ -71,6 +70,11 @@ function transformOrganizationToPdfData(org: {
 		iban: null,
 		bic: null,
 		logo: org.logo,
+		// Story 25.3: Branding
+		documentLogoUrl: settings?.documentLogoUrl,
+		brandColor: settings?.brandColor,
+		logoPosition: settings?.logoPosition,
+		showCompanyName: settings?.showCompanyName,
 	};
 }
 
@@ -233,6 +237,19 @@ function transformInvoiceToPdfData(invoice: {
 			email: invoice.endCustomer.email,
 			phone: invoice.endCustomer.phone,
 		} : null,
+	};
+}
+
+/**
+ * Story 25.1: Transform mission to PDF data format
+ */
+function transformMissionToPdfData(quote: any): MissionOrderPdfData {
+	const baseData = transformQuoteToPdfData(quote);
+	return {
+		...baseData,
+		driverName: quote.assignedDriver?.displayName || "A designer",
+		vehicleName: quote.assignedVehicle?.name || "A designer",
+		vehiclePlate: quote.assignedVehicle?.licensePlate,
 	};
 }
 
@@ -492,9 +509,12 @@ export const documentsRouter = new Hono()
 				});
 			}
 
-			// Get organization details
+			// Get organization details with pricing settings for branding
 			const organization = await db.organization.findUnique({
 				where: { id: organizationId },
+				include: {
+					organizationPricingSettings: true,
+				},
 			});
 
 			if (!organization) {
@@ -587,9 +607,12 @@ export const documentsRouter = new Hono()
 				});
 			}
 
-			// Get organization details
+			// Get organization details with pricing settings for branding
 			const organization = await db.organization.findUnique({
 				where: { id: organizationId },
+				include: {
+					organizationPricingSettings: true,
+				},
 			});
 
 			if (!organization) {
@@ -626,6 +649,89 @@ export const documentsRouter = new Hono()
 					{
 						documentTypeId: documentType.id,
 						invoiceId: invoice.id,
+						storagePath,
+						url,
+						filename,
+					},
+					organizationId
+				),
+				include: {
+					documentType: true,
+				},
+			});
+
+			return c.json(document, 201);
+		}
+	)
+
+	// Generate mission order PDF - Story 25.1
+	.post(
+		"/generate/mission-order/:quoteId",
+		describeRoute({
+			summary: "Generate mission order PDF",
+			description: "Generate a PDF document (Fiche Mission) for an assigned mission",
+			tags: ["VTC - Documents"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const quoteId = c.req.param("quoteId");
+
+			// Fetch quote with assignments
+			const quote = await db.quote.findFirst({
+				where: withTenantId(quoteId, organizationId),
+				include: {
+					contact: true,
+					vehicleCategory: true,
+					assignedDriver: true,
+					assignedVehicle: true,
+					endCustomer: true,
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, { message: "Mission not found" });
+			}
+
+			// Get organization details with pricing settings for branding
+			const organization = await db.organization.findUnique({
+				where: { id: organizationId },
+				include: {
+					organizationPricingSettings: true,
+				},
+			});
+
+			if (!organization) {
+				throw new HTTPException(404, { message: "Organization not found" });
+			}
+
+			// Get document type
+			const documentType = await db.documentType.findUnique({
+				where: { code: "MISSION_ORDER" },
+			});
+
+			if (!documentType) {
+				throw new HTTPException(500, {
+					message: "Document type MISSION_ORDER not found. Please run database seed.",
+				});
+			}
+
+			// Generate PDF
+			const pdfData = transformMissionToPdfData(quote);
+			const orgData = transformOrganizationToPdfData(organization);
+			const pdfBuffer = await generateMissionOrderPdf(pdfData, orgData);
+
+			// Save to storage
+			const storage = getStorageService();
+			const filename = generateFilename("MISSION_ORDER", quote.id);
+			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const url = await storage.getUrl(storagePath);
+
+			// Create document record
+			const document = await db.document.create({
+				data: withTenantCreate(
+					{
+						documentTypeId: documentType.id,
+						quoteId: quote.id,
 						storagePath,
 						url,
 						filename,

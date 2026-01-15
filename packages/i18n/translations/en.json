@@ -3723,7 +3723,10 @@
 				"showUnavailable": "Show unavailable drivers",
 				"hideUnavailable": "Hide unavailable drivers",
 				"unavailableCount": "{count} unavailable"
-			}
+			},
+			"missionSheetGenerated": "Mission Sheet generated",
+			"missionSheetDownloadStarted": "Download will start shortly...",
+			"printMissionSheet": "Print Mission Sheet"
 		},
 		"map": {
 			"loading": "Loading map...",

@@ -81,11 +81,11 @@ Action : Implémentation et Tests.
 ## Story 25.2: EU-Compliant Invoice & Quote PDF Layout
 
 ### 🎯 Assignment Box
-- [ ] **AGENT:** Claude 3.5 Sonnet
-- [ ] **STATUS:** À faire (Dépend de 25.3)
-- [ ] **STARTED:** 
-- [ ] **COMPLETED:** 
-- [ ] **REVIEW:** 
+- [x] **AGENT:** Claude 3.5 Sonnet
+- [x] **STATUS:** À faire (Dépend de 25.3)
+- [x] **STARTED:** 
+- [x] **COMPLETED:** 
+- [x] **REVIEW:** 
 
 ### 📋 System Prompt for Agent
 

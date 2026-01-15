@@ -71,6 +71,12 @@ export interface QuotePdfData {
 	estimatedDurationMins?: number | null;
 }
 
+export interface MissionOrderPdfData extends QuotePdfData {
+	driverName: string;
+	vehicleName: string;
+	vehiclePlate?: string | null;
+}
+
 export interface InvoiceLinePdfData {
 	description: string;
 	quantity: number;
@@ -940,6 +946,130 @@ export async function generateInvoicePdf(
 }
 
 // ============================================================================
+// Mission Order PDF Generator - Story 25.1
+// ============================================================================
+
+export async function generateMissionOrderPdf(
+	mission: MissionOrderPdfData,
+	organization: OrganizationPdfData
+): Promise<Buffer> {
+	const pdfDoc = await PDFDocument.create();
+	const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+	const { height } = page.getSize();
+
+	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+	// Branding settings
+	const logoPosition = organization.logoPosition ?? "LEFT";
+	const showCompanyName = organization.showCompanyName ?? true;
+	const brandColorRgb = hexToRgb(organization.brandColor);
+	const brandColor = rgb(brandColorRgb.r, brandColorRgb.g, brandColorRgb.b);
+
+	const logoImage = await embedLogoIfAvailable(
+		pdfDoc,
+		organization.documentLogoUrl ?? organization.logo
+	);
+
+	let y = height - 50;
+	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
+		page.drawText(sanitizeText(text), options);
+	};
+
+	// --- Header Re-used logic ---
+	const headerY = y;
+	if (logoPosition === "LEFT") {
+		if (logoImage) {
+			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			page.drawImage(logoImage, { x: LEFT_MARGIN, y: headerY - logoDims.height + 20, width: logoDims.width, height: logoDims.height });
+			if (showCompanyName) draw(organization.name, { x: LEFT_MARGIN + logoDims.width + 10, y: headerY, size: 14, font: helveticaBold, color: BLACK });
+		} else draw(organization.name, { x: LEFT_MARGIN, y: headerY, size: 18, font: helveticaBold, color: BLACK });
+		
+		draw("FICHE MISSION", { x: RIGHT_MARGIN - 130, y: headerY, size: 18, font: helveticaBold, color: brandColor });
+		draw(`ID: ${mission.id.slice(-8).toUpperCase()}`, { x: RIGHT_MARGIN - 130, y: headerY - 18, size: 10, font: helvetica, color: GRAY });
+		draw(`Date: ${formatDate(mission.createdAt)}`, { x: RIGHT_MARGIN - 130, y: headerY - 32, size: 10, font: helvetica, color: GRAY });
+	} else {
+		draw("FICHE MISSION", { x: LEFT_MARGIN, y: headerY, size: 18, font: helveticaBold, color: brandColor });
+		draw(`ID: ${mission.id.slice(-8).toUpperCase()}`, { x: LEFT_MARGIN, y: headerY - 18, size: 10, font: helvetica, color: GRAY });
+		draw(`Date: ${formatDate(mission.createdAt)}`, { x: LEFT_MARGIN, y: headerY - 32, size: 10, font: helvetica, color: GRAY });
+
+		if (logoImage) {
+			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			page.drawImage(logoImage, { x: RIGHT_MARGIN - logoDims.width, y: headerY - logoDims.height + 20, width: logoDims.width, height: logoDims.height });
+			if (showCompanyName) draw(organization.name, { x: RIGHT_MARGIN - logoDims.width - 10 - helveticaBold.widthOfTextAtSize(organization.name, 14), y: headerY, size: 14, font: helveticaBold, color: BLACK });
+		} else draw(organization.name, { x: RIGHT_MARGIN - helveticaBold.widthOfTextAtSize(organization.name, 18), y: headerY, size: 18, font: helveticaBold, color: BLACK });
+	}
+
+	y = headerY - 80;
+
+	// --- Mission Resume ---
+	draw("RESUME MISSION", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
+	y -= 18;
+	const resumeDetails = [
+		["Conducteur / Driver", mission.driverName],
+		["Vehicule / Vehicle", `${mission.vehicleName} ${mission.vehiclePlate ? `(${mission.vehiclePlate})` : ""}`],
+		["Categorie / Category", mission.vehicleCategory],
+	];
+	for (const [label, value] of resumeDetails) {
+		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
+		y -= 14;
+	}
+
+	// --- Trajet ---
+	y -= 10;
+	draw("TRAJET / ITINERARY", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
+	y -= 18;
+	const itineraryDetails = [
+		["Prise en charge / Pickup", mission.pickupAddress.substring(0, 60)],
+		["Destination / Dropoff", (mission.dropoffAddress || "N/A").substring(0, 60)],
+		["Date et heure / Time", formatDateTime(mission.pickupAt)],
+	];
+	for (const [label, value] of itineraryDetails) {
+		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
+		y -= 14;
+	}
+
+	// --- Passengers ---
+	y -= 10;
+	draw("PASSAGERS / PASSENGERS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
+	y -= 18;
+	const passDetails = [
+		["Nombre / Count", `${mission.passengerCount} pers. / ${mission.luggageCount} bag.`],
+		["Contact", mission.endCustomer ? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}` : mission.contact.displayName],
+	];
+	if (mission.notes) passDetails.push(["Notes Speciales", mission.notes.substring(0, 80)]);
+	
+	for (const [label, value] of passDetails) {
+		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
+		y -= 14;
+	}
+
+	// --- Driver Input Area ---
+	y -= 30;
+	page.drawRectangle({ x: LEFT_MARGIN, y: y - 100, width: CONTENT_WIDTH, height: 110, borderColor: brandColor, borderWidth: 1 });
+	draw("ZONE CONDUCTEUR (A REMPLIR) / DRIVER AREA", { x: LEFT_MARGIN + 10, y: y - 5, size: 10, font: helveticaBold, color: brandColor });
+	
+	let inputY = y - 25;
+	draw("Kilometres DEPART: _________ km", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
+	draw("Kilometres ARRIVEE: _________ km", { x: LEFT_MARGIN + 220, y: inputY, size: 10, font: helvetica, color: BLACK });
+	inputY -= 25;
+	draw("Frais Peages / Tolls: _________ EUR", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
+	draw("Parking / Divers: _________ EUR", { x: LEFT_MARGIN + 220, y: inputY, size: 10, font: helvetica, color: BLACK });
+	inputY -= 25;
+	draw("Observations: ____________________________________________________________________", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
+	
+	// Footer
+	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: 30, size: 8, font: helvetica, color: GRAY });
+	draw(`Genere par Sixieme Etoile ERP - ${new Date().toLocaleDateString()}`, { x: LEFT_MARGIN, y: 30, size: 8, font: helvetica, color: GRAY });
+
+	const pdfBytes = await pdfDoc.save();
+	return Buffer.from(pdfBytes);
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -947,7 +1077,7 @@ export type DocumentType = "QUOTE_PDF" | "INVOICE_PDF" | "MISSION_ORDER";
 
 export interface GeneratePdfOptions {
 	type: DocumentType;
-	data: QuotePdfData | InvoicePdfData;
+	data: QuotePdfData | InvoicePdfData | MissionOrderPdfData;
 	organization: OrganizationPdfData;
 }
 
@@ -960,8 +1090,7 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<Buffer> 
 		case "INVOICE_PDF":
 			return generateInvoicePdf(data as InvoicePdfData, organization);
 		case "MISSION_ORDER":
-			// TODO: Implement mission order PDF (Story 25.1)
-			throw new Error("Mission order PDF not yet implemented");
+			return generateMissionOrderPdf(data as MissionOrderPdfData, organization);
 		default:
 			throw new Error(`Unknown document type: ${type}`);
 	}

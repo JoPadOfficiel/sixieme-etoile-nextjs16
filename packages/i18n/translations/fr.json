@@ -3723,7 +3723,10 @@
 				"showUnavailable": "Afficher les chauffeurs indisponibles",
 				"hideUnavailable": "Masquer les chauffeurs indisponibles",
 				"unavailableCount": "{count} indisponible(s)"
-			}
+			},
+			"missionSheetGenerated": "Fiche Mission générée",
+			"missionSheetDownloadStarted": "Le téléchargement va commencer...",
+			"printMissionSheet": "Imprimer Fiche Mission"
 		},
 		"map": {
 			"loading": "Chargement de la carte...",

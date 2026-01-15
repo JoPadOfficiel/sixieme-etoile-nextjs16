@@ -5,7 +5,7 @@
 |-------|-------|
 | **Epic** | 25 - Documents, Payments & Deep Linking Enhancements |
 | **Story ID** | 25.1 |
-| **Status** | in-progress |
+| **Status** | review |
 | **Priority** | HIGH - Essential for driver operations |
 | **Estimated Time** | 2-3h |
 | **Branch** | `feature/25-1-mission-sheets` |

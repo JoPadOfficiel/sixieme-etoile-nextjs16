@@ -9,8 +9,10 @@ import { describe, it, expect } from "vitest";
 import {
 	generateQuotePdf,
 	generateInvoicePdf,
+	generateMissionOrderPdf,
 	type QuotePdfData,
 	type InvoicePdfData,
+	type MissionOrderPdfData,
 	type OrganizationPdfData,
 } from "../pdf-generator";
 
@@ -435,6 +437,38 @@ describe("PDF Generator Service", () => {
 			};
 
 			const pdfBuffer = await generateQuotePdf(mockQuote, orgHideName);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+	});
+
+	// Story 25.1: Mission Order tests
+	describe("generateMissionOrderPdf - Story 25.1", () => {
+		const mockMission: MissionOrderPdfData = {
+			id: "mission_test",
+			pickupAddress: "123 Street, Paris",
+			dropoffAddress: "456 Avenue, Lyon",
+			pickupAt: new Date(),
+			passengerCount: 3,
+			luggageCount: 2,
+			vehicleCategory: "Van",
+			finalPrice: 0, // Not displayed in mission order
+			pricingMode: "FIXED",
+			tripType: "TRANSFER",
+			status: "ACCEPTED",
+			contact: {
+				displayName: "Group Client",
+				isPartner: false,
+			},
+			createdAt: new Date(),
+			driverName: "Jean Dupont",
+			vehicleName: "Mercedes V-Class",
+			vehiclePlate: "AB-123-CD",
+		};
+
+		it("should generate a valid PDF for mission order", async () => {
+			const pdfBuffer = await generateMissionOrderPdf(mockMission, mockOrganization);
 
 			expect(pdfBuffer).toBeInstanceOf(Buffer);
 			expect(pdfBuffer.length).toBeGreaterThan(0);
