@@ -28,7 +28,6 @@ import { CandidatesList } from "./CandidatesList";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useAssignMission } from "../hooks/useAssignMission";
 import { useSubcontractMission } from "../hooks/useSubcontracting";
-import { useMissionOrder } from "../hooks/useMissionOrder";
 import type {
 	CandidateSortBy,
 	ComplianceFilter,
@@ -126,9 +125,6 @@ export function AssignmentDrawer({
 
 	// Subcontract mutation
 	const subcontractMutation = useSubcontractMission();
-
-	// Story 25.1: Mission order generation
-	const { generateMissionOrder, isGenerating } = useMissionOrder();
 
 	// Filter and sort candidates
 	const candidates = candidatesData?.candidates;
@@ -405,23 +401,6 @@ export function AssignmentDrawer({
 						{t("confirm")}
 					</Button>
 
-					{/* Story 25.1: Print Mission Sheet Button - Only if confirmed assignment */}
-					{(missionId && selectedCandidateId && candidatesData?.currentAssignment?.driverId === candidates?.find(c => c.id === selectedCandidateId)?.driver?.id) && (
-						<Button
-							variant="secondary"
-							onClick={() => generateMissionOrder(missionId)}
-							disabled={isGenerating}
-						>
-							{isGenerating ? (
-								<Loader2 className="size-4 mr-2 animate-spin" />
-							) : (
-								<div className="flex items-center gap-2">
-									<span>{t("printMissionSheet")}</span>
-								</div>
-							)}
-						</Button>
-					)}
-					{/* Show tooltip or alternative if selected but not assigned? For now just hide to be safe as per Review */}
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>

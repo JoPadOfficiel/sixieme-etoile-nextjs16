@@ -142,14 +142,15 @@ function formatDateTime(date: Date): string {
 function sanitizeText(text: string | null | undefined): string {
 	if (!text) return "";
 	return text
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "") // Remove accents
 		.replace(/[’‘]/g, "'") // Smart quotes
 		.replace(/[“”]/g, '"') // Smart double quotes
 		.replace(/–/g, "-") // En dash
 		.replace(/—/g, "-") // Em dash
 		.replace(/€/g, "EUR")
-		.replace(/[^\x20-\x7E\n\r]/g, ""); // Keep only printable ASCII + newlines
+		// Keep printable ASCII (0x20-0x7E) and Latin-1 Supplement (0xA0-0xFF) for accents
+		// Remove characters not supported by WinAnsi
+		.replace(/[^\x20-\x7E\xA0-\xFF\n\r]/g, " ")
+		.trim(); 
 }
 
 /**
@@ -177,20 +178,41 @@ async function embedLogoIfAvailable(
 	logoUrl: string | null | undefined
 ): Promise<PDFImage | null> {
 	if (!logoUrl) return null;
+
+	// Handle relative URLs
+	let fullUrl = logoUrl;
+	if (logoUrl.startsWith("/")) {
+		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+		fullUrl = `${baseUrl}${logoUrl}`;
+	}
+
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
 	try {
-		const response = await fetch(logoUrl, { signal: controller.signal });
+		console.log(`Fetching logo from: ${fullUrl}`);
+		const response = await fetch(fullUrl, { signal: controller.signal });
 		clearTimeout(timeoutId);
-		if (!response.ok) return null;
+		if (!response.ok) {
+			console.error(`Failed to fetch logo: ${response.status} ${response.statusText}`);
+			return null;
+		}
+		
 		const imageBytes = await response.arrayBuffer();
+		const contentType = response.headers.get("content-type")?.toLowerCase();
 
 		// Detect image type and embed
-		if (logoUrl.toLowerCase().endsWith(".png")) {
+		if (contentType?.includes("png") || fullUrl.toLowerCase().endsWith(".png")) {
 			return await pdfDoc.embedPng(imageBytes);
-		} else {
+		} else if (contentType?.includes("jpg") || contentType?.includes("jpeg") || fullUrl.toLowerCase().endsWith(".jpg") || fullUrl.toLowerCase().endsWith(".jpeg")) {
 			return await pdfDoc.embedJpg(imageBytes);
+		} else {
+			// Fallback: try PNG then JPG
+			try {
+				return await pdfDoc.embedPng(imageBytes);
+			} catch {
+				return await pdfDoc.embedJpg(imageBytes);
+			}
 		}
 	} catch (error) {
 		clearTimeout(timeoutId);
@@ -521,14 +543,14 @@ export async function generateQuotePdf(
 		}
 	}
 
-	y = Math.min(fromY, toY) - 20;
+	y = Math.min(fromY, toY) - 30; // More spacing
 
 	// =========================================================================
 	// TRIP DETAILS SECTION - Story 25.2
 	// =========================================================================
 
 	draw("DETAILS DU TRAJET / TRIP DETAILS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
+	y -= 20;
 
 	const tripDetails = [
 		["Depart / From", quote.pickupAddress.substring(0, 55)],
@@ -554,34 +576,21 @@ export async function generateQuotePdf(
 	for (const [label, value] of tripDetails) {
 		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
 		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
-		y -= 14;
+		y -= 16; // Increased line spacing
 	}
 
 	// =========================================================================
 	// PRICING SECTION
 	// =========================================================================
 
-	y -= 15;
+	y -= 20;
 	draw("TARIFICATION / PRICING", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
+	y -= 20;
 
 	// Pricing mode
 	const pricingModeText = quote.pricingMode === "FIXED_GRID" ? "Grille tarifaire / Fixed Grid" : "Tarif dynamique / Dynamic";
 	draw(`Mode: ${pricingModeText}`, { x: LEFT_MARGIN, y, size: 10, font: helvetica, color: BLACK });
-	y -= 25;
-
-	// Total price box
-	page.drawRectangle({
-		x: LEFT_MARGIN,
-		y: y - 4,
-		width: 200,
-		height: 24,
-		color: LIGHT_GRAY,
-	});
-	draw("PRIX TOTAL TTC / TOTAL INCL. VAT:", { x: LEFT_MARGIN + 5, y, size: 10, font: helveticaBold, color: DARK });
-	draw(formatPrice(quote.finalPrice), { x: LEFT_MARGIN + 5, y: y - 14, size: 14, font: helveticaBold, color: brandColor });
-
-	y -= 40;
+	y -= 20;
 
 	// Notes section
 	if (quote.notes) {
@@ -591,6 +600,27 @@ export async function generateQuotePdf(
 		y -= 20;
 	}
 
+	y -= 10;
+	// Total price box - RIGHT ALIGNED
+	const totalLabel = "PRIX TOTAL TTC / TOTAL INCL. VAT:";
+	const totalValue = formatPrice(quote.finalPrice);
+	const labelWidth = helveticaBold.widthOfTextAtSize(sanitizeText(totalLabel), 10);
+	const boxWidth = 220;
+	const boxX = RIGHT_MARGIN - boxWidth;
+	
+	page.drawRectangle({
+		x: boxX,
+		y: y - 4,
+		width: boxWidth,
+		height: 30,
+		color: LIGHT_GRAY,
+	});
+	draw(totalLabel, { x: boxX + 10, y: y + 8, size: 10, font: helveticaBold, color: DARK });
+	// Value on next line inside box
+	draw(totalValue, { x: boxX + 10, y: y - 10, size: 14, font: helveticaBold, color: brandColor });
+
+	y -= 60;
+
 	// =========================================================================
 	// FOOTER - Story 25.2: Legal Mentions
 	// =========================================================================
@@ -598,16 +628,16 @@ export async function generateQuotePdf(
 	const footerY = 70;
 	
 	// Acceptance block
-	draw("BON POUR ACCORD / ACCEPTANCE", { x: LEFT_MARGIN, y: footerY + 40, size: 9, font: helveticaBold, color: DARK });
+	draw("BON POUR ACCORD / ACCEPTANCE", { x: LEFT_MARGIN, y: footerY + 50, size: 9, font: helveticaBold, color: DARK });
 	page.drawRectangle({
 		x: LEFT_MARGIN,
 		y: footerY + 15,
 		width: 200,
-		height: 20,
+		height: 30, // Taller
 		borderColor: GRAY,
 		borderWidth: 0.5,
 	});
-	draw("Signature:", { x: LEFT_MARGIN + 5, y: footerY + 22, size: 8, font: helvetica, color: GRAY });
+	draw("Signature:", { x: LEFT_MARGIN + 5, y: footerY + 35, size: 8, font: helvetica, color: GRAY });
 
 	// Legal mentions
 	draw(
@@ -764,21 +794,21 @@ export async function generateInvoicePdf(
 		}
 	}
 
-	y = Math.min(fromY, toY) - 25;
+	y = Math.min(fromY, toY) - 30;
 
 	// =========================================================================
 	// PRICING TABLE - Story 25.2: EU-Compliant Columns
 	// =========================================================================
 
 	draw("DETAIL DES PRESTATIONS / LINE ITEMS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
+	y -= 20;
 
 	// Table header background
 	page.drawRectangle({
 		x: LEFT_MARGIN,
 		y: y - 4,
 		width: CONTENT_WIDTH,
-		height: 18,
+		height: 22,
 		color: LIGHT_GRAY,
 	});
 
@@ -788,57 +818,57 @@ export async function generateInvoicePdf(
 	draw("Prix HT", { x: COL_PRICE, y, size: 9, font: helveticaBold, color: DARK });
 	draw("TVA %", { x: COL_VAT, y, size: 9, font: helveticaBold, color: DARK });
 	draw("Total HT", { x: COL_TOTAL, y, size: 9, font: helveticaBold, color: DARK });
-	y -= 20;
+	y -= 24;
 
 	// Table rows
 	for (const line of invoice.lines) {
-		draw(line.description.substring(0, 40), { x: COL_DESC, y, size: 9, font: helvetica, color: BLACK });
+		draw(line.description.substring(0, 45), { x: COL_DESC, y, size: 9, font: helvetica, color: BLACK });
 		draw(String(line.quantity), { x: COL_QTY, y, size: 9, font: helvetica, color: BLACK });
 		draw(formatPrice(line.unitPriceExclVat), { x: COL_PRICE, y, size: 9, font: helvetica, color: BLACK });
 		draw(`${line.vatRate}%`, { x: COL_VAT, y, size: 9, font: helvetica, color: BLACK });
 		draw(formatPrice(line.totalExclVat), { x: COL_TOTAL, y, size: 9, font: helvetica, color: BLACK });
-		y -= 16;
+		y -= 18; // Increased spacing
 	}
 
 	// =========================================================================
 	// TOTALS SECTION - Story 25.2
 	// =========================================================================
 
-	y -= 15;
-	const totalsX = 380;
+	y -= 25;
+	const totalsX = RIGHT_MARGIN - 200; // Align to right
 
 	// Subtotal
-	draw("Total HT:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
-	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
-	y -= 16;
+	draw("Total HT:", { x: totalsX + 20, y, size: 10, font: helvetica, color: BLACK });
+	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 110, y, size: 10, font: helvetica, color: BLACK });
+	y -= 18;
 
 	// VAT
-	draw("TVA:", { x: totalsX, y, size: 10, font: helvetica, color: BLACK });
-	draw(formatPrice(invoice.totalVat), { x: totalsX + 70, y, size: 10, font: helvetica, color: BLACK });
-	y -= 16;
+	draw("TVA:", { x: totalsX + 20, y, size: 10, font: helvetica, color: BLACK });
+	draw(formatPrice(invoice.totalVat), { x: totalsX + 110, y, size: 10, font: helvetica, color: BLACK });
+	y -= 20;
 
 	// Total TTC with highlight
 	page.drawRectangle({
-		x: totalsX - 5,
-		y: y - 4,
-		width: 140,
-		height: 20,
+		x: totalsX,
+		y: y - 6,
+		width: 200,
+		height: 26,
 		color: LIGHT_GRAY,
 	});
-	draw("Total TTC:", { x: totalsX, y, size: 10, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 70, y, size: 12, font: helveticaBold, color: brandColor });
-	y -= 30;
+	draw("Total TTC:", { x: totalsX + 20, y: y + 2, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 110, y: y, size: 12, font: helveticaBold, color: brandColor });
+	y -= 40;
 
 	// Commission info for partners
 	if (invoice.commissionAmount && invoice.commissionAmount > 0) {
 		draw(`Commission partenaire: ${formatPrice(invoice.commissionAmount)}`, {
 			x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: ORANGE
 		});
-		y -= 14;
+		y -= 16;
 		draw(`Montant net: ${formatPrice(invoice.totalExclVat - invoice.commissionAmount)}`, {
 			x: LEFT_MARGIN, y, size: 10, font: helvetica, color: GRAY
 		});
-		y -= 20;
+		y -= 25;
 	}
 
 	// =========================================================================
@@ -847,9 +877,9 @@ export async function generateInvoicePdf(
 
 	if (invoice.notes) {
 		draw("NOTES", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
-		y -= 14;
+		y -= 16;
 		draw(invoice.notes.substring(0, 100), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
-		y -= 20;
+		y -= 25;
 	}
 
 	// =========================================================================
@@ -857,7 +887,7 @@ export async function generateInvoicePdf(
 	// =========================================================================
 
 	draw("INFORMATIONS DE PAIEMENT / PAYMENT INFO", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
-	y -= 14;
+	y -= 16;
 	if (invoice.paymentTerms) {
 		draw(`Conditions: ${invoice.paymentTerms}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
 		y -= 14;
@@ -894,6 +924,7 @@ export async function generateInvoicePdf(
 
 // ============================================================================
 // Mission Order PDF Generator - Story 25.1
+// Redesigned to match "Billet Co_Exemple" template
 // ============================================================================
 
 export async function generateMissionOrderPdf(
@@ -902,106 +933,256 @@ export async function generateMissionOrderPdf(
 ): Promise<Buffer> {
 	const pdfDoc = await PDFDocument.create();
 	const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-	const { height } = page.getSize();
+	const { height, width } = page.getSize();
 
 	const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 	const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-	// Branding settings
-	const logoPosition = organization.logoPosition ?? "LEFT";
-	const showCompanyName = organization.showCompanyName ?? true;
+	// Branding
 	const brandColorRgb = hexToRgb(organization.brandColor);
 	const brandColor = rgb(brandColorRgb.r, brandColorRgb.g, brandColorRgb.b);
+	const logoImage = await embedLogoIfAvailable(pdfDoc, organization.documentLogoUrl ?? organization.logo);
 
-	const logoImage = await embedLogoIfAvailable(
-		pdfDoc,
-		organization.documentLogoUrl ?? organization.logo
-	);
-
-	let y = height - 50;
 	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
 		page.drawText(sanitizeText(text), options);
 	};
 
-	// --- Header Re-used logic ---
-	const headerY = y;
+	const drawRect = (x: number, y: number, w: number, h: number, fill?: boolean) => {
+		page.drawRectangle({
+			x, y, width: w, height: h,
+			borderColor: BLACK,
+			borderWidth: 0.5,
+			color: fill ? LIGHT_GRAY : undefined,
+		});
+	};
+
+	let y = height - 40;
+	const missionNumber = mission.id.slice(-8).toUpperCase();
+	const pickupTime = formatDateTime(mission.pickupAt).split(" ")[1] || "00:00";
+	const pickupDate = formatDate(mission.pickupAt);
+
+	// =========================================================================
+	// HEADER: Logo + "Fiche de mission" box
+	// =========================================================================
 	
-	y = drawHeader({
-		page,
-		helvetica,
-		helveticaBold,
-		organization,
-		logoImage,
-		title: "FICHE MISSION",
-		referenceLabel: "ID:",
-		referenceValue: mission.id.slice(-8).toUpperCase(),
-		dateLabel: "Date:",
-		dateValue: formatDate(mission.createdAt),
-		color: brandColor,
+	// Logo on the left
+	if (logoImage) {
+		const logoDims = logoImage.scale(Math.min(80 / logoImage.width, 40 / logoImage.height));
+		page.drawImage(logoImage, {
+			x: LEFT_MARGIN,
+			y: y - logoDims.height + 10,
+			width: logoDims.width,
+			height: logoDims.height,
+		});
+	} else {
+		draw(organization.name, { x: LEFT_MARGIN, y: y - 5, size: 14, font: helveticaBold, color: BLACK });
+	}
+
+	// Title box on the right: "Fiche de mission"
+	const titleBoxX = 350;
+	const titleBoxWidth = 195;
+	drawRect(titleBoxX, y - 45, titleBoxWidth, 55, true);
+	draw("Fiche de mission", { x: titleBoxX + 35, y: y - 18, size: 14, font: helveticaBold, color: BLACK });
+	
+	// Reference row: N° de dossier | N° de mission | N° de version
+	const refRowY = y - 32;
+	const colW = titleBoxWidth / 3;
+	draw("N° de dossier", { x: titleBoxX + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
+	draw("N° de mission", { x: titleBoxX + colW + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
+	draw("N° de version", { x: titleBoxX + colW * 2 + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
+	draw(missionNumber, { x: titleBoxX + 15, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+	draw("1", { x: titleBoxX + colW + 25, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+	draw("1", { x: titleBoxX + colW * 2 + 25, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+
+	y -= 60;
+
+	// Dispatch phone
+	if (organization.phone) {
+		draw(`Dispatch : ${organization.phone}`, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: BLACK });
+		y -= 15;
+	}
+
+	// Legal text
+	draw("Billet collectif equivalent ordre de mission selon l'arrete du 14 fevrier 1986 article 5", {
+		x: LEFT_MARGIN, y, size: 7, font: helvetica, color: GRAY
 	});
+	y -= 20;
 
-	// --- Mission Resume ---
-	draw("RESUME MISSION", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
-	const resumeDetails = [
-		["Conducteur / Driver", mission.driverName],
-		["Vehicule / Vehicle", `${mission.vehicleName} ${mission.vehiclePlate ? `(${mission.vehiclePlate})` : ""}`],
-		["Categorie / Category", mission.vehicleCategory],
-	];
-	for (const [label, value] of resumeDetails) {
-		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
-		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
-		y -= 14;
+	// =========================================================================
+	// MAIN TABLE: Date | Client | Chauffeur
+	// =========================================================================
+	
+	const tableY = y;
+	const tableH = 80;
+	const col1W = 120;
+	const col2W = 200;
+	const col3W = CONTENT_WIDTH - col1W - col2W;
+	
+	// Headers
+	drawRect(LEFT_MARGIN, tableY - 15, col1W, 15, true);
+	drawRect(LEFT_MARGIN + col1W, tableY - 15, col2W, 15, true);
+	drawRect(LEFT_MARGIN + col1W + col2W, tableY - 15, col3W, 15, true);
+	draw("Date", { x: LEFT_MARGIN + col1W / 2 - 10, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
+	draw("Client", { x: LEFT_MARGIN + col1W + col2W / 2 - 15, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
+	draw("Chauffeur", { x: LEFT_MARGIN + col1W + col2W + col3W / 2 - 25, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	// Content cells
+	drawRect(LEFT_MARGIN, tableY - 15 - tableH, col1W, tableH);
+	drawRect(LEFT_MARGIN + col1W, tableY - 15 - tableH, col2W, tableH);
+	drawRect(LEFT_MARGIN + col1W + col2W, tableY - 15 - tableH, col3W, tableH);
+
+	// Date cell content
+	draw(pickupDate, { x: LEFT_MARGIN + 5, y: tableY - 35, size: 10, font: helveticaBold, color: BLACK });
+
+	// Client cell content
+	const clientName = mission.endCustomer 
+		? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`
+		: mission.contact.displayName;
+	draw(clientName, { x: LEFT_MARGIN + col1W + 5, y: tableY - 35, size: 9, font: helveticaBold, color: BLACK });
+	draw(`Dossier cree le ${formatDate(mission.createdAt)}`, { x: LEFT_MARGIN + col1W + 5, y: tableY - 50, size: 7, font: helvetica, color: GRAY });
+
+	// Chauffeur cell content
+	const chauffeurX = LEFT_MARGIN + col1W + col2W + 5;
+	draw(mission.driverName, { x: chauffeurX, y: tableY - 30, size: 9, font: helveticaBold, color: BLACK });
+	draw("Type de vehicule", { x: chauffeurX, y: tableY - 50, size: 6, font: helvetica, color: GRAY });
+	draw("Vehicule", { x: chauffeurX + col3W / 2, y: tableY - 50, size: 6, font: helvetica, color: GRAY });
+	draw(mission.vehicleCategory, { x: chauffeurX, y: tableY - 62, size: 8, font: helvetica, color: BLACK });
+	draw(mission.vehiclePlate || "N/A", { x: chauffeurX + col3W / 2, y: tableY - 62, size: 8, font: helvetica, color: BLACK });
+	draw(mission.vehicleName, { x: chauffeurX, y: tableY - 75, size: 7, font: helvetica, color: GRAY });
+
+	y = tableY - 15 - tableH - 10;
+
+	// =========================================================================
+	// SERVICE ROW
+	// =========================================================================
+	
+	const serviceRowH = 50;
+	drawRect(LEFT_MARGIN, y - 15, 80, 15, true);
+	draw("Service", { x: LEFT_MARGIN + 25, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	drawRect(LEFT_MARGIN + 80, y - 15, 140, 15, true);
+	draw("Passager(s) : " + mission.passengerCount, { x: LEFT_MARGIN + 85, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	drawRect(LEFT_MARGIN + 220, y - 15, 275, 15, true);
+	draw("Note au chauffeur", { x: LEFT_MARGIN + 300, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	drawRect(LEFT_MARGIN, y - 15 - serviceRowH, 80, serviceRowH);
+	drawRect(LEFT_MARGIN + 80, y - 15 - serviceRowH, 140, serviceRowH);
+	drawRect(LEFT_MARGIN + 220, y - 15 - serviceRowH, 275, serviceRowH);
+
+	draw("Navettes", { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
+
+	// Passenger details
+	const paxX = LEFT_MARGIN + 85;
+	draw(`Nombre d'adulte(s) : ${mission.passengerCount}`, { x: paxX, y: y - 30, size: 7, font: helvetica, color: BLACK });
+	draw(`Nombre de bagage(s) en cabine : ${mission.luggageCount}`, { x: paxX, y: y - 42, size: 7, font: helvetica, color: BLACK });
+
+	// Notes
+	if (mission.notes) {
+		draw(mission.notes.substring(0, 60), { x: LEFT_MARGIN + 225, y: y - 35, size: 7, font: helvetica, color: BLACK });
 	}
 
-	// --- Trajet ---
-	y -= 10;
-	draw("TRAJET / ITINERARY", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
-	const itineraryDetails = [
-		["Prise en charge / Pickup", mission.pickupAddress.substring(0, 60)],
-		["Destination / Dropoff", (mission.dropoffAddress || "N/A").substring(0, 60)],
-		["Date et heure / Time", formatDateTime(mission.pickupAt)],
-	];
-	for (const [label, value] of itineraryDetails) {
-		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
-		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
-		y -= 14;
+	// Reference mission
+	draw("Reference mission", { x: LEFT_MARGIN + 10, y: y - 60, size: 7, font: helveticaBold, color: GRAY });
+
+	y = y - 15 - serviceRowH - 10;
+
+	// =========================================================================
+	// PICKUP AND DESTINATION
+	// =========================================================================
+	
+	// Prise en charge header
+	drawRect(LEFT_MARGIN, y - 15, CONTENT_WIDTH, 15, true);
+	draw("Prise en charge", { x: LEFT_MARGIN + CONTENT_WIDTH / 2 - 30, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	drawRect(LEFT_MARGIN, y - 55, 80, 40);
+	drawRect(LEFT_MARGIN + 80, y - 55, CONTENT_WIDTH - 80, 40);
+
+	draw(pickupTime, { x: LEFT_MARGIN + 15, y: y - 40, size: 20, font: helveticaBold, color: BLACK });
+	draw(mission.pickupAddress.substring(0, 70), { x: LEFT_MARGIN + 85, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
+
+	y -= 65;
+
+	// Destination header
+	drawRect(LEFT_MARGIN, y - 15, CONTENT_WIDTH, 15, true);
+	draw("Destination", { x: LEFT_MARGIN + CONTENT_WIDTH / 2 - 25, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	drawRect(LEFT_MARGIN, y - 55, CONTENT_WIDTH - 80, 40);
+	drawRect(LEFT_MARGIN + CONTENT_WIDTH - 80, y - 55, 80, 40);
+
+	draw((mission.dropoffAddress || "A definir").substring(0, 70), { x: LEFT_MARGIN + 5, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
+	// Estimated arrival (placeholder)
+	draw("--:--", { x: LEFT_MARGIN + CONTENT_WIDTH - 65, y: y - 40, size: 20, font: helveticaBold, color: BLACK });
+
+	y -= 65;
+
+	// =========================================================================
+	// DRIVER INPUT TABLES
+	// =========================================================================
+	
+	// Informations obligatoires header
+	drawRect(LEFT_MARGIN, y - 15, CONTENT_WIDTH, 15, true);
+	draw("Informations obligatoires a completer", { x: LEFT_MARGIN + CONTENT_WIDTH / 2 - 75, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	// Column headers for driver inputs
+	const inputColW = CONTENT_WIDTH / 5;
+	drawRect(LEFT_MARGIN, y - 35, inputColW, 20, true);
+	drawRect(LEFT_MARGIN + inputColW, y - 35, inputColW, 20, true);
+	drawRect(LEFT_MARGIN + inputColW * 2, y - 35, inputColW, 20, true);
+	drawRect(LEFT_MARGIN + inputColW * 3, y - 35, inputColW, 20, true);
+	drawRect(LEFT_MARGIN + inputColW * 4, y - 35, inputColW, 20, true);
+
+	draw("Heure depart garage", { x: LEFT_MARGIN + 5, y: y - 28, size: 6, font: helvetica, color: GRAY });
+	draw("Heure retour garage", { x: LEFT_MARGIN + inputColW + 5, y: y - 28, size: 6, font: helvetica, color: GRAY });
+	draw("Km depart", { x: LEFT_MARGIN + inputColW * 2 + 15, y: y - 28, size: 6, font: helvetica, color: GRAY });
+	draw("Km arrivee", { x: LEFT_MARGIN + inputColW * 3 + 15, y: y - 28, size: 6, font: helvetica, color: GRAY });
+	draw("TOTAL km", { x: LEFT_MARGIN + inputColW * 4 + 15, y: y - 28, size: 6, font: helvetica, color: GRAY });
+
+	// Empty input cells
+	for (let i = 0; i < 5; i++) {
+		drawRect(LEFT_MARGIN + inputColW * i, y - 55, inputColW, 20);
 	}
 
-	// --- Passengers ---
-	y -= 10;
-	draw("PASSAGERS / PASSENGERS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 18;
-	const passDetails = [
-		["Nombre / Count", `${mission.passengerCount} pers. / ${mission.luggageCount} bag.`],
-		["Contact", mission.endCustomer ? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}` : mission.contact.displayName],
-	];
-	if (mission.notes) passDetails.push(["Notes Speciales", mission.notes.substring(0, 80)]);
-	
-	for (const [label, value] of passDetails) {
-		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
-		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
-		y -= 14;
+	y -= 65;
+
+	// Repas / Observations
+	drawRect(LEFT_MARGIN, y - 15, 120, 15, true);
+	drawRect(LEFT_MARGIN + 120, y - 15, CONTENT_WIDTH - 120, 15, true);
+	draw("Repas", { x: LEFT_MARGIN + 45, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	draw("Observations de fin de mission", { x: LEFT_MARGIN + 200, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	drawRect(LEFT_MARGIN, y - 45, 120, 30);
+	drawRect(LEFT_MARGIN + 120, y - 45, CONTENT_WIDTH - 120, 30);
+
+	y -= 55;
+
+	// Debours Chauffeur
+	drawRect(LEFT_MARGIN, y - 15, 200, 15, true);
+	draw("Debours Chauffeur sur justificatifs", { x: LEFT_MARGIN + 15, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+
+	const expenseItems = ["Parking", "Peage", "Divers", "Total"];
+	for (let i = 0; i < expenseItems.length; i++) {
+		drawRect(LEFT_MARGIN, y - 35 - i * 18, 100, 18, i === 3 ? true : false);
+		drawRect(LEFT_MARGIN + 100, y - 35 - i * 18, 100, 18);
+		draw(expenseItems[i], { x: LEFT_MARGIN + 30, y: y - 30 - i * 18, size: 8, font: i === 3 ? helveticaBold : helvetica, color: BLACK });
 	}
 
-	// --- Driver Input Area ---
-	y -= 30;
-	page.drawRectangle({ x: LEFT_MARGIN, y: y - 100, width: CONTENT_WIDTH, height: 110, borderColor: brandColor, borderWidth: 1 });
-	draw("ZONE CONDUCTEUR (A REMPLIR) / DRIVER AREA", { x: LEFT_MARGIN + 10, y: y - 5, size: 10, font: helveticaBold, color: brandColor });
+	// =========================================================================
+	// FOOTER - Legal info
+	// =========================================================================
 	
-	let inputY = y - 25;
-	draw("Kilometres DEPART: _________ km", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
-	draw("Kilometres ARRIVEE: _________ km", { x: LEFT_MARGIN + 220, y: inputY, size: 10, font: helvetica, color: BLACK });
-	inputY -= 25;
-	draw("Frais Peages / Tolls: _________ EUR", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
-	draw("Parking / Divers: _________ EUR", { x: LEFT_MARGIN + 220, y: inputY, size: 10, font: helvetica, color: BLACK });
-	inputY -= 25;
-	draw("Observations: ____________________________________________________________________", { x: LEFT_MARGIN + 20, y: inputY, size: 10, font: helvetica, color: BLACK });
-	
-	// Footer
-	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: 30, size: 8, font: helvetica, color: GRAY });
-	draw(`Genere par Sixieme Etoile ERP - ${new Date().toLocaleDateString()}`, { x: LEFT_MARGIN, y: 30, size: 8, font: helvetica, color: GRAY });
+	const footerY = 35;
+	const legalText = [
+		organization.name,
+		organization.siret ? `R.C.S. Nanterre - Siret : ${organization.siret}` : "",
+		organization.vatNumber ? `TVA Intra communautaire : ${organization.vatNumber}` : "",
+	].filter(Boolean).join(" - ");
+
+	page.drawLine({
+		start: { x: LEFT_MARGIN, y: footerY + 10 },
+		end: { x: RIGHT_MARGIN, y: footerY + 10 },
+		color: GRAY,
+		thickness: 0.5,
+	});
+	draw(legalText, { x: LEFT_MARGIN, y: footerY, size: 7, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);

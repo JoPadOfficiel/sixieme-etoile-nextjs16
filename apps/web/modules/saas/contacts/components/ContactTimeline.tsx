@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Badge } from "@ui/components/badge";
 import { Skeleton } from "@ui/components/skeleton";
@@ -26,6 +27,11 @@ import type {
 
 interface ContactTimelineProps {
 	contactId: string;
+}
+
+interface TimelineItemCardProps {
+	item: TimelineItem;
+	organizationSlug: string;
 }
 
 /**
@@ -92,7 +98,7 @@ function getInvoiceStatusBadge(status: string) {
 /**
  * Timeline item component
  */
-function TimelineItemCard({ item }: { item: TimelineItem }) {
+function TimelineItemCard({ item, organizationSlug }: TimelineItemCardProps) {
 	const t = useTranslations("contacts.timeline");
 	const isQuote = item.type === "QUOTE";
 	const statusBadge = isQuote
@@ -163,8 +169,8 @@ function TimelineItemCard({ item }: { item: TimelineItem }) {
 					<a
 						href={
 							isQuote
-								? `/app/quotes/${item.id}`
-								: `/app/invoices/${item.id}`
+								? `/app/${organizationSlug}/quotes/${item.id}`
+								: `/app/${organizationSlug}/invoices/${item.id}`
 						}
 					>
 						<Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
@@ -246,6 +252,8 @@ function TimelineSkeleton() {
  */
 export function ContactTimeline({ contactId }: ContactTimelineProps) {
 	const t = useTranslations("contacts.timeline");
+	const params = useParams();
+	const organizationSlug = params.organizationSlug as string;
 	const [data, setData] = useState<ContactTimelineResponse | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -334,7 +342,7 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{data.timeline.map((item) => (
-						<TimelineItemCard key={`${item.type}-${item.id}`} item={item} />
+						<TimelineItemCard key={`${item.type}-${item.id}`} item={item} organizationSlug={organizationSlug} />
 					))}
 				</CardContent>
 			</Card>

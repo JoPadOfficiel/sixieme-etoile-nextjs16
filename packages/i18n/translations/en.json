@@ -297,6 +297,11 @@
 	"invoices": {
 		"title": "Invoices",
 		"description": "Manage your invoices, track payments, and generate exports.",
+		"outstandingBalance": "Outstanding Balance",
+		"invoiceCount": "Invoice Count",
+		"breakdown": "Breakdown",
+		"noOutstandingInvoices": "No outstanding invoices for this contact.",
+		"retry": "Retry",
 		"addInvoice": "New invoice",
 		"search": "Search for an invoice...",
 		"overdue": "Overdue",
@@ -419,6 +424,22 @@
 		"pagination": {
 			"showing": "Showing {from} to {to} of {total} invoices",
 			"page": "Page {current} of {total}"
+		},
+		"bulkPayment": {
+			"title": "Bulk Payment / Reconciliation",
+			"description": "Apply a payment for {contactName}",
+			"totalOutstanding": "Total Outstanding",
+			"paymentAmount": "Payment Amount",
+			"paymentMethod": "Payment Method",
+			"selectMethod": "Select a method",
+			"paymentReference": "Reference (optional)",
+			"referencePlaceholder": "e.g., Transfer #12345",
+			"allocationPreview": "Allocation Preview",
+			"willBePaid": "paid off",
+			"remaining": "Remaining",
+			"overage": "Overpayment (will be credited)",
+			"cancel": "Cancel",
+			"applyPayment": "Apply Payment"
 		}
 	},
 	"newsletter": {
@@ -2250,6 +2271,7 @@
 			"timeline": "Activity",
 			"commercial": "Commercial",
 			"contract": "Contract",
+			"invoices": "Invoices / Payments",
 			"endCustomers": "End Customers"
 		},
 		"endCustomers": {
@@ -2792,7 +2814,9 @@
 				"convertSuccess": "Invoice created successfully",
 				"convertError": "Failed to create invoice",
 				"notesUpdated": "Notes updated",
-				"notesError": "Failed to update notes"
+				"notesError": "Failed to update notes",
+				"generateMissionSheet": "Mission Sheet",
+				"assignDriverFirst": "Please assign a driver first from Dispatch"
 			},
 			"commercial": {
 				"pricing": "Pricing",

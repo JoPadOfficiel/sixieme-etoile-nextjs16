@@ -20,7 +20,7 @@ import { useToast } from "@ui/hooks/use-toast";
  */
 
 // Valid tabs for URL validation
-const VALID_TABS: ContactTab[] = ["details", "timeline", "commercial", "end-customers", "contract"];
+const VALID_TABS: ContactTab[] = ["details", "timeline", "commercial", "invoices", "end-customers", "contract"];
 
 function isValidTab(tab: string | null): tab is ContactTab {
   return tab !== null && VALID_TABS.includes(tab as ContactTab);

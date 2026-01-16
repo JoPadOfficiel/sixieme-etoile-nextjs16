@@ -194,7 +194,7 @@ ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
 ## Story 25.5: Deep Linking Navigation & CRM UX Improvements
 
 ### 🎯 Assignment Box
-- [ ] **AGENT:** Claude 3.5 Sonnet
+- [] **AGENT:** Claude 3.5 Sonnet
 - [ ] **STATUS:** À faire
 - [ ] **STARTED:** 
 - [ ] **COMPLETED:** 

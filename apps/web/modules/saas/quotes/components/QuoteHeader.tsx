@@ -3,18 +3,27 @@
 import { Button } from "@ui/components/button";
 import { Badge } from "@ui/components/badge";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@ui/components/tooltip";
+import {
   ArrowLeftIcon,
   CheckCircleIcon,
   DownloadIcon,
   FileTextIcon,
   Loader2Icon,
   PencilIcon,
+  PrinterIcon,
   SendIcon,
   XCircleIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useMissionOrder } from "@saas/dispatch/hooks/useMissionOrder";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import type { Quote } from "../types";
 
@@ -35,6 +44,7 @@ interface QuoteHeaderProps {
  * Actions are shown based on current quote status.
  * 
  * @see Story 6.3: Quote Detail with Stored tripAnalysis
+ * @see Story 25.1: Mission Sheet generation from accepted quote
  */
 export function QuoteHeader({
   quote,
@@ -47,6 +57,9 @@ export function QuoteHeader({
 }: QuoteHeaderProps) {
   const t = useTranslations();
   const { activeOrganization } = useActiveOrganization();
+  
+  // Story 25.1: Mission order generation
+  const { generateMissionOrder, isGenerating } = useMissionOrder();
 
   const canEdit = quote.status === "DRAFT";
   const canSend = quote.status === "DRAFT";
@@ -54,6 +67,21 @@ export function QuoteHeader({
   // Can only convert if ACCEPTED and no invoice exists yet
   const canConvert = quote.status === "ACCEPTED" && !quote.invoice;
   const hasInvoice = !!quote.invoice;
+  
+  // Story 25.1: Mission Sheet logic
+  // Check if there's an assigned driver in tripAnalysis
+  const tripAnalysis = quote.tripAnalysis as {
+    assignment?: {
+      driverId: string | null;
+      driverName: string | null;
+    } | null;
+  } | null;
+  const hasDriver = !!tripAnalysis?.assignment?.driverId;
+  const isAccepted = quote.status === "ACCEPTED";
+
+  const handleGenerateMissionSheet = () => {
+    generateMissionOrder(quote.id);
+  };
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -156,9 +184,41 @@ export function QuoteHeader({
             {t("documents.actions.generateQuotePdf")}
           </Button>
         )}
+
+        {/* Story 25.1: Mission Sheet button - Only for ACCEPTED quotes with driver */}
+        {isAccepted && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    onClick={handleGenerateMissionSheet}
+                    disabled={isGenerating || !hasDriver}
+                    variant="secondary"
+                  >
+                    {isGenerating ? (
+                      <Loader2Icon className="size-4 mr-2 animate-spin" />
+                    ) : !hasDriver ? (
+                      <AlertTriangleIcon className="size-4 mr-2 text-amber-500" />
+                    ) : (
+                      <PrinterIcon className="size-4 mr-2" />
+                    )}
+                    {t("quotes.detail.actions.generateMissionSheet")}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!hasDriver && (
+                <TooltipContent>
+                  <p>{t("quotes.detail.actions.assignDriverFirst")}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
     </div>
   );
 }
 
 export default QuoteHeader;
+

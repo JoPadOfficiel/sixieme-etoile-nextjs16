@@ -2166,6 +2166,14 @@
 			"invoices": "Factures",
 			"margin": "Marge"
 		},
+		"tabs": {
+			"details": "Détails",
+			"timeline": "Historique",
+			"commercial": "Résumé commercial",
+			"invoices": "Factures / Paiements",
+			"endCustomers": "Clients finaux",
+			"contract": "Contrat partenaire"
+		},
 		"types": {
 			"individual": "Particulier",
 			"business": "Entreprise",
@@ -2267,14 +2275,6 @@
 				"enableGridPricing": "Activer la tarification grille (Méthode 1) pour les futurs devis",
 				"allowCommercialSettings": "Permettre de configurer les paramètres commerciaux (facturation, conditions de paiement, commission)"
 			}
-		},
-		"tabs": {
-			"details": "Détails",
-			"timeline": "Activité",
-			"commercial": "Commercial",
-			"contract": "Contrat",
-			"invoices": "Factures",
-			"endCustomers": "Clients Finaux"
 		},
 		"endCustomers": {
 			"tabTitle": "Clients Finaux",
@@ -2816,7 +2816,9 @@
 				"convertSuccess": "Facture créée avec succès",
 				"convertError": "Échec de la création de la facture",
 				"notesUpdated": "Notes mises à jour",
-				"notesError": "Échec de la mise à jour des notes"
+				"notesError": "Échec de la mise à jour des notes",
+				"generateMissionSheet": "Fiche de mission",
+				"assignDriverFirst": "Veuillez d'abord assigner un chauffeur depuis le Dispatch"
 			},
 			"commercial": {
 				"pricing": "Tarification",
