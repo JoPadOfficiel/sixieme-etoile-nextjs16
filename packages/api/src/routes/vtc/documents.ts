@@ -570,6 +570,13 @@ export const documentsRouter = new Hono()
 			// Generate PDF
 			const pdfData = transformQuoteToPdfData(quote);
 			const orgData = transformOrganizationToPdfData(organization);
+			
+			// Fix: Resolve logo storage path to URL
+			if (orgData.documentLogoUrl) {
+				const storage = getStorageService();
+				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+			}
+
 			const pdfBuffer = await generateQuotePdf(pdfData, orgData);
 
 			// Save to storage
@@ -668,6 +675,13 @@ export const documentsRouter = new Hono()
 			// Generate PDF
 			const pdfData = transformInvoiceToPdfData(invoice);
 			const orgData = transformOrganizationToPdfData(organization);
+
+			// Fix: Resolve logo storage path to URL
+			if (orgData.documentLogoUrl) {
+				const storage = getStorageService();
+				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+			}
+
 			const pdfBuffer = await generateInvoicePdf(pdfData, orgData);
 
 			// Save to storage
@@ -753,6 +767,13 @@ export const documentsRouter = new Hono()
 			// Generate PDF
 			const pdfData = transformMissionToPdfData(quote);
 			const orgData = transformOrganizationToPdfData(organization);
+
+			// Fix: Resolve logo storage path to URL
+			if (orgData.documentLogoUrl) {
+				const storage = getStorageService();
+				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+			}
+
 			const pdfBuffer = await generateMissionOrderPdf(pdfData, orgData);
 
 			// Save to storage

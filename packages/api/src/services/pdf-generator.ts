@@ -1153,7 +1153,19 @@ export async function generateMissionOrderPdf(
 		"EXCURSION": "Excursion",
 	};
 	const serviceLabel = serviceTypeMap[mission.tripType] || "Transport de personnes";
-	draw(serviceLabel, { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
+	
+	// Check width and wrap if necessary (max width ~80px)
+	const serviceWidth = helveticaBold.widthOfTextAtSize(serviceLabel, 9);
+	if (serviceWidth > 75) {
+		const words = serviceLabel.split(" ");
+		const mid = Math.ceil(words.length / 2);
+		const line1 = words.slice(0, mid).join(" ");
+		const line2 = words.slice(mid).join(" ");
+		draw(line1, { x: LEFT_MARGIN + 5, y: y - 30, size: 8, font: helveticaBold, color: BLACK });
+		draw(line2, { x: LEFT_MARGIN + 5, y: y - 40, size: 8, font: helveticaBold, color: BLACK });
+	} else {
+		draw(serviceLabel, { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
+	}
 
 	// Passenger details - booking values
 	const paxX = LEFT_MARGIN + 85;
@@ -1162,13 +1174,13 @@ export async function generateMissionOrderPdf(
 	
 	// Empty fields to be filled by driver after mission
 	draw("Nombre réel adulte(s) :", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 100, y: y - 55 }, end: { x: paxX + 150, y: y - 55 }, thickness: 0.5, color: BLACK });
+	page.drawLine({ start: { x: paxX + 100, y: y - 57 }, end: { x: paxX + 150, y: y - 57 }, thickness: 0.5, color: BLACK });
 
 	draw("Nombre réel enfant(s) :", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 100, y: y - 65 }, end: { x: paxX + 150, y: y - 65 }, thickness: 0.5, color: BLACK });
+	page.drawLine({ start: { x: paxX + 100, y: y - 67 }, end: { x: paxX + 150, y: y - 67 }, thickness: 0.5, color: BLACK });
 
 	draw("Nombre de bagage(s) réel :", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 110, y: y - 75 }, end: { x: paxX + 160, y: y - 75 }, thickness: 0.5, color: BLACK });
+	page.drawLine({ start: { x: paxX + 110, y: y - 77 }, end: { x: paxX + 160, y: y - 77 }, thickness: 0.5, color: BLACK });
 
 	// Notes section - with End Customer for partner missions
 	const notesX = LEFT_MARGIN + 245;
