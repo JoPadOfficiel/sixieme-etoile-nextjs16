@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useQueryState, parseAsString } from "nuqs";
 import { useTranslations } from "next-intl";
 import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyPanel";
 import { useVehicleCategories } from "@saas/quotes/hooks/useVehicleCategories";
@@ -60,9 +61,24 @@ export function DispatchPage() {
 		search: searchParams.get("search") || undefined,
 	};
 
+
 	const [filters, setFilters] = useState<Filters>(initialFilters);
-	const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+	const [selectedMissionId, setSelectedMissionId] = useQueryState("missionId", parseAsString);
 	const [isAssignmentDrawerOpen, setIsAssignmentDrawerOpen] = useState(false);
+	
+	// Map height state for scroll effect
+	const [mapHeight, setMapHeight] = useState(400);
+	const detailsContainerRef = useRef<HTMLDivElement>(null);
+
+	const handleDetailsScroll = () => {
+		if (detailsContainerRef.current) {
+			const scrollTop = detailsContainerRef.current.scrollTop;
+			// Shrink map from 400px down to 200px based on scroll
+			// The map shrinks 1px for every 1px scrolled, until it hits 200px
+			const newHeight = Math.max(200, 400 - scrollTop);
+			setMapHeight(newHeight);
+		}
+	};
 
 	// Story 8.3: Multi-base visualization state
 	const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
@@ -150,7 +166,7 @@ export function DispatchPage() {
 	// Handle mission selection
 	const handleSelectMission = useCallback((missionId: string) => {
 		setSelectedMissionId(missionId);
-	}, []);
+	}, [setSelectedMissionId]);
 
 	// Handle assignment drawer (Story 8.2)
 	const handleOpenAssignmentDrawer = useCallback(() => {
@@ -251,8 +267,11 @@ export function DispatchPage() {
 
 			{/* Right Panel - Map fixed + scrollable details */}
 			<div className="w-2/3 flex flex-col h-full" data-testid="dispatch-right-panel">
-				{/* Map - fixed height, always visible */}
-				<div className="flex-shrink-0 h-[400px]">
+				{/* Map - dynamic height, shrinkage on scroll */}
+				<div 
+					className="flex-shrink-0 transition-[height] duration-75 ease-out will-change-[height]" 
+					style={{ height: `${mapHeight}px` }}
+				>
 					<DispatchMapGoogle
 						mission={selectedMission || null}
 						bases={bases}
@@ -273,7 +292,11 @@ export function DispatchPage() {
 				</div>
 
 				{/* Scrollable details section */}
-				<div className="flex-1 overflow-y-auto min-h-0 pt-4">
+				<div 
+					ref={detailsContainerRef}
+					onScroll={handleDetailsScroll}
+					className="flex-1 overflow-y-auto min-h-0 pt-4"
+				>
 					<div className="flex flex-col gap-4">
 						<TripTransparencyPanel
 							pricingResult={pricingResult}
@@ -319,15 +342,16 @@ export function DispatchPage() {
 						)}
 						{/* Story 8.6: Subcontracting Suggestions */}
 						<SubcontractingSuggestions missionId={selectedMissionId} />
-						<VehicleAssignmentPanel
-							assignment={selectedMission?.assignment || null}
-							isSubcontracted={selectedMission?.isSubcontracted ?? false}
-							subcontractor={selectedMission?.subcontractor ?? null}
-							isLoading={missionDetailLoading}
-							onAssign={selectedMissionId && !selectedMission?.isSubcontracted ? handleOpenAssignmentDrawer : undefined}
-							onChangeSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleChangeSubcontractor : undefined}
-							onRemoveSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleRemoveSubcontractor : undefined}
-						/>
+							<VehicleAssignmentPanel
+								assignment={selectedMission?.assignment || null}
+								isSubcontracted={selectedMission?.isSubcontracted ?? false}
+								subcontractor={selectedMission?.subcontractor ?? null}
+								isLoading={missionDetailLoading}
+								onAssign={selectedMissionId && !selectedMission?.isSubcontracted ? handleOpenAssignmentDrawer : undefined}
+								onChangeSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleChangeSubcontractor : undefined}
+								onRemoveSubcontractor={selectedMissionId && selectedMission?.isSubcontracted ? handleRemoveSubcontractor : undefined}
+								quoteId={selectedMission?.quoteId}
+							/>
 					</div>
 				</div>
 			</div>

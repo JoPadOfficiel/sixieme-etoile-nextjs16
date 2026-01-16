@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 
 // Seasonal Multipliers imports
 import {
@@ -88,16 +89,27 @@ export default function SettingsPricingAdjustmentsPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
-	// Get initial tab from URL or default to "seasonal"
-	const initialTab = (searchParams.get("tab") as TabValue) || "seasonal";
+	// Deep linking for items
+	const [selectedSeasonalId, setSelectedSeasonalId] = useQueryState("seasonalId", parseAsString);
+	const [selectedRateId, setSelectedRateId] = useQueryState("rateId", parseAsString);
+	
+	const [deepLinkedMultiplier, setDeepLinkedMultiplier] = useState<SeasonalMultiplier | null>(null);
+	const [deepLinkedRate, setDeepLinkedRate] = useState<AdvancedRate | null>(null);
+
+	// Get initial tab from URL or default based on deep link or "seasonal"
+	const initialTab = (searchParams.get("tab") as TabValue) || 
+		(searchParams.get("seasonalId") ? "seasonal" : null) || 
+		(searchParams.get("rateId") ? "time-based" : null) || 
+		"seasonal";
+
 	const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
 
 	// Update URL when tab changes
-	const handleTabChange = (value: string) => {
+	const handleTabChange = useCallback((value: string) => {
 		const tab = value as TabValue;
 		setActiveTab(tab);
 		router.replace(`?tab=${tab}`, { scroll: false });
-	};
+	}, [router]);
 
 	// =========================================================================
 	// Seasonal Multipliers State
@@ -105,15 +117,20 @@ export default function SettingsPricingAdjustmentsPage() {
 	const [seasonalStatusFilter, setSeasonalStatusFilter] =
 		useState<SeasonalMultiplierStatusFilter>("all");
 	const [seasonalDialogOpen, setSeasonalDialogOpen] = useState(false);
-	const [editingMultiplier, setEditingMultiplier] =
-		useState<SeasonalMultiplier | null>(null);
+	
+	// Derived editing state
+	const editingMultiplier = useMemo(() => {
+		if (selectedSeasonalId && deepLinkedMultiplier && deepLinkedMultiplier.id === selectedSeasonalId) {
+			return deepLinkedMultiplier;
+		}
+		return null;
+	}, [selectedSeasonalId, deepLinkedMultiplier]);
 	const [deleteSeasonalDialogOpen, setDeleteSeasonalDialogOpen] = useState(false);
 	const [deletingMultiplier, setDeletingMultiplier] =
 		useState<SeasonalMultiplier | null>(null);
 
 	// Seasonal Queries
-	const { data: seasonalStatsData, isLoading: seasonalStatsLoading } =
-		useSeasonalMultiplierStats();
+	const { data: seasonalStatsData } =	useSeasonalMultiplierStats();
 	const { data: multipliersData, isLoading: multipliersLoading } =
 		useSeasonalMultipliers({ status: seasonalStatusFilter });
 
@@ -130,7 +147,13 @@ export default function SettingsPricingAdjustmentsPage() {
 	const [rateStatusFilter, setRateStatusFilter] =
 		useState<AdvancedRateStatusFilter>("all");
 	const [rateDialogOpen, setRateDialogOpen] = useState(false);
-	const [editingRate, setEditingRate] = useState<AdvancedRate | null>(null);
+	
+	const editingRate = useMemo(() => {
+		if (selectedRateId && deepLinkedRate && deepLinkedRate.id === selectedRateId) {
+			return deepLinkedRate;
+		}
+		return null;
+	}, [selectedRateId, deepLinkedRate]);
 	const [deleteRateDialogOpen, setDeleteRateDialogOpen] = useState(false);
 	const [deletingRate, setDeletingRate] = useState<AdvancedRate | null>(null);
 	const [zones, setZones] = useState<PricingZone[]>([]);
@@ -151,7 +174,7 @@ export default function SettingsPricingAdjustmentsPage() {
 	}, []);
 
 	// Advanced Rates Queries
-	const { data: rateStatsData, isLoading: rateStatsLoading } =
+	const { data: rateStatsData } =
 		useAdvancedRateStats();
 	const { data: ratesData, isLoading: ratesLoading } = useAdvancedRates({
 		type: rateTypeFilter,
@@ -163,17 +186,88 @@ export default function SettingsPricingAdjustmentsPage() {
 	const updateRateMutation = useUpdateAdvancedRate();
 	const deleteRateMutation = useDeleteAdvancedRate();
 
+	// Auto-switch tab based on deep linking
+	useEffect(() => {
+		if (selectedSeasonalId) {
+			handleTabChange("seasonal");
+		} else if (selectedRateId) {
+			handleTabChange("time-based");
+		}
+	}, [selectedSeasonalId, selectedRateId, handleTabChange]);
+
+	// Fetch deep linked items
+	useEffect(() => {
+		const fetchDeepLinkMultiplier = async () => {
+			if (!selectedSeasonalId) {
+				setDeepLinkedMultiplier(null);
+				return;
+			}
+			// Check if already loaded in list
+			if (multipliersData?.data) {
+				const existing = multipliersData.data.find(m => m.id === selectedSeasonalId);
+				if (existing) {
+					setDeepLinkedMultiplier(existing);
+					setSeasonalDialogOpen(true);
+					return;
+				}
+			}
+
+			try {
+				const response = await fetch(`/api/vtc/pricing/seasonal-multipliers/${selectedSeasonalId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedMultiplier(data);
+					setSeasonalDialogOpen(true);
+				} else {
+					toast({ title: tCommon("error"), description: tSeasonal("toast.error"), variant: "error" });
+					setSelectedSeasonalId(null);
+				}
+			} catch (e) { console.error(e); }
+		};
+		fetchDeepLinkMultiplier();
+	}, [selectedSeasonalId, multipliersData, toast, tCommon, tSeasonal, setSelectedSeasonalId]);
+
+	useEffect(() => {
+		const fetchDeepLinkRate = async () => {
+			if (!selectedRateId) {
+				setDeepLinkedRate(null);
+				return;
+			}
+			if (ratesData?.data) {
+				const existing = ratesData.data.find(r => r.id === selectedRateId);
+				if (existing) {
+					setDeepLinkedRate(existing);
+					setRateDialogOpen(true);
+					return;
+				}
+			}
+			try {
+				const response = await fetch(`/api/vtc/pricing/advanced-rates/${selectedRateId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedRate(data);
+					setRateDialogOpen(true);
+				} else {
+					toast({ title: tCommon("error"), description: tAdvanced("toast.error"), variant: "error" });
+					setSelectedRateId(null);
+				}
+			} catch (e) { console.error(e); }
+		};
+		fetchDeepLinkRate();
+	}, [selectedRateId, ratesData, toast, tCommon, tAdvanced, setSelectedRateId]);
+
 	// =========================================================================
 	// Seasonal Multipliers Handlers
 	// =========================================================================
 	const handleAddMultiplier = () => {
-		setEditingMultiplier(null);
+		setSelectedSeasonalId(null);
+		setDeepLinkedMultiplier(null);
 		setSeasonalDialogOpen(true);
 	};
 
 	const handleEditMultiplier = (multiplier: SeasonalMultiplier) => {
-		setEditingMultiplier(multiplier);
-		setSeasonalDialogOpen(true);
+		setSelectedSeasonalId(multiplier.id);
+		// Dialog open handled by effect
 	};
 
 	const handleDeleteMultiplier = (multiplier: SeasonalMultiplier) => {
@@ -204,7 +298,8 @@ export default function SettingsPricingAdjustmentsPage() {
 				});
 			}
 			setSeasonalDialogOpen(false);
-			setEditingMultiplier(null);
+			setSelectedSeasonalId(null);
+			setDeepLinkedMultiplier(null);
 		} catch (error) {
 			toast({
 				title: tCommon("error"),
@@ -240,13 +335,14 @@ export default function SettingsPricingAdjustmentsPage() {
 	// Advanced Rates Handlers
 	// =========================================================================
 	const handleAddRate = () => {
-		setEditingRate(null);
+		setSelectedRateId(null);
+		setDeepLinkedRate(null);
 		setRateDialogOpen(true);
 	};
 
 	const handleEditRate = (rate: AdvancedRate) => {
-		setEditingRate(rate);
-		setRateDialogOpen(true);
+		setSelectedRateId(rate.id);
+		// Dialog open handled by effect
 	};
 
 	const handleDeleteRate = (rate: AdvancedRate) => {
@@ -275,7 +371,8 @@ export default function SettingsPricingAdjustmentsPage() {
 				});
 			}
 			setRateDialogOpen(false);
-			setEditingRate(null);
+			setSelectedRateId(null);
+			setDeepLinkedRate(null);
 		} catch (error) {
 			toast({
 				title: tCommon("error"),
@@ -461,7 +558,10 @@ export default function SettingsPricingAdjustmentsPage() {
 			{/* Seasonal Multiplier Dialogs */}
 			<SeasonalMultiplierFormDialog
 				open={seasonalDialogOpen}
-				onOpenChange={setSeasonalDialogOpen}
+				onOpenChange={(open) => {
+					setSeasonalDialogOpen(open);
+					if (!open) { setSelectedSeasonalId(null); setDeepLinkedMultiplier(null); }
+				}}
 				multiplier={editingMultiplier}
 				onSubmit={handleSeasonalSubmit}
 				isSubmitting={
@@ -503,7 +603,10 @@ export default function SettingsPricingAdjustmentsPage() {
 			{/* Advanced Rate Dialogs */}
 			<AdvancedRateFormDialog
 				open={rateDialogOpen}
-				onOpenChange={setRateDialogOpen}
+				onOpenChange={(open) => {
+					setRateDialogOpen(open);
+					if (!open) { setSelectedRateId(null); setDeepLinkedRate(null); }
+				}}
 				rate={editingRate}
 				zones={zones}
 				onSubmit={handleRateSubmit}

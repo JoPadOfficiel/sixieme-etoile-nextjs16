@@ -32,7 +32,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 
 // Optional Fees imports
 import {
@@ -85,16 +86,27 @@ export default function SettingsPricingExtrasPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
-	// Get initial tab from URL or default to "fees"
-	const initialTab = (searchParams.get("tab") as TabValue) || "fees";
+	// Deep linking
+	const [selectedFeeId, setSelectedFeeId] = useQueryState("feeId", parseAsString);
+	const [selectedPromoId, setSelectedPromoId] = useQueryState("promoId", parseAsString);
+	
+	const [deepLinkedFee, setDeepLinkedFee] = useState<OptionalFee | null>(null);
+	const [deepLinkedPromo, setDeepLinkedPromo] = useState<Promotion | null>(null);
+
+	// Get initial tab from URL or default based on deep link or "fees"
+	const initialTab = (searchParams.get("tab") as TabValue) || 
+		(searchParams.get("feeId") ? "fees" : null) || 
+		(searchParams.get("promoId") ? "promotions" : null) || 
+		"fees";
+
 	const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
 
 	// Update URL when tab changes
-	const handleTabChange = (value: string) => {
+	const handleTabChange = useCallback((value: string) => {
 		const tab = value as TabValue;
 		setActiveTab(tab);
 		router.replace(`?tab=${tab}`, { scroll: false });
-	};
+	}, [router]);
 
 	// =========================================================================
 	// Optional Fees State
@@ -103,7 +115,13 @@ export default function SettingsPricingExtrasPage() {
 	const [feeStatusFilter, setFeeStatusFilter] =
 		useState<OptionalFeeStatusFilter>("all");
 	const [feeDialogOpen, setFeeDialogOpen] = useState(false);
-	const [editingFee, setEditingFee] = useState<OptionalFee | null>(null);
+	
+	const editingFee = useMemo(() => {
+		if (selectedFeeId && deepLinkedFee && deepLinkedFee.id === selectedFeeId) {
+			return deepLinkedFee;
+		}
+		return null;
+	}, [selectedFeeId, deepLinkedFee]);
 	const [deleteFeeDialogOpen, setDeleteFeeDialogOpen] = useState(false);
 	const [deletingFee, setDeletingFee] = useState<OptionalFee | null>(null);
 
@@ -127,7 +145,13 @@ export default function SettingsPricingExtrasPage() {
 	const [promoStatusFilter, setPromoStatusFilter] =
 		useState<PromotionStatusFilter>("all");
 	const [promoDialogOpen, setPromoDialogOpen] = useState(false);
-	const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+	
+	const editingPromotion = useMemo(() => {
+		if (selectedPromoId && deepLinkedPromo && deepLinkedPromo.id === selectedPromoId) {
+			return deepLinkedPromo;
+		}
+		return null;
+	}, [selectedPromoId, deepLinkedPromo]);
 	const [deletePromoDialogOpen, setDeletePromoDialogOpen] = useState(false);
 	const [deletingPromotion, setDeletingPromotion] = useState<Promotion | null>(null);
 
@@ -143,24 +167,85 @@ export default function SettingsPricingExtrasPage() {
 	const updatePromoMutation = useUpdatePromotion();
 	const deletePromoMutation = useDeletePromotion();
 
+	// Fetch deep linked items
+	useEffect(() => {
+		const fetchDeepLinkFee = async () => {
+			if (!selectedFeeId) {
+				setDeepLinkedFee(null);
+				return;
+			}
+			if (feesData?.data) {
+				const existing = feesData.data.find(f => f.id === selectedFeeId);
+				if (existing) {
+					setDeepLinkedFee(existing);
+					setFeeDialogOpen(true);
+					return;
+				}
+			}
+			try {
+				const response = await fetch(`/api/vtc/pricing/optional-fees/${selectedFeeId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedFee(data);
+					setFeeDialogOpen(true);
+				} else {
+					toast({ title: tCommon("error"), description: tFees("toast.error"), variant: "error" });
+					setSelectedFeeId(null);
+				}
+			} catch (e) { console.error(e); }
+		};
+		fetchDeepLinkFee();
+	}, [selectedFeeId, feesData, toast, tCommon, tFees, setSelectedFeeId]);
+
+	useEffect(() => {
+		const fetchDeepLinkPromo = async () => {
+			if (!selectedPromoId) {
+				setDeepLinkedPromo(null);
+				return;
+			}
+			if (promotionsData?.data) {
+				const existing = promotionsData.data.find(p => p.id === selectedPromoId);
+				if (existing) {
+					setDeepLinkedPromo(existing);
+					setPromoDialogOpen(true);
+					return;
+				}
+			}
+			try {
+				const response = await fetch(`/api/vtc/pricing/promotions/${selectedPromoId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedPromo(data);
+					setPromoDialogOpen(true);
+				} else {
+					toast({ title: tCommon("error"), description: tPromos("toast.error"), variant: "error" });
+					setSelectedPromoId(null);
+				}
+			} catch (e) { console.error(e); }
+		};
+		fetchDeepLinkPromo();
+	}, [selectedPromoId, promotionsData, toast, tCommon, tPromos, setSelectedPromoId]);
+
 	// =========================================================================
 	// Optional Fees Handlers
 	// =========================================================================
 	const handleAddFee = () => {
-		setEditingFee(null);
+		setSelectedFeeId(null);
+		setDeepLinkedFee(null);
 		setFeeDialogOpen(true);
 	};
 
 	const handleEditFee = (fee: OptionalFee) => {
-		setEditingFee(fee);
-		setFeeDialogOpen(true);
+		setSelectedFeeId(fee.id);
+		// Dialog open handled by effect
 	};
 
 	const handleFeeDialogOpenChange = (open: boolean) => {
 		setFeeDialogOpen(open);
 		if (!open) {
 			// Reset editing fee when dialog closes (Story 23.3 fix)
-			setEditingFee(null);
+			setSelectedFeeId(null);
+			setDeepLinkedFee(null);
 		}
 	};
 
@@ -190,7 +275,8 @@ export default function SettingsPricingExtrasPage() {
 				});
 			}
 			setFeeDialogOpen(false);
-			setEditingFee(null);
+			setSelectedFeeId(null);
+			setDeepLinkedFee(null);
 		} catch (error) {
 			toast({
 				title: tCommon("error"),
@@ -226,20 +312,22 @@ export default function SettingsPricingExtrasPage() {
 	// Promotions Handlers
 	// =========================================================================
 	const handleAddPromotion = () => {
-		setEditingPromotion(null);
+		setSelectedPromoId(null);
+		setDeepLinkedPromo(null);
 		setPromoDialogOpen(true);
 	};
 
 	const handleEditPromotion = (promotion: Promotion) => {
-		setEditingPromotion(promotion);
-		setPromoDialogOpen(true);
+		setSelectedPromoId(promotion.id);
+		// Dialog open handled by effect
 	};
 
 	const handlePromoDialogOpenChange = (open: boolean) => {
 		setPromoDialogOpen(open);
 		if (!open) {
 			// Reset editing promotion when dialog closes (Story 23.3 fix)
-			setEditingPromotion(null);
+			setSelectedPromoId(null);
+			setDeepLinkedPromo(null);
 		}
 	};
 
@@ -269,7 +357,8 @@ export default function SettingsPricingExtrasPage() {
 				});
 			}
 			setPromoDialogOpen(false);
-			setEditingPromotion(null);
+			setSelectedPromoId(null);
+			setDeepLinkedPromo(null);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : tPromos("toast.error");
 			const isCodeExists = errorMessage.toLowerCase().includes("already exists");

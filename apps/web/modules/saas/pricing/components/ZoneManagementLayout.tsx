@@ -9,7 +9,8 @@
 
 import { useToast } from "@ui/hooks/use-toast";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useQueryState, parseAsString } from "nuqs";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import type { PricingZone, PricingZoneFormData, PricingZonesListResponse } from "../types";
 import { ZoneDrawer } from "./ZoneDrawer";
 import { ZoneQuickEditPanel } from "./ZoneQuickEditPanel";
@@ -32,7 +33,14 @@ export function ZoneManagementLayout({
 	// State
 	const [zones, setZones] = useState<PricingZone[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [selectedZone, setSelectedZone] = useState<PricingZone | null>(null);
+	
+	// Deep Linking: use ID from URL
+	const [selectedZoneId, setSelectedZoneId] = useQueryState("id", parseAsString);
+	
+	const selectedZone = useMemo(() => 
+		zones.find((z) => z.id === selectedZoneId) || null
+	, [zones, selectedZoneId]);
+
 	const [search, setSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
@@ -85,8 +93,8 @@ export function ZoneManagementLayout({
 
 	// Handle zone selection from list or map
 	const handleSelectZone = useCallback((zone: PricingZone) => {
-		setSelectedZone(zone);
-	}, []);
+		setSelectedZoneId(zone.id);
+	}, [setSelectedZoneId]);
 
 	// Handle double-click to edit
 	const handleDoubleClickZone = useCallback((zone: PricingZone) => {
@@ -147,7 +155,7 @@ export function ZoneManagementLayout({
 				description: t("pricing.zones.deleteSuccess"),
 			});
 
-			setSelectedZone(null);
+			setSelectedZoneId(null);
 			fetchZones();
 		} catch {
 			toast({
@@ -156,7 +164,7 @@ export function ZoneManagementLayout({
 				variant: "error",
 			});
 		}
-	}, [selectedZone, t, toast, fetchZones]);
+	}, [selectedZone, t, toast, fetchZones, setSelectedZoneId]);
 
 	// Handle form submit
 	const handleSubmit = useCallback(
@@ -201,8 +209,8 @@ export function ZoneManagementLayout({
 
 	// Close quick edit panel
 	const handleCloseQuickEdit = useCallback(() => {
-		setSelectedZone(null);
-	}, []);
+		setSelectedZoneId(null);
+	}, [setSelectedZoneId]);
 
 	// Story 17.11: Handle zone topology validation
 	const handleValidate = useCallback(async () => {
@@ -238,10 +246,10 @@ export function ZoneManagementLayout({
 	const handleSelectZoneById = useCallback((zoneId: string) => {
 		const zone = zones.find((z) => z.id === zoneId);
 		if (zone) {
-			setSelectedZone(zone);
+			setSelectedZoneId(zone.id);
 			setValidationResult(null);
 		}
-	}, [zones]);
+	}, [zones, setSelectedZoneId]);
 
 	return (
 		<div className="flex h-[calc(100vh-12rem)] gap-0 rounded-lg border overflow-hidden">

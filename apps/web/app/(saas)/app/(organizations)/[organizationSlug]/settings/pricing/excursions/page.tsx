@@ -14,7 +14,8 @@ import { Button } from "@ui/components/button";
 import { useToast } from "@ui/hooks/use-toast";
 import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 import { ExcursionDrawer, ExcursionsTable, PartnerAssignmentDialog } from "@saas/pricing/components";
 import type {
 	ExcursionPackage,
@@ -45,9 +46,67 @@ export default function SettingsPricingExcursionsPage() {
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 
+	// Deep linking
+	const [selectedExcursionId, setSelectedExcursionId] = useQueryState("id", parseAsString);
+	const [deepLinkedExcursion, setDeepLinkedExcursion] = useState<ExcursionPackage | null>(null);
+	const [isDeepLinkLoading, setIsDeepLinkLoading] = useState(false);
+
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [editingExcursion, setEditingExcursion] =
-		useState<ExcursionPackage | null>(null);
+	
+	const editingExcursion = useMemo(() => {
+		if (selectedExcursionId && deepLinkedExcursion && deepLinkedExcursion.id === selectedExcursionId) {
+			return deepLinkedExcursion;
+		}
+		return null;
+	}, [selectedExcursionId, deepLinkedExcursion]);
+
+	// Fetch specific excursion if ID in URL
+	useEffect(() => {
+		const fetchDeepLinkExcursion = async () => {
+			if (!selectedExcursionId) {
+				setDeepLinkedExcursion(null);
+				return;
+			}
+			
+			const existing = excursions.find(e => e.id === selectedExcursionId);
+			if (existing) {
+				setDeepLinkedExcursion(existing);
+				setDrawerOpen(true);
+				return;
+			}
+
+			setIsDeepLinkLoading(true);
+			try {
+				const response = await fetch(`/api/vtc/pricing/excursions/${selectedExcursionId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedExcursion(data);
+					setDrawerOpen(true);
+				} else {
+					toast({
+						title: t("common.error"),
+						description: t("excursions.errors.notFound"),
+						variant: "error"
+					});
+					setSelectedExcursionId(null);
+				}
+			} catch (e) {
+				console.error(e);
+			} finally {
+				setIsDeepLinkLoading(false);
+			}
+		};
+
+		fetchDeepLinkExcursion();
+	}, [selectedExcursionId, excursions, toast, t, setSelectedExcursionId]);
+
+	const handleDrawerOpenChange = (open: boolean) => {
+		setDrawerOpen(open);
+		if (!open && selectedExcursionId) {
+			setSelectedExcursionId(null);
+			setDeepLinkedExcursion(null);
+		}
+	};
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [excursionToDelete, setExcursionToDelete] =
@@ -165,7 +224,8 @@ export default function SettingsPricingExcursionsPage() {
 			});
 
 			setDrawerOpen(false);
-			setEditingExcursion(null);
+			setSelectedExcursionId(null);
+			setDeepLinkedExcursion(null);
 			fetchExcursions();
 		} catch (error) {
 			toast({
@@ -218,8 +278,8 @@ export default function SettingsPricingExcursionsPage() {
 	};
 
 	const handleEdit = (excursion: ExcursionPackage) => {
-		setEditingExcursion(excursion);
-		setDrawerOpen(true);
+		setSelectedExcursionId(excursion.id);
+		// Drawer open handled by effect
 	};
 
 	const handleDeleteClick = (excursion: ExcursionPackage) => {
@@ -228,7 +288,8 @@ export default function SettingsPricingExcursionsPage() {
 	};
 
 	const handleAddNew = () => {
-		setEditingExcursion(null);
+		setSelectedExcursionId(null);
+		setDeepLinkedExcursion(null);
 		setDrawerOpen(true);
 	};
 
@@ -272,7 +333,7 @@ export default function SettingsPricingExcursionsPage() {
 
 			<ExcursionDrawer
 				open={drawerOpen}
-				onOpenChange={setDrawerOpen}
+				onOpenChange={handleDrawerOpenChange}
 				excursion={editingExcursion}
 				onSubmit={handleSubmit}
 				isLoading={isSubmitting}

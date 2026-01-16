@@ -22,16 +22,34 @@ import type {
 } from "../types";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 
+/**
+ * Story 25.5: Deep Linking Navigation for Drivers
+ * Valid tab values for DriverDrawer deep linking.
+ * 
+ * @example URL: /drivers?id=abc123&tab=calendar
+ */
+export type DriverTab = "details" | "calendar" | "compliance";
+
 interface DriverDrawerProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	driver?: DriverWithLicenses | null;
+	/** Story 25.5: Initial tab to open for deep linking */
+	initialTab?: DriverTab;
+	/** Story 25.5: Callback when tab changes for URL sync */
+	onTabChange?: (tab: DriverTab) => void;
 }
 
-export function DriverDrawer({ open, onOpenChange, driver }: DriverDrawerProps) {
+export function DriverDrawer({ 
+	open, 
+	onOpenChange, 
+	driver,
+	initialTab,
+	onTabChange,
+}: DriverDrawerProps) {
 	const t = useTranslations();
 	const { activeOrganization } = useActiveOrganization();
-	const [activeTab, setActiveTab] = useState("details");
+	const [activeTab, setActiveTab] = useState<DriverTab>("details");
 	const [complianceSnapshot, setComplianceSnapshot] = useState<ComplianceSnapshotType | null>(null);
 	const [auditLogs, setAuditLogs] = useState<ComplianceAuditLog[]>([]);
 	const [isLoadingCompliance, setIsLoadingCompliance] = useState(false);
@@ -77,6 +95,16 @@ export function DriverDrawer({ open, onOpenChange, driver }: DriverDrawerProps) 
 		onOpenChange(false);
 	};
 
+	// Story 25.5: Use initialTab if provided and drawer is open
+	const effectiveTab = (open && initialTab) ? initialTab : activeTab;
+
+	// Handle tab changes - both local state and callback
+	const handleTabChange = (tab: string) => {
+		const newTab = tab as DriverTab;
+		setActiveTab(newTab);
+		onTabChange?.(newTab);
+	};
+
 	// Reset tab when drawer closes
 	useEffect(() => {
 		if (!open) {
@@ -101,7 +129,7 @@ export function DriverDrawer({ open, onOpenChange, driver }: DriverDrawerProps) 
 				</SheetHeader>
 
 				{driver ? (
-					<Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+						<Tabs value={effectiveTab} onValueChange={handleTabChange} className="mt-6">
 						<TabsList className="grid w-full grid-cols-3">
 							<TabsTrigger value="details" className="flex items-center gap-2">
 								<User className="h-4 w-4" />

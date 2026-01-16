@@ -14,7 +14,8 @@ import { Button } from "@ui/components/button";
 import { useToast } from "@ui/hooks/use-toast";
 import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 import { DispoDrawer, DisposTable, PartnerAssignmentDialog } from "@saas/pricing/components";
 import type {
 	DispoPackage,
@@ -42,8 +43,67 @@ export default function SettingsPricingDisposPage() {
 	const [vehicleCategoryId, setVehicleCategoryId] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 
+	// Deep linking
+	const [selectedDispoId, setSelectedDispoId] = useQueryState("id", parseAsString);
+	const [deepLinkedDispo, setDeepLinkedDispo] = useState<DispoPackage | null>(null);
+	const [isDeepLinkLoading, setIsDeepLinkLoading] = useState(false);
+
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [editingDispo, setEditingDispo] = useState<DispoPackage | null>(null);
+	
+	const editingDispo = useMemo(() => {
+		if (selectedDispoId && deepLinkedDispo && deepLinkedDispo.id === selectedDispoId) {
+			return deepLinkedDispo;
+		}
+		return null;
+	}, [selectedDispoId, deepLinkedDispo]);
+
+	// Fetch specific dispo if ID in URL
+	useEffect(() => {
+		const fetchDeepLinkDispo = async () => {
+			if (!selectedDispoId) {
+				setDeepLinkedDispo(null);
+				return;
+			}
+			
+			const existing = dispos.find(d => d.id === selectedDispoId);
+			if (existing) {
+				setDeepLinkedDispo(existing);
+				setDrawerOpen(true);
+				return;
+			}
+
+			setIsDeepLinkLoading(true);
+			try {
+				const response = await fetch(`/api/vtc/pricing/dispos/${selectedDispoId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedDispo(data);
+					setDrawerOpen(true);
+				} else {
+					toast({
+						title: t("common.error"),
+						description: t("dispos.errors.notFound"),
+						variant: "error"
+					});
+					setSelectedDispoId(null);
+				}
+			} catch (e) {
+				console.error(e);
+			} finally {
+				setIsDeepLinkLoading(false);
+			}
+		};
+
+		fetchDeepLinkDispo();
+	}, [selectedDispoId, dispos, toast, t, setSelectedDispoId]);
+
+	const handleDrawerOpenChange = (open: boolean) => {
+		setDrawerOpen(open);
+		if (!open && selectedDispoId) {
+			setSelectedDispoId(null);
+			setDeepLinkedDispo(null);
+		}
+	};
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [dispoToDelete, setDispoToDelete] = useState<DispoPackage | null>(null);
@@ -139,7 +199,8 @@ export default function SettingsPricingDisposPage() {
 			});
 
 			setDrawerOpen(false);
-			setEditingDispo(null);
+			setSelectedDispoId(null);
+			setDeepLinkedDispo(null);
 			fetchDispos();
 		} catch (error) {
 			toast({
@@ -192,8 +253,8 @@ export default function SettingsPricingDisposPage() {
 	};
 
 	const handleEdit = (dispo: DispoPackage) => {
-		setEditingDispo(dispo);
-		setDrawerOpen(true);
+		setSelectedDispoId(dispo.id);
+		// Drawer open handled by effect
 	};
 
 	const handleDeleteClick = (dispo: DispoPackage) => {
@@ -202,7 +263,8 @@ export default function SettingsPricingDisposPage() {
 	};
 
 	const handleAddNew = () => {
-		setEditingDispo(null);
+		setSelectedDispoId(null);
+		setDeepLinkedDispo(null);
 		setDrawerOpen(true);
 	};
 
@@ -243,7 +305,7 @@ export default function SettingsPricingDisposPage() {
 
 			<DispoDrawer
 				open={drawerOpen}
-				onOpenChange={setDrawerOpen}
+				onOpenChange={handleDrawerOpenChange}
 				dispo={editingDispo}
 				onSubmit={handleSubmit}
 				isLoading={isSubmitting}

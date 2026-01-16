@@ -15,7 +15,8 @@ import { Tabs, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useToast } from "@ui/hooks/use-toast";
 import { GridIcon, ListIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 import {
 	CoverageMatrix,
 	CoverageStatsCard,
@@ -71,8 +72,73 @@ export default function SettingsPricingRoutesPage() {
 	const [prefillFromZoneId, setPrefillFromZoneId] = useState<string | null>(null);
 	const [prefillToZoneId, setPrefillToZoneId] = useState<string | null>(null);
 
+	// Deep linking state
+	const [selectedRouteId, setSelectedRouteId] = useQueryState("id", parseAsString);
+	const [deepLinkedRoute, setDeepLinkedRoute] = useState<ZoneRoute | null>(null);
+	const [isDeepLinkLoading, setIsDeepLinkLoading] = useState(false);
+
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [editingRoute, setEditingRoute] = useState<ZoneRoute | null>(null);
+	
+	// Create editingRoute derived from deep link or manual selection
+	// Note: We don't use useMemo purely because we need to handle "new" state which is separate
+	// But effectively: if selectedRouteId set, we try to use loaded deepLinkedRoute
+	const editingRoute = useMemo(() => {
+		if (selectedRouteId && deepLinkedRoute && deepLinkedRoute.id === selectedRouteId) {
+			return deepLinkedRoute;
+		}
+		return null;
+	}, [selectedRouteId, deepLinkedRoute]);
+
+	// Fetch specific route if ID in URL
+	useEffect(() => {
+		const fetchDeepLinkRoute = async () => {
+			if (!selectedRouteId) {
+				setDeepLinkedRoute(null);
+				return;
+			}
+			
+			// If we already have it in the list, use it (optimization)
+			const existing = routes.find(r => r.id === selectedRouteId);
+			if (existing) {
+				setDeepLinkedRoute(existing);
+				setDrawerOpen(true);
+				return;
+			}
+
+			setIsDeepLinkLoading(true);
+			try {
+				const response = await fetch(`/api/vtc/pricing/routes/${selectedRouteId}`);
+				if (response.ok) {
+					const data = await response.json();
+					setDeepLinkedRoute(data);
+					setDrawerOpen(true);
+				} else {
+					// Route not found or error
+					toast({
+						title: t("common.error"),
+						description: t("routes.errors.notFound"),
+						variant: "error"
+					});
+					setSelectedRouteId(null);
+				}
+			} catch (e) {
+				console.error(e);
+			} finally {
+				setIsDeepLinkLoading(false);
+			}
+		};
+
+		fetchDeepLinkRoute();
+	}, [selectedRouteId, routes, toast, t, setSelectedRouteId]);
+
+	// Handle drawer close to clear URL
+	const handleDrawerOpenChange = (open: boolean) => {
+		setDrawerOpen(open);
+		if (!open && selectedRouteId) {
+			setSelectedRouteId(null);
+			setDeepLinkedRoute(null);
+		}
+	};
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [routeToDelete, setRouteToDelete] = useState<ZoneRoute | null>(null);
@@ -232,7 +298,8 @@ export default function SettingsPricingRoutesPage() {
 			});
 
 			setDrawerOpen(false);
-			setEditingRoute(null);
+			setSelectedRouteId(null); // Clear deep link
+			setDeepLinkedRoute(null);
 			setPrefillFromZoneId(null);
 			setPrefillToZoneId(null);
 			refreshAllData();
@@ -289,8 +356,8 @@ export default function SettingsPricingRoutesPage() {
 	};
 
 	const handleEdit = (route: ZoneRoute) => {
-		setEditingRoute(route);
-		setDrawerOpen(true);
+		setSelectedRouteId(route.id);
+		// Drawer open handled by effect
 	};
 
 	const handleDeleteClick = (route: ZoneRoute) => {
@@ -305,7 +372,8 @@ export default function SettingsPricingRoutesPage() {
 	};
 
 	const handleAddNew = () => {
-		setEditingRoute(null);
+		setSelectedRouteId(null); // Ensure no deep link
+		setDeepLinkedRoute(null);
 		setPrefillFromZoneId(null);
 		setPrefillToZoneId(null);
 		setDrawerOpen(true);
@@ -324,7 +392,8 @@ export default function SettingsPricingRoutesPage() {
 			}
 		} else {
 			// Create new route with prefilled zones
-			setEditingRoute(null);
+			setSelectedRouteId(null);
+			setDeepLinkedRoute(null);
 			setPrefillFromZoneId(fromZoneId);
 			setPrefillToZoneId(toZoneId);
 			setDrawerOpen(true);
@@ -403,7 +472,7 @@ export default function SettingsPricingRoutesPage() {
 			<RouteDrawer
 				key={editingRoute?.id ?? `new-${prefillFromZoneId}-${prefillToZoneId}`}
 				open={drawerOpen}
-				onOpenChange={setDrawerOpen}
+				onOpenChange={handleDrawerOpenChange}
 				route={editingRoute}
 				onSubmit={handleSubmit}
 				isLoading={isSubmitting}
