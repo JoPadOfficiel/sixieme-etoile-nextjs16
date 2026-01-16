@@ -20,7 +20,7 @@
 
 import { db } from "@repo/database";
 import type { FuelType } from "@prisma/client";
-import { DEFAULT_COST_PARAMETERS } from "./pricing-engine";
+import { DEFAULT_COST_PARAMETERS } from "./pricing/constants";
 import {
 	fetchFuelPrices,
 	type FuelPrices,

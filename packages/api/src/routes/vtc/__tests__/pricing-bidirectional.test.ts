@@ -2,25 +2,39 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { testClient } from "hono/testing";
 import { Hono } from "hono";
 import { pricingCalculateRouter } from "../pricing-calculate";
-import type { ContactData } from "../../services/pricing/types";
+import type { ContactData } from "../../../services/pricing/types";
 
 // Mock database
 vi.mock("@repo/database", () => ({
   db: {
     contact: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     endCustomer: {
       findUnique: vi.fn(),
-    },
-    zone: {
-      findMany: vi.fn(),
     },
     pricingZone: {
       findMany: vi.fn(),
     },
     vehicleCategory: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    organizationPricingSettings: {
+      findFirst: vi.fn(),
+    },
+    organizationIntegrationSettings: {
+      findFirst: vi.fn(),
+    },
+    advancedRate: {
+      findMany: vi.fn(),
+    },
+    seasonalMultiplier: {
+      findMany: vi.fn(),
+    },
+    vehicle: {
+      findMany: vi.fn(),
     },
   },
 }));
@@ -35,11 +49,11 @@ vi.mock("../../../middleware/organization", () => ({
 
 // Mock main calculator
 // We need to mock the named export 'calculatePrice'
-vi.mock("../../services/pricing/main-calculator", () => ({
+vi.mock("../../../services/pricing/main-calculator", () => ({
   calculatePrice: vi.fn(),
   calculatePriceWithRealTolls: vi.fn(), // If used
   // Add other exports if needed
-  resolveFuelConsumption: vi.fn(() => ({ consumptionL100km: 10, source: "DEFAULT" })),
+  // resolveFuelConsumption moved to cost-calculator mock
   calculateShadowSegments: vi.fn(() => ({})),
   calculateTimeAnalysis: vi.fn(() => ({})),
   calculatePositioningCosts: vi.fn(() => ({})),
@@ -51,19 +65,30 @@ vi.mock("../../services/pricing/main-calculator", () => ({
 }));
 
 // Mock services causing side effects
-vi.mock("../../services/fuel-price-service", () => ({
+vi.mock("../../../services/fuel-price-service", () => ({
   fuelPriceService: {
     getPrice: vi.fn().mockResolvedValue(1.5),
   },
   FuelPriceService: vi.fn(),
+  getFuelPrice: vi.fn().mockResolvedValue({
+    pricePerLitre: 1.5,
+    currency: "EUR",
+    source: "DEFAULT",
+    fetchedAt: null,
+    isStale: false,
+    fuelType: "DIESEL",
+    countryCode: "FR",
+  }),
 }));
 
-vi.mock("../../services/pricing/cost-calculator", () => ({
+vi.mock("../../../services/pricing/cost-calculator", () => ({
   calculateTripCost: vi.fn(),
+  resolveFuelConsumption: vi.fn(() => ({ consumptionL100km: 10, source: "DEFAULT" })),
+  calculateCostBreakdown: vi.fn(), // adding this as well just in case
 }));
 
 // Mock geo-utils because they are used in the route
-vi.mock("../../lib/geo-utils", () => ({
+vi.mock("../../../lib/geo-utils", () => ({
   isPointInZone: vi.fn(),
   findZonesForPoint: vi.fn(() => []),
   resolveZoneConflict: vi.fn(),
@@ -72,13 +97,13 @@ vi.mock("../../lib/geo-utils", () => ({
 }));
 
 // Mock google-routes-client if needed, or rely on undefined API key
-vi.mock("../../lib/google-routes-client", () => ({
+vi.mock("../../../lib/google-routes-client", () => ({
   computeRoutes: vi.fn(),
   toRoutesWaypoint: vi.fn(),
 }));
 
 // Mock pricing engine logic
-import { calculatePrice } from "../../services/pricing/main-calculator";
+import { calculatePrice } from "../../../services/pricing/main-calculator";
 import { db } from "@repo/database";
 
 describe("Pricing Calculate API - Bidirectional Pricing", () => {
@@ -93,12 +118,17 @@ describe("Pricing Calculate API - Bidirectional Pricing", () => {
     const mockContact = {
       id: "partner-contact-1",
       isPartner: true,
-      partnerContract: { id: "contract-1" },
+      partnerContract: { 
+        id: "contract-1",
+        zoneRoutes: [],
+        excursionPackages: [],
+        dispoPackages: [],
+      },
       difficultyScore: null,
     };
     
-    (db.contact.findUnique as any).mockResolvedValue(mockContact);
-    (db.zone.findMany as any).mockResolvedValue([]);
+    (db.contact.findFirst as any).mockResolvedValue(mockContact);
+    (db.pricingZone.findMany as any).mockResolvedValue([]);
     (db.vehicleCategory.findUnique as any).mockResolvedValue({
       id: "cat-1",
       name: "Sedan",
@@ -106,6 +136,22 @@ describe("Pricing Calculate API - Bidirectional Pricing", () => {
       priceMultiplier: 1.0,
       regulatoryCategory: "LIGHT",
     });
+    (db.vehicleCategory.findFirst as any).mockResolvedValue({
+      id: "cat-1",
+      name: "Sedan",
+      code: "SEDAN",
+      priceMultiplier: 1.0,
+      regulatoryCategory: "LIGHT",
+    });
+    (db.organizationPricingSettings.findFirst as any).mockResolvedValue({
+      baseRatePerKm: 1.5,
+      baseRatePerHour: 50,
+      driverHourlyCost: 20,
+    });
+    (db.organizationIntegrationSettings.findFirst as any).mockResolvedValue(null);
+    (db.advancedRate.findMany as any).mockResolvedValue([]);
+    (db.seasonalMultiplier.findMany as any).mockResolvedValue([]);
+    (db.vehicle.findMany as any).mockResolvedValue([]);
 
     // 2. Calculator mock
     // We want different returns for partner vs dynamic
@@ -143,11 +189,11 @@ describe("Pricing Calculate API - Bidirectional Pricing", () => {
         vehicleCategoryId: "cat-1",
         tripType: "transfer",
         pickupAt: new Date().toISOString(),
-      },
+      } as any,
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const data = await response.json() as any;
 
     // Verify Bidirectional Logic
     expect(calculatePrice).toHaveBeenCalledTimes(2);
@@ -172,11 +218,23 @@ describe("Pricing Calculate API - Bidirectional Pricing", () => {
       difficultyScore: null,
     };
     
-    (db.contact.findUnique as any).mockResolvedValue(mockContact);
-    (db.zone.findMany as any).mockResolvedValue([]);
+    (db.contact.findFirst as any).mockResolvedValue(mockContact);
+    (db.pricingZone.findMany as any).mockResolvedValue([]);
     (db.vehicleCategory.findUnique as any).mockResolvedValue({
       id: "cat-1",
     });
+    (db.vehicleCategory.findFirst as any).mockResolvedValue({
+      id: "cat-1",
+    });
+    (db.organizationPricingSettings.findFirst as any).mockResolvedValue({
+      baseRatePerKm: 1.5,
+      baseRatePerHour: 50,
+      driverHourlyCost: 20,
+    });
+    (db.organizationIntegrationSettings.findFirst as any).mockResolvedValue(null);
+    (db.advancedRate.findMany as any).mockResolvedValue([]);
+    (db.seasonalMultiplier.findMany as any).mockResolvedValue([]);
+    (db.vehicle.findMany as any).mockResolvedValue([]);
 
     (calculatePrice as any).mockReturnValue({
       price: 150,
@@ -195,11 +253,12 @@ describe("Pricing Calculate API - Bidirectional Pricing", () => {
         pickup: { lat: 48.8, lng: 2.3, address: "Paris" },
         vehicleCategoryId: "cat-1",
         tripType: "transfer",
-      },
+        dropoff: { lat: 48.9, lng: 2.4, address: "Airport" },
+      } as any,
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const data = await response.json() as any;
 
     // Verify Logic
     expect(calculatePrice).toHaveBeenCalledTimes(1); // Only once
