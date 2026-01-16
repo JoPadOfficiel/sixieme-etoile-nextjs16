@@ -30,7 +30,7 @@ export function VehicleDrawer({ open, onOpenChange, vehicle }: VehicleDrawerProp
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="sm:max-w-lg overflow-y-auto">
+			<SheetContent className="w-full sm:max-w-[50vw] overflow-y-auto">
 				<SheetHeader>
 					<SheetTitle>
 						{vehicle ? t("fleet.vehicles.editVehicle") : t("fleet.vehicles.addVehicle")}
