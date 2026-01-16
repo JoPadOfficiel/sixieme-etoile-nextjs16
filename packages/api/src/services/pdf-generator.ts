@@ -1065,14 +1065,30 @@ export async function generateMissionOrderPdf(
 	// =========================================================================
 	
 	// Logo on the left
+	let nextSectionY = y - 60;
+
 	if (logoImage) {
-		const logoDims = logoImage.scale(Math.min(80 / logoImage.width, 40 / logoImage.height));
+		let logoDims;
+		if (organization.logoWidth) {
+			const scale = organization.logoWidth / logoImage.width;
+			logoDims = { width: organization.logoWidth, height: logoImage.height * scale };
+		} else {
+			// Updated to match drawHeader default (120/50 instead of 80/40) for better consistency
+			logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+		}
+
 		page.drawImage(logoImage, {
 			x: LEFT_MARGIN,
 			y: y - logoDims.height + 10,
 			width: logoDims.width,
 			height: logoDims.height,
 		});
+
+		// Ensure next section doesn't overlap with logo if it's large
+		const logoBottom = y - logoDims.height + 10;
+		if (logoBottom - 20 < nextSectionY) {
+			nextSectionY = logoBottom - 20;
+		}
 	} else {
 		draw(organization.name, { x: LEFT_MARGIN, y: y - 5, size: 14, font: helveticaBold, color: BLACK });
 	}
@@ -1099,7 +1115,7 @@ export async function generateMissionOrderPdf(
 	// Value for Version (Static 1)
 	draw("1", { x: titleBoxX + colW * 2 + 25, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
 
-	y -= 60;
+	y = nextSectionY;
 
 	// Dispatch phone
 	if (organization.phone) {

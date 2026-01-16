@@ -473,5 +473,17 @@ describe("PDF Generator Service", () => {
 			expect(pdfBuffer).toBeInstanceOf(Buffer);
 			expect(pdfBuffer.length).toBeGreaterThan(0);
 		});
+
+		it("should generate PDF with custom logo width", async () => {
+			const orgWithLogoWidth: OrganizationPdfData = {
+				...mockOrganization,
+				logoWidth: 200,
+			};
+
+			const pdfBuffer = await generateMissionOrderPdf(mockMission, orgWithLogoWidth);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
 	});
 });
