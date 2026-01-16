@@ -20,7 +20,7 @@ import { InvoiceLinesList } from "./InvoiceLinesList";
 import type { InvoiceStatus } from "../types";
 import { formatDate, formatPrice, isOverdue, getDaysUntilDue } from "../types";
 import { useToast } from "@ui/hooks/use-toast";
-import { useGenerateInvoicePdf, getDocumentDownloadUrl } from "@saas/documents/hooks/useDocuments";
+import { useGenerateInvoicePdf } from "@saas/documents/hooks/useDocuments";
 
 interface InvoiceDetailProps {
   invoiceId: string;
@@ -69,6 +69,7 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
   /**
    * Story 7.5: Handle PDF generation and download
    */
+  // Story 7.5: Handle PDF generation and preview
   const handleDownloadPdf = async () => {
     if (!invoice) return;
 
@@ -77,9 +78,10 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
       toast({
         title: t("documents.generated"),
       });
-      // Open download URL in new tab
-      const downloadUrl = getDocumentDownloadUrl(document.id);
-      window.open(downloadUrl, "_blank");
+      // Open file URL in new tab (Preview)
+      if (document.url) {
+        window.open(document.url, "_blank");
+      }
     } catch (error) {
       toast({
         title: t("documents.generateError"),

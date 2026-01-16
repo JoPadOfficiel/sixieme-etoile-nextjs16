@@ -1386,6 +1386,13 @@
 				"saveSuccess": "Setting saved successfully",
 				"saveError": "Failed to save setting"
 			},
+			"logoWidth": {
+				"title": "Logo Size",
+				"description": "Adjust the display size of your logo in documents (50px - 300px).",
+				"saveSuccess": "Logo size saved successfully",
+				"saveError": "Failed to save logo size",
+				"reset": "Reset Default"
+			},
 			"preview": {
 				"title": "Document Preview",
 				"description": "Live preview of how your documents will appear."

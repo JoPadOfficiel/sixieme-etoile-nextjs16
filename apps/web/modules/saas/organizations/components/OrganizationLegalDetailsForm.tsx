@@ -44,9 +44,26 @@ export function OrganizationLegalDetailsForm() {
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 
+	// Initialize with empty strings to prevent "uncontrolled to controlled" error
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
-		defaultValues: {},
+		defaultValues: {
+			address: "",
+			addressLine2: "",
+			postalCode: "",
+			city: "",
+			country: "France",
+			phone: "",
+			email: "",
+			website: "",
+			siret: "",
+			vatNumber: "",
+			iban: "",
+			bic: "",
+			bankName: "",
+			rcs: "",
+			ape: "",
+		},
 	});
 
 	// Fetch existing details

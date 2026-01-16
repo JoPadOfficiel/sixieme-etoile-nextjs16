@@ -13,7 +13,7 @@ import { QuoteAssignmentInfo } from "./QuoteAssignmentInfo";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
-import { useGenerateQuotePdf, getDocumentDownloadUrl } from "@saas/documents/hooks/useDocuments";
+import { useGenerateQuotePdf } from "@saas/documents/hooks/useDocuments";
 import type { PricingResult, TripAnalysis } from "../types";
 
 interface QuoteDetailPageProps {
@@ -111,15 +111,17 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   /**
    * Story 7.5: Handle PDF generation and download
    */
+  // Story 7.5: Handle PDF generation and preview
   const handleDownloadPdf = async () => {
     try {
       const document = await generatePdfMutation.mutateAsync(quoteId);
       toast({
         title: t("documents.generated"),
       });
-      // Open download URL in new tab
-      const downloadUrl = getDocumentDownloadUrl(document.id);
-      window.open(downloadUrl, "_blank");
+      // Open file URL in new tab (Preview)
+      if (document.url) {
+        window.open(document.url, "_blank");
+      }
     } catch (error) {
       toast({
         title: t("documents.generateError"),

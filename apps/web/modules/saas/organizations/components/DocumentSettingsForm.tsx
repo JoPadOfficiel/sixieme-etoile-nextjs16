@@ -23,6 +23,7 @@ interface DocumentSettings {
 	brandColor: string;
 	logoPosition: "LEFT" | "RIGHT";
 	showCompanyName: boolean;
+	logoWidth: number;
 }
 
 // API client for pricing settings
@@ -38,6 +39,7 @@ async function getPricingSettings(organizationId: string): Promise<DocumentSetti
 				brandColor: data.brandColor ?? "#2563eb",
 				logoPosition: data.logoPosition ?? "LEFT",
 				showCompanyName: data.showCompanyName ?? true,
+				logoWidth: data.logoWidth ?? 150,
 		  }
 		: null;
 }
@@ -46,6 +48,7 @@ async function updatePricingSettings(
 	organizationId: string,
 	data: Partial<DocumentSettings>
 ): Promise<boolean> {
+	console.log("[DocumentSettings] Saving:", data);
 	const response = await fetch(`/api/vtc/pricing-settings`, {
 		method: "PATCH",
 		headers: {
@@ -54,6 +57,10 @@ async function updatePricingSettings(
 		},
 		body: JSON.stringify(data),
 	});
+	if (!response.ok) {
+		const errorText = await response.text();
+		console.error("[DocumentSettings] Save failed:", response.status, errorText);
+	}
 	return response.ok;
 }
 
@@ -71,6 +78,7 @@ export function DocumentSettingsForm() {
 	const [brandColor, setBrandColor] = useState("#2563eb");
 	const [logoPosition, setLogoPosition] = useState<"LEFT" | "RIGHT">("LEFT");
 	const [showCompanyName, setShowCompanyName] = useState(true);
+	const [logoWidth, setLogoWidth] = useState(150);
 
 	// Load current settings
 	useEffect(() => {
@@ -85,6 +93,7 @@ export function DocumentSettingsForm() {
 					setBrandColor(settings.brandColor);
 					setLogoPosition(settings.logoPosition);
 					setShowCompanyName(settings.showCompanyName);
+					setLogoWidth(settings.logoWidth);
 				}
 			} catch (error) {
 				console.error("Failed to load document settings:", error);
@@ -321,6 +330,45 @@ export function DocumentSettingsForm() {
 		}
 	};
 
+	// Handle logo width change
+	const handleLogoWidthChange = (value: string) => {
+		const num = parseInt(value, 10);
+		if (!isNaN(num)) {
+			setLogoWidth(num);
+		}
+	};
+
+	const handleLogoWidthSave = async () => {
+		if (!activeOrganization) return;
+		setSaving(true);
+		try {
+			const success = await updatePricingSettings(activeOrganization.id, {
+				logoWidth,
+			});
+
+			if (success) {
+				toast({
+					variant: "success",
+					title: t("settings.documentSettings.logoWidth.saveSuccess"),
+				});
+			} else {
+				// API returned non-ok response
+				toast({
+					variant: "error",
+					title: t("settings.documentSettings.logoWidth.saveError"),
+				});
+			}
+		} catch (error) {
+			console.error("Failed to save logo width:", error);
+			toast({
+				variant: "error",
+				title: t("settings.documentSettings.logoWidth.saveError"),
+			});
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	if (!activeOrganization) {
 		return null;
 	}
@@ -467,6 +515,60 @@ export function DocumentSettingsForm() {
 				</div>
 			</SettingsItem>
 
+			{/* Logo Width */}
+			<SettingsItem
+				title={t("settings.documentSettings.logoWidth.title")}
+				description={t("settings.documentSettings.logoWidth.description")}
+			>
+				<div className="flex items-center gap-4">
+					<div className="flex-1">
+						<input
+							type="range"
+							min="50"
+							max="300"
+							value={logoWidth}
+							onChange={(e) => handleLogoWidthChange(e.target.value)}
+							className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
+						/>
+					</div>
+					<Input
+						type="number"
+						min={50}
+						max={300}
+						value={logoWidth}
+						onChange={(e) => handleLogoWidthChange(e.target.value)}
+						className="w-20"
+					/>
+					<span className="text-sm text-muted-foreground">px</span>
+					<Button
+						variant="default"
+						size="sm"
+						onClick={handleLogoWidthSave}
+						disabled={saving}
+					>
+						{saving ? <Spinner className="size-4" /> : t("settings.save")}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => {
+							setLogoWidth(150);
+							updatePricingSettings(activeOrganization!.id, { logoWidth: 150 }).then((success) => {
+								if (success) {
+									toast({ variant: "success", title: t("settings.documentSettings.logoWidth.saveSuccess") });
+								} else {
+									toast({ variant: "error", title: t("settings.documentSettings.logoWidth.saveError") });
+								}
+							});
+						}}
+						disabled={saving}
+						title={t("settings.documentSettings.logoWidth.reset") || "Reset to default"}
+					>
+						Reset
+					</Button>
+				</div>
+			</SettingsItem>
+
 			{/* Preview Section */}
 			<SettingsItem
 				title={t("settings.documentSettings.preview.title")}
@@ -484,8 +586,13 @@ export function DocumentSettingsForm() {
 										<Image
 											src={logoUrl}
 											alt="Logo Preview"
-											width={60}
-											height={30}
+											width={logoWidth}
+											height={logoWidth / 2}
+											style={{
+												width: `${logoWidth}px`,
+												height: "auto",
+												maxHeight: "60px", 
+											}}
 											className="object-contain"
 										/>
 									) : (
@@ -529,8 +636,13 @@ export function DocumentSettingsForm() {
 										<Image
 											src={logoUrl}
 											alt="Logo Preview"
-											width={60}
-											height={30}
+											width={logoWidth}
+											height={logoWidth / 2}
+											style={{
+												width: `${logoWidth}px`,
+												height: "auto",
+												maxHeight: "60px",
+											}}
 											className="object-contain"
 										/>
 									) : (

@@ -29,6 +29,7 @@ export interface OrganizationPdfData {
 	brandColor?: string | null;
 	logoPosition?: "LEFT" | "RIGHT";
 	showCompanyName?: boolean;
+	logoWidth?: number;
 	// Extended legal info
 	rcs?: string | null;
 	rm?: string | null;
@@ -116,6 +117,18 @@ export interface InvoicePdfData {
 		lastName: string;
 		email?: string | null;
 		phone?: string | null;
+	} | null;
+	// Reference to the associated quote (for display in invoice PDF)
+	quoteReference?: string | null;
+	// Trip details from associated quote (for display in invoice PDF)
+	tripDetails?: {
+		pickupAddress: string;
+		dropoffAddress?: string | null;
+		pickupAt: Date;
+		passengerCount: number;
+		luggageCount: number;
+		vehicleCategory: string;
+		tripType: string;
 	} | null;
 }
 
@@ -312,10 +325,25 @@ function drawHeader(options: DrawHeaderOptions): number {
 	const headerY = height - 50;
 	const draw = (text: string, opts: any) => page.drawText(sanitizeText(text), opts);
 
+	const logoWidth = organization.logoWidth ?? 120; // Default 120 if not set, or fall back to old logic?
+	// Actually preserve old default behavior if logoWidth is missing? 
+	// The DB defaults to 150. So organization.logoWidth will likely be present.
+	// If it is present, we use it as target width.
+	// We should probably limit height preventing it from covering the whole page? 
+	// But let's respect the user setting primarily.
+
 	if (logoPosition === "LEFT") {
 		// LOGO LEFT, INFO RIGHT
 		if (logoImage) {
-			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			let logoDims;
+			if (organization.logoWidth) {
+				const scale = organization.logoWidth / logoImage.width;
+				logoDims = { width: organization.logoWidth, height: logoImage.height * scale };
+			} else {
+				// Old default behavior (max 120w, 50h)
+				logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			}
+
 			page.drawImage(logoImage, {
 				x: LEFT_MARGIN,
 				y: headerY - logoDims.height + 20,
@@ -387,7 +415,14 @@ function drawHeader(options: DrawHeaderOptions): number {
 		});
 
 		if (logoImage) {
-			const logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			let logoDims;
+			if (organization.logoWidth) {
+				const scale = organization.logoWidth / logoImage.width;
+				logoDims = { width: organization.logoWidth, height: logoImage.height * scale };
+			} else {
+				logoDims = logoImage.scale(Math.min(120 / logoImage.width, 50 / logoImage.height));
+			}
+
 			page.drawImage(logoImage, {
 				x: RIGHT_MARGIN - logoDims.width,
 				y: headerY - logoDims.height + 20,
@@ -446,237 +481,232 @@ export async function generateQuotePdf(
 		organization.documentLogoUrl ?? organization.logo
 	);
 
-	let y = height - 50;
+	// Helper for drawing rectangles/lines
+	const drawRect = (x: number, y: number, w: number, h: number, fill?: boolean, color?: typeof LIGHT_GRAY) => {
+		page.drawRectangle({
+			x, y, width: w, height: h,
+			borderColor: BLACK,
+			borderWidth: 0.5,
+			color: fill ? (color || LIGHT_GRAY) : undefined,
+		});
+	};
 
 	// Helper to draw sanitized text
 	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
 		page.drawText(sanitizeText(text), options);
 	};
 
-	// =========================================================================
-	// HEADER SECTION - Story 25.2: Dynamic Logo Positioning
-	// =========================================================================
+	let y = height - 50;
 	
-	const headerY = y;
-    
-	y = drawHeader({
-		page,
-		helvetica,
-		helveticaBold,
-		organization,
-		logoImage,
-		title: "DEVIS",
+	// Dynamic quote reference
+	const quoteReference = quote.id.slice(-8).toUpperCase();
+	
+	// Capture header bottom Y
+	const headerY = drawHeader({
+		page, helvetica, helveticaBold, organization, logoImage,
+		title: "DEVIS / QUOTE",
 		referenceLabel: "Ref:",
-		referenceValue: quote.id.slice(-8).toUpperCase(),
+		referenceValue: quoteReference,
 		dateLabel: "Date:",
 		dateValue: formatDate(quote.createdAt),
 		color: brandColor,
 	});
 
-	// Additional Quote Info (Valid Until)
+	// Additional Info (Valid Until) - Aligned with Header Date
 	if (quote.validUntil) {
-		const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
-			page.drawText(sanitizeText(text), options);
-		};
-		// Re-calculate alignment based on logo position
-		const logoPosition = organization.logoPosition ?? "LEFT";
-		// Align with the block from drawHeader (RIGHT_MARGIN - 130 or LEFT_MARGIN)
-		const infoX = logoPosition === "LEFT" ? RIGHT_MARGIN - 130 : LEFT_MARGIN;
-		
-		draw(`Valide jusqu'au: ${formatDate(quote.validUntil)}`, {
+		const infoX = organization.logoPosition === "LEFT" ? RIGHT_MARGIN - 150 : LEFT_MARGIN;
+		draw(`Valide jusqu'au / Valid until: ${formatDate(quote.validUntil)}`, {
 			x: infoX,
-			y: headerY - 46, // 14pts below the Date line
-			size: 10,
+			y: headerY + 80 - 46,
+			size: 9,
 			font: helvetica,
 			color: GRAY,
 		});
 	}
 
+	y = headerY - 20;
+
 	// =========================================================================
-	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
+	// FROM / BILL TO BLOCKS (No borders, simple labels)
 	// =========================================================================
 
-	const blockY = y;
-	const blockWidth = 230;
-	const lineHeight = 14;
+	const blockWidth = 240;
 
-	// FROM Block (Left side)
-	draw("DE / FROM:", { x: LEFT_MARGIN, y: blockY, size: 10, font: helveticaBold, color: DARK });
-	let fromY = blockY - 16;
-	draw(organization.name, { x: LEFT_MARGIN, y: fromY, size: 10, font: helveticaBold, color: BLACK });
-	fromY -= lineHeight;
+	// Left Block: DE / FROM
+	draw("DE / FROM:", { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+	y -= 14;
+	draw(organization.name, { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: BLACK });
+	y -= 12;
 	if (organization.address) {
-		draw(organization.address.substring(0, 45), { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		const addr = sanitizeText(organization.address);
+		if (addr.length > 45) {
+			draw(addr.substring(0, 45), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+			y -= 10;
+			draw(addr.substring(45, 90), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		} else {
+			draw(addr, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		}
+		y -= 10;
 	}
 	if (organization.phone) {
-		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		y -= 10;
 	}
 	if (organization.email) {
-		draw(organization.email, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
-	}
-	if (organization.siret) {
-		draw(`SIRET: ${organization.siret}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
-	}
-	if (organization.vatNumber) {
-		draw(`TVA: ${organization.vatNumber}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		draw(organization.email, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
 	}
 
-	// BILL TO Block (Right side)
-	const rightBlockX = LEFT_MARGIN + blockWidth + 30;
-	draw("A / BILL TO:", { x: rightBlockX, y: blockY, size: 10, font: helveticaBold, color: DARK });
-	let toY = blockY - 16;
+	// Right Block: A / BILL TO (reset Y to same starting point)
+	const rightBlockX = RIGHT_MARGIN - blockWidth;
+	let toY = headerY - 20;
+	draw("A / BILL TO:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
+	toY -= 14;
 
-	if (quote.endCustomer) {
-		// EndCustomer exists: show as primary recipient
-		const endCustomerName = `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`;
-		draw(endCustomerName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
-		toY -= lineHeight;
-		if (quote.endCustomer.email) {
-			draw(quote.endCustomer.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
+	const targetContact = quote.endCustomer 
+		? { ...quote.endCustomer, displayName: `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}` }
+		: quote.contact;
+
+	draw(targetContact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+	toY -= 12;
+	
+	if (!quote.endCustomer && quote.contact.companyName) {
+		draw(quote.contact.companyName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		toY -= 10;
+	}
+	if (!quote.endCustomer && quote.contact.billingAddress) {
+		const addr = sanitizeText(quote.contact.billingAddress);
+		if (addr.length > 40) {
+			draw(addr.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+			toY -= 10;
+			draw(addr.substring(40, 80), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		} else {
+			draw(addr, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
 		}
-		if (quote.endCustomer.phone) {
-			draw(`Tel: ${quote.endCustomer.phone}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
-		}
-		// Show agency as billed-to
-		toY -= 6;
-		draw("Facture a:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
-		toY -= lineHeight;
-		draw(quote.contact.displayName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
-		toY -= lineHeight;
-	} else {
-		draw(quote.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
-		toY -= lineHeight;
-		if (quote.contact.companyName) {
-			draw(quote.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
-		}
-		if (quote.contact.billingAddress) {
-			draw(quote.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
-		}
-		if (quote.contact.email) {
-			draw(quote.contact.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
-		}
-		if (quote.contact.vatNumber) {
-			draw(`TVA: ${quote.contact.vatNumber}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-		}
+		toY -= 10;
+	}
+	if (targetContact.email) {
+		draw(targetContact.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
 	}
 
-	y = Math.min(fromY, toY) - 30; // More spacing
+	y = Math.min(y, toY) - 30;
 
 	// =========================================================================
-	// TRIP DETAILS SECTION - Story 25.2
+	// PRICING TABLE WITH TRIP DETAILS IN DESIGNATION
 	// =========================================================================
 
-	draw("DETAILS DU TRAJET / TRIP DETAILS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 20;
+	const colDescW = 280;
+	const colVatW = 50;
+	const colUnitW = 65;
+	const colQtyW = 35;
+	const colTotalW = 65;
+	
+	const xDesc = LEFT_MARGIN;
+	const xVat = xDesc + colDescW;
+	const xUnit = xVat + colVatW;
+	const xQty = xUnit + colUnitW;
+	const xTotal = xQty + colQtyW;
 
-	const tripDetails = [
-		["Depart / From", quote.pickupAddress.substring(0, 55)],
-		["Arrivee / To", quote.dropoffAddress.substring(0, 55)],
-		["Date et heure / Date & Time", formatDateTime(quote.pickupAt)],
-		["Passagers / Passengers", String(quote.passengerCount)],
-		["Bagages / Luggage", String(quote.luggageCount)],
-		["Categorie vehicule / Vehicle", quote.vehicleCategory],
-		["Type de trajet / Trip type", quote.tripType],
-	];
+	// Table Header
+	const headerH = 20;
+	drawRect(xDesc, y - headerH, CONTENT_WIDTH, headerH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(xDesc, y - headerH, colDescW, headerH);
+	drawRect(xVat, y - headerH, colVatW, headerH);
+	drawRect(xUnit, y - headerH, colUnitW, headerH);
+	drawRect(xQty, y - headerH, colQtyW, headerH);
+	drawRect(xTotal, y - headerH, colTotalW, headerH);
 
-	// Story 25.2: Add estimated distance and duration if available
-	if (quote.estimatedDistanceKm) {
-		tripDetails.push(["Distance estimee / Est. Distance", `${quote.estimatedDistanceKm.toFixed(1)} km`]);
+	const thY = y - 14;
+	draw("Designation", { x: xDesc + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("TVA", { x: xVat + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("P.U. HT", { x: xUnit + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("Qte", { x: xQty + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("Total HT", { x: xTotal + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+
+	y -= headerH;
+
+	// Build designation lines with trip details (bilingual)
+	const designationLines: { text: string; bold?: boolean; small?: boolean }[] = [];
+	designationLines.push({ text: "DETAILS DU TRAJET / TRIP DETAILS", bold: true });
+	designationLines.push({ text: `Depart / From: ${quote.pickupAddress}`.substring(0, 55), small: true });
+	if (quote.dropoffAddress) {
+		designationLines.push({ text: `Arrivee / To: ${quote.dropoffAddress}`.substring(0, 55), small: true });
 	}
-	if (quote.estimatedDurationMins) {
-		const hours = Math.floor(quote.estimatedDurationMins / 60);
-		const mins = quote.estimatedDurationMins % 60;
-		const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins} min`;
-		tripDetails.push(["Duree estimee / Est. Duration", durationStr]);
-	}
-
-	for (const [label, value] of tripDetails) {
-		draw(label, { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
-		draw(value, { x: LEFT_MARGIN + 160, y, size: 9, font: helvetica, color: BLACK });
-		y -= 16; // Increased line spacing
-	}
-
-	// =========================================================================
-	// PRICING SECTION
-	// =========================================================================
-
-	y -= 20;
-	draw("TARIFICATION / PRICING", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 20;
-
-	// Pricing mode
-	const pricingModeText = quote.pricingMode === "FIXED_GRID" ? "Grille tarifaire / Fixed Grid" : "Tarif dynamique / Dynamic";
-	draw(`Mode: ${pricingModeText}`, { x: LEFT_MARGIN, y, size: 10, font: helvetica, color: BLACK });
-	y -= 20;
-
-	// Notes section
+	designationLines.push({ text: `Date / Time: ${formatDateTime(quote.pickupAt)}`, small: true });
+	designationLines.push({ text: `Passagers / Pax: ${quote.passengerCount} | Bagages / Lug: ${quote.luggageCount}`, small: true });
+	designationLines.push({ text: `Vehicule / Vehicle: ${quote.vehicleCategory}`, small: true });
+	designationLines.push({ text: `Type: ${quote.tripType}`, small: true });
 	if (quote.notes) {
-		draw("NOTES", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
-		y -= 14;
-		draw(quote.notes.substring(0, 100), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
-		y -= 20;
+		designationLines.push({ text: `Notes: ${quote.notes.substring(0, 50)}`, small: true });
 	}
 
-	y -= 10;
-	// Total price box - RIGHT ALIGNED
-	const totalLabel = "PRIX TOTAL TTC / TOTAL INCL. VAT:";
-	const totalValue = formatPrice(quote.finalPrice);
-	const labelWidth = helveticaBold.widthOfTextAtSize(sanitizeText(totalLabel), 10);
-	const boxWidth = 220;
-	const boxX = RIGHT_MARGIN - boxWidth;
-	
-	page.drawRectangle({
-		x: boxX,
-		y: y - 4,
-		width: boxWidth,
-		height: 30,
-		color: LIGHT_GRAY,
-	});
-	draw(totalLabel, { x: boxX + 10, y: y + 8, size: 10, font: helveticaBold, color: DARK });
-	// Value on next line inside box
-	draw(totalValue, { x: boxX + 10, y: y - 10, size: 14, font: helveticaBold, color: brandColor });
+	// Calculate row height based on content
+	const lineSpacing = 11;
+	const rowPadding = 8;
+	const rowH = (designationLines.length * lineSpacing) + (rowPadding * 2);
 
-	y -= 60;
+	// Draw row cells
+	drawRect(xDesc, y - rowH, colDescW, rowH);
+	drawRect(xVat, y - rowH, colVatW, rowH);
+	drawRect(xUnit, y - rowH, colUnitW, rowH);
+	drawRect(xQty, y - rowH, colQtyW, rowH);
+	drawRect(xTotal, y - rowH, colTotalW, rowH);
+
+	// Render designation text
+	let textY = y - rowPadding - 6;
+	for (const line of designationLines) {
+		const fontSize = line.small ? 7 : 8;
+		const textFont = line.bold ? helveticaBold : helvetica;
+		const textColor = line.bold ? brandColor : BLACK;
+		draw(line.text, { x: xDesc + 5, y: textY, size: fontSize, font: textFont, color: textColor });
+		textY -= lineSpacing;
+	}
+
+	// Pricing values (centered vertically)
+	const vatRate = 10;
+	const totalTTC = quote.finalPrice;
+	const totalHT = totalTTC / (1 + (vatRate / 100));
+	const midY = y - (rowH / 2) - 3;
+
+	draw(`${vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+	draw(formatPrice(totalHT), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+	draw("1", { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
+	draw(formatPrice(totalHT), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+
+	y -= rowH;
 
 	// =========================================================================
-	// FOOTER - Story 25.2: Legal Mentions
+	// TOTALS
 	// =========================================================================
 
-	const footerY = 70;
-	
-	// Acceptance block
-	draw("BON POUR ACCORD / ACCEPTANCE", { x: LEFT_MARGIN, y: footerY + 50, size: 9, font: helveticaBold, color: DARK });
-	page.drawRectangle({
-		x: LEFT_MARGIN,
-		y: footerY + 15,
-		width: 200,
-		height: 30, // Taller
-		borderColor: GRAY,
-		borderWidth: 0.5,
-	});
-	draw("Signature:", { x: LEFT_MARGIN + 5, y: footerY + 35, size: 8, font: helvetica, color: GRAY });
+	y -= 15;
+	const totalsW = 200;
+	const totalsX = RIGHT_MARGIN - totalsW;
 
-	// Legal mentions
-	draw(
-		"Ce devis est valable pour une duree de 30 jours a compter de sa date d'emission.",
-		{ x: LEFT_MARGIN, y: footerY, size: 8, font: helvetica, color: GRAY }
-	);
-	draw(
-		"Les prix indiques sont en euros TTC. / Prices are in EUR including VAT.",
-		{ x: LEFT_MARGIN, y: footerY - 12, size: 8, font: helvetica, color: GRAY }
-	);
+	drawRect(totalsX, y - 20, totalsW, 20);
+	draw("Total HT", { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(totalHT), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
+	y -= 20;
+
+	const vatAmount = totalTTC - totalHT;
+	drawRect(totalsX, y - 20, totalsW, 20);
+	draw(`Total TVA ${vatRate}%`, { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(vatAmount), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
+	y -= 20;
+
+	drawRect(totalsX, y - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
+	draw("Total TTC", { x: totalsX + 10, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(totalTTC), { x: totalsX + 110, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+
+	// =========================================================================
+	// CONDITIONS DE REGLEMENT / PAYMENT TERMS
+	// =========================================================================
+
+	const footerY = 80;
+	draw("CONDITIONS DE REGLEMENT / PAYMENT TERMS:", { x: LEFT_MARGIN, y: footerY + 20, size: 9, font: helveticaBold, color: DARK });
+	draw("Paiement a reception / Payment upon receipt", { x: LEFT_MARGIN, y: footerY + 6, size: 8, font: helvetica, color: BLACK });
 
 	// Page number
-	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: footerY - 12, size: 8, font: helvetica, color: GRAY });
+	draw("Page 1 / 1", { x: RIGHT_MARGIN - 45, y: 40, size: 8, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);
@@ -709,240 +739,283 @@ export async function generateInvoicePdf(
 		organization.documentLogoUrl ?? organization.logo
 	);
 
-	let y = height - 50;
+	// Helper for drawing rectangles/lines
+	const drawRect = (x: number, y: number, w: number, h: number, fill?: boolean, color?: typeof LIGHT_GRAY) => {
+		page.drawRectangle({
+			x, y, width: w, height: h,
+			borderColor: BLACK,
+			borderWidth: 0.5,
+			color: fill ? (color || LIGHT_GRAY) : undefined,
+		});
+	};
 
+	let y = height - 50;
 	// Helper to draw sanitized text
 	const draw = (text: string, options: Parameters<typeof page.drawText>[1]) => {
 		page.drawText(sanitizeText(text), options);
 	};
 
-	// =========================================================================
-	// HEADER SECTION - Story 25.2: Dynamic Logo Positioning
-	// =========================================================================
-
-	const headerY = y;
-	
-	y = drawHeader({
-		page,
-		helvetica,
-		helveticaBold,
-		organization,
-		logoImage,
-		title: "FACTURE",
-		referenceLabel: "N:",
+	const headerY = drawHeader({
+		page, helvetica, helveticaBold, organization, logoImage,
+		title: "FACTURE / INVOICE",
+		referenceLabel: "N°:",
 		referenceValue: invoice.number,
-		dateLabel: "Emise le:",
+		dateLabel: "Date / Date:",
 		dateValue: formatDate(invoice.issueDate),
 		color: brandColor,
 	});
 
-	// Additional Invoice Info (Due Date)
-	const infoX = logoPosition === "LEFT" ? RIGHT_MARGIN - 130 : LEFT_MARGIN;
+	// Additional Info (Due Date + Quote Reference)
+	const infoX = organization.logoPosition === "LEFT" ? RIGHT_MARGIN - 180 : LEFT_MARGIN;
+	draw(`Echeance / Due: ${formatDate(invoice.dueDate)}`, { x: infoX, y: headerY + 80 - 46, size: 9, font: helvetica, color: GRAY });
+	
+	// Show quote reference if available
+	if (invoice.quoteReference) {
+		draw(`Ref. Devis / Quote Ref: ${invoice.quoteReference}`, { x: infoX, y: headerY + 80 - 58, size: 9, font: helvetica, color: GRAY });
+	}
 
-	draw(`Echeance: ${formatDate(invoice.dueDate)}`, {
-		x: infoX,
-		y: headerY - 46,
-		size: 10,
-		font: helvetica,
-		color: GRAY,
-	});
+	y = headerY - 20;
 
 	// =========================================================================
-	// FROM / BILL TO BLOCKS - Story 25.2: EU-Compliant Layout
+	// FROM / BILL TO BLOCKS (No borders, simple labels)
 	// =========================================================================
 
-	const blockY = y;
-	const blockWidth = 230;
-	const lineHeight = 14;
+	const blockWidth = 240;
 
-	// FROM Block (Left side)
-	draw("DE / FROM:", { x: LEFT_MARGIN, y: blockY, size: 10, font: helveticaBold, color: DARK });
-	let fromY = blockY - 16;
-	draw(organization.name, { x: LEFT_MARGIN, y: fromY, size: 10, font: helveticaBold, color: BLACK });
-	fromY -= lineHeight;
+	// Left Block: DE / FROM
+	draw("DE / FROM:", { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+	y -= 14;
+	draw(organization.name, { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: BLACK });
+	y -= 12;
+	
 	if (organization.address) {
-		draw(organization.address.substring(0, 45), { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		const addr = sanitizeText(organization.address);
+		if (addr.length > 45) {
+			draw(addr.substring(0, 45), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+			y -= 10;
+			draw(addr.substring(45, 90), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		} else {
+			draw(addr, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		}
+		y -= 10;
 	}
 	if (organization.phone) {
-		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		draw(`Tel: ${organization.phone}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		y -= 10;
 	}
 	if (organization.email) {
-		draw(organization.email, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		draw(organization.email, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: BLACK });
+		y -= 10;
 	}
 	if (organization.siret) {
-		draw(`SIRET: ${organization.siret}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
-		fromY -= lineHeight;
+		draw(`SIRET: ${organization.siret}`, { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: GRAY });
+		y -= 10;
 	}
 	if (organization.vatNumber) {
-		draw(`TVA: ${organization.vatNumber}`, { x: LEFT_MARGIN, y: fromY, size: 9, font: helvetica, color: GRAY });
+		draw(`TVA / VAT: ${organization.vatNumber}`, { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: GRAY });
 	}
 
-	// BILL TO Block (Right side)
-	const rightBlockX = LEFT_MARGIN + blockWidth + 30;
-	draw("FACTURE A / BILL TO:", { x: rightBlockX, y: blockY, size: 10, font: helveticaBold, color: DARK });
-	let toY = blockY - 16;
+	// Right Block: A / BILL TO (reset Y to same starting point)
+	const rightBlockX = RIGHT_MARGIN - blockWidth;
+	let toY = headerY - 20;
+	draw("A / BILL TO:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
+	toY -= 14;
 
-	if (invoice.endCustomer) {
-		// Story 24.6: EndCustomer exists: display "Prestation pour" (Service For)
-		draw(invoice.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
-		toY -= lineHeight;
-		if (invoice.contact.companyName) {
-			draw(invoice.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
+	const contact = invoice.contact;
+	const displayName = invoice.endCustomer 
+		? `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`
+		: contact.displayName;
+	
+	draw(displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
+	toY -= 12;
+
+	if (!invoice.endCustomer && contact.companyName) {
+		draw(contact.companyName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		toY -= 10;
+	}
+	if (contact.billingAddress) {
+		const addr = sanitizeText(contact.billingAddress);
+		if (addr.length > 40) {
+			draw(addr.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+			toY -= 10;
+			draw(addr.substring(40, 80), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		} else {
+			draw(addr, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
 		}
-		if (invoice.contact.billingAddress) {
-			draw(invoice.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
+		toY -= 10;
+	}
+	if (contact.email) {
+		draw(contact.email, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
+		toY -= 10;
+	}
+	if (contact.vatNumber) {
+		draw(`TVA / VAT: ${contact.vatNumber}`, { x: rightBlockX, y: toY, size: 8, font: helvetica, color: GRAY });
+	}
+	
+	y = Math.min(y, toY) - 30;
+
+	// =========================================================================
+	// PRICING TABLE WITH TRIP DETAILS
+	// =========================================================================
+
+	const colDescW = 280;
+	const colVatW = 50;
+	const colUnitW = 65;
+	const colQtyW = 35;
+	const colTotalW = 65;
+	
+	const xDesc = LEFT_MARGIN;
+	const xVat = xDesc + colDescW;
+	const xUnit = xVat + colVatW;
+	const xQty = xUnit + colUnitW;
+	const xTotal = xQty + colQtyW;
+
+	// Header
+	const headerH = 20;
+	drawRect(xDesc, y - headerH, CONTENT_WIDTH, headerH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(xDesc, y - headerH, colDescW, headerH);
+	drawRect(xVat, y - headerH, colVatW, headerH);
+	drawRect(xUnit, y - headerH, colUnitW, headerH);
+	drawRect(xQty, y - headerH, colQtyW, headerH);
+	drawRect(xTotal, y - headerH, colTotalW, headerH);
+
+	const thY = y - 14;
+	draw("Designation", { x: xDesc + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("TVA", { x: xVat + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("P.U. HT", { x: xUnit + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("Qte", { x: xQty + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+	draw("Total HT", { x: xTotal + 5, y: thY, size: 9, font: helveticaBold, color: BLACK });
+
+	y -= headerH;
+
+	// If we have trip details from the quote, show them in the first line item
+	if (invoice.tripDetails) {
+		const trip = invoice.tripDetails;
+		
+		// Build designation lines with trip details (bilingual)
+		const designationLines: { text: string; bold?: boolean; small?: boolean }[] = [];
+		designationLines.push({ text: "DETAILS DU TRAJET / TRIP DETAILS", bold: true });
+		designationLines.push({ text: `Depart / From: ${trip.pickupAddress}`.substring(0, 55), small: true });
+		if (trip.dropoffAddress) {
+			designationLines.push({ text: `Arrivee / To: ${trip.dropoffAddress}`.substring(0, 55), small: true });
 		}
-		// End Customer details (Service For)
-		toY -= 6;
-		draw("Prestation pour:", { x: rightBlockX, y: toY, size: 9, font: helveticaBold, color: DARK });
-		toY -= lineHeight;
-		const endCustomerName = `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`;
-		draw(endCustomerName, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: BLACK });
-		toY -= lineHeight;
-	} else {
-		draw(invoice.contact.displayName, { x: rightBlockX, y: toY, size: 10, font: helveticaBold, color: BLACK });
-		toY -= lineHeight;
-		if (invoice.contact.companyName) {
-			draw(invoice.contact.companyName.substring(0, 35), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
+		designationLines.push({ text: `Date / Time: ${formatDateTime(trip.pickupAt)}`, small: true });
+		designationLines.push({ text: `Passagers / Pax: ${trip.passengerCount} | Bagages / Lug: ${trip.luggageCount}`, small: true });
+		designationLines.push({ text: `Vehicule / Vehicle: ${trip.vehicleCategory}`, small: true });
+		designationLines.push({ text: `Type: ${trip.tripType}`, small: true });
+
+		// Calculate row height based on content
+		const lineSpacing = 11;
+		const rowPadding = 8;
+		const tripRowH = (designationLines.length * lineSpacing) + (rowPadding * 2);
+
+		// Draw row cells (spanning full width for trip details)
+		drawRect(xDesc, y - tripRowH, colDescW, tripRowH);
+		drawRect(xVat, y - tripRowH, colVatW, tripRowH);
+		drawRect(xUnit, y - tripRowH, colUnitW, tripRowH);
+		drawRect(xQty, y - tripRowH, colQtyW, tripRowH);
+		drawRect(xTotal, y - tripRowH, colTotalW, tripRowH);
+
+		// Render designation text
+		let textY = y - rowPadding - 6;
+		for (const line of designationLines) {
+			const fontSize = line.small ? 7 : 8;
+			const textFont = line.bold ? helveticaBold : helvetica;
+			const textColor = line.bold ? brandColor : BLACK;
+			draw(line.text, { x: xDesc + 5, y: textY, size: fontSize, font: textFont, color: textColor });
+			textY -= lineSpacing;
 		}
-		if (invoice.contact.billingAddress) {
-			draw(invoice.contact.billingAddress.substring(0, 40), { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-			toY -= lineHeight;
-		}
-		if (invoice.contact.vatNumber) {
-			draw(`TVA: ${invoice.contact.vatNumber}`, { x: rightBlockX, y: toY, size: 9, font: helvetica, color: GRAY });
-		}
+
+		// Leave pricing columns empty for trip details row (pricing is in line items below)
+		y -= tripRowH;
 	}
 
-	y = Math.min(fromY, toY) - 30;
-
-	// =========================================================================
-	// PRICING TABLE - Story 25.2: EU-Compliant Columns
-	// =========================================================================
-
-	draw("DETAIL DES PRESTATIONS / LINE ITEMS", { x: LEFT_MARGIN, y, size: 11, font: helveticaBold, color: brandColor });
-	y -= 20;
-
-	// Table header background
-	page.drawRectangle({
-		x: LEFT_MARGIN,
-		y: y - 4,
-		width: CONTENT_WIDTH,
-		height: 22,
-		color: LIGHT_GRAY,
-	});
-
-	// Table header columns - Story 25.2: Description, Qty, Price HT, VAT%, Total HT
-	draw("Description", { x: COL_DESC, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Qte", { x: COL_QTY, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Prix HT", { x: COL_PRICE, y, size: 9, font: helveticaBold, color: DARK });
-	draw("TVA %", { x: COL_VAT, y, size: 9, font: helveticaBold, color: DARK });
-	draw("Total HT", { x: COL_TOTAL, y, size: 9, font: helveticaBold, color: DARK });
-	y -= 24;
-
-	// Table rows
+	// Lines (invoice line items)
 	for (const line of invoice.lines) {
-		draw(line.description.substring(0, 45), { x: COL_DESC, y, size: 9, font: helvetica, color: BLACK });
-		draw(String(line.quantity), { x: COL_QTY, y, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(line.unitPriceExclVat), { x: COL_PRICE, y, size: 9, font: helvetica, color: BLACK });
-		draw(`${line.vatRate}%`, { x: COL_VAT, y, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(line.totalExclVat), { x: COL_TOTAL, y, size: 9, font: helvetica, color: BLACK });
-		y -= 18; // Increased spacing
+		const rowH = 20;
+		drawRect(xDesc, y - rowH, colDescW, rowH);
+		drawRect(xVat, y - rowH, colVatW, rowH);
+		drawRect(xUnit, y - rowH, colUnitW, rowH);
+		drawRect(xQty, y - rowH, colQtyW, rowH);
+		drawRect(xTotal, y - rowH, colTotalW, rowH);
+
+		const trY = y - 14;
+		draw(line.description.substring(0, 60), { x: xDesc + 5, y: trY, size: 9, font: helvetica, color: BLACK });
+		draw(`${line.vatRate}%`, { x: xVat + 5, y: trY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.unitPriceExclVat), { x: xUnit + 5, y: trY, size: 9, font: helvetica, color: BLACK });
+		draw(String(line.quantity), { x: xQty + 10, y: trY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.totalExclVat), { x: xTotal + 5, y: trY, size: 9, font: helvetica, color: BLACK });
+
+		y -= rowH;
 	}
 
-	// =========================================================================
-	// TOTALS SECTION - Story 25.2
-	// =========================================================================
-
-	y -= 25;
-	const totalsX = RIGHT_MARGIN - 200; // Align to right
-
-	// Subtotal
-	draw("Total HT:", { x: totalsX + 20, y, size: 10, font: helvetica, color: BLACK });
-	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 110, y, size: 10, font: helvetica, color: BLACK });
-	y -= 18;
-
-	// VAT
-	draw("TVA:", { x: totalsX + 20, y, size: 10, font: helvetica, color: BLACK });
-	draw(formatPrice(invoice.totalVat), { x: totalsX + 110, y, size: 10, font: helvetica, color: BLACK });
 	y -= 20;
 
-	// Total TTC with highlight
-	page.drawRectangle({
-		x: totalsX,
-		y: y - 6,
-		width: 200,
-		height: 26,
-		color: LIGHT_GRAY,
-	});
-	draw("Total TTC:", { x: totalsX + 20, y: y + 2, size: 10, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 110, y: y, size: 12, font: helveticaBold, color: brandColor });
-	y -= 40;
-
-	// Commission info for partners
-	if (invoice.commissionAmount && invoice.commissionAmount > 0) {
-		draw(`Commission partenaire: ${formatPrice(invoice.commissionAmount)}`, {
-			x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: ORANGE
-		});
-		y -= 16;
-		draw(`Montant net: ${formatPrice(invoice.totalExclVat - invoice.commissionAmount)}`, {
-			x: LEFT_MARGIN, y, size: 10, font: helvetica, color: GRAY
-		});
-		y -= 25;
-	}
-
 	// =========================================================================
-	// NOTES SECTION
+	// TOTALS
 	// =========================================================================
 
-	if (invoice.notes) {
-		draw("NOTES", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
-		y -= 16;
-		draw(invoice.notes.substring(0, 100), { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
-		y -= 25;
-	}
+	const totalsW = 200;
+	const totalsX = RIGHT_MARGIN - totalsW;
+
+	drawRect(totalsX, y - 20, totalsW, 20);
+	draw("Total HT", { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalExclVat), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
+	y -= 20;
+
+	drawRect(totalsX, y - 20, totalsW, 20);
+	draw("Total TVA", { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalVat), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
+	y -= 20;
+
+	drawRect(totalsX, y - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
+	draw("Total TTC", { x: totalsX + 10, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalInclVat), { x: totalsX + 110, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+
+	y -= 45;
 
 	// =========================================================================
-	// PAYMENT INFO SECTION
+	// CONDITIONS DE REGLEMENT / PAYMENT TERMS
 	// =========================================================================
 
-	draw("INFORMATIONS DE PAIEMENT / PAYMENT INFO", { x: LEFT_MARGIN, y, size: 10, font: helveticaBold, color: DARK });
-	y -= 16;
+	draw("CONDITIONS DE REGLEMENT / PAYMENT TERMS:", { x: LEFT_MARGIN, y, size: 9, font: helveticaBold, color: DARK });
+	y -= 12;
+	
 	if (invoice.paymentTerms) {
-		draw(`Conditions: ${invoice.paymentTerms}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`${invoice.paymentTerms}`, { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: BLACK });
+		y -= 10;
+	} else {
+		draw("Paiement a reception / Payment upon receipt", { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: BLACK });
+		y -= 10;
 	}
+	
 	if (organization.iban) {
-		draw(`IBAN: ${organization.iban}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
-		y -= 14;
+		draw(`IBAN: ${organization.iban}`, { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: GRAY });
+		y -= 10;
 	}
 	if (organization.bic) {
-		draw(`BIC: ${organization.bic}`, { x: LEFT_MARGIN, y, size: 9, font: helvetica, color: GRAY });
+		draw(`BIC: ${organization.bic}`, { x: LEFT_MARGIN, y, size: 8, font: helvetica, color: GRAY });
 	}
 
 	// =========================================================================
-	// FOOTER - Story 25.2: Legal Mentions (EU/FR Compliance)
+	// FOOTER (Legal mentions)
 	// =========================================================================
 
-	const footerY = 50;
-	
+	const footerY = 45;
 	draw(
-		"En cas de retard de paiement, des penalites de retard seront appliquees au taux legal en vigueur.",
-		{ x: LEFT_MARGIN, y: footerY + 12, size: 7, font: helvetica, color: GRAY }
+		"En cas de retard de paiement, des penalites sont appliquees selon le taux legal en vigueur.",
+		{ x: LEFT_MARGIN, y: footerY + 15, size: 7, font: helvetica, color: GRAY }
 	);
 	draw(
-		"Une indemnite forfaitaire de 40 EUR pour frais de recouvrement sera egalement due.",
-		{ x: LEFT_MARGIN, y: footerY, size: 7, font: helvetica, color: GRAY }
+		"In case of late payment, penalties will be applied according to the legal rate in force.",
+		{ x: LEFT_MARGIN, y: footerY + 5, size: 7, font: helvetica, color: GRAY }
+	);
+	draw(
+		"Indemnite forfaitaire de 40 EUR pour frais de recouvrement. / 40 EUR fixed compensation for recovery costs.",
+		{ x: LEFT_MARGIN, y: footerY - 5, size: 7, font: helvetica, color: GRAY }
 	);
 
-	// Page number
-	draw("Page 1 / 1", { x: RIGHT_MARGIN - 50, y: footerY, size: 8, font: helvetica, color: GRAY });
+	draw("Page 1 / 1", { x: RIGHT_MARGIN - 45, y: footerY - 5, size: 8, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);

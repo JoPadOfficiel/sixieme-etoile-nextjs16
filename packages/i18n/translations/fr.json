@@ -1388,6 +1388,13 @@
 				"saveSuccess": "Paramètre enregistré avec succès",
 				"saveError": "Échec de l'enregistrement du paramètre"
 			},
+			"logoWidth": {
+				"title": "Taille du Logo",
+				"description": "Ajustez la largeur du logo en pixels (50px - 300px).",
+				"saveSuccess": "Taille du logo enregistrée avec succès",
+				"saveError": "Échec de l'enregistrement de la taille",
+				"reset": "Réinitialiser"
+			},
 			"preview": {
 				"title": "Aperçu du Document",
 				"description": "Aperçu en temps réel de l'apparence de vos documents."

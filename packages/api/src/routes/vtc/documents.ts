@@ -162,6 +162,7 @@ function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 		brandColor: settings?.brandColor,
 		logoPosition: settings?.logoPosition,
 		showCompanyName: settings?.showCompanyName,
+		logoWidth: settings?.logoWidth,
 		
 		// Story 25.2: EU Compliance - Real data from metadata or settings
 		name: settings?.legalName ?? org.name,
@@ -318,6 +319,18 @@ function transformInvoiceToPdfData(invoice: {
 		email?: string | null;
 		phone?: string | null;
 	} | null;
+	// Quote ID for reference
+	quoteId?: string | null;
+	// Quote details for trip info
+	quote?: {
+		pickupAddress: string;
+		dropoffAddress?: string | null;
+		pickupAt: Date;
+		passengerCount: number;
+		luggageCount: number;
+		tripType: string;
+		vehicleCategory?: { name: string } | null;
+	} | null;
 }): InvoicePdfData {
 	return {
 		id: invoice.id,
@@ -344,6 +357,18 @@ function transformInvoiceToPdfData(invoice: {
 			lastName: invoice.endCustomer.lastName,
 			email: invoice.endCustomer.email,
 			phone: invoice.endCustomer.phone,
+		} : null,
+		// Include quote reference for display in invoice PDF
+		quoteReference: invoice.quoteId ? invoice.quoteId.slice(-8).toUpperCase() : null,
+		// Include trip details from quote
+		tripDetails: invoice.quote ? {
+			pickupAddress: invoice.quote.pickupAddress,
+			dropoffAddress: invoice.quote.dropoffAddress,
+			pickupAt: invoice.quote.pickupAt,
+			passengerCount: invoice.quote.passengerCount,
+			luggageCount: invoice.quote.luggageCount,
+			vehicleCategory: invoice.quote.vehicleCategory?.name || "Standard",
+			tripType: invoice.quote.tripType,
 		} : null,
 	};
 }
@@ -385,20 +410,19 @@ function transformMissionToPdfData(quote: any): MissionOrderPdfData {
  */
 function generateFilename(type: string, reference: string): string {
 	const dateStr = format(new Date(), "yyyyMMdd");
+	// Add timestamp to ensure unique filename on each generation for cache busting
+	const timeStr = format(new Date(), "HHmmss");
 	const refShort = reference.slice(-8).toUpperCase();
 
 	switch (type) {
 		case "QUOTE_PDF":
-			return `DEVIS-${refShort}-${dateStr}.pdf`;
+			return `DEVIS-${refShort}-${dateStr}-${timeStr}.pdf`;
 		case "INVOICE_PDF":
-			return `FACTURE-${reference}-${dateStr}.pdf`;
+			return `FACTURE-${reference}-${dateStr}-${timeStr}.pdf`;
 		case "MISSION_ORDER":
-			// Story 25.1: Add timestamp to ensure unique filename on each generation
-			// Mission sheets can be regenerated multiple times with updated info
-			const timeStr = format(new Date(), "HHmmss");
 			return `ORDRE-MISSION-${refShort}-${dateStr}-${timeStr}.pdf`;
 		default:
-			return `DOCUMENT-${refShort}-${dateStr}.pdf`;
+			return `DOCUMENT-${refShort}-${dateStr}-${timeStr}.pdf`;
 	}
 }
 
@@ -724,7 +748,7 @@ export const documentsRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const invoiceId = c.req.param("invoiceId");
 
-			// Fetch invoice with all details
+			// Fetch invoice with all details including quote for trip details
 			const invoice = await db.invoice.findFirst({
 				where: withTenantId(invoiceId, organizationId),
 				include: {
@@ -743,6 +767,20 @@ export const documentsRouter = new Hono()
 					},
 					lines: {
 						orderBy: { sortOrder: "asc" },
+					},
+					// Include quote for trip details
+					quote: {
+						select: {
+							pickupAddress: true,
+							dropoffAddress: true,
+							pickupAt: true,
+							passengerCount: true,
+							luggageCount: true,
+							tripType: true,
+							vehicleCategory: {
+								select: { name: true },
+							},
+						},
 					},
 				},
 			});

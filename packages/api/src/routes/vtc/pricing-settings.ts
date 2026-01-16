@@ -77,6 +77,7 @@ const updatePricingSettingsSchema = z.object({
 	brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
 	logoPosition: logoPositionEnum.optional(),
 	showCompanyName: z.boolean().optional(),
+	logoWidth: z.number().int().min(50).max(300).optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
@@ -126,6 +127,7 @@ function serializePricingSettings(settings: {
 	brandColor?: string | null;
 	logoPosition?: string | null;
 	showCompanyName?: boolean;
+	logoWidth?: number;
 	createdAt: Date;
 	updatedAt: Date;
 }) {
@@ -199,6 +201,7 @@ function serializePricingSettings(settings: {
 		brandColor: settings.brandColor ?? "#2563eb",
 		logoPosition: settings.logoPosition ?? "LEFT",
 		showCompanyName: settings.showCompanyName ?? true,
+		logoWidth: settings.logoWidth ?? 150,
 		createdAt: settings.createdAt.toISOString(),
 		updatedAt: settings.updatedAt.toISOString(),
 	};
@@ -246,50 +249,58 @@ export const pricingSettingsRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
-			// Check if settings exist
-			const existing = await db.organizationPricingSettings.findUnique({
-				where: { organizationId },
-			});
+			console.log("[pricing-settings] PATCH received:", { organizationId, data });
 
-			let settings;
-
-			if (existing) {
-				// Update existing settings
-				const updateData: any = {
-					...data,
-				};
-				// Convert difficultyMultipliers to JSON for database
-				if (data.difficultyMultipliers) {
-					updateData.difficultyMultipliers = JSON.stringify(data.difficultyMultipliers);
-				}
-				settings = await db.organizationPricingSettings.update({
+			try {
+				// Check if settings exist
+				const existing = await db.organizationPricingSettings.findUnique({
 					where: { organizationId },
-					data: updateData,
 				});
-			} else {
-				// Create new settings with defaults for required fields
-				const createData = {
-					organizationId,
-					baseRatePerKm: data.baseRatePerKm ?? 1.2,
-					baseRatePerHour: data.baseRatePerHour ?? 35.0,
-					defaultMarginPercent: data.defaultMarginPercent ?? 20.0,
-					greenMarginThreshold: data.greenMarginThreshold ?? 20.0,
-					orangeMarginThreshold: data.orangeMarginThreshold ?? 0.0,
-					minimumFare: data.minimumFare ?? 25.0,
-					roundingRule: data.roundingRule ?? null,
-					fuelConsumptionL100km: data.fuelConsumptionL100km ?? null,
-					fuelPricePerLiter: data.fuelPricePerLiter ?? null,
-					tollCostPerKm: data.tollCostPerKm ?? null,
-					wearCostPerKm: data.wearCostPerKm ?? null,
-					driverHourlyCost: data.driverHourlyCost ?? null,
-				};
 
-				settings = await db.organizationPricingSettings.create({
-					data: createData,
-				});
+				let settings;
+
+				if (existing) {
+					// Update existing settings
+					const updateData: any = {
+						...data,
+					};
+					// Convert difficultyMultipliers to JSON for database
+					if (data.difficultyMultipliers) {
+						updateData.difficultyMultipliers = JSON.stringify(data.difficultyMultipliers);
+					}
+					console.log("[pricing-settings] Updating with:", updateData);
+					settings = await db.organizationPricingSettings.update({
+						where: { organizationId },
+						data: updateData,
+					});
+				} else {
+					// Create new settings with defaults for required fields
+					const createData = {
+						organizationId,
+						baseRatePerKm: data.baseRatePerKm ?? 1.2,
+						baseRatePerHour: data.baseRatePerHour ?? 35.0,
+						defaultMarginPercent: data.defaultMarginPercent ?? 20.0,
+						greenMarginThreshold: data.greenMarginThreshold ?? 20.0,
+						orangeMarginThreshold: data.orangeMarginThreshold ?? 0.0,
+						minimumFare: data.minimumFare ?? 25.0,
+						roundingRule: data.roundingRule ?? null,
+						fuelConsumptionL100km: data.fuelConsumptionL100km ?? null,
+						fuelPricePerLiter: data.fuelPricePerLiter ?? null,
+						tollCostPerKm: data.tollCostPerKm ?? null,
+						wearCostPerKm: data.wearCostPerKm ?? null,
+						driverHourlyCost: data.driverHourlyCost ?? null,
+					};
+
+					settings = await db.organizationPricingSettings.create({
+						data: createData,
+					});
+				}
+
+				return c.json(serializePricingSettings(settings));
+			} catch (error) {
+				console.error("[pricing-settings] PATCH error:", error);
+				throw error;
 			}
-
-			return c.json(serializePricingSettings(settings));
 		}
 	)
 

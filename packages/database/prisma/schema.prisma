@@ -1381,6 +1381,8 @@ model OrganizationPricingSettings {
   logoPosition    LogoPosition @default(LEFT)
   // Whether to show company name next to the logo in document header
   showCompanyName Boolean      @default(true)
+  // Width of the logo in pixels (default: 150)
+  logoWidth       Int          @default(150)
 
   // Story 25.2: EU-Compliant Invoice Legal Info
   legalName       String?
