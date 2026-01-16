@@ -1147,9 +1147,14 @@ export async function generateMissionOrderPdf(
 	draw(`Bagage(s) prevus : ${mission.luggageCount}`, { x: paxX, y: y - 40, size: 7, font: helvetica, color: BLACK });
 	
 	// Empty fields to be filled by driver after mission
-	draw("Nombre reel adulte(s) : _____", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
-	draw("Nombre reel enfant(s) : _____", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
-	draw("Nombre de bagage(s) reel : _____", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre reel adulte(s) :", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + 100, y: y - 55 }, end: { x: paxX + 150, y: y - 55 }, thickness: 0.5, color: BLACK });
+
+	draw("Nombre reel enfant(s) :", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + 100, y: y - 65 }, end: { x: paxX + 150, y: y - 65 }, thickness: 0.5, color: BLACK });
+
+	draw("Nombre de bagage(s) reel :", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + 110, y: y - 75 }, end: { x: paxX + 160, y: y - 75 }, thickness: 0.5, color: BLACK });
 
 	// Notes section - with End Customer for partner missions
 	const notesX = LEFT_MARGIN + 245;
@@ -1192,7 +1197,26 @@ export async function generateMissionOrderPdf(
 	drawRect(LEFT_MARGIN, y - 55, 80, 40);
 	drawRect(LEFT_MARGIN + 80, y - 55, CONTENT_WIDTH - 80, 40);
 
-	draw(pickupTime, { x: LEFT_MARGIN + 15, y: y - 40, size: 20, font: helveticaBold, color: BLACK });
+	// Split Pickup Time cell horizontally for Planned vs Real
+	page.drawLine({
+		start: { x: LEFT_MARGIN, y: y - 35 },
+		end: { x: LEFT_MARGIN + 80, y: y - 35 },
+		thickness: 0.5,
+		color: BLACK,
+	});
+
+	// Planned Time (Top)
+	draw(pickupTime, { x: LEFT_MARGIN + 20, y: y - 28, size: 14, font: helveticaBold, color: BLACK });
+
+	// Real Time Placeholder (Bottom)
+	draw("Reel : ", { x: LEFT_MARGIN + 2, y: y - 48, size: 6, font: helvetica, color: GRAY });
+	// Hour line
+	page.drawLine({ start: { x: LEFT_MARGIN + 25, y: y - 48 }, end: { x: LEFT_MARGIN + 45, y: y - 48 }, thickness: 0.5, color: BLACK });
+	draw(":", { x: LEFT_MARGIN + 47, y: y - 47, size: 8, font: helveticaBold, color: BLACK });
+	// Minute line
+	page.drawLine({ start: { x: LEFT_MARGIN + 50, y: y - 48 }, end: { x: LEFT_MARGIN + 70, y: y - 48 }, thickness: 0.5, color: BLACK });
+
+	// Address
 	draw(mission.pickupAddress.substring(0, 70), { x: LEFT_MARGIN + 85, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
 
 	y -= 65;
@@ -1205,8 +1229,11 @@ export async function generateMissionOrderPdf(
 	drawRect(LEFT_MARGIN + CONTENT_WIDTH - 80, y - 55, 80, 40);
 
 	draw((mission.dropoffAddress || "A definir").substring(0, 70), { x: LEFT_MARGIN + 5, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
-	// Estimated arrival (placeholder)
-	draw("--:--", { x: LEFT_MARGIN + CONTENT_WIDTH - 65, y: y - 40, size: 20, font: helveticaBold, color: BLACK });
+	
+	// Estimated arrival (placeholder) - Lines for writing
+	page.drawLine({ start: { x: LEFT_MARGIN + CONTENT_WIDTH - 65, y: y - 40 }, end: { x: LEFT_MARGIN + CONTENT_WIDTH - 45, y: y - 40 }, thickness: 0.5, color: BLACK });
+	draw(":", { x: LEFT_MARGIN + CONTENT_WIDTH - 42, y: y - 39, size: 10, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: LEFT_MARGIN + CONTENT_WIDTH - 38, y: y - 40 }, end: { x: LEFT_MARGIN + CONTENT_WIDTH - 18, y: y - 40 }, thickness: 0.5, color: BLACK });
 
 	y -= 65;
 
