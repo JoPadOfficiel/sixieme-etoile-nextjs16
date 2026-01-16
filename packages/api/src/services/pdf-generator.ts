@@ -38,6 +38,7 @@ export interface ContactPdfData {
 	email?: string | null;
 	phone?: string | null;
 	vatNumber?: string | null;
+	siret?: string | null;
 	isPartner: boolean;
 }
 
@@ -73,6 +74,10 @@ export interface QuotePdfData {
 
 export interface MissionOrderPdfData extends QuotePdfData {
 	driverName: string;
+	driverPhone?: string | null;
+	// Story 25.1: Second driver for RSE double crew missions
+	secondDriverName?: string | null;
+	secondDriverPhone?: string | null;
 	vehicleName: string;
 	vehiclePlate?: string | null;
 }
@@ -1010,13 +1015,15 @@ export async function generateMissionOrderPdf(
 
 	// =========================================================================
 	// MAIN TABLE: Date | Client | Chauffeur
+	// Story 25.1: Extended with phone/email, partner SIRET/TVA, second driver
 	// =========================================================================
 	
 	const tableY = y;
-	const tableH = 80;
-	const col1W = 120;
-	const col2W = 200;
-	const col3W = CONTENT_WIDTH - col1W - col2W;
+	// Increase table height to fit more info
+	const tableH = mission.contact.isPartner ? 120 : 100;
+	const col1W = 90; // Date - narrower
+	const col2W = 240; // Client - wider for more info
+	const col3W = CONTENT_WIDTH - col1W - col2W; // Chauffeur
 	
 	// Headers
 	drawRect(LEFT_MARGIN, tableY - 15, col1W, 15, true);
@@ -1024,7 +1031,7 @@ export async function generateMissionOrderPdf(
 	drawRect(LEFT_MARGIN + col1W + col2W, tableY - 15, col3W, 15, true);
 	draw("Date", { x: LEFT_MARGIN + col1W / 2 - 10, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
 	draw("Client", { x: LEFT_MARGIN + col1W + col2W / 2 - 15, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
-	draw("Chauffeur", { x: LEFT_MARGIN + col1W + col2W + col3W / 2 - 25, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
+	draw("Chauffeur(s)", { x: LEFT_MARGIN + col1W + col2W + col3W / 2 - 30, y: tableY - 12, size: 8, font: helveticaBold, color: BLACK });
 
 	// Content cells
 	drawRect(LEFT_MARGIN, tableY - 15 - tableH, col1W, tableH);
@@ -1034,54 +1041,143 @@ export async function generateMissionOrderPdf(
 	// Date cell content
 	draw(pickupDate, { x: LEFT_MARGIN + 5, y: tableY - 35, size: 10, font: helveticaBold, color: BLACK });
 
-	// Client cell content
-	const clientName = mission.endCustomer 
-		? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`
-		: mission.contact.displayName;
-	draw(clientName, { x: LEFT_MARGIN + col1W + 5, y: tableY - 35, size: 9, font: helveticaBold, color: BLACK });
-	draw(`Dossier cree le ${formatDate(mission.createdAt)}`, { x: LEFT_MARGIN + col1W + 5, y: tableY - 50, size: 7, font: helvetica, color: GRAY });
+	// Client cell content - different layout for partner vs private
+	const clientX = LEFT_MARGIN + col1W + 5;
+	let clientYOffset = 30;
+	
+	if (mission.contact.isPartner) {
+		// Partner: show agency name, contact details, SIRET, TVA
+		draw(mission.contact.companyName || mission.contact.displayName, { x: clientX, y: tableY - clientYOffset, size: 9, font: helveticaBold, color: BLACK });
+		clientYOffset += 12;
+		if (mission.contact.phone) {
+			draw(`Tel: ${mission.contact.phone}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+			clientYOffset += 10;
+		}
+		if (mission.contact.email) {
+			draw(`Email: ${mission.contact.email}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+			clientYOffset += 10;
+		}
+		if (mission.contact.billingAddress) {
+			const addrShort = sanitizeText(mission.contact.billingAddress).substring(0, 50);
+			draw(`Adresse: ${addrShort}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+			clientYOffset += 10;
+		}
+		if (mission.contact.siret) {
+			draw(`SIRET: ${mission.contact.siret}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: GRAY });
+			clientYOffset += 10;
+		}
+		if (mission.contact.vatNumber) {
+			draw(`TVA: ${mission.contact.vatNumber}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: GRAY });
+		}
+	} else {
+		// Private client: show name, phone, email, address
+		draw(mission.contact.displayName, { x: clientX, y: tableY - clientYOffset, size: 9, font: helveticaBold, color: BLACK });
+		clientYOffset += 12;
+		if (mission.contact.phone) {
+			draw(`Tel: ${mission.contact.phone}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+			clientYOffset += 10;
+		}
+		if (mission.contact.email) {
+			draw(`Email: ${mission.contact.email}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+			clientYOffset += 10;
+		}
+		if (mission.contact.billingAddress) {
+			const addrShort = sanitizeText(mission.contact.billingAddress).substring(0, 50);
+			draw(`Adresse: ${addrShort}`, { x: clientX, y: tableY - clientYOffset, size: 7, font: helvetica, color: BLACK });
+		}
+	}
+	// Small creation date at bottom of client cell
+	draw(`Dossier cree le ${formatDate(mission.createdAt)}`, { x: clientX, y: tableY - tableH + 5, size: 6, font: helvetica, color: GRAY });
 
-	// Chauffeur cell content
+	// Chauffeur cell content - with phone and second driver if present
 	const chauffeurX = LEFT_MARGIN + col1W + col2W + 5;
-	draw(mission.driverName, { x: chauffeurX, y: tableY - 30, size: 9, font: helveticaBold, color: BLACK });
-	draw("Type de vehicule", { x: chauffeurX, y: tableY - 50, size: 6, font: helvetica, color: GRAY });
-	draw("Vehicule", { x: chauffeurX + col3W / 2, y: tableY - 50, size: 6, font: helvetica, color: GRAY });
-	draw(mission.vehicleCategory, { x: chauffeurX, y: tableY - 62, size: 8, font: helvetica, color: BLACK });
-	draw(mission.vehiclePlate || "N/A", { x: chauffeurX + col3W / 2, y: tableY - 62, size: 8, font: helvetica, color: BLACK });
-	draw(mission.vehicleName, { x: chauffeurX, y: tableY - 75, size: 7, font: helvetica, color: GRAY });
+	let chauffeurYOffset = 30;
+	
+	// Primary driver
+	draw(mission.driverName, { x: chauffeurX, y: tableY - chauffeurYOffset, size: 9, font: helveticaBold, color: BLACK });
+	chauffeurYOffset += 10;
+	if (mission.driverPhone) {
+		draw(`Tel: ${mission.driverPhone}`, { x: chauffeurX, y: tableY - chauffeurYOffset, size: 7, font: helvetica, color: BLACK });
+		chauffeurYOffset += 12;
+	} else {
+		chauffeurYOffset += 8;
+	}
+	
+	// Second driver (for RSE double crew)
+	if (mission.secondDriverName) {
+		draw(mission.secondDriverName, { x: chauffeurX, y: tableY - chauffeurYOffset, size: 9, font: helveticaBold, color: BLACK });
+		chauffeurYOffset += 10;
+		if (mission.secondDriverPhone) {
+			draw(`Tel: ${mission.secondDriverPhone}`, { x: chauffeurX, y: tableY - chauffeurYOffset, size: 7, font: helvetica, color: BLACK });
+			chauffeurYOffset += 12;
+		}
+	}
+	
+	// Vehicle info at bottom
+	draw("Type:", { x: chauffeurX, y: tableY - tableH + 25, size: 6, font: helvetica, color: GRAY });
+	draw(mission.vehicleCategory, { x: chauffeurX + 25, y: tableY - tableH + 25, size: 7, font: helvetica, color: BLACK });
+	draw("Immat:", { x: chauffeurX, y: tableY - tableH + 15, size: 6, font: helvetica, color: GRAY });
+	draw(mission.vehiclePlate || "N/A", { x: chauffeurX + 30, y: tableY - tableH + 15, size: 7, font: helvetica, color: BLACK });
+	draw(mission.vehicleName, { x: chauffeurX, y: tableY - tableH + 5, size: 6, font: helvetica, color: GRAY });
 
 	y = tableY - 15 - tableH - 10;
 
 	// =========================================================================
 	// SERVICE ROW
+	// Story 25.1: Extended with "Nombre réel" fields and End Customer in notes
 	// =========================================================================
 	
-	const serviceRowH = 50;
+	const serviceRowH = 80; // Increased height for more fields
 	drawRect(LEFT_MARGIN, y - 15, 80, 15, true);
 	draw("Service", { x: LEFT_MARGIN + 25, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
-	drawRect(LEFT_MARGIN + 80, y - 15, 140, 15, true);
-	draw("Passager(s) : " + mission.passengerCount, { x: LEFT_MARGIN + 85, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
-	drawRect(LEFT_MARGIN + 220, y - 15, 275, 15, true);
-	draw("Note au chauffeur", { x: LEFT_MARGIN + 300, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	drawRect(LEFT_MARGIN + 80, y - 15, 160, 15, true);
+	draw("Passager(s) : " + mission.passengerCount, { x: LEFT_MARGIN + 100, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	drawRect(LEFT_MARGIN + 240, y - 15, 255, 15, true);
+	draw("Note au chauffeur", { x: LEFT_MARGIN + 320, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
 
 	drawRect(LEFT_MARGIN, y - 15 - serviceRowH, 80, serviceRowH);
-	drawRect(LEFT_MARGIN + 80, y - 15 - serviceRowH, 140, serviceRowH);
-	drawRect(LEFT_MARGIN + 220, y - 15 - serviceRowH, 275, serviceRowH);
+	drawRect(LEFT_MARGIN + 80, y - 15 - serviceRowH, 160, serviceRowH);
+	drawRect(LEFT_MARGIN + 240, y - 15 - serviceRowH, 255, serviceRowH);
 
 	draw("Navettes", { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
 
-	// Passenger details
+	// Passenger details - booking values
 	const paxX = LEFT_MARGIN + 85;
-	draw(`Nombre d'adulte(s) : ${mission.passengerCount}`, { x: paxX, y: y - 30, size: 7, font: helvetica, color: BLACK });
-	draw(`Nombre de bagage(s) en cabine : ${mission.luggageCount}`, { x: paxX, y: y - 42, size: 7, font: helvetica, color: BLACK });
+	draw(`Adulte(s) prevus : ${mission.passengerCount}`, { x: paxX, y: y - 30, size: 7, font: helvetica, color: BLACK });
+	draw(`Bagage(s) prevus : ${mission.luggageCount}`, { x: paxX, y: y - 40, size: 7, font: helvetica, color: BLACK });
+	
+	// Empty fields to be filled by driver after mission
+	draw("Nombre reel adulte(s) : _____", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre reel enfant(s) : _____", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre de bagage(s) reel : _____", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
 
-	// Notes
+	// Notes section - with End Customer for partner missions
+	const notesX = LEFT_MARGIN + 245;
+	let notesYOffset = 30;
+	
+	// Story 25.1: For partner missions, display End Customer prominently
+	if (mission.contact.isPartner && mission.endCustomer) {
+		const endCustName = `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`;
+		draw(`PASSAGER: ${endCustName}`, { x: notesX, y: y - notesYOffset, size: 8, font: helveticaBold, color: BLACK });
+		notesYOffset += 12;
+		if (mission.endCustomer.phone) {
+			draw(`Tel: ${mission.endCustomer.phone}`, { x: notesX, y: y - notesYOffset, size: 7, font: helvetica, color: BLACK });
+			notesYOffset += 10;
+		}
+		if (mission.endCustomer.email) {
+			draw(`Email: ${mission.endCustomer.email}`, { x: notesX, y: y - notesYOffset, size: 7, font: helvetica, color: BLACK });
+			notesYOffset += 10;
+		}
+	}
+	
+	// Regular notes at the end
 	if (mission.notes) {
-		draw(mission.notes.substring(0, 60), { x: LEFT_MARGIN + 225, y: y - 35, size: 7, font: helvetica, color: BLACK });
+		const truncatedNotes = mission.notes.substring(0, 50);
+		draw(truncatedNotes, { x: notesX, y: y - notesYOffset, size: 7, font: helvetica, color: GRAY });
 	}
 
 	// Reference mission
-	draw("Reference mission", { x: LEFT_MARGIN + 10, y: y - 60, size: 7, font: helveticaBold, color: GRAY });
+	draw("Reference mission", { x: LEFT_MARGIN + 10, y: y - 70, size: 7, font: helveticaBold, color: GRAY });
 
 	y = y - 15 - serviceRowH - 10;
 

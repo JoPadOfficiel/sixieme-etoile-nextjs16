@@ -4,11 +4,12 @@ import { Button } from "@ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Badge } from "@ui/components/badge";
 import { Skeleton } from "@ui/components/skeleton";
-import { Car, User, MapPin, UserPlus, Building2, Phone, Euro, Calendar } from "lucide-react";
+import { Car, User, MapPin, UserPlus, Building2, Phone, Euro, Calendar, Printer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { cn } from "@ui/lib";
 import type { MissionAssignment, MissionSubcontractor } from "../types";
+import { useMissionOrder } from "../hooks/useMissionOrder";
 
 /**
  * VehicleAssignmentPanel Component
@@ -31,6 +32,8 @@ interface VehicleAssignmentPanelProps {
 	onChangeSubcontractor?: () => void;
 	onRemoveSubcontractor?: () => void;
 	className?: string;
+	// Story 25.1: Quote ID for generating mission sheet
+	quoteId?: string | null;
 }
 
 export function VehicleAssignmentPanel({
@@ -42,8 +45,10 @@ export function VehicleAssignmentPanel({
 	onChangeSubcontractor,
 	onRemoveSubcontractor,
 	className,
+	quoteId,
 }: VehicleAssignmentPanelProps) {
 	const t = useTranslations("dispatch.assignment");
+	const { generateMissionOrder, isGenerating } = useMissionOrder();
 
 	if (isLoading) {
 		return <VehicleAssignmentPanelSkeleton className={className} />;
@@ -220,7 +225,23 @@ export function VehicleAssignmentPanel({
 								</div>
 							</div>
 						)}
-					</div>
+
+					{/* Story 25.1: Print Mission Sheet button - show when driver is assigned */}
+					{assignment.driverId && quoteId && (
+						<div className="pt-2 border-t">
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full"
+								onClick={() => generateMissionOrder(quoteId)}
+								disabled={isGenerating}
+							>
+								<Printer className="size-4 mr-2" />
+								{t("printMissionSheet")}
+							</Button>
+						</div>
+					)}
+				</div>
 				) : (
 					<div className="text-center py-4">
 						<Badge variant="secondary" className="mb-2">

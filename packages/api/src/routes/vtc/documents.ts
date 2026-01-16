@@ -90,6 +90,7 @@ function transformContactToPdfData(contact: {
 	email?: string | null;
 	phone?: string | null;
 	vatNumber?: string | null;
+	siret?: string | null;
 	isPartner: boolean;
 }): ContactPdfData {
 	return {
@@ -99,6 +100,7 @@ function transformContactToPdfData(contact: {
 		email: contact.email,
 		phone: contact.phone,
 		vatNumber: contact.vatNumber,
+		siret: contact.siret,
 		isPartner: contact.isPartner,
 	};
 }
@@ -130,6 +132,7 @@ function transformQuoteToPdfData(quote: {
 		email?: string | null;
 		phone?: string | null;
 		vatNumber?: string | null;
+		siret?: string | null;
 		isPartner: boolean;
 	};
 	vehicleCategory?: {
@@ -247,11 +250,30 @@ function transformInvoiceToPdfData(invoice: {
  */
 function transformMissionToPdfData(quote: any): MissionOrderPdfData {
 	const baseData = transformQuoteToPdfData(quote);
+	// Build driver name from firstName + lastName (Driver model doesn't have displayName)
+	const driverName = quote.assignedDriver
+		? `${quote.assignedDriver.firstName} ${quote.assignedDriver.lastName}`.trim()
+		: "À désigner";
+	const driverPhone = quote.assignedDriver?.phone || null;
+	
+	// Story 25.1: Second driver for RSE double crew missions
+	const secondDriverName = quote.secondDriver
+		? `${quote.secondDriver.firstName} ${quote.secondDriver.lastName}`.trim()
+		: null;
+	const secondDriverPhone = quote.secondDriver?.phone || null;
+	
+	// Build vehicle name from internalName or registrationNumber
+	const vehicleName = quote.assignedVehicle?.internalName 
+		|| quote.assignedVehicle?.registrationNumber 
+		|| "À désigner";
 	return {
 		...baseData,
-		driverName: quote.assignedDriver?.displayName || "A designer",
-		vehicleName: quote.assignedVehicle?.name || "A designer",
-		vehiclePlate: quote.assignedVehicle?.licensePlate,
+		driverName,
+		driverPhone,
+		secondDriverName,
+		secondDriverPhone,
+		vehicleName,
+		vehiclePlate: quote.assignedVehicle?.registrationNumber,
 	};
 }
 
@@ -268,7 +290,10 @@ function generateFilename(type: string, reference: string): string {
 		case "INVOICE_PDF":
 			return `FACTURE-${reference}-${dateStr}.pdf`;
 		case "MISSION_ORDER":
-			return `ORDRE-MISSION-${refShort}-${dateStr}.pdf`;
+			// Story 25.1: Add timestamp to ensure unique filename on each generation
+			// Mission sheets can be regenerated multiple times with updated info
+			const timeStr = format(new Date(), "HHmmss");
+			return `ORDRE-MISSION-${refShort}-${dateStr}-${timeStr}.pdf`;
 		default:
 			return `DOCUMENT-${refShort}-${dateStr}.pdf`;
 	}
@@ -687,6 +712,8 @@ export const documentsRouter = new Hono()
 					assignedDriver: true,
 					assignedVehicle: true,
 					endCustomer: true,
+					// Story 25.1: Include second driver for RSE double crew missions
+					secondDriver: true,
 				},
 			});
 
