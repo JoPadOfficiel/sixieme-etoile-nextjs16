@@ -55,11 +55,106 @@ const listDocumentsSchema = z.object({
 // Helper Functions
 // ============================================================================
 
+import sharp from "sharp";
+
+/**
+ * Check if buffer is SVG (basic check)
+ */
+function isSvg(buffer: Buffer): boolean {
+	const str = buffer.slice(0, 100).toString().trim().toLowerCase();
+	return str.includes("<svg") || str.includes("<?xml");
+}
+
+/**
+ * Helper to load logo as Base64 Data URI
+ * Supports both local storage paths and public HTTP URLs
+ * Converts SVG to PNG using sharp
+ */
+async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<string | null> {
+	if (!pathOrUrl) return null;
+	try {
+		let buffer: Buffer;
+		let mime = "image/jpeg"; // Default
+
+		if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+			const res = await fetch(pathOrUrl);
+			if (!res.ok) {
+				console.error(`Failed to fetch logo URL: ${res.status}`);
+				return null;
+			}
+			const arr = await res.arrayBuffer();
+			buffer = Buffer.from(arr);
+			
+			const contentType = res.headers.get("content-type");
+			if (contentType) mime = contentType;
+		} else {
+			const storage = getStorageService();
+			try {
+				buffer = await storage.getBuffer(pathOrUrl);
+			} catch (e: any) {
+				// Fallback: Check public/uploads for local dev (ENOENT)
+				if (e.code === 'ENOENT' && process.env.NODE_ENV !== 'production') {
+					try {
+						const fs = require('fs/promises');
+						const path = require('path');
+						// Try to find the file in public/uploads/document-logos
+						// process.cwd() is likely apps/web in Next.js
+						// So we look in public/uploads relative to CWD
+						const fallbackPath = path.join(process.cwd(), 'public/uploads/document-logos', pathOrUrl);
+						console.log(`Fallback: Checking logo at ${fallbackPath}`);
+						buffer = await fs.readFile(fallbackPath);
+					} catch (fallbackError) {
+						console.error("Logo fallback failed:", fallbackError);
+						return null; // Both failed, return null to continue PDF generation without logo
+					}
+				} else {
+					console.error("Logo load failed (storage):", e);
+					return null; // Return null on any storage error to prevent crash
+				}
+			}
+			
+			if (pathOrUrl.toLowerCase().endsWith(".png")) {
+				mime = "image/png";
+			} else if (pathOrUrl.toLowerCase().endsWith(".svg")) {
+				mime = "image/svg+xml";
+			}
+		}
+
+		// Convert SVG to PNG
+		if (mime === "image/svg+xml" || pathOrUrl.toLowerCase().endsWith(".svg") || isSvg(buffer)) {
+			console.log("Converting SVG logo to PNG...");
+			try {
+				buffer = await sharp(buffer).png().toBuffer();
+				mime = "image/png";
+			} catch (sharpError) {
+				console.error("Failed to convert SVG to PNG:", sharpError);
+				return null; // Fail safe
+			}
+		}
+		
+		return `data:${mime};base64,${buffer.toString("base64")}`;
+	} catch (e) {
+		console.error("Logo load failed:", e);
+		return null; // Fail silently to allow PDF generation without logo
+	}
+}
+
 /**
  * Transform organization to PDF data format
  */
 function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 	const settings = org.organizationPricingSettings;
+
+	// Parse metadata for legal info (Story 25.1)
+	let metadata: any = {};
+	if (org.metadata) {
+		if (typeof org.metadata === 'string') {
+			try { metadata = JSON.parse(org.metadata); } catch {}
+		} else {
+			metadata = org.metadata;
+		}
+	}
+
 	return {
 		logo: org.logo,
 		// Story 25.3: Branding
@@ -67,21 +162,23 @@ function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 		brandColor: settings?.brandColor,
 		logoPosition: settings?.logoPosition,
 		showCompanyName: settings?.showCompanyName,
-		// Story 25.2: EU Compliance - Real data
-		// Legal name fallback to org name if not set
+		
+		// Story 25.2: EU Compliance - Real data from metadata or settings
 		name: settings?.legalName ?? org.name,
-		address: settings?.address ?? null,
-		phone: settings?.phone ?? null,
-		email: settings?.email ?? null,
-		siret: settings?.siret ?? null,
-		vatNumber: settings?.vatNumber ?? null,
-		iban: settings?.iban ?? null,
-		bic: settings?.bic ?? null,
+		address: (typeof metadata.address === 'string' ? metadata.address : null) ?? settings?.address ?? null,
+		phone: metadata.phone ?? settings?.phone ?? null,
+		email: metadata.email ?? settings?.email ?? null,
+		
+		siret: metadata.siret ?? settings?.siret ?? null,
+		vatNumber: metadata.vatNumber ?? settings?.vatNumber ?? null,
+		iban: metadata.iban ?? settings?.iban ?? null,
+		bic: metadata.bic ?? settings?.bic ?? null,
+		
 		// Extended legal info for Mission Order footer
-		rcs: settings?.rcs ?? null,
-		rm: settings?.rm ?? null,
-		ape: settings?.ape ?? null, // Code NAF
-		capital: settings?.capital ?? null,
+		rcs: metadata.rcs ?? settings?.rcs ?? null,
+		rm: metadata.rm ?? null,
+		ape: metadata.ape ?? settings?.ape ?? null, // Code NAF
+		capital: settings?.capital ?? null, // Capital often manually set
 		licenseVtc: settings?.licenseVtc ?? null,
 	};
 }
@@ -571,10 +668,19 @@ export const documentsRouter = new Hono()
 			const pdfData = transformQuoteToPdfData(quote);
 			const orgData = transformOrganizationToPdfData(organization);
 			
-			// Fix: Resolve logo storage path to URL
+			// Fix: Load logo with robust fallback
+			// Try document settings logo first, then organization logo
 			if (orgData.documentLogoUrl) {
-				const storage = getStorageService();
-				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+				const logo = await loadLogoAsBase64(orgData.documentLogoUrl);
+				if (logo) {
+					orgData.documentLogoUrl = logo;
+				} else {
+					// Fallback if file missing
+					orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
+				}
+			} else {
+				// No document logo setting, strict fallback
+				orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
 			}
 
 			const pdfBuffer = await generateQuotePdf(pdfData, orgData);
@@ -676,10 +782,16 @@ export const documentsRouter = new Hono()
 			const pdfData = transformInvoiceToPdfData(invoice);
 			const orgData = transformOrganizationToPdfData(organization);
 
-			// Fix: Resolve logo storage path to URL
+			// Fix: Load logo with robust fallback
 			if (orgData.documentLogoUrl) {
-				const storage = getStorageService();
-				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+				const logo = await loadLogoAsBase64(orgData.documentLogoUrl);
+				if (logo) {
+					orgData.documentLogoUrl = logo;
+				} else {
+					orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
+				}
+			} else {
+				orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
 			}
 
 			const pdfBuffer = await generateInvoicePdf(pdfData, orgData);
@@ -768,10 +880,16 @@ export const documentsRouter = new Hono()
 			const pdfData = transformMissionToPdfData(quote);
 			const orgData = transformOrganizationToPdfData(organization);
 
-			// Fix: Resolve logo storage path to URL
+			// Fix: Load logo with robust fallback
 			if (orgData.documentLogoUrl) {
-				const storage = getStorageService();
-				orgData.documentLogoUrl = await storage.getUrl(orgData.documentLogoUrl);
+				const logo = await loadLogoAsBase64(orgData.documentLogoUrl);
+				if (logo) {
+					orgData.documentLogoUrl = logo;
+				} else {
+					orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
+				}
+			} else {
+				orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
 			}
 
 			const pdfBuffer = await generateMissionOrderPdf(pdfData, orgData);

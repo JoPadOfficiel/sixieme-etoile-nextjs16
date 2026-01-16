@@ -14,7 +14,7 @@ const organizationLegalDetailsSchema = z.object({
 	country: z.string().optional().nullable().default("France"),
 	phone: z.string().optional().nullable(),
 	email: z.string().email().optional().nullable(),
-	website: z.string().url().optional().nullable(),
+	website: z.string().optional().nullable(),
 	siret: z.string().optional().nullable(),
 	vatNumber: z.string().optional().nullable(), // Numéro TVA Intracommunautaire
 	iban: z.string().optional().nullable(),

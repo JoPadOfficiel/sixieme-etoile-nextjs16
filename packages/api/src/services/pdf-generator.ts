@@ -186,47 +186,62 @@ function hexToRgb(hex: string | null | undefined): { r: number; g: number; b: nu
  */
 async function embedLogoIfAvailable(
 	pdfDoc: PDFDocument,
-	logoUrl: string | null | undefined
+	url: string | null | undefined
 ): Promise<PDFImage | null> {
-	if (!logoUrl) return null;
-
-	// Handle relative URLs
-	let fullUrl = logoUrl;
-	if (logoUrl.startsWith("/")) {
-		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-		fullUrl = `${baseUrl}${logoUrl}`;
-	}
-
-	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+	if (!url) return null;
 
 	try {
-		console.log(`Fetching logo from: ${fullUrl}`);
-		const response = await fetch(fullUrl, { signal: controller.signal });
-		clearTimeout(timeoutId);
-		if (!response.ok) {
-			console.error(`Failed to fetch logo: ${response.status} ${response.statusText}`);
-			return null;
-		}
-		
-		const imageBytes = await response.arrayBuffer();
-		const contentType = response.headers.get("content-type")?.toLowerCase();
+		let imageBytes: ArrayBuffer | Uint8Array;
+		let contentType: string | null = null;
 
-		// Detect image type and embed
-		if (contentType?.includes("png") || fullUrl.toLowerCase().endsWith(".png")) {
+		// Handle Data URIs (Base64)
+		if (url.startsWith("data:")) {
+			const matches = url.match(/^data:(image\/(\w+));base64,(.+)$/);
+			if (!matches) return null;
+			contentType = matches[1]; // e.g. image/png
+			imageBytes = Buffer.from(matches[3], "base64");
+		} else {
+			// Fetch from URL
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+			try {
+				console.log(`Fetching logo from: ${url}`);
+				const response = await fetch(url, { signal: controller.signal });
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					console.error(`Failed to fetch logo: ${response.status} ${response.statusText}`);
+					return null;
+				}
+
+				imageBytes = await response.arrayBuffer();
+				contentType = response.headers.get("content-type");
+			} catch (error) {
+				clearTimeout(timeoutId);
+				console.error("Error fetching logo:", error);
+				return null;
+			}
+		}
+
+		if (contentType && contentType.includes("png")) {
 			return await pdfDoc.embedPng(imageBytes);
-		} else if (contentType?.includes("jpg") || contentType?.includes("jpeg") || fullUrl.toLowerCase().endsWith(".jpg") || fullUrl.toLowerCase().endsWith(".jpeg")) {
+		} else if (contentType && (contentType.includes("jpg") || contentType.includes("jpeg"))) {
 			return await pdfDoc.embedJpg(imageBytes);
 		} else {
-			// Fallback: try PNG then JPG
+			console.warn("Unsupported image type:", contentType);
+			// Try PNG as fallback
 			try {
 				return await pdfDoc.embedPng(imageBytes);
 			} catch {
-				return await pdfDoc.embedJpg(imageBytes);
+				try {
+					return await pdfDoc.embedJpg(imageBytes);
+				} catch {
+					return null;
+				}
 			}
 		}
 	} catch (error) {
-		clearTimeout(timeoutId);
 		console.error("Failed to embed logo:", error);
 		return null;
 	}
@@ -995,14 +1010,20 @@ export async function generateMissionOrderPdf(
 	drawRect(titleBoxX, y - 45, titleBoxWidth, 55, true);
 	draw("Fiche de mission", { x: titleBoxX + 35, y: y - 18, size: 14, font: helveticaBold, color: BLACK });
 	
-	// Reference row: N° de dossier | N° de mission | N° de version
+	// Reference row: Ref. Devis | N° de mission | N° de version
 	const refRowY = y - 32;
 	const colW = titleBoxWidth / 3;
-	draw("N° de dossier", { x: titleBoxX + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
+	draw("Ref. Devis", { x: titleBoxX + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
 	draw("N° de mission", { x: titleBoxX + colW + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
 	draw("N° de version", { x: titleBoxX + colW * 2 + 5, y: refRowY, size: 6, font: helvetica, color: GRAY });
-	draw(missionNumber, { x: titleBoxX + 15, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+	
+	// Value for Ref Devis (Quote ID short with prefix)
+	const refDevisText = `#${mission.id.substring(0, 8).toUpperCase()}`;
+	draw(refDevisText, { x: titleBoxX + 5, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+	
+	// Value for Mission Number (Static 1)
 	draw("1", { x: titleBoxX + colW + 25, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
+	// Value for Version (Static 1)
 	draw("1", { x: titleBoxX + colW * 2 + 25, y: refRowY - 10, size: 8, font: helveticaBold, color: BLACK });
 
 	y -= 60;
@@ -1154,18 +1175,18 @@ export async function generateMissionOrderPdf(
 	};
 	const serviceLabel = serviceTypeMap[mission.tripType] || "Transport de personnes";
 	
-	// Check width and wrap if necessary (max width ~80px)
-	const serviceWidth = helveticaBold.widthOfTextAtSize(serviceLabel, 9);
-	if (serviceWidth > 75) {
-		const words = serviceLabel.split(" ");
-		const mid = Math.ceil(words.length / 2);
-		const line1 = words.slice(0, mid).join(" ");
-		const line2 = words.slice(mid).join(" ");
-		draw(line1, { x: LEFT_MARGIN + 5, y: y - 30, size: 8, font: helveticaBold, color: BLACK });
-		draw(line2, { x: LEFT_MARGIN + 5, y: y - 40, size: 8, font: helveticaBold, color: BLACK });
+	// Draw Service Label aligned
+	const serviceY = y - 35;
+	const serviceWords = serviceLabel.split(" ");
+	if (serviceWords.length > 2) {
+		// Multi-line wrap
+		draw(serviceWords.slice(0, 2).join(" "), { x: LEFT_MARGIN + 5, y: serviceY, size: 8, font: helveticaBold, color: BLACK });
+		draw(serviceWords.slice(2).join(" "), { x: LEFT_MARGIN + 5, y: serviceY - 10, size: 8, font: helveticaBold, color: BLACK });
 	} else {
-		draw(serviceLabel, { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
+		draw(serviceLabel, { x: LEFT_MARGIN + 5, y: serviceY, size: 8, font: helveticaBold, color: BLACK });
 	}
+
+
 
 	// Passenger details - booking values
 	const paxX = LEFT_MARGIN + 85;
@@ -1173,14 +1194,20 @@ export async function generateMissionOrderPdf(
 	draw(`Bagage(s) prevus : ${mission.luggageCount}`, { x: paxX, y: y - 40, size: 7, font: helvetica, color: BLACK });
 	
 	// Empty fields to be filled by driver after mission
-	draw("Nombre réel adulte(s) :", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 100, y: y - 57 }, end: { x: paxX + 150, y: y - 57 }, thickness: 0.5, color: BLACK });
+	const labelRealAdults = "Nombre réel adulte(s) :";
+	const widthRealAdults = helveticaBold.widthOfTextAtSize(labelRealAdults, 7);
+	draw(labelRealAdults, { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + widthRealAdults + 2, y: y - 57 }, end: { x: paxX + widthRealAdults + 50, y: y - 57 }, thickness: 0.5, color: BLACK });
 
-	draw("Nombre réel enfant(s) :", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 100, y: y - 67 }, end: { x: paxX + 150, y: y - 67 }, thickness: 0.5, color: BLACK });
+	const labelRealChildren = "Nombre réel enfant(s) :";
+	const widthRealChildren = helveticaBold.widthOfTextAtSize(labelRealChildren, 7);
+	draw(labelRealChildren, { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + widthRealChildren + 2, y: y - 67 }, end: { x: paxX + widthRealChildren + 50, y: y - 67 }, thickness: 0.5, color: BLACK });
 
-	draw("Nombre de bagage(s) réel :", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
-	page.drawLine({ start: { x: paxX + 110, y: y - 77 }, end: { x: paxX + 160, y: y - 77 }, thickness: 0.5, color: BLACK });
+	const labelRealLuggage = "Nombre de bagage(s) réel :";
+	const widthRealLuggage = helveticaBold.widthOfTextAtSize(labelRealLuggage, 7);
+	draw(labelRealLuggage, { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
+	page.drawLine({ start: { x: paxX + widthRealLuggage + 2, y: y - 77 }, end: { x: paxX + widthRealLuggage + 50, y: y - 77 }, thickness: 0.5, color: BLACK });
 
 	// Notes section - with End Customer for partner missions
 	const notesX = LEFT_MARGIN + 245;
@@ -1208,7 +1235,8 @@ export async function generateMissionOrderPdf(
 	}
 
 	// Reference mission
-	draw("Reference mission", { x: LEFT_MARGIN + 10, y: y - 70, size: 7, font: helveticaBold, color: GRAY });
+	// Remove old reference mission
+	// draw("Reference mission", { x: LEFT_MARGIN + 10, y: y - 70, size: 7, font: helveticaBold, color: GRAY });
 
 	y = y - 15 - serviceRowH - 10;
 
@@ -1285,34 +1313,103 @@ export async function generateMissionOrderPdf(
 	draw("Km arrivee", { x: LEFT_MARGIN + inputColW * 3 + 15, y: y - 28, size: 6, font: helvetica, color: GRAY });
 	draw("TOTAL km", { x: LEFT_MARGIN + inputColW * 4 + 15, y: y - 28, size: 6, font: helvetica, color: GRAY });
 
-	// Empty input cells
+	// Empty input cells - Increased height (35px)
+	const cellHeight = 35;
 	for (let i = 0; i < 5; i++) {
-		drawRect(LEFT_MARGIN + inputColW * i, y - 55, inputColW, 20);
+		drawRect(LEFT_MARGIN + inputColW * i, y - 35 - cellHeight, inputColW, cellHeight);
 	}
 
-	y -= 65;
+	y -= (35 + cellHeight + 10); // Adjust Y based on new height
 
-	// Repas / Observations
-	drawRect(LEFT_MARGIN, y - 15, 120, 15, true);
-	drawRect(LEFT_MARGIN + 120, y - 15, CONTENT_WIDTH - 120, 15, true);
-	draw("Repas", { x: LEFT_MARGIN + 45, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
-	draw("Observations de fin de mission", { x: LEFT_MARGIN + 200, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	// =========================================================================
+	// BLOC UNIFIÉ : OBSERVATIONS & FRAIS (Unified Block)
+	// Ratio updated: 75% Observations / 25% Frais
+	// =========================================================================
+	
+	const blockSize = 110; // Hauteur totale du bloc
+	const splitRatio = 0.75; // 75% pour Observations
+	const splitX = LEFT_MARGIN + (CONTENT_WIDTH * splitRatio);
+	
+	// Grand rectangle conteneur
+	drawRect(LEFT_MARGIN, y - blockSize, CONTENT_WIDTH, blockSize);
+	
+	// Ligne verticale de séparation (Obs vs Frais)
+	page.drawLine({
+		start: { x: splitX, y: y },
+		end: { x: splitX, y: y - blockSize },
+		thickness: 1,
+		color: BLACK
+	});
 
-	drawRect(LEFT_MARGIN, y - 45, 120, 30);
-	drawRect(LEFT_MARGIN + 120, y - 45, CONTENT_WIDTH - 120, 30);
+	// --- PARTIE GAUCHE : OBSERVATIONS ---
+	// Header Observations
+	drawRect(LEFT_MARGIN, y - 20, splitX - LEFT_MARGIN, 20, true); // Header background
+	draw("OBSERVATIONS FIN DE MISSION", { 
+		x: LEFT_MARGIN + 10, 
+		y: y - 13, 
+		size: 9, 
+		font: helveticaBold, 
+		color: BLACK 
+	});
 
-	y -= 55;
+	// --- PARTIE DROITE : FRAIS / DEBOURS ---
+	// Header Frais
+	drawRect(splitX, y - 20, RIGHT_MARGIN - splitX, 20, true); // Header background
+	draw("FRAIS / DEBOURS", { 
+		x: splitX + 5, 
+		y: y - 13, 
+		size: 8, 
+		font: helveticaBold, 
+		color: BLACK 
+	});
 
-	// Debours Chauffeur
-	drawRect(LEFT_MARGIN, y - 15, 200, 15, true);
-	draw("Debours Chauffeur sur justificatifs", { x: LEFT_MARGIN + 15, y: y - 12, size: 8, font: helveticaBold, color: BLACK });
+	// Lignes de frais (5 items: Repas, Parking, Peage, Divers, Total)
+	const expenseItems = ["Repas", "Parking", "Peage", "Divers", "TOTAL"];
+	const rowHeight = (blockSize - 20) / expenseItems.length; // 90px / 5 = 18px
+	
+	// Vertical separator for amounts in Frais column
+	const amountColX = splitX + (RIGHT_MARGIN - splitX) * 0.6; // 60% of the column for label
 
-	const expenseItems = ["Parking", "Peage", "Divers", "Total"];
-	for (let i = 0; i < expenseItems.length; i++) {
-		drawRect(LEFT_MARGIN, y - 35 - i * 18, 100, 18, i === 3 ? true : false);
-		drawRect(LEFT_MARGIN + 100, y - 35 - i * 18, 100, 18);
-		draw(expenseItems[i], { x: LEFT_MARGIN + 30, y: y - 30 - i * 18, size: 8, font: i === 3 ? helveticaBold : helvetica, color: BLACK });
-	}
+	page.drawLine({
+		start: { x: amountColX, y: y - 20 }, // Start below header
+		end: { x: amountColX, y: y - blockSize },
+		thickness: 0.5,
+		color: BLACK
+	});
+
+	expenseItems.forEach((item, index) => {
+		const lineY = y - 20 - (rowHeight * index); // Start below header
+		const nextLineY = lineY - rowHeight;
+		
+		// Ligne de séparation horizontale (pour toutes les lignes sauf la dernière si fond de case)
+		if (index < expenseItems.length) {
+			page.drawLine({ 
+				start: { x: splitX, y: nextLineY }, 
+				end: { x: RIGHT_MARGIN, y: nextLineY }, 
+				thickness: 0.5, 
+				color: BLACK 
+			});
+		}
+
+		const isTotal = item === "TOTAL";
+		
+		draw(item, { 
+			x: splitX + 5, 
+			y: lineY - 12, 
+			size: 8, 
+			font: isTotal ? helveticaBold : helvetica, 
+			color: BLACK 
+		});
+		
+		// Zone montant (€) - Centered in amount column
+		draw("€", { 
+			x: amountColX + 5, 
+			y: lineY - 12, 
+			size: 8, 
+			font: helvetica, 
+			color: GRAY 
+		});
+	});
 
 	// =========================================================================
 	// FOOTER - Legal info (Expanded)
