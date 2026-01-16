@@ -66,17 +66,18 @@ export function DispatchPage() {
 	const [selectedMissionId, setSelectedMissionId] = useQueryState("missionId", parseAsString);
 	const [isAssignmentDrawerOpen, setIsAssignmentDrawerOpen] = useState(false);
 	
-	// Map height state for scroll effect
-	const [mapHeight, setMapHeight] = useState(400);
+	// Map height state for scroll effect - binary toggle (expanded or collapsed)
+	const MAP_HEIGHT_EXPANDED = 320; // Full height when at top
+	const MAP_HEIGHT_COLLAPSED = 120; // Small height when scrolling
+	
+	const [isMapCollapsed, setIsMapCollapsed] = useState(false);
 	const detailsContainerRef = useRef<HTMLDivElement>(null);
 
 	const handleDetailsScroll = () => {
 		if (detailsContainerRef.current) {
 			const scrollTop = detailsContainerRef.current.scrollTop;
-			// Shrink map from 400px down to 200px based on scroll
-			// The map shrinks 1px for every 1px scrolled, until it hits 200px
-			const newHeight = Math.max(200, 400 - scrollTop);
-			setMapHeight(newHeight);
+			// Binary toggle: collapsed if scrolled, expanded if at top
+			setIsMapCollapsed(scrollTop > 10); // Small threshold to avoid jitter
 		}
 	};
 
@@ -267,10 +268,10 @@ export function DispatchPage() {
 
 			{/* Right Panel - Map fixed + scrollable details */}
 			<div className="w-2/3 flex flex-col h-full" data-testid="dispatch-right-panel">
-				{/* Map - dynamic height, shrinkage on scroll */}
+				{/* Map - binary toggle height: full when at top, small when scrolled */}
 				<div 
-					className="flex-shrink-0 transition-[height] duration-75 ease-out will-change-[height]" 
-					style={{ height: `${mapHeight}px` }}
+					className="flex-shrink-0 overflow-hidden transition-[height] duration-200 ease-in-out" 
+					style={{ height: isMapCollapsed ? `${MAP_HEIGHT_COLLAPSED}px` : `${MAP_HEIGHT_EXPANDED}px` }}
 				>
 					<DispatchMapGoogle
 						mission={selectedMission || null}

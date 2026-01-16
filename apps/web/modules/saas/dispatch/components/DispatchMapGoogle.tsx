@@ -422,7 +422,7 @@ export function DispatchMapGoogle({
 	const hasCoordinates = mission.pickupLatitude && mission.pickupLongitude;
 
 	return (
-		<Card className={cn("h-full min-h-[400px] overflow-hidden relative", className)} data-testid="dispatch-map">
+		<Card className={cn("h-full overflow-hidden relative", className)} data-testid="dispatch-map">
 			{/* Loading indicator for routes */}
 			{isLoadingRoutes && (
 				<div className="absolute top-2 right-2 z-50 flex items-center gap-1 bg-background/80 px-2 py-1 rounded text-xs">
@@ -461,7 +461,7 @@ export function DispatchMapGoogle({
 
 			{/* Map container - must have explicit dimensions for Google Maps */}
 			{!isMapReady ? (
-				<div className="h-full w-full min-h-[400px] flex items-center justify-center bg-muted/50">
+				<div className="h-full w-full flex items-center justify-center bg-muted/50">
 					<div className="text-center">
 						<Loader2 className="size-8 animate-spin mx-auto mb-2 text-muted-foreground" />
 						<p className="text-sm text-muted-foreground">Loading Google Maps...</p>
@@ -472,7 +472,7 @@ export function DispatchMapGoogle({
 				<div 
 					ref={mapRef} 
 					className="w-full h-full" 
-					style={{ minHeight: "400px", height: "100%" }} 
+					style={{ height: "100%" }} 
 				/>
 			)}
 		</Card>
