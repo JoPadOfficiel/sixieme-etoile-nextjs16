@@ -5,7 +5,7 @@
 |-------|-------|
 | **Epic** | 25 - Documents, Payments & Deep Linking Enhancements |
 | **Story ID** | 25.3 |
-| **Status** | done |
+| **Status** | review |
 | **Priority** | HIGH - Foundation for all PDF document branding |
 | **Estimated Time** | 2-3h |
 | **Branch** | `feature/25-3-org-personalization` |
@@ -75,6 +75,13 @@ As an **organization administrator**, I want to configure my company's visual id
 - [x] After uploading logo and saving → Refresh page → Settings persist
 - [x] Generate a Quote PDF → Logo and brand color are visible
 - [x] Change logo position to RIGHT → Generate PDF → Logo appears on right side
+
+### AC8: Logo Size Configuration
+- [x] Add `logoWidth` (Int, default: 100) to `OrganizationPricingSettings`
+- [x] Add slider/input in `DocumentSettingsForm` to adjust width (50px - 300px)
+- [x] Store `logoWidth` in database
+- [x] Update PDF Generator to use dynamic width for logo
+- [x] Preview changes in real-time in Settings UI
 
 ## 🧪 Test Cases
 
