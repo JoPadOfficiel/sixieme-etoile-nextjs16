@@ -29,6 +29,12 @@ export interface OrganizationPdfData {
 	brandColor?: string | null;
 	logoPosition?: "LEFT" | "RIGHT";
 	showCompanyName?: boolean;
+	// Extended legal info
+	rcs?: string | null;
+	rm?: string | null;
+	ape?: string | null;
+	capital?: string | null;
+	licenseVtc?: string | null; // EVTC number
 }
 
 export interface ContactPdfData {
@@ -1139,7 +1145,15 @@ export async function generateMissionOrderPdf(
 	drawRect(LEFT_MARGIN + 80, y - 15 - serviceRowH, 160, serviceRowH);
 	drawRect(LEFT_MARGIN + 240, y - 15 - serviceRowH, 255, serviceRowH);
 
-	draw("Navettes", { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
+	// Story 25.1: Dynamic Service Type
+	const serviceTypeMap: Record<string, string> = {
+		"TRANSFER_ONE_WAY": "Transfert",
+		"TRANSFER_RETURN": "Transfert A/R",
+		"HOURLY": "Mise à disposition",
+		"EXCURSION": "Excursion",
+	};
+	const serviceLabel = serviceTypeMap[mission.tripType] || "Transport de personnes";
+	draw(serviceLabel, { x: LEFT_MARGIN + 10, y: y - 35, size: 9, font: helveticaBold, color: BLACK });
 
 	// Passenger details - booking values
 	const paxX = LEFT_MARGIN + 85;
@@ -1147,13 +1161,13 @@ export async function generateMissionOrderPdf(
 	draw(`Bagage(s) prevus : ${mission.luggageCount}`, { x: paxX, y: y - 40, size: 7, font: helvetica, color: BLACK });
 	
 	// Empty fields to be filled by driver after mission
-	draw("Nombre reel adulte(s) :", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre réel adulte(s) :", { x: paxX, y: y - 55, size: 7, font: helveticaBold, color: BLACK });
 	page.drawLine({ start: { x: paxX + 100, y: y - 55 }, end: { x: paxX + 150, y: y - 55 }, thickness: 0.5, color: BLACK });
 
-	draw("Nombre reel enfant(s) :", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre réel enfant(s) :", { x: paxX, y: y - 65, size: 7, font: helveticaBold, color: BLACK });
 	page.drawLine({ start: { x: paxX + 100, y: y - 65 }, end: { x: paxX + 150, y: y - 65 }, thickness: 0.5, color: BLACK });
 
-	draw("Nombre de bagage(s) reel :", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
+	draw("Nombre de bagage(s) réel :", { x: paxX, y: y - 75, size: 7, font: helveticaBold, color: BLACK });
 	page.drawLine({ start: { x: paxX + 110, y: y - 75 }, end: { x: paxX + 160, y: y - 75 }, thickness: 0.5, color: BLACK });
 
 	// Notes section - with End Customer for partner missions
@@ -1209,7 +1223,7 @@ export async function generateMissionOrderPdf(
 	draw(pickupTime, { x: LEFT_MARGIN + 20, y: y - 28, size: 14, font: helveticaBold, color: BLACK });
 
 	// Real Time Placeholder (Bottom)
-	draw("Reel : ", { x: LEFT_MARGIN + 2, y: y - 48, size: 6, font: helvetica, color: GRAY });
+	draw("Réel : ", { x: LEFT_MARGIN + 2, y: y - 48, size: 6, font: helvetica, color: GRAY });
 	// Hour line
 	page.drawLine({ start: { x: LEFT_MARGIN + 25, y: y - 48 }, end: { x: LEFT_MARGIN + 45, y: y - 48 }, thickness: 0.5, color: BLACK });
 	draw(":", { x: LEFT_MARGIN + 47, y: y - 47, size: 8, font: helveticaBold, color: BLACK });
@@ -1289,23 +1303,37 @@ export async function generateMissionOrderPdf(
 	}
 
 	// =========================================================================
-	// FOOTER - Legal info
+	// FOOTER - Legal info (Expanded)
 	// =========================================================================
 	
 	const footerY = 35;
-	const legalText = [
+	
+	// Line 1: Company Name, Legal Form, Capital, Address
+	const legalLine1 = [
 		organization.name,
-		organization.siret ? `R.C.S. Nanterre - Siret : ${organization.siret}` : "",
-		organization.vatNumber ? `TVA Intra communautaire : ${organization.vatNumber}` : "",
+		organization.capital ? `Capital: ${organization.capital}` : "",
+		organization.address
 	].filter(Boolean).join(" - ");
 
+	// Line 2: SIRET, RCS, APE, TVA, License
+	const legalLine2Parts = [];
+	if (organization.siret) legalLine2Parts.push(`SIRET: ${organization.siret}`);
+	if (organization.rcs) legalLine2Parts.push(`RCS: ${organization.rcs}`);
+	if (organization.ape) legalLine2Parts.push(`APE: ${organization.ape}`);
+	if (organization.vatNumber) legalLine2Parts.push(`TVA: ${organization.vatNumber}`);
+	if (organization.licenseVtc) legalLine2Parts.push(`Licence VTC: ${organization.licenseVtc}`);
+	
+	const legalLine2 = legalLine2Parts.join(" - ");
+
 	page.drawLine({
-		start: { x: LEFT_MARGIN, y: footerY + 10 },
-		end: { x: RIGHT_MARGIN, y: footerY + 10 },
+		start: { x: LEFT_MARGIN, y: footerY + 15 },
+		end: { x: RIGHT_MARGIN, y: footerY + 15 },
 		color: GRAY,
 		thickness: 0.5,
 	});
-	draw(legalText, { x: LEFT_MARGIN, y: footerY, size: 7, font: helvetica, color: GRAY });
+
+	draw(legalLine1, { x: LEFT_MARGIN, y: footerY + 5, size: 7, font: helvetica, color: GRAY });
+	draw(legalLine2, { x: LEFT_MARGIN, y: footerY - 5, size: 7, font: helvetica, color: GRAY });
 
 	const pdfBytes = await pdfDoc.save();
 	return Buffer.from(pdfBytes);

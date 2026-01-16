@@ -77,6 +77,12 @@ function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 		vatNumber: settings?.vatNumber ?? null,
 		iban: settings?.iban ?? null,
 		bic: settings?.bic ?? null,
+		// Extended legal info for Mission Order footer
+		rcs: settings?.rcs ?? null,
+		rm: settings?.rm ?? null,
+		ape: settings?.ape ?? null, // Code NAF
+		capital: settings?.capital ?? null,
+		licenseVtc: settings?.licenseVtc ?? null,
 	};
 }
 
