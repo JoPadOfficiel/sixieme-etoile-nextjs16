@@ -371,7 +371,7 @@ export function CalendarEventsList({ driverId, driverName }: CalendarEventsListP
 											</div>
 										</div>
 										<div className="flex items-center gap-1">
-											<Link href={`/${organizationSlug}/quotes/${item.quoteId}`}>
+											<Link href={`/app/${organizationSlug}/quotes/${item.quoteId}`}>
 												<Button variant="ghost" size="sm">
 													<ExternalLink className="h-4 w-4 mr-1" />
 													{t("fleet.calendar.viewQuote")}
