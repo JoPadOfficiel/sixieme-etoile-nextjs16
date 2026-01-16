@@ -116,7 +116,7 @@ export function DriverDrawer({
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="sm:max-w-xl overflow-y-auto">
+			<SheetContent className="w-full sm:!max-w-none sm:!w-full lg:!max-w-[50vw] lg:!w-[50vw] overflow-y-auto">
 				<SheetHeader>
 					<SheetTitle>
 						{driver ? t("fleet.drivers.editDriver") : t("fleet.drivers.addDriver")}

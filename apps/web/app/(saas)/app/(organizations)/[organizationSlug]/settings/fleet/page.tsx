@@ -12,6 +12,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@ui/components/dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@ui/components/alert-dialog";
 import { Input } from "@ui/components/input";
 import { Label } from "@ui/components/label";
 import {
@@ -152,6 +162,7 @@ function LicenseCategoriesSection() {
 		name: "",
 		description: null,
 	});
+	const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
 
 	const { data, isLoading } = useQuery({
 		queryKey: ["license-categories"],
@@ -317,7 +328,7 @@ function LicenseCategoriesSection() {
 												<Button
 													variant="ghost"
 													size="sm"
-													onClick={() => deleteMutation.mutate(category.id)}
+													onClick={() => setDeleteConfirmation(category.id)}
 													disabled={
 														category._count.driverLicenses > 0 ||
 														category._count.vehiclesRequiringThis > 0 ||
@@ -396,6 +407,31 @@ function LicenseCategoriesSection() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{t("common.confirmation.deleteTitle")}</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("common.confirmation.deleteDescription")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t("common.confirmation.cancel")}</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								if (deleteConfirmation) {
+									deleteMutation.mutate(deleteConfirmation);
+									setDeleteConfirmation(null);
+								}
+							}}
+						>
+							{t("common.confirmation.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</Card>
 	);
 }
@@ -417,6 +453,7 @@ function LicenseRulesSection() {
 		drivingBlockHoursForBreak: 4.5,
 		cappedAverageSpeedKmh: null,
 	});
+	const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
 
 	const { data: rulesData, isLoading: rulesLoading } = useQuery({
 		queryKey: ["license-rules"],
@@ -616,7 +653,7 @@ function LicenseRulesSection() {
 												<Button
 													variant="ghost"
 													size="sm"
-													onClick={() => deleteMutation.mutate(rule.id)}
+													onClick={() => setDeleteConfirmation(rule.id)}
 													disabled={deleteMutation.isPending}
 												>
 													<TrashIcon className="size-4 text-destructive" />
@@ -772,6 +809,31 @@ function LicenseRulesSection() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{t("common.confirmation.deleteTitle")}</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("common.confirmation.deleteDescription")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t("common.confirmation.cancel")}</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								if (deleteConfirmation) {
+									deleteMutation.mutate(deleteConfirmation);
+									setDeleteConfirmation(null);
+								}
+							}}
+						>
+							{t("common.confirmation.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</Card>
 	);
 }
@@ -879,6 +941,7 @@ function VehicleCategoriesSection() {
 		description: null,
 		isActive: true,
 	});
+	const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
 
 	const { data, isLoading } = useQuery({
 		queryKey: ["vehicle-categories"],
@@ -1073,8 +1136,8 @@ function VehicleCategoriesSection() {
 												<Button
 													variant="ghost"
 													size="sm"
-													onClick={() => deleteMutation.mutate(category.id)}
-													disabled={category._count.vehicles > 0 || deleteMutation.isPending}
+													onClick={() => setDeleteConfirmation(category.id)}
+													disabled={deleteMutation.isPending}
 												>
 													<TrashIcon className="size-4 text-destructive" />
 												</Button>
@@ -1265,6 +1328,31 @@ function VehicleCategoriesSection() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{t("common.confirmation.deleteTitle")}</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("common.confirmation.deleteDescription")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t("common.confirmation.cancel")}</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								if (deleteConfirmation) {
+									deleteMutation.mutate(deleteConfirmation);
+									setDeleteConfirmation(null);
+								}
+							}}
+						>
+							{t("common.confirmation.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</Card>
 	);
 }

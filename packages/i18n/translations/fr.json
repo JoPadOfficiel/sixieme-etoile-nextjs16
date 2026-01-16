@@ -205,7 +205,10 @@
 			"cancel": "Annuler",
 			"confirm": "Confirmer",
 			"save": "Enregistrer",
-			"create": "Créer"
+			"create": "Créer",
+			"deleteTitle": "Supprimer",
+			"deleteDescription": "Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.",
+			"delete": "Supprimer"
 		},
 		"cancel": "Annuler",
 		"save": "Enregistrer",

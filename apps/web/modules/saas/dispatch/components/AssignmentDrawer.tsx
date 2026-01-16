@@ -294,7 +294,7 @@ export function AssignmentDrawer({
 	return (
 		<Sheet open={isOpen} onOpenChange={handleOpenChange}>
 			<SheetContent
-				className="w-[650px] sm:max-w-[650px] flex flex-col"
+				className="w-full sm:!max-w-none sm:!w-full lg:!max-w-[50vw] lg:!w-[50vw] flex flex-col"
 				data-testid="assignment-drawer"
 			>
 				<SheetHeader>

@@ -30,7 +30,7 @@ export function BaseDrawer({ open, onOpenChange, base }: BaseDrawerProps) {
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="sm:max-w-lg overflow-y-auto">
+			<SheetContent className="w-full sm:!max-w-none sm:!w-full lg:!max-w-[50vw] lg:!w-[50vw] overflow-y-auto">
 				<SheetHeader>
 					<SheetTitle>
 						{base ? t("fleet.bases.editBase") : t("fleet.bases.addBase")}

@@ -583,18 +583,14 @@ export function DocumentSettingsForm() {
 								// Logo on Left
 								<div className="flex items-center gap-3">
 									{logoUrl ? (
-										<Image
-											src={logoUrl}
-											alt="Logo Preview"
-											width={logoWidth}
-											height={logoWidth / 2}
-											style={{
-												width: `${logoWidth}px`,
-												height: "auto",
-												maxHeight: "60px", 
-											}}
-											className="object-contain"
-										/>
+										<div style={{ position: "relative", width: logoWidth, height: 60 }}>
+											<Image
+												src={logoUrl}
+												alt="Logo Preview"
+												fill
+												className="object-contain object-left"
+											/>
+										</div>
 									) : (
 										<div className="flex h-8 w-16 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
 											Logo
@@ -633,18 +629,14 @@ export function DocumentSettingsForm() {
 										</span>
 									)}
 									{logoUrl ? (
-										<Image
-											src={logoUrl}
-											alt="Logo Preview"
-											width={logoWidth}
-											height={logoWidth / 2}
-											style={{
-												width: `${logoWidth}px`,
-												height: "auto",
-												maxHeight: "60px",
-											}}
-											className="object-contain"
-										/>
+										<div style={{ position: "relative", width: logoWidth, height: 60 }}>
+											<Image
+												src={logoUrl}
+												alt="Logo Preview"
+												fill
+												className="object-contain object-right"
+											/>
+										</div>
 									) : (
 										<div className="flex h-8 w-16 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
 											Logo

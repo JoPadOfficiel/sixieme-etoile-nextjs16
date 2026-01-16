@@ -63,6 +63,8 @@
     "superjson": "^2.2.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "terra-draw": "^1.23.0",
+    "terra-draw-google-maps-adapter": "^1.2.1",
     "ufo": "^1.5.4",
     "usehooks-ts": "^3.1.1",
     "uuid": "^11.0.2",

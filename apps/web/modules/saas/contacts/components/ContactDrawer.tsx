@@ -88,7 +88,7 @@ export function ContactDrawer({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="w-full sm:max-w-[50vw] overflow-y-auto">
+			<SheetContent className="w-full sm:!max-w-none sm:!w-full lg:!max-w-[75vw] lg:!w-[75vw] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
             {contact ? t("contacts.editContact") : t("contacts.addContact")}
