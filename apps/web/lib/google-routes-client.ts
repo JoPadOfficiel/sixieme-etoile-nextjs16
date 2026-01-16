@@ -218,7 +218,7 @@ export function convertToLegacyFormat(response: RoutesResponse) {
 /**
  * Decode Google polyline format
  */
-function decodePolyline(encoded: string): Array<{lat: number; lng: number}> {
+export function decodePolyline(encoded: string): Array<{lat: number; lng: number}> {
   const points = [];
   let index = 0;
   const len = encoded.length;

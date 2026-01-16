@@ -4,7 +4,8 @@
  * Zones Interactive Map Component
  * Story 11.1: Unified Zone Management Interface with Interactive Map
  *
- * Full-featured map with all zones displayed and drawing tools for zone creation
+ * Full-featured map with all zones displayed and drawing tools for zone creation.
+ * Updated to use Terra Draw instead of deprecated Google Maps Drawing Library.
  */
 
 /// <reference types="@types/google.maps" />
@@ -17,6 +18,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import type { PricingZone } from "../types";
 import { type DrawingMode, ZoneMapToolbar } from "./ZoneMapToolbar";
+
+// Terra Draw imports
+import { TerraDraw, TerraDrawPolygonMode, TerraDrawCircleMode, TerraDrawSelectMode } from "terra-draw";
+import { TerraDrawGoogleMapsAdapter } from "terra-draw-google-maps-adapter";
 
 interface ZonesInteractiveMapProps {
 	zones: PricingZone[];
@@ -50,7 +55,6 @@ const DEFAULT_ZONE_COLORS = {
 // Helper to get zone colors - uses zone.color if defined, otherwise falls back to type-based color
 function getZoneColors(zone: PricingZone): { fill: string; stroke: string } {
 	if (zone.color) {
-		// Darken the color slightly for stroke
 		return { fill: zone.color, stroke: zone.color };
 	}
 	return DEFAULT_ZONE_COLORS[zone.zoneType] || DEFAULT_ZONE_COLORS.POINT;
@@ -63,7 +67,6 @@ function createMultiplierLabel(
 	multiplier: number,
 	zoneName: string
 ): google.maps.Marker | undefined {
-	// Only show label for non-default multipliers
 	if (multiplier === 1.0) return undefined;
 
 	return new google.maps.Marker({
@@ -71,11 +74,11 @@ function createMultiplierLabel(
 		position,
 		icon: {
 			path: google.maps.SymbolPath.CIRCLE,
-			scale: 0, // Hide the default marker icon
+			scale: 0,
 		},
 		label: {
 			text: `${multiplier.toFixed(1)}×`,
-			color: multiplier > 1.0 ? "#dc2626" : "#16a34a", // red for increase, green for decrease
+			color: multiplier > 1.0 ? "#dc2626" : "#16a34a",
 			fontSize: "12px",
 			fontWeight: "bold",
 			className: "zone-multiplier-label",
@@ -92,6 +95,49 @@ interface GeoJSONPolygon {
 	coordinates: number[][][];
 }
 
+// Haversine distance calculation
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+	const R = 6371;
+	const dLat = (lat2 - lat1) * Math.PI / 180;
+	const dLng = (lng2 - lng1) * Math.PI / 180;
+	const a = 
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+		Math.sin(dLng / 2) * Math.sin(dLng / 2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return R * c;
+}
+
+// Calculate center and radius from a circle-like polygon
+function calculateCircleFromPolygon(coordinates: number[][]): { center: { lat: number; lng: number }; radiusKm: number } | null {
+	if (coordinates.length < 3) return null;
+	
+	let sumLat = 0;
+	let sumLng = 0;
+	const count = coordinates.length - 1;
+	
+	for (let i = 0; i < count; i++) {
+		sumLng += coordinates[i][0];
+		sumLat += coordinates[i][1];
+	}
+	
+	const centerLat = sumLat / count;
+	const centerLng = sumLng / count;
+	
+	let totalDistance = 0;
+	for (let i = 0; i < count; i++) {
+		const pointLat = coordinates[i][1];
+		const pointLng = coordinates[i][0];
+		const distance = haversineDistance(centerLat, centerLng, pointLat, pointLng);
+		totalDistance += distance;
+	}
+	
+	return {
+		center: { lat: centerLat, lng: centerLng },
+		radiusKm: totalDistance / count,
+	};
+}
+
 export function ZonesInteractiveMap({
 	zones,
 	selectedZoneId,
@@ -105,13 +151,14 @@ export function ZonesInteractiveMap({
 	const t = useTranslations();
 	const mapRef = useRef<HTMLDivElement>(null);
 	const mapInstanceRef = useRef<google.maps.Map | null>(null);
-	const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
+	const terraDrawRef = useRef<TerraDraw | null>(null);
 	const overlaysRef = useRef<Map<string, Overlay>>(new Map());
-	const drawnShapeRef = useRef<google.maps.Polygon | google.maps.Circle | null>(null);
+	const drawnFeatureIdRef = useRef<string | null>(null);
 
 	const isReady = useGoogleMaps(googleMapsApiKey);
 	const [drawingMode, setDrawingMode] = useState<DrawingMode>("pan");
 	const [hasDrawnShape, setHasDrawnShape] = useState(false);
+	const [terraDrawReady, setTerraDrawReady] = useState(false);
 
 	// Filter zones based on status
 	const filteredZones = zones.filter((zone) => {
@@ -120,33 +167,18 @@ export function ZonesInteractiveMap({
 		return true;
 	});
 
-	// Convert polygon to GeoJSON
-	const polygonToGeoJSON = useCallback(
-		(polygon: google.maps.Polygon): GeoJSONPolygon => {
-			const path = polygon.getPath();
-			const coordinates: number[][] = [];
-
-			for (let i = 0; i < path.getLength(); i++) {
-				const point = path.getAt(i);
-				coordinates.push([point.lng(), point.lat()]);
+	// Clear all overlays
+	const clearOverlays = useCallback(() => {
+		overlaysRef.current.forEach((overlay) => {
+			overlay.ref.setMap(null);
+			if (overlay.label) {
+				overlay.label.setMap(null);
 			}
+		});
+		overlaysRef.current.clear();
+	}, []);
 
-			// Close the polygon
-			if (coordinates.length > 0) {
-				coordinates.push(coordinates[0]);
-			}
-
-			return {
-				type: "Polygon",
-				coordinates: [coordinates],
-			};
-		},
-		[]
-	);
-
-	// Google Maps is loaded via useGoogleMaps hook
-
-	// Initialize map
+	// Initialize map and Terra Draw
 	useEffect(() => {
 		if (!isReady || !mapRef.current || mapInstanceRef.current) return;
 
@@ -162,142 +194,164 @@ export function ZonesInteractiveMap({
 		});
 
 		mapInstanceRef.current = map;
-		// Map is ready
 
-		// Initialize Drawing Manager
-		const drawingManager = new google.maps.drawing.DrawingManager({
-			drawingMode: null,
-			drawingControl: false, // We use custom toolbar
-			polygonOptions: {
-				fillColor: "#3b82f6",
-				fillOpacity: 0.3,
-				strokeColor: "#2563eb",
-				strokeOpacity: 0.9,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-			},
-			circleOptions: {
-				fillColor: "#10b981",
-				fillOpacity: 0.3,
-				strokeColor: "#059669",
-				strokeOpacity: 0.9,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-			},
-		});
+		// Wait for map projection to be ready before initializing Terra Draw
+		map.addListener("projection_changed", () => {
+			if (terraDrawRef.current) return;
 
-		drawingManager.setMap(map);
-		drawingManagerRef.current = drawingManager;
-
-		// Handle polygon complete
-		google.maps.event.addListener(
-			drawingManager,
-			"polygoncomplete",
-			(polygon: google.maps.Polygon) => {
-				// Clear any previous drawn shape
-				if (drawnShapeRef.current) {
-					drawnShapeRef.current.setMap(null);
-				}
-				drawnShapeRef.current = polygon;
-				setHasDrawnShape(true);
-
-				// Stop drawing mode
-				drawingManager.setDrawingMode(null);
-				setDrawingMode("pan");
-
-				// Get geometry and trigger creation
-				const geoJSON = polygonToGeoJSON(polygon);
-				const bounds = new google.maps.LatLngBounds();
-				polygon.getPath().forEach((point) => bounds.extend(point));
-				const center = bounds.getCenter();
-
-				onCreateFromDrawing({
-					zoneType: "POLYGON",
-					geometry: geoJSON,
-					centerLatitude: center.lat(),
-					centerLongitude: center.lng(),
+			try {
+				const draw = new TerraDraw({
+					adapter: new TerraDrawGoogleMapsAdapter({
+						lib: google.maps,
+						map,
+						coordinatePrecision: 9,
+					}),
+					modes: [
+						new TerraDrawPolygonMode({
+							styles: {
+								fillColor: "#3b82f6",
+								fillOpacity: 0.3,
+								outlineColor: "#2563eb",
+								outlineWidth: 2,
+							},
+						}),
+						new TerraDrawCircleMode({
+							styles: {
+								fillColor: "#10b981",
+								fillOpacity: 0.3,
+								outlineColor: "#059669",
+								outlineWidth: 2,
+							},
+						}),
+						new TerraDrawSelectMode({
+							flags: {
+								polygon: {
+									feature: {
+										draggable: true,
+										coordinates: {
+											midpoints: true,
+											draggable: true,
+											deletable: true,
+										},
+									},
+								},
+								circle: {
+									feature: {
+										draggable: true,
+										coordinates: {
+											midpoints: false,
+											draggable: true,
+											deletable: false,
+										},
+									},
+								},
+							},
+						}),
+					],
 				});
+
+				draw.start();
+
+				draw.on("ready", () => {
+					console.log("[ZonesInteractiveMap] Terra Draw ready");
+					setTerraDrawReady(true);
+				});
+
+				// Listen for finish events
+				draw.on("finish", (id: string | number, context: { action: string; mode: string }) => {
+					if (context.action === "draw") {
+						const featureId = String(id);
+						console.log("[ZonesInteractiveMap] Drawing finished:", featureId, context.mode);
+						
+						// Remove previous drawn shape
+						if (drawnFeatureIdRef.current && drawnFeatureIdRef.current !== featureId) {
+							try {
+								draw.removeFeatures([drawnFeatureIdRef.current]);
+							} catch {
+								// Ignore
+							}
+						}
+						
+						drawnFeatureIdRef.current = featureId;
+						setHasDrawnShape(true);
+						setDrawingMode("pan");
+						
+						// Get the feature data
+						const snapshot = draw.getSnapshot();
+						const feature = snapshot.find(f => String(f.id) === featureId);
+						
+						if (feature && feature.geometry.type === "Polygon") {
+							const coords = feature.geometry.coordinates[0] as number[][];
+							
+							if (context.mode === "circle") {
+								const circleData = calculateCircleFromPolygon(coords);
+								if (circleData) {
+									onCreateFromDrawing({
+										zoneType: "RADIUS",
+										centerLatitude: circleData.center.lat,
+										centerLongitude: circleData.center.lng,
+										radiusKm: Math.round(circleData.radiusKm * 100) / 100,
+									});
+								}
+							} else {
+								const geoJSON: GeoJSONPolygon = {
+									type: "Polygon",
+									coordinates: [coords],
+								};
+								const bounds = new google.maps.LatLngBounds();
+								coords.forEach(coord => bounds.extend({ lat: coord[1], lng: coord[0] }));
+								const center = bounds.getCenter();
+								
+								onCreateFromDrawing({
+									zoneType: "POLYGON",
+									geometry: geoJSON,
+									centerLatitude: center.lat(),
+									centerLongitude: center.lng(),
+								});
+							}
+						}
+					}
+				});
+
+				terraDrawRef.current = draw;
+			} catch (error) {
+				console.error("[ZonesInteractiveMap] Error initializing Terra Draw:", error);
 			}
-		);
-
-		// Handle circle complete
-		google.maps.event.addListener(
-			drawingManager,
-			"circlecomplete",
-			(circle: google.maps.Circle) => {
-				// Clear any previous drawn shape
-				if (drawnShapeRef.current) {
-					drawnShapeRef.current.setMap(null);
-				}
-				drawnShapeRef.current = circle;
-				setHasDrawnShape(true);
-
-				// Stop drawing mode
-				drawingManager.setDrawingMode(null);
-				setDrawingMode("pan");
-
-				// Get center and radius
-				const center = circle.getCenter();
-				const radiusMeters = circle.getRadius();
-
-				if (center) {
-					onCreateFromDrawing({
-						zoneType: "RADIUS",
-						centerLatitude: center.lat(),
-						centerLongitude: center.lng(),
-						radiusKm: Math.round((radiusMeters / 1000) * 100) / 100,
-					});
-				}
-			}
-		);
-	}, [isReady, onCreateFromDrawing, polygonToGeoJSON]);
+		});
+	}, [isReady, onCreateFromDrawing]);
 
 	// Handle drawing mode change
 	const handleModeChange = useCallback((mode: DrawingMode) => {
 		setDrawingMode(mode);
 
-		if (!drawingManagerRef.current) return;
+		if (!terraDrawRef.current || !terraDrawReady) return;
 
 		switch (mode) {
 			case "polygon":
-				drawingManagerRef.current.setDrawingMode(
-					google.maps.drawing.OverlayType.POLYGON
-				);
+				terraDrawRef.current.setMode("polygon");
 				break;
 			case "circle":
-				drawingManagerRef.current.setDrawingMode(
-					google.maps.drawing.OverlayType.CIRCLE
-				);
+				terraDrawRef.current.setMode("circle");
 				break;
 			default:
-				drawingManagerRef.current.setDrawingMode(null);
+				terraDrawRef.current.setMode("static");
 		}
-	}, []);
+	}, [terraDrawReady]);
 
 	// Clear drawn shape
 	const handleClearDrawing = useCallback(() => {
-		if (drawnShapeRef.current) {
-			drawnShapeRef.current.setMap(null);
-			drawnShapeRef.current = null;
-			setHasDrawnShape(false);
-		}
-	}, []);
-
-	// Clear all overlays
-	const clearOverlays = useCallback(() => {
-		overlaysRef.current.forEach((overlay) => {
-			overlay.ref.setMap(null);
-			// Story 11.3: Also clear multiplier labels
-			if (overlay.label) {
-				overlay.label.setMap(null);
+		if (terraDrawRef.current && drawnFeatureIdRef.current) {
+			try {
+				terraDrawRef.current.removeFeatures([drawnFeatureIdRef.current]);
+			} catch {
+				// Ignore
 			}
-		});
-		overlaysRef.current.clear();
+		}
+		drawnFeatureIdRef.current = null;
+		setHasDrawnShape(false);
 	}, []);
 
-	// Draw zones on map
+	// Draw zones on map (using native Google Maps overlays for display)
 	useEffect(() => {
 		const map = mapInstanceRef.current;
 		if (!map || !isReady) return;
@@ -312,7 +366,6 @@ export function ZonesInteractiveMap({
 			const colors = getZoneColors(zone);
 			const isSelected = zone.id === selectedZoneId;
 
-				// Helper to validate coordinates
 			const isValidCoord = (lat: number | null, lng: number | null): boolean => {
 				return lat !== null && lng !== null && 
 					!Number.isNaN(lat) && !Number.isNaN(lng) &&
@@ -347,7 +400,6 @@ export function ZonesInteractiveMap({
 				const circleBounds = circle.getBounds();
 				if (circleBounds) bounds.union(circleBounds);
 
-				// Story 11.3: Add multiplier label for zones with non-default multiplier
 				const label = createMultiplierLabel(
 					map,
 					{ lat: zone.centerLatitude as number, lng: zone.centerLongitude as number },
@@ -363,11 +415,10 @@ export function ZonesInteractiveMap({
 						coordinates: number[][][];
 					};
 					if (geo.type === "Polygon" && geo.coordinates?.[0]?.length) {
-						// Filter out invalid coordinates
 						const validCoords = geo.coordinates[0].filter(
 							([lng, lat]) => Number.isFinite(lat) && Number.isFinite(lng)
 						);
-						if (validCoords.length < 3) return; // Need at least 3 points for polygon
+						if (validCoords.length < 3) return;
 						const path = validCoords.map(
 							([lng, lat]) => new google.maps.LatLng(lat, lng)
 						);
@@ -390,7 +441,6 @@ export function ZonesInteractiveMap({
 						path.forEach((p) => polyBounds.extend(p));
 						bounds.union(polyBounds);
 
-						// Story 11.3: Add multiplier label at polygon center
 						const center = polyBounds.getCenter();
 						const label = createMultiplierLabel(
 							map,
@@ -449,7 +499,6 @@ export function ZonesInteractiveMap({
 			}
 		});
 
-		// Zoom to selected zone
 		if (selectedZoneId) {
 			const overlay = overlaysRef.current.get(selectedZoneId);
 			if (overlay && mapInstanceRef.current) {
@@ -472,6 +521,19 @@ export function ZonesInteractiveMap({
 			}
 		}
 	}, [selectedZoneId]);
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (terraDrawRef.current) {
+				try {
+					terraDrawRef.current.stop();
+				} catch {
+					// Ignore
+				}
+			}
+		};
+	}, []);
 
 	if (!googleMapsApiKey) {
 		return (
@@ -505,10 +567,11 @@ export function ZonesInteractiveMap({
 				hasDrawnShape={hasDrawnShape}
 				onValidate={onValidate}
 				isValidating={isValidating}
+				disabled={!terraDrawReady}
 			/>
 
 			{/* Map */}
-			<div ref={mapRef} className="h-full w-full" />
+			<div ref={mapRef} id="zones-interactive-map" className="h-full w-full" />
 		</div>
 	);
 }

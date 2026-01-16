@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * @deprecated Story 20.2: This component uses the legacy Google Maps DirectionsService API.
- * Use ModernRouteMap instead, which uses the new Google Routes API.
- * This file is kept for reference but should not be used in new code.
+ * RoutePreviewMap Component
+ * 
+ * Updated Story 20.2+: Now uses the modern Google Routes API instead of legacy DirectionsService.
+ * Displays a Google Map with pickup/dropoff markers and route trace.
+ * 
+ * Story 10.1: Route visualization for quotes
+ * Story 19.7: Fix route trace display with proper cleanup and waypoint support
  */
 
 import { useEffect, useRef, useCallback, useState } from "react";
@@ -11,6 +15,12 @@ import { Loader2, MapIcon } from "lucide-react";
 import { cn } from "@ui/lib";
 import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
 import { useTranslations } from "next-intl";
+import { 
+  computeRoutesWithFallback, 
+  toRoutesWaypoint, 
+  decodePolyline,
+  type RoutesRequest 
+} from "../../../../lib/google-routes-client";
 
 const MAP_HEIGHT = "h-[300px]";
 
@@ -29,29 +39,16 @@ const COLORS = {
   route: "#3b82f6", // blue-500
 };
 
-/**
- * RoutePreviewMap Component
- * 
- * Displays a Google Map with pickup/dropoff markers and route trace.
- * 
- * Story 10.1: Route visualization for quotes
- * Story 19.7: Fix route trace display with proper cleanup and waypoint support
- */
 export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: RoutePreviewMapProps) {
   const t = useTranslations("quotes.create.tripTransparency.routeMap");
-  const { isLoaded: isMapReady, error: mapError } = useGoogleMaps();
+  const { isLoaded: isMapReady, error: mapError, apiKey } = useGoogleMaps();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
-  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const [mapContainerReady, setMapContainerReady] = useState(false);
-  // Story 19.7: Track if we're using fallback polyline
-  const isUsingFallbackRef = useRef(false);
   // Story 19.7: Track request ID to prevent race conditions
   const requestIdRef = useRef(0);
-  // Story 19.7: Track timeout ID for cleanup
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
   // Callback ref for container
   const mapRef = useCallback((node: HTMLDivElement | null) => {
@@ -59,20 +56,12 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       mapContainerRef.current = node;
       setMapContainerReady(true);
     } else {
-      // Story 19.7: Complete cleanup on unmount
+      // Complete cleanup on unmount
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
       if (polylineRef.current) {
         polylineRef.current.setMap(null);
         polylineRef.current = null;
-      }
-      if (directionsRendererRef.current) {
-        directionsRendererRef.current.setMap(null);
-        directionsRendererRef.current = null;
-      }
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
       }
       mapInstanceRef.current = null;
       mapContainerRef.current = null;
@@ -80,23 +69,14 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
     }
   }, []);
 
-  // Story 19.7: Cleanup effect for component unmount
+  // Cleanup effect for component unmount
   useEffect(() => {
     return () => {
-      // Cleanup all Google Maps resources on unmount
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
       if (polylineRef.current) {
         polylineRef.current.setMap(null);
         polylineRef.current = null;
-      }
-      if (directionsRendererRef.current) {
-        directionsRendererRef.current.setMap(null);
-        directionsRendererRef.current = null;
-      }
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
       }
     };
   }, []);
@@ -127,26 +107,18 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
     const map = mapInstanceRef.current;
     if (!map || !isMapReady) return;
 
-    // Story 19.7: Increment request ID to track current request
+    // Increment request ID to track current request
     const currentRequestId = ++requestIdRef.current;
 
     // Clear existing markers
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
     
-    // Story 19.7: Clear existing polyline
+    // Clear existing polyline
     if (polylineRef.current) {
       polylineRef.current.setMap(null);
       polylineRef.current = null;
     }
-    
-    // Story 19.7: Clear previous DirectionsRenderer result (not the renderer itself)
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setMap(null);
-    }
-    
-    // Reset fallback state
-    isUsingFallbackRef.current = false;
 
     if (!pickup && !dropoff) return;
 
@@ -172,7 +144,7 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       bounds.extend({ lat: pickup.lat, lng: pickup.lng });
     }
 
-    // Story 19.7: Add waypoint markers for excursions
+    // Add waypoint markers for excursions
     if (waypoints && waypoints.length > 0) {
       waypoints.forEach((wp, index) => {
         const marker = new google.maps.Marker({
@@ -225,40 +197,10 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       map.fitBounds(bounds, 40);
     }
 
-    // Use Directions API for real route rendering
-    if (pickup && dropoff) {
-      // Clear any existing polyline first
-      if (polylineRef.current) {
-        (polylineRef.current as google.maps.Polyline).setMap(null);
-        polylineRef.current = null;
-      }
-
-      // Initialize DirectionsRenderer if needed
-      if (!directionsRendererRef.current) {
-        directionsRendererRef.current = new google.maps.DirectionsRenderer({
-          map,
-          suppressMarkers: true, // We use our own markers
-          polylineOptions: {
-            strokeColor: COLORS.route,
-            strokeOpacity: 1,
-            strokeWeight: 4,
-            zIndex: 50,
-          },
-        });
-      } else {
-        directionsRendererRef.current.setMap(map);
-      }
-
-      const directionsService = new google.maps.DirectionsService();
-      
-      // Story 19.7: Build waypoints for Directions API
-      const directionsWaypoints = waypoints?.map(wp => ({
-        location: { lat: wp.lat, lng: wp.lng },
-        stopover: true,
-      })) ?? [];
-
-      // Create immediate fallback polyline while waiting for Directions API
-      const path = [
+    // Use modern Routes API for route rendering
+    if (pickup && dropoff && apiKey) {
+      // Create immediate fallback polyline while waiting for Routes API
+      const fallbackPath = [
         { lat: pickup.lat, lng: pickup.lng },
         ...(waypoints?.map(wp => ({ lat: wp.lat, lng: wp.lng })) ?? []),
         { lat: dropoff.lat, lng: dropoff.lng },
@@ -266,9 +208,9 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
       
       const fallbackPolyline = new google.maps.Polyline({
         map,
-        path,
+        path: fallbackPath,
         strokeColor: COLORS.route,
-        strokeOpacity: 0.7,
+        strokeOpacity: 0.5,
         strokeWeight: 3,
         geodesic: true,
         zIndex: 50,
@@ -282,55 +224,62 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
         }],
       });
       polylineRef.current = fallbackPolyline;
-      isUsingFallbackRef.current = true;
 
-      // Add timeout to prevent hanging requests
-      timeoutIdRef.current = setTimeout(() => {
-        // Check if this is still the current request
-        if (currentRequestId === requestIdRef.current) {
-          console.warn("[RoutePreviewMap] Directions request timed out, keeping fallback polyline");
-        }
-      }, 5000); // 5 second timeout
+      // Build Routes API request
+      const routesRequest: RoutesRequest = {
+        origin: toRoutesWaypoint(pickup.lat, pickup.lng),
+        destination: toRoutesWaypoint(dropoff.lat, dropoff.lng),
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+      };
 
-      directionsService.route(
-        {
-          origin: { lat: pickup.lat, lng: pickup.lng },
-          destination: { lat: dropoff.lat, lng: dropoff.lng },
-          waypoints: directionsWaypoints,
-          travelMode: google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          // Clear timeout since we got a response
-          if (timeoutIdRef.current) {
-            clearTimeout(timeoutIdRef.current);
-            timeoutIdRef.current = null;
-          }
-          
-          // Story 19.7: Check if this is still the current request (prevent race conditions)
+      // Add intermediates for waypoints
+      if (waypoints && waypoints.length > 0) {
+        routesRequest.intermediates = waypoints.map(wp => 
+          toRoutesWaypoint(wp.lat, wp.lng)
+        );
+      }
+
+      // Call Routes API
+      computeRoutesWithFallback(apiKey, routesRequest)
+        .then(result => {
+          // Check if this is still the current request (prevent race conditions)
           if (currentRequestId !== requestIdRef.current) {
             return;
           }
-          
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            // Clear fallback polyline
+
+          if (result.success && result.data?.routes?.[0]?.polyline?.encodedPolyline) {
+            // Decode the polyline
+            const decodedPath = decodePolyline(result.data.routes[0].polyline.encodedPolyline);
+            
+            // Clear fallback and create real route polyline
             if (polylineRef.current) {
-              (polylineRef.current as google.maps.Polyline).setMap(null);
-              polylineRef.current = null;
+              polylineRef.current.setMap(null);
             }
             
-            // Use Directions API result
-            directionsRendererRef.current?.setDirections(result);
-            isUsingFallbackRef.current = false;
-            console.log("[RoutePreviewMap] Directions API successful - route displayed");
+            const routePolyline = new google.maps.Polyline({
+              map,
+              path: decodedPath,
+              strokeColor: COLORS.route,
+              strokeOpacity: 1,
+              strokeWeight: 4,
+              geodesic: true,
+              zIndex: 50,
+            });
+            polylineRef.current = routePolyline;
+            
+            console.log("[RoutePreviewMap] Routes API successful - route displayed");
           } else {
-            // Keep fallback polyline if directions fail
-            console.warn("[RoutePreviewMap] Directions request failed, keeping fallback polyline:", status);
-            isUsingFallbackRef.current = true;
+            // Keep fallback polyline
+            console.log("[RoutePreviewMap] Routes API failed, keeping fallback polyline");
           }
-        }
-      );
+        })
+        .catch(error => {
+          if (currentRequestId !== requestIdRef.current) return;
+          console.warn("[RoutePreviewMap] Routes API error, keeping fallback:", error);
+        });
     }
-  }, [pickup, dropoff, waypoints, isMapReady]);
+  }, [pickup, dropoff, waypoints, isMapReady, apiKey]);
 
   // No coordinates
   if (!pickup && !dropoff) {
@@ -368,7 +317,7 @@ export function RoutePreviewMap({ pickup, dropoff, waypoints, className }: Route
   return (
     <div className={cn("relative", className)}>
       <div ref={mapRef} className={cn(MAP_HEIGHT, "w-full rounded-lg overflow-hidden")} />
-      {/* Story 19.7: Translated legend */}
+      {/* Legend */}
       <div className="absolute bottom-2 left-2 bg-background/90 px-2 py-1 rounded text-xs flex gap-3">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.pickup }} />

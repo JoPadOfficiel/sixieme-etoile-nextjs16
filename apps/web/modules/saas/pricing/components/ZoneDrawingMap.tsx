@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * ZoneDrawingMap Component
+ * 
+ * Updated to use Terra Draw instead of deprecated Google Maps Drawing Library.
+ * Terra Draw is the Google-recommended replacement for the Drawing Library.
+ * 
+ * @see https://github.com/jameslmilner/terra-draw
+ */
+
 /// <reference types="@types/google.maps" />
 
 import { Button } from "@ui/components/button";
@@ -17,6 +26,10 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import type { ZoneType } from "../types";
+
+// Terra Draw imports
+import { TerraDraw, TerraDrawPolygonMode, TerraDrawCircleMode, TerraDrawSelectMode } from "terra-draw";
+import { TerraDrawGoogleMapsAdapter } from "terra-draw-google-maps-adapter";
 
 // GeoJSON types
 interface GeoJSONPolygon {
@@ -54,165 +67,105 @@ export function ZoneDrawingMap({
 	const t = useTranslations();
 	const mapRef = useRef<HTMLDivElement>(null);
 	const mapInstanceRef = useRef<google.maps.Map | null>(null);
-	const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(
-		null,
-	);
-	const currentShapeRef = useRef<
-		google.maps.Polygon | google.maps.Circle | null
-	>(null);
+	const terraDrawRef = useRef<TerraDraw | null>(null);
+	const currentFeatureIdRef = useRef<string | null>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	const isReady = useGoogleMaps(googleMapsApiKey ?? null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeDrawingMode, setActiveDrawingMode] = useState<DrawingMode>(null);
 	const [hasShape, setHasShape] = useState(false);
+	const [terraDrawReady, setTerraDrawReady] = useState(false);
 
 	// Default to Paris
 	const defaultLat = centerLatitude ?? 48.8566;
 	const defaultLng = centerLongitude ?? 2.3522;
 
-	// Convert polygon coordinates to GeoJSON
-	const polygonToGeoJSON = useCallback(
-		(polygon: google.maps.Polygon): GeoJSONPolygon => {
-			const path = polygon.getPath();
-			const coordinates: number[][] = [];
+	// Calculate center and radius from a circle-like polygon (approximated circle)
+	const calculateCircleFromPolygon = useCallback((coordinates: number[][]) => {
+		if (coordinates.length < 3) return null;
+		
+		// Calculate centroid
+		let sumLat = 0;
+		let sumLng = 0;
+		const count = coordinates.length - 1; // Exclude closing point
+		
+		for (let i = 0; i < count; i++) {
+			sumLng += coordinates[i][0];
+			sumLat += coordinates[i][1];
+		}
+		
+		const centerLat = sumLat / count;
+		const centerLng = sumLng / count;
+		
+		// Calculate average radius
+		let totalDistance = 0;
+		for (let i = 0; i < count; i++) {
+			const pointLat = coordinates[i][1];
+			const pointLng = coordinates[i][0];
+			const distance = haversineDistance(centerLat, centerLng, pointLat, pointLng);
+			totalDistance += distance;
+		}
+		
+		return {
+			center: { lat: centerLat, lng: centerLng },
+			radiusKm: totalDistance / count,
+		};
+	}, []);
 
-			for (let i = 0; i < path.getLength(); i++) {
-				const point = path.getAt(i);
-				coordinates.push([point.lng(), point.lat()]);
-			}
-
-			// Close the polygon
-			if (coordinates.length > 0) {
-				coordinates.push(coordinates[0]);
-			}
-
-			return {
-				type: "Polygon",
-				coordinates: [coordinates],
-			};
-		},
-		[],
-	);
+	// Haversine distance calculation
+	const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+		const R = 6371; // Earth's radius in km
+		const dLat = (lat2 - lat1) * Math.PI / 180;
+		const dLng = (lng2 - lng1) * Math.PI / 180;
+		const a = 
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+			Math.sin(dLng / 2) * Math.sin(dLng / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return R * c;
+	};
 
 	// Clear current shape
 	const clearCurrentShape = useCallback(() => {
-		if (currentShapeRef.current) {
-			currentShapeRef.current.setMap(null);
-			currentShapeRef.current = null;
-			setHasShape(false);
+		if (terraDrawRef.current && currentFeatureIdRef.current) {
+			try {
+				terraDrawRef.current.removeFeatures([currentFeatureIdRef.current]);
+			} catch (e) {
+				console.warn("Failed to remove feature:", e);
+			}
 		}
+		currentFeatureIdRef.current = null;
+		setHasShape(false);
 	}, []);
 
 	// Set drawing mode
 	const setDrawingMode = useCallback(
 		(mode: DrawingMode) => {
-			if (!drawingManagerRef.current) return;
+			if (!terraDrawRef.current || !terraDrawReady) return;
 
 			clearCurrentShape();
 			setActiveDrawingMode(mode);
 
-			let googleMode: google.maps.drawing.OverlayType | null = null;
-
 			switch (mode) {
 				case "circle":
-					googleMode = google.maps.drawing.OverlayType.CIRCLE;
+					terraDrawRef.current.setMode("circle");
 					onZoneTypeChange("RADIUS");
 					break;
 				case "polygon":
-					googleMode = google.maps.drawing.OverlayType.POLYGON;
+					terraDrawRef.current.setMode("polygon");
 					onZoneTypeChange("POLYGON");
 					break;
 				default:
-					googleMode = null;
-			}
-
-			drawingManagerRef.current.setDrawingMode(googleMode);
-		},
-		[clearCurrentShape, onZoneTypeChange],
-	);
-
-	// Handle shape completion
-	const handleShapeComplete = useCallback(
-		(
-			shape: google.maps.Polygon | google.maps.Circle,
-			type: "polygon" | "circle",
-		) => {
-			// Clear previous shape
-			clearCurrentShape();
-			currentShapeRef.current = shape;
-			setHasShape(true);
-
-			// Make shape editable
-			if ("setEditable" in shape) {
-				shape.setEditable(true);
-			}
-
-			// Stop drawing mode
-			if (drawingManagerRef.current) {
-				drawingManagerRef.current.setDrawingMode(null);
-			}
-			setActiveDrawingMode(null);
-
-			// Handle based on type
-			if (type === "circle") {
-				const circle = shape as google.maps.Circle;
-				const center = circle.getCenter();
-				const radius = circle.getRadius();
-
-				if (center) {
-					onCenterChange(center.lat(), center.lng());
-					onRadiusChange(Math.round((radius / 1000) * 100) / 100);
-				}
-
-				// Listen for edits
-				circle.addListener("center_changed", () => {
-					const newCenter = circle.getCenter();
-					if (newCenter) {
-						onCenterChange(newCenter.lat(), newCenter.lng());
-					}
-				});
-
-				circle.addListener("radius_changed", () => {
-					const newRadius = circle.getRadius();
-					onRadiusChange(Math.round((newRadius / 1000) * 100) / 100);
-				});
-			} else if (type === "polygon") {
-				const polygon = shape as google.maps.Polygon;
-				const geoJSON = polygonToGeoJSON(polygon);
-				onGeometryChange(geoJSON);
-
-				// Calculate center
-				const bounds = new google.maps.LatLngBounds();
-				polygon.getPath().forEach((point) => bounds.extend(point));
-				const center = bounds.getCenter();
-				onCenterChange(center.lat(), center.lng());
-
-				// Listen for edits
-				const path = polygon.getPath();
-				google.maps.event.addListener(path, "set_at", () => {
-					onGeometryChange(polygonToGeoJSON(polygon));
-				});
-				google.maps.event.addListener(path, "insert_at", () => {
-					onGeometryChange(polygonToGeoJSON(polygon));
-				});
-				google.maps.event.addListener(path, "remove_at", () => {
-					onGeometryChange(polygonToGeoJSON(polygon));
-				});
+					terraDrawRef.current.setMode("static");
 			}
 		},
-		[
-			clearCurrentShape,
-			onCenterChange,
-			onRadiusChange,
-			onGeometryChange,
-			polygonToGeoJSON,
-		],
+		[clearCurrentShape, onZoneTypeChange, terraDrawReady],
 	);
 
-	// Initialize map
-	const initializeMap = useCallback(() => {
-		if (mapInstanceRef.current || !mapRef.current || !window.google) {
+	// Initialize map and Terra Draw
+	useEffect(() => {
+		if (mapInstanceRef.current || !mapRef.current || !window.google || !isReady) {
 			return;
 		}
 
@@ -226,52 +179,157 @@ export function ZoneDrawingMap({
 
 		mapInstanceRef.current = map;
 
-		// Initialize Drawing Manager
-		const drawingManager = new google.maps.drawing.DrawingManager({
-			drawingMode: null,
-			drawingControl: false, // We use custom controls
-			polygonOptions: {
-				fillColor: "#3b82f6",
-				fillOpacity: 0.3,
-				strokeColor: "#3b82f6",
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-			},
-			circleOptions: {
-				fillColor: "#10b981",
-				fillOpacity: 0.3,
-				strokeColor: "#10b981",
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-			},
+		// Wait for map projection to be ready before initializing Terra Draw
+		map.addListener("projection_changed", () => {
+			if (terraDrawRef.current) return; // Already initialized
+
+			try {
+				const draw = new TerraDraw({
+					adapter: new TerraDrawGoogleMapsAdapter({
+						lib: google.maps,
+						map,
+						coordinatePrecision: 9,
+					}),
+					modes: [
+						new TerraDrawPolygonMode({
+							styles: {
+								fillColor: "#3b82f6",
+								fillOpacity: 0.3,
+								outlineColor: "#3b82f6",
+								outlineWidth: 2,
+							},
+						}),
+						new TerraDrawCircleMode({
+							styles: {
+								fillColor: "#10b981",
+								fillOpacity: 0.3,
+								outlineColor: "#10b981",
+								outlineWidth: 2,
+							},
+						}),
+						new TerraDrawSelectMode({
+							flags: {
+								polygon: {
+									feature: {
+										draggable: true,
+										coordinates: {
+											midpoints: true,
+											draggable: true,
+											deletable: true,
+										},
+									},
+								},
+								circle: {
+									feature: {
+										draggable: true,
+										coordinates: {
+											midpoints: false,
+											draggable: true,
+											deletable: false,
+										},
+									},
+								},
+							},
+						}),
+					],
+				});
+
+				draw.start();
+
+				// Listen for ready event (required for Google Maps adapter)
+				draw.on("ready", () => {
+					console.log("[ZoneDrawingMap] Terra Draw ready");
+					setTerraDrawReady(true);
+				});
+
+				// Listen for finish events (shape completed)
+				draw.on("finish", (id: string | number, context: { action: string; mode: string }) => {
+					if (context.action === "draw") {
+						const featureId = String(id);
+						console.log("[ZoneDrawingMap] Drawing finished:", featureId, context.mode);
+						
+						// Remove previous shape if exists
+						if (currentFeatureIdRef.current && currentFeatureIdRef.current !== featureId) {
+							try {
+								draw.removeFeatures([currentFeatureIdRef.current]);
+							} catch {
+								// Ignore
+							}
+						}
+						
+						currentFeatureIdRef.current = featureId;
+						setHasShape(true);
+						setActiveDrawingMode(null);
+						
+						// Get the feature data
+						const snapshot = draw.getSnapshot();
+						const feature = snapshot.find(f => String(f.id) === featureId);
+						
+						if (feature && feature.geometry.type === "Polygon") {
+							const coords = feature.geometry.coordinates[0] as number[][];
+							
+							if (context.mode === "circle") {
+								// Extract center and radius from circle polygon
+								const circleData = calculateCircleFromPolygon(coords);
+								if (circleData) {
+									onCenterChange(circleData.center.lat, circleData.center.lng);
+									onRadiusChange(Math.round(circleData.radiusKm * 100) / 100);
+								}
+							} else {
+								// Polygon mode
+								const geoJSON: GeoJSONPolygon = {
+									type: "Polygon",
+									coordinates: [coords],
+								};
+								onGeometryChange(geoJSON);
+								
+								// Calculate center
+								const bounds = new google.maps.LatLngBounds();
+								coords.forEach(coord => bounds.extend({ lat: coord[1], lng: coord[0] }));
+								const center = bounds.getCenter();
+								onCenterChange(center.lat(), center.lng());
+							}
+						}
+						
+						// Switch to select mode for editing
+						draw.setMode("select");
+					}
+				});
+
+				// Listen for change events (editing)
+				draw.on("change", (ids: (string | number)[], type: string) => {
+					const stringIds = ids.map(id => String(id));
+					if (type === "update" && currentFeatureIdRef.current && stringIds.includes(currentFeatureIdRef.current)) {
+						const snapshot = draw.getSnapshot();
+						const feature = snapshot.find(f => String(f.id) === currentFeatureIdRef.current);
+						
+						if (feature && feature.geometry.type === "Polygon") {
+							const coords = feature.geometry.coordinates[0] as number[][];
+							
+							if (zoneType === "RADIUS") {
+								const circleData = calculateCircleFromPolygon(coords);
+								if (circleData) {
+									onCenterChange(circleData.center.lat, circleData.center.lng);
+									onRadiusChange(Math.round(circleData.radiusKm * 100) / 100);
+								}
+							} else {
+								const geoJSON: GeoJSONPolygon = {
+									type: "Polygon",
+									coordinates: [coords],
+								};
+								onGeometryChange(geoJSON);
+							}
+						}
+					}
+				});
+
+				terraDrawRef.current = draw;
+			} catch (error) {
+				console.error("[ZoneDrawingMap] Error initializing Terra Draw:", error);
+			}
 		});
 
-		drawingManager.setMap(map);
-		drawingManagerRef.current = drawingManager;
-
-		// Handle shape completion
-		google.maps.event.addListener(
-			drawingManager,
-			"polygoncomplete",
-			(polygon: google.maps.Polygon) => {
-				handleShapeComplete(polygon, "polygon");
-			},
-		);
-
-		google.maps.event.addListener(
-			drawingManager,
-			"circlecomplete",
-			(circle: google.maps.Circle) => {
-				handleShapeComplete(circle, "circle");
-			},
-		);
-
-
-		// Initialize Places Autocomplete
+		// Initialize Places Autocomplete for search
 		if (searchInputRef.current) {
 			const autocomplete = new google.maps.places.Autocomplete(
 				searchInputRef.current,
@@ -292,103 +350,104 @@ export function ZoneDrawingMap({
 		}
 
 		// Load existing geometry if present
-		if (geometry && geometry.coordinates[0].length > 0) {
-			const coords = geometry.coordinates[0].map(
-				(coord) => new google.maps.LatLng(coord[1], coord[0]),
-			);
+		// Note: Loading existing shapes into Terra Draw requires addFeatures after ready
+		
+	}, [isReady, defaultLat, defaultLng, calculateCircleFromPolygon, onCenterChange, onRadiusChange, onGeometryChange, zoneType]);
 
-			const polygon = new google.maps.Polygon({
-				paths: coords,
-				fillColor: "#3b82f6",
-				fillOpacity: 0.3,
-				strokeColor: "#3b82f6",
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-				map,
-			});
+	// Load existing geometry when Terra Draw is ready
+	useEffect(() => {
+		if (!terraDrawReady || !terraDrawRef.current) return;
 
-			currentShapeRef.current = polygon;
-			setHasShape(true);
+		const draw = terraDrawRef.current;
 
-			// Fit bounds to polygon
-			const bounds = new google.maps.LatLngBounds();
-			coords.forEach((coord) => bounds.extend(coord));
-			map.fitBounds(bounds);
-
-			// Add edit listeners
-			const path = polygon.getPath();
-			google.maps.event.addListener(path, "set_at", () => {
-				onGeometryChange(polygonToGeoJSON(polygon));
-			});
-			google.maps.event.addListener(path, "insert_at", () => {
-				onGeometryChange(polygonToGeoJSON(polygon));
-			});
-		} else if (
-			zoneType === "RADIUS" &&
-			centerLatitude &&
-			centerLongitude &&
-			radiusKm
-		) {
-			const circle = new google.maps.Circle({
-				center: { lat: centerLatitude, lng: centerLongitude },
-				radius: radiusKm * 1000,
-				fillColor: "#10b981",
-				fillOpacity: 0.3,
-				strokeColor: "#10b981",
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				editable: true,
-				draggable: true,
-				map,
-			});
-
-			currentShapeRef.current = circle;
-			setHasShape(true);
-			map.setCenter({ lat: centerLatitude, lng: centerLongitude });
-
-			// Add edit listeners
-			circle.addListener("center_changed", () => {
-				const newCenter = circle.getCenter();
-				if (newCenter) {
-					onCenterChange(newCenter.lat(), newCenter.lng());
-				}
-			});
-
-			circle.addListener("radius_changed", () => {
-				const newRadius = circle.getRadius();
-				onRadiusChange(Math.round((newRadius / 1000) * 100) / 100);
-			});
+		// Clear any existing features first
+		try {
+			const existing = draw.getSnapshot();
+			if (existing.length > 0) {
+				draw.removeFeatures(existing.map(f => f.id as string));
+			}
+		} catch {
+			// Ignore
 		}
 
-	}, [
-		defaultLat,
-		defaultLng,
-		geometry,
-		zoneType,
-		centerLatitude,
-		centerLongitude,
-		radiusKm,
-		handleShapeComplete,
-		onCenterChange,
-		onRadiusChange,
-		onGeometryChange,
-		polygonToGeoJSON,
-	]);
+		// Load polygon geometry
+		if (geometry && geometry.coordinates[0].length > 0) {
+			try {
+				const featureId = draw.addFeatures([{
+					type: "Feature",
+					properties: { mode: "polygon" },
+					geometry: {
+						type: "Polygon",
+						coordinates: geometry.coordinates,
+					},
+				}]);
+				
+				if (featureId && featureId.length > 0 && featureId[0].valid) {
+					currentFeatureIdRef.current = String(featureId[0].id);
+					setHasShape(true);
+					
+					// Fit bounds to polygon
+					const bounds = new google.maps.LatLngBounds();
+					geometry.coordinates[0].forEach((coord) => {
+						bounds.extend({ lat: coord[1], lng: coord[0] });
+					});
+					mapInstanceRef.current?.fitBounds(bounds);
+				}
+			} catch {
+				console.warn("[ZoneDrawingMap] Failed to load polygon");
+			}
+		}
+		// Load circle (as polygon approximation)
+		else if (zoneType === "RADIUS" && centerLatitude && centerLongitude && radiusKm && radiusKm > 0) {
+			try {
+				// Create circle polygon approximation (64 points)
+				const numPoints = 64;
+				const coordinates: number[][] = [];
+				
+				for (let i = 0; i <= numPoints; i++) {
+					const angle = (i / numPoints) * 2 * Math.PI;
+					const dx = radiusKm * Math.cos(angle);
+					const dy = radiusKm * Math.sin(angle);
+					const lat = centerLatitude + (dy / 111.32);
+					const lng = centerLongitude + (dx / (111.32 * Math.cos(centerLatitude * Math.PI / 180)));
+					coordinates.push([lng, lat]);
+				}
+				
+				const featureId = draw.addFeatures([{
+					type: "Feature",
+					properties: { mode: "circle" },
+					geometry: {
+						type: "Polygon",
+						coordinates: [coordinates],
+					},
+				}]);
+				
+				if (featureId && featureId.length > 0) {
+					currentFeatureIdRef.current = String(featureId[0].id);
+					setHasShape(true);
+					mapInstanceRef.current?.setCenter({ lat: centerLatitude, lng: centerLongitude });
+					mapInstanceRef.current?.setZoom(12);
+				}
+			} catch (e) {
+				console.warn("[ZoneDrawingMap] Failed to load circle:", e);
+			}
+		}
+	// Run only once when Terra Draw becomes ready, not on every geometry change
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [terraDrawReady]);
 
-	// Google Maps is loaded via useGoogleMaps hook
-
-	// Initialize once Google Maps is ready
+	// Cleanup on unmount
 	useEffect(() => {
-		if (!isReady || !googleMapsApiKey) return;
-
-		initializeMap();
-
 		return () => {
-			clearCurrentShape();
+			if (terraDrawRef.current) {
+				try {
+					terraDrawRef.current.stop();
+				} catch {
+					// Ignore
+				}
+			}
 		};
-	}, [isReady, googleMapsApiKey, initializeMap, clearCurrentShape]);
+	}, []);
 
 	const handleSearch = () => {
 		if (!searchQuery.trim() || !mapInstanceRef.current) return;
@@ -453,6 +512,7 @@ export function ZoneDrawingMap({
 					className="h-8 w-8"
 					onClick={() => setDrawingMode("circle")}
 					title={t("pricing.zones.map.drawCircle")}
+					disabled={!terraDrawReady}
 				>
 					<CircleIcon className="h-4 w-4" />
 				</Button>
@@ -463,6 +523,7 @@ export function ZoneDrawingMap({
 					className="h-8 w-8"
 					onClick={() => setDrawingMode("polygon")}
 					title={t("pricing.zones.map.drawPolygon")}
+					disabled={!terraDrawReady}
 				>
 					<PentagonIcon className="h-4 w-4" />
 				</Button>
@@ -482,12 +543,12 @@ export function ZoneDrawingMap({
 
 			{/* Map container */}
 			<div className="relative h-[250px] w-full overflow-hidden rounded-lg border">
-				{!isReady && (
+				{(!isReady || !terraDrawReady) && (
 					<div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/50">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
 					</div>
 				)}
-				<div ref={mapRef} className="h-full w-full" />
+				<div ref={mapRef} id="zone-drawing-map" className="h-full w-full" />
 			</div>
 
 			{/* Zone info */}

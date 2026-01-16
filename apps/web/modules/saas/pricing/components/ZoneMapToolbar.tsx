@@ -28,6 +28,7 @@ interface ZoneMapToolbarProps {
 	className?: string;
 	onValidate?: () => void;
 	isValidating?: boolean;
+	disabled?: boolean;
 }
 
 export function ZoneMapToolbar({
