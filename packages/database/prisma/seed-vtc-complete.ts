@@ -261,8 +261,18 @@ async function createOrganization() {
       metadata: JSON.stringify({
         siret: "12345678901234",
         vatNumber: "FR12345678901",
-        address: { street: "24-30 Avenue du Gué Langlois", postalCode: "77600", city: "Bussy-Saint-Martin" },
+        rcs: "RCS PARIS",
+        ape: "4932CF",
+        address: "24-30 Avenue du Gué Langlois",
+        addressLine2: "Bâtiment B",
+        postalCode: "77600",
+        city: "Bussy-Saint-Martin",
+        country: "France",
         phone: "+33 1 42 86 83 00",
+        email: "contact@vtc-sixieme.fr",
+        bankName: "BNP Paribas",
+        iban: "FR76 3000 4028 3760 0300 0000 000",
+        bic: "BNPAFRPP"
       }),
     },
   });
@@ -910,6 +920,13 @@ async function createPricingSettings() {
     data: {
       id: randomUUID(),
       organizationId: ORGANIZATION_ID,
+      
+      // Document Branding
+      brandColor: "#000000",
+      logoPosition: "LEFT",
+      showCompanyName: false,
+      logoWidth: 150,
+
       // === BASE RATES TARIFICATION 2026 VAP ===
       baseRatePerKm: 2.10,
       baseRatePerHour: 52.0,
@@ -957,6 +974,16 @@ async function createPricingSettings() {
         "4": 1.25, // Client difficile - +25%
         "5": 1.50, // Blacklisté / Contraintes extrêmes - +50%
       },
+
+      // Story 25.2: EU-Compliant Invoice Legal Info
+      legalName: "Sixieme Etoile VTC",
+      address: "24-30 Avenue du Gué Langlois, Bâtiment B, 77600 Bussy-Saint-Martin",
+      phone: "+33 1 42 86 83 00",
+      email: "contact@vtc-sixieme.fr",
+      siret: "12345678901234",
+      vatNumber: "FR12345678901",
+      iban: "FR76 3000 4028 3760 0300 0000 000",
+      bic: "BNPAFRPP",
       
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -1904,6 +1931,7 @@ function printSummary() {
   console.log(`   • 18 Dispo Packages (3h à 10h, toutes catégories)`);
   console.log(`   • 2 Advanced Rates (night, weekend)`);
   console.log(`   • 4 Seasonal Multipliers`);
+
   console.log(`   • 6 Optional Fees`);
   console.log(`   • 4 Promotions`);
   console.log(`   • 8 Drivers with multi-license support`);
