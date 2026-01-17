@@ -17,6 +17,7 @@ export interface AppliedOptionalFee {
 	amount: number;
 	vatRate: number;
 	isTaxable: boolean;
+	quantity: number;
 }
 
 export interface AppliedPromotion {
@@ -25,6 +26,7 @@ export interface AppliedPromotion {
 	description?: string;
 	discountAmount: number;
 	discountType: "FIXED" | "PERCENTAGE";
+	quantity: number;
 }
 
 export interface ParsedAppliedRules {
@@ -47,6 +49,95 @@ export interface InvoiceTotals {
 	totalExclVat: number;
 	totalVat: number;
 	totalInclVat: number;
+}
+
+/**
+ * Document language options for PDF generation.
+ */
+export type DocumentLanguage = 'FR' | 'EN' | 'BILINGUAL';
+
+/**
+ * Trip context for generating detailed invoice line descriptions.
+ * Used to provide complete trip details in the pricing table.
+ */
+export interface TripContext {
+	pickupAddress: string;
+	dropoffAddress: string | null;
+	pickupAt: Date | string;
+	passengerCount: number;
+	luggageCount: number;
+	vehicleCategory: string;
+	tripType: string;
+	endCustomerName?: string | null;
+	language?: DocumentLanguage;
+}
+
+/**
+ * Build trip description based on language setting.
+ * Generates French, English, or bilingual text as appropriate.
+ */
+export function buildTripDescription(ctx: TripContext): string {
+	const lang = ctx.language || 'BILINGUAL';
+	const pickupDate = typeof ctx.pickupAt === 'string' 
+		? new Date(ctx.pickupAt) 
+		: ctx.pickupAt;
+	const formattedDate = pickupDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+	const formattedTime = pickupDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+	
+	// Language-specific labels
+	const labels = {
+		FR: {
+			header: "DETAILS DU TRAJET",
+			departure: "Départ",
+			arrival: "Arrivée",
+			dateTime: "Date / Heure",
+			passengers: "Passagers",
+			luggage: "Bagages",
+			vehicle: "Véhicule",
+			type: "Type",
+			endCustomer: "Client Final",
+		},
+		EN: {
+			header: "TRIP DETAILS",
+			departure: "From",
+			arrival: "To",
+			dateTime: "Date / Time",
+			passengers: "Pax",
+			luggage: "Luggage",
+			vehicle: "Vehicle",
+			type: "Type",
+			endCustomer: "End Customer",
+		},
+		BILINGUAL: {
+			header: "DETAILS DU TRAJET / TRIP DETAILS",
+			departure: "Départ / From",
+			arrival: "Arrivée / To",
+			dateTime: "Date / Heure / Date / Time",
+			passengers: "Passagers / Pax",
+			luggage: "Bagages / Luggage",
+			vehicle: "Véhicule / Vehicle",
+			type: "Type",
+			endCustomer: "Client Final / End Customer",
+		},
+	};
+	
+	// Validate language and fallback to BILINGUAL if invalid
+	const validLanguages: DocumentLanguage[] = ['FR', 'EN', 'BILINGUAL'];
+	const effectiveLang = validLanguages.includes(lang) ? lang : 'BILINGUAL';
+	const l = labels[effectiveLang];
+	
+	const lines = [
+		l.header,
+		`${l.departure}: ${ctx.pickupAddress}`,
+		`${l.arrival}: ${ctx.dropoffAddress ?? 'N/A'}`,
+		`${l.dateTime}: ${formattedDate} ${formattedTime}`,
+		`${l.passengers}: ${ctx.passengerCount} | ${l.luggage}: ${ctx.luggageCount}`,
+		`${l.vehicle}: ${ctx.vehicleCategory}`,
+		`${l.type}: ${ctx.tripType}`,
+		ctx.endCustomerName ? `${l.endCustomer}: ${ctx.endCustomerName}` : null,
+	].filter(Boolean);
+	
+	return lines.join('\n');
 }
 
 // ============================================================================
@@ -98,6 +189,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 				amount: Number(fee.amount) || 0,
 				vatRate: fee.vatRate !== undefined ? Number(fee.vatRate) : DEFAULT_ANCILLARY_VAT_RATE,
 				isTaxable: fee.isTaxable !== false, // Default to true
+				quantity: fee.quantity !== undefined ? Number(fee.quantity) : 1,
 			});
 		}
 	}
@@ -112,6 +204,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 					description: promo.description ? String(promo.description) : undefined,
 					discountAmount: Math.abs(Number(promo.discountAmount) || 0),
 					discountType: promo.discountType === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
+					quantity: promo.quantity !== undefined ? Number(promo.quantity) : 1,
 				});
 			}
 		}
@@ -127,6 +220,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 				description: promo.description ? String(promo.description) : undefined,
 				discountAmount: Math.abs(Number(promo.discountAmount) || 0),
 				discountType: promo.discountType === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
+				quantity: promo.quantity !== undefined ? Number(promo.quantity) : 1,
 			});
 		}
 	}
@@ -136,6 +230,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 		for (const addedFee of rules.addedFees) {
 			if (addedFee && typeof addedFee === "object") {
 				const fee = addedFee as Record<string, unknown>;
+				const quantity = fee.quantity !== undefined ? Number(fee.quantity) : 1;
 				if (fee.type === "fee") {
 					// It's a fee
 					result.optionalFees.push({
@@ -145,6 +240,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 						amount: Number(fee.amount) || 0,
 						vatRate: fee.vatRate !== undefined ? Number(fee.vatRate) : DEFAULT_ANCILLARY_VAT_RATE,
 						isTaxable: true,
+						quantity,
 					});
 				} else if (fee.type === "promotion") {
 					// It's a promotion
@@ -154,6 +250,7 @@ export function parseAppliedRules(appliedRules: unknown): ParsedAppliedRules {
 						description: fee.description ? String(fee.description) : undefined,
 						discountAmount: Math.abs(Number(fee.amount) || 0),
 						discountType: fee.discountType === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
+						quantity,
 					});
 				}
 			}
@@ -206,6 +303,7 @@ function calculateVat(amountExclVat: number, vatRate: number): number {
  * @param pickupAddress - Pickup address for description
  * @param dropoffAddress - Dropoff address for description
  * @param parsedRules - Parsed optional fees and promotions
+ * @param tripContext - Optional trip context for detailed descriptions
  * @returns Array of invoice line inputs
  */
 export function buildInvoiceLines(
@@ -214,6 +312,7 @@ export function buildInvoiceLines(
 	dropoffAddress: string | null,
 	parsedRules: ParsedAppliedRules,
 	endCustomerName?: string | null,
+	tripContext?: TripContext,
 ): InvoiceLineInput[] {
 	const lines: InvoiceLineInput[] = [];
 	let sortOrder = 0;
@@ -222,9 +321,18 @@ export function buildInvoiceLines(
 	const transportExclVat = roundCurrency(transportAmount);
 	const transportVat = calculateVat(transportExclVat, TRANSPORT_VAT_RATE);
 
+	// Build detailed description if trip context is provided
+	let description: string;
+	if (tripContext) {
+		description = buildTripDescription(tripContext);
+	} else {
+		// Fallback to simple description for backward compatibility
+		description = `Transport: ${pickupAddress} → ${dropoffAddress ?? "N/A"}${endCustomerName ? ` (End Customer: ${endCustomerName})` : ""}`;
+	}
+
 	lines.push({
 		lineType: "SERVICE",
-		description: `Transport: ${pickupAddress} → ${dropoffAddress ?? "N/A"}${endCustomerName ? ` (End Customer: ${endCustomerName})` : ""}`,
+		description,
 		quantity: 1,
 		unitPriceExclVat: transportExclVat,
 		vatRate: TRANSPORT_VAT_RATE,
@@ -235,17 +343,19 @@ export function buildInvoiceLines(
 
 	// 2. Optional fee lines
 	for (const fee of parsedRules.optionalFees) {
+		const qty = fee.quantity || 1;
 		const feeExclVat = roundCurrency(fee.amount);
 		const effectiveVatRate = fee.isTaxable ? fee.vatRate : 0;
-		const feeVat = calculateVat(feeExclVat, effectiveVatRate);
+		const totalFeeExclVat = roundCurrency(feeExclVat * qty);
+		const feeVat = calculateVat(totalFeeExclVat, effectiveVatRate);
 
 		lines.push({
 			lineType: "OPTIONAL_FEE",
 			description: fee.name,
-			quantity: 1,
+			quantity: qty,
 			unitPriceExclVat: feeExclVat,
 			vatRate: effectiveVatRate,
-			totalExclVat: feeExclVat,
+			totalExclVat: totalFeeExclVat,
 			totalVat: feeVat,
 			sortOrder: sortOrder++,
 		});
@@ -253,17 +363,19 @@ export function buildInvoiceLines(
 
 	// 3. Promotion adjustment lines (negative amounts)
 	for (const promo of parsedRules.promotions) {
+		const qty = promo.quantity || 1;
 		const discountExclVat = roundCurrency(-promo.discountAmount); // Negative
+		const totalDiscountExclVat = roundCurrency(discountExclVat * qty);
 		// Promotions apply to transport, so use transport VAT rate
-		const discountVat = calculateVat(discountExclVat, TRANSPORT_VAT_RATE);
+		const discountVat = calculateVat(totalDiscountExclVat, TRANSPORT_VAT_RATE);
 
 		lines.push({
 			lineType: "PROMOTION_ADJUSTMENT",
 			description: `Promotion: ${promo.code}`,
-			quantity: 1,
+			quantity: qty,
 			unitPriceExclVat: discountExclVat,
 			vatRate: TRANSPORT_VAT_RATE,
-			totalExclVat: discountExclVat,
+			totalExclVat: totalDiscountExclVat,
 			totalVat: discountVat,
 			sortOrder: sortOrder++,
 		});
