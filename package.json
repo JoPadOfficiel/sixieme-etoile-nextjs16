@@ -9,7 +9,9 @@
 		"clean": "turbo clean",
 		"format": "biome format . --write",
 		"e2e": "pnpm --filter web e2e",
-		"seed:vtc": "pnpm --filter @repo/database db:seed:vtc"
+		"seed:vtc": "pnpm --filter @repo/database db:seed:vtc",
+		"jules:setup": "node .gemini/jules/scripts/script-setup.js",
+		"jules:setup:vtc": "node .gemini/jules/scripts/script-setup-vtc.js"
 	},
 	"engines": {
 		"node": ">=20"

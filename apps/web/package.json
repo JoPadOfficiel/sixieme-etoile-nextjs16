@@ -125,11 +125,5 @@
     "prisma:migrate": "dotenv -c -e ../../.env.local -- prisma migrate dev",
     "prisma:studio": "dotenv -c -e ../../.env.local -- prisma studio"
   },
-  "version": "0.0.0",
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.2.7",
-      "@types/react-dom": "19.2.3"
-    }
-  }
+  "version": "0.0.0"
 }
