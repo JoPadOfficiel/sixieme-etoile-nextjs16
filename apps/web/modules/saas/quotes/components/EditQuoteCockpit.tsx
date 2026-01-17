@@ -138,6 +138,13 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
     setAddedFees((prev) => prev.filter((f) => f.id !== feeId));
   }, []);
 
+  // Handle updating a fee or promotion (quantity)
+  const handleUpdateFee = useCallback((feeId: string, quantity: number) => {
+    setAddedFees((prev) => 
+      prev.map((f) => f.id === feeId ? { ...f, quantity } : f)
+    );
+  }, []);
+
   // Trigger pricing calculation when relevant fields change
   useEffect(() => {
     if (formData) {
@@ -237,6 +244,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
               vatRate: fee.vatRate,
               discountType: fee.discountType,
               promoCode: fee.promoCode,
+              quantity: fee.quantity, // Add quantity to saved data
             })),
           },
         },
@@ -464,6 +472,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
             addedFees={addedFees}
             onAddFee={handleAddFee}
             onRemoveFee={handleRemoveFee}
+            onUpdateFee={handleUpdateFee}
           />
         </div>
       </div>

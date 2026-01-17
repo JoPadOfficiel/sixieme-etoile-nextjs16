@@ -3,6 +3,7 @@
 import { Button } from "@ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Badge } from "@ui/components/badge";
+import { Input } from "@ui/components/input";
 import { PercentIcon, TagIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { AddedFee } from "./AddQuoteFeeDialog";
@@ -10,13 +11,14 @@ import type { AddedFee } from "./AddQuoteFeeDialog";
 interface AddedFeesListProps {
   fees: AddedFee[];
   onRemove: (id: string) => void;
+  onUpdate?: (id: string, quantity: number) => void;
   disabled?: boolean;
 }
 
 /**
  * Component to display added fees and promotions on a quote
  */
-export function AddedFeesList({ fees, onRemove, disabled }: AddedFeesListProps) {
+export function AddedFeesList({ fees, onRemove, onUpdate, disabled }: AddedFeesListProps) {
   const t = useTranslations();
 
   if (fees.length === 0) {
@@ -25,11 +27,11 @@ export function AddedFeesList({ fees, onRemove, disabled }: AddedFeesListProps) 
 
   const totalFees = fees
     .filter((f) => f.type === "fee")
-    .reduce((sum, f) => sum + f.amount, 0);
+    .reduce((sum, f) => sum + f.amount * (f.quantity || 1), 0);
 
   const totalDiscounts = fees
     .filter((f) => f.type === "promotion")
-    .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+    .reduce((sum, f) => sum + Math.abs(f.amount) * (f.quantity || 1), 0);
 
   return (
     <Card>
@@ -59,11 +61,36 @@ export function AddedFeesList({ fees, onRemove, disabled }: AddedFeesListProps) 
               )}
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{fee.name}</p>
-                {fee.promoCode && (
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {fee.promoCode}
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  {fee.promoCode && (
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {fee.promoCode}
+                    </p>
+                  )}
+                  {onUpdate ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">x</span>
+                      <Input
+                        type="number"
+                        className="w-12 h-5 text-[10px] px-1"
+                        defaultValue={fee.quantity}
+                        min="1"
+                        step="1"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const val = parseFloat(e.target.value);
+                          if (val >= 1 && val !== fee.quantity) {
+                            onUpdate(fee.id, val);
+                          }
+                        }}
+                        disabled={disabled}
+                      />
+                    </div>
+                  ) : fee.quantity > 1 && (
+                    <Badge variant="outline" className="text-[10px] h-4 px-1">
+                      x{fee.quantity}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -73,7 +100,7 @@ export function AddedFeesList({ fees, onRemove, disabled }: AddedFeesListProps) 
                 }`}
               >
                 {fee.type === "promotion" ? "-" : "+"}
-                {Math.abs(fee.amount).toLocaleString("fr-FR", {
+                {(Math.abs(fee.amount) * (fee.quantity || 1)).toLocaleString("fr-FR", {
                   style: "currency",
                   currency: "EUR",
                 })}

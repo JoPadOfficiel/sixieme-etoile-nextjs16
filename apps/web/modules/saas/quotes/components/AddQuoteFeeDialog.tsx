@@ -35,6 +35,7 @@ export interface AddedFee {
   vatRate: number;
   discountType?: "FIXED" | "PERCENTAGE";
   promoCode?: string;
+  quantity: number;
 }
 
 interface AddQuoteFeeDialogProps {
@@ -70,6 +71,7 @@ export function AddQuoteFeeDialog({
   const [customPromoCode, setCustomPromoCode] = useState("");
   const [customPromoAmount, setCustomPromoAmount] = useState("");
   const [customPromoDescription, setCustomPromoDescription] = useState("");
+  const [quantity, setQuantity] = useState("1");
 
   const { fees, isLoading: feesLoading } = useOptionalFees();
   const { promotions, isLoading: promotionsLoading } = usePromotions();
@@ -108,6 +110,7 @@ export function AddQuoteFeeDialog({
           description: selectedFee.description ?? undefined,
           amount: selectedFee.amount,
           vatRate: selectedFee.vatRate ?? 20,
+          quantity: parseFloat(quantity) || 1,
         });
       } else if (mode === "custom" && customDescription && customAmount) {
         onAdd({
@@ -116,6 +119,7 @@ export function AddQuoteFeeDialog({
           name: customDescription,
           amount: parseFloat(customAmount),
           vatRate: parseFloat(customVatRate),
+          quantity: parseFloat(quantity) || 1,
         });
       }
     } else if (tab === "promotions") {
@@ -131,6 +135,7 @@ export function AddQuoteFeeDialog({
           vatRate: 20,
           discountType: selectedPromotion.discountType,
           promoCode: selectedPromotion.code,
+          quantity: parseFloat(quantity) || 1,
         });
       } else if (promoMode === "custom" && customPromoCode && customPromoAmount) {
         onAdd({
@@ -142,6 +147,7 @@ export function AddQuoteFeeDialog({
           vatRate: 20,
           discountType: "FIXED",
           promoCode: customPromoCode,
+          quantity: parseFloat(quantity) || 1,
         });
       }
     }
@@ -162,6 +168,7 @@ export function AddQuoteFeeDialog({
     setCustomPromoCode("");
     setCustomPromoAmount("");
     setCustomPromoDescription("");
+    setQuantity("1");
   };
 
   const canSubmit =
@@ -319,6 +326,20 @@ export function AddQuoteFeeDialog({
                 </div>
               </div>
             )}
+
+            {/* Shared Quantity Field for Fees */}
+            <div className="space-y-2 pt-2 border-t mt-4">
+              <Label htmlFor="quote-fee-quantity">{t("invoices.detail.quantity")}</Label>
+              <Input
+                id="quote-fee-quantity"
+                type="number"
+                step="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="1"
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="promotions" className="space-y-4 pt-4">
@@ -434,6 +455,20 @@ export function AddQuoteFeeDialog({
                 </div>
               </div>
             )}
+
+            {/* Shared Quantity Field for Promotions */}
+            <div className="space-y-2 pt-2 border-t mt-4">
+              <Label htmlFor="quote-promo-quantity">{t("invoices.detail.quantity")}</Label>
+              <Input
+                id="quote-promo-quantity"
+                type="number"
+                step="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="1"
+              />
+            </div>
           </TabsContent>
         </Tabs>
 

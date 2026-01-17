@@ -52,6 +52,7 @@ interface QuotePricingPanelProps {
   addedFees?: AddedFee[];
   onAddFee?: (fee: AddedFee) => void;
   onRemoveFee?: (feeId: string) => void;
+  onUpdateFee?: (feeId: string, quantity: number) => void;
   // Story 16.4: Contract price locking
   partnerName?: string;
   isAdmin?: boolean;
@@ -84,6 +85,7 @@ export function QuotePricingPanel({
   addedFees = [],
   onAddFee,
   onRemoveFee,
+  onUpdateFee,
   // Story 16.4: Contract price locking
   partnerName,
   isAdmin = false,
@@ -151,7 +153,8 @@ export function QuotePricingPanel({
   
   // Calculate total of added fees (positive for fees, negative for promotions)
   const addedFeesTotal = addedFees.reduce((sum, fee) => {
-    return sum + (fee.type === "promotion" ? -Math.abs(fee.amount) : fee.amount);
+    const amount = fee.amount * (fee.quantity || 1);
+    return sum + (fee.type === "promotion" ? -Math.abs(amount) : amount);
   }, 0);
   
   // Total price including fees and promotions
@@ -496,6 +499,7 @@ export function QuotePricingPanel({
           <AddedFeesList
             fees={addedFees}
             onRemove={onRemoveFee}
+            onUpdate={onUpdateFee}
             disabled={isSubmitting}
           />
         </>

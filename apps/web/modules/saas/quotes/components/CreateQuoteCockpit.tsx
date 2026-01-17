@@ -122,6 +122,13 @@ export function CreateQuoteCockpit() {
     setAddedFees((prev) => prev.filter((f) => f.id !== feeId));
   }, []);
 
+  // Handle updating a fee or promotion (quantity)
+  const handleUpdateFee = useCallback((feeId: string, quantity: number) => {
+    setAddedFees((prev) => 
+      prev.map((f) => f.id === feeId ? { ...f, quantity } : f)
+    );
+  }, []);
+
   // Trigger pricing calculation when relevant fields change
   // Using a ref to track previous price to avoid cascading renders
   const previousPriceRef = useRef<number | null>(null);
@@ -300,6 +307,7 @@ export function CreateQuoteCockpit() {
               vatRate: fee.vatRate,
               discountType: fee.discountType,
               promoCode: fee.promoCode,
+              quantity: fee.quantity, // Add quantity to saved data
             })),
           },
           validUntil: formData.validUntil?.toISOString() ?? null,
@@ -435,6 +443,7 @@ export function CreateQuoteCockpit() {
             addedFees={addedFees}
             onAddFee={handleAddFee}
             onRemoveFee={handleRemoveFee}
+            onUpdateFee={handleUpdateFee}
           />
         </div>
       </div>
