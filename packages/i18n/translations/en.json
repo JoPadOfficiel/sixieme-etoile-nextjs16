@@ -416,6 +416,7 @@
 			"addLine": "Add",
 			"lineAdded": "Line added to invoice",
 			"lineDeleted": "Line deleted from invoice",
+			"lineUpdated": "Line updated successfully",
 			"deleteLine": "Delete",
 			"deleteLineConfirm": "Are you sure you want to delete this line?",
 			"feesTab": "Fees",
