@@ -164,9 +164,18 @@ function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 		showCompanyName: settings?.showCompanyName,
 		logoWidth: settings?.logoWidth,
 		
-		// Story 25.2: EU Compliance - Real data from metadata or settings
+		// Story 25.4: Document Settings
+		documentLanguage: settings?.documentLanguage ?? 'BILINGUAL',
+		invoiceTerms: settings?.invoiceTerms,
+		quoteTerms: settings?.quoteTerms,
+		missionOrderTerms: settings?.missionOrderTerms,
+		
+		// Story 25.2: EU Compliance - Complete address and legal info
 		name: settings?.legalName ?? org.name,
 		address: (typeof metadata.address === 'string' ? metadata.address : null) ?? settings?.address ?? null,
+		addressLine2: metadata.addressLine2 ?? settings?.addressLine2 ?? null,
+		postalCode: metadata.postalCode ?? settings?.postalCode ?? null,
+		city: metadata.city ?? settings?.city ?? null,
 		phone: metadata.phone ?? settings?.phone ?? null,
 		email: metadata.email ?? settings?.email ?? null,
 		

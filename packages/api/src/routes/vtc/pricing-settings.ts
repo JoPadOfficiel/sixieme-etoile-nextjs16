@@ -20,6 +20,9 @@ const timeBucketInterpolationStrategyEnum = z.enum(["ROUND_UP", "ROUND_DOWN", "P
 // Story 25.3: Logo position enum for PDF documents
 const logoPositionEnum = z.enum(["LEFT", "RIGHT"]);
 
+// Story 25.4: Document language enum
+const documentLanguageEnum = z.enum(["FRENCH", "ENGLISH", "BILINGUAL"]);
+
 // Story 17.15: Difficulty multipliers schema
 const difficultyMultipliersSchema = z.object({
 	"1": z.number().min(0.5).max(3),
@@ -78,132 +81,73 @@ const updatePricingSettingsSchema = z.object({
 	logoPosition: logoPositionEnum.optional(),
 	showCompanyName: z.boolean().optional(),
 	logoWidth: z.number().int().min(50).max(300).optional(),
+	// Story 25.4: Document language and terms
+	documentLanguage: documentLanguageEnum.optional(),
+	invoiceTerms: z.string().max(5000).nullable().optional(),
+	quoteTerms: z.string().max(5000).nullable().optional(),
+	missionOrderTerms: z.string().max(5000).nullable().optional(),
 });
 
 // Helper to convert Decimal fields to numbers for JSON response
-function serializePricingSettings(settings: {
-	id: string;
-	organizationId: string;
-	baseRatePerKm: unknown;
-	baseRatePerHour: unknown;
-	defaultMarginPercent: unknown;
-	greenMarginThreshold: unknown;
-	orangeMarginThreshold: unknown;
-	minimumFare: unknown;
-	roundingRule: string | null;
-	fuelConsumptionL100km: unknown;
-	fuelPricePerLiter: unknown;
-	tollCostPerKm: unknown;
-	wearCostPerKm: unknown;
-	driverHourlyCost: unknown;
-	// Story 17.1: Zone conflict resolution strategy
-	zoneConflictStrategy?: string | null;
-	// Story 17.2: Zone multiplier aggregation strategy
-	zoneMultiplierAggregationStrategy?: string | null;
-	// Story 17.3: Staffing selection policy
-	staffingSelectionPolicy?: string | null;
-	// Story 17.4: Staffing cost parameters
-	hotelCostPerNight?: unknown;
-	mealCostPerDay?: unknown;
-	driverOvernightPremium?: unknown;
-	secondDriverHourlyRate?: unknown;
-	relayDriverFixedFee?: unknown;
-	// Story 17.12: Use driver home for deadhead calculations
-	useDriverHomeForDeadhead?: boolean;
-	// Story 17.9: Time bucket interpolation strategy
-	timeBucketInterpolationStrategy?: string | null;
-	// Story 17.15: Difficulty multipliers
-	difficultyMultipliers?: unknown;
-	// Story 18.11: Transfer-to-MAD thresholds
-	denseZoneSpeedThreshold?: unknown;
-	autoSwitchToMAD?: boolean;
-	denseZoneCodes?: string[];
-	minWaitingTimeForSeparateTransfers?: number | null;
-	maxReturnDistanceKm?: unknown;
-	roundTripBuffer?: number | null;
-	autoSwitchRoundTripToMAD?: boolean;
-	// Story 25.3: Document personalization
-	documentLogoUrl?: string | null;
-	brandColor?: string | null;
-	logoPosition?: string | null;
-	showCompanyName?: boolean;
-	logoWidth?: number;
-	createdAt: Date;
-	updatedAt: Date;
-}) {
+function serializePricingSettings(settings: any) {
+	if (!settings) return null;
+	
+	const safeNumber = (val: any) => {
+		if (val === null || val === undefined) return null;
+		try {
+			// Handle Prisma Decimal objects
+			if (typeof val === 'object' && val.toNumber) return val.toNumber();
+			const n = Number(val);
+			return isNaN(n) ? null : n;
+		} catch (e) {
+			return null;
+		}
+	};
+
 	return {
 		id: settings.id,
 		organizationId: settings.organizationId,
-		baseRatePerKm: Number(settings.baseRatePerKm),
-		baseRatePerHour: Number(settings.baseRatePerHour),
-		defaultMarginPercent: Number(settings.defaultMarginPercent),
-		greenMarginThreshold: Number(settings.greenMarginThreshold),
-		orangeMarginThreshold: Number(settings.orangeMarginThreshold),
-		minimumFare: Number(settings.minimumFare),
+		baseRatePerKm: safeNumber(settings.baseRatePerKm) ?? 1.2,
+		baseRatePerHour: safeNumber(settings.baseRatePerHour) ?? 35.0,
+		defaultMarginPercent: safeNumber(settings.defaultMarginPercent) ?? 20.0,
+		greenMarginThreshold: safeNumber(settings.greenMarginThreshold) ?? 20.0,
+		orangeMarginThreshold: safeNumber(settings.orangeMarginThreshold) ?? 0.0,
+		minimumFare: safeNumber(settings.minimumFare) ?? 25.0,
 		roundingRule: settings.roundingRule,
-		fuelConsumptionL100km: settings.fuelConsumptionL100km
-			? Number(settings.fuelConsumptionL100km)
-			: null,
-		fuelPricePerLiter: settings.fuelPricePerLiter
-			? Number(settings.fuelPricePerLiter)
-			: null,
-		tollCostPerKm: settings.tollCostPerKm
-			? Number(settings.tollCostPerKm)
-			: null,
-		wearCostPerKm: settings.wearCostPerKm
-			? Number(settings.wearCostPerKm)
-			: null,
-		driverHourlyCost: settings.driverHourlyCost
-			? Number(settings.driverHourlyCost)
-			: null,
-		// Story 17.1: Zone conflict resolution strategy
+		fuelConsumptionL100km: safeNumber(settings.fuelConsumptionL100km),
+		fuelPricePerLiter: safeNumber(settings.fuelPricePerLiter),
+		tollCostPerKm: safeNumber(settings.tollCostPerKm),
+		wearCostPerKm: safeNumber(settings.wearCostPerKm),
+		driverHourlyCost: safeNumber(settings.driverHourlyCost),
 		zoneConflictStrategy: settings.zoneConflictStrategy,
-		// Story 17.2: Zone multiplier aggregation strategy
 		zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy,
-		// Story 17.3: Staffing selection policy
 		staffingSelectionPolicy: settings.staffingSelectionPolicy,
-		// Story 17.4: Staffing cost parameters
-		hotelCostPerNight: settings.hotelCostPerNight
-			? Number(settings.hotelCostPerNight)
-			: null,
-		mealCostPerDay: settings.mealCostPerDay
-			? Number(settings.mealCostPerDay)
-			: null,
-		driverOvernightPremium: settings.driverOvernightPremium
-			? Number(settings.driverOvernightPremium)
-			: null,
-		secondDriverHourlyRate: settings.secondDriverHourlyRate
-			? Number(settings.secondDriverHourlyRate)
-			: null,
-		relayDriverFixedFee: settings.relayDriverFixedFee
-			? Number(settings.relayDriverFixedFee)
-			: null,
-		// Story 17.12: Use driver home for deadhead calculations
+		hotelCostPerNight: safeNumber(settings.hotelCostPerNight),
+		mealCostPerDay: safeNumber(settings.mealCostPerDay),
+		driverOvernightPremium: safeNumber(settings.driverOvernightPremium),
+		secondDriverHourlyRate: safeNumber(settings.secondDriverHourlyRate),
+		relayDriverFixedFee: safeNumber(settings.relayDriverFixedFee),
 		useDriverHomeForDeadhead: settings.useDriverHomeForDeadhead ?? false,
-		// Story 17.9: Time bucket interpolation strategy
 		timeBucketInterpolationStrategy: settings.timeBucketInterpolationStrategy,
-		// Story 17.15: Difficulty multipliers
 		difficultyMultipliers: settings.difficultyMultipliers,
-		// Story 18.11: Transfer-to-MAD thresholds
-		denseZoneSpeedThreshold: settings.denseZoneSpeedThreshold
-			? Number(settings.denseZoneSpeedThreshold)
-			: null,
+		denseZoneSpeedThreshold: safeNumber(settings.denseZoneSpeedThreshold),
 		autoSwitchToMAD: settings.autoSwitchToMAD ?? false,
 		denseZoneCodes: settings.denseZoneCodes ?? [],
-		minWaitingTimeForSeparateTransfers: settings.minWaitingTimeForSeparateTransfers ?? null,
-		maxReturnDistanceKm: settings.maxReturnDistanceKm
-			? Number(settings.maxReturnDistanceKm)
-			: null,
-		roundTripBuffer: settings.roundTripBuffer ?? null,
+		minWaitingTimeForSeparateTransfers: settings.minWaitingTimeForSeparateTransfers ?? 180,
+		maxReturnDistanceKm: safeNumber(settings.maxReturnDistanceKm),
+		roundTripBuffer: settings.roundTripBuffer ?? 30,
 		autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
-		// Story 25.3: Document personalization
 		documentLogoUrl: settings.documentLogoUrl ?? null,
 		brandColor: settings.brandColor ?? "#2563eb",
 		logoPosition: settings.logoPosition ?? "LEFT",
 		showCompanyName: settings.showCompanyName ?? true,
 		logoWidth: settings.logoWidth ?? 150,
-		createdAt: settings.createdAt.toISOString(),
-		updatedAt: settings.updatedAt.toISOString(),
+		documentLanguage: settings.documentLanguage ?? "BILINGUAL",
+		invoiceTerms: settings.invoiceTerms ?? null,
+		quoteTerms: settings.quoteTerms ?? null,
+		missionOrderTerms: settings.missionOrderTerms ?? null,
+		createdAt: settings.createdAt instanceof Date ? settings.createdAt.toISOString() : new Date().toISOString(),
+		updatedAt: settings.updatedAt instanceof Date ? settings.updatedAt.toISOString() : new Date().toISOString(),
 	};
 }
 
@@ -261,45 +205,78 @@ export const pricingSettingsRouter = new Hono()
 
 				if (existing) {
 					// Update existing settings
-					const updateData: any = {
-						...data,
-					};
-					// Convert difficultyMultipliers to JSON for database
-					if (data.difficultyMultipliers) {
-						updateData.difficultyMultipliers = JSON.stringify(data.difficultyMultipliers);
+					// Ensure we only pass valid fields to Prisma update
+					const updateData: any = {};
+					const modelFields = [
+						'baseRatePerKm', 'baseRatePerHour', 'defaultMarginPercent', 'greenMarginThreshold', 
+						'orangeMarginThreshold', 'minimumFare', 'roundingRule', 'fuelConsumptionL100km', 
+						'fuelPricePerLiter', 'tollCostPerKm', 'wearCostPerKm', 'driverHourlyCost',
+						'zoneConflictStrategy', 'zoneMultiplierAggregationStrategy', 'staffingSelectionPolicy',
+						'hotelCostPerNight', 'mealCostPerDay', 'driverOvernightPremium', 'secondDriverHourlyRate', 
+						'relayDriverFixedFee', 'useDriverHomeForDeadhead', 'timeBucketInterpolationStrategy',
+						'difficultyMultipliers', 'denseZoneSpeedThreshold', 'autoSwitchToMAD', 'denseZoneCodes',
+						'minWaitingTimeForSeparateTransfers', 'maxReturnDistanceKm', 'roundTripBuffer', 
+						'autoSwitchRoundTripToMAD', 'documentLogoUrl', 'brandColor', 'logoPosition', 
+						'showCompanyName', 'logoWidth', 'documentLanguage', 'invoiceTerms', 'quoteTerms', 
+						'missionOrderTerms'
+					];
+
+					for (const key of Object.keys(data)) {
+						if (modelFields.includes(key)) {
+							updateData[key] = (data as any)[key];
+						}
 					}
-					console.log("[pricing-settings] Updating with:", updateData);
+
+					console.log("[pricing-settings] Updating with cleaned data:", updateData);
 					settings = await db.organizationPricingSettings.update({
 						where: { organizationId },
 						data: updateData,
 					});
 				} else {
-					// Create new settings with defaults for required fields
-					const createData = {
-						organizationId,
-						baseRatePerKm: data.baseRatePerKm ?? 1.2,
-						baseRatePerHour: data.baseRatePerHour ?? 35.0,
-						defaultMarginPercent: data.defaultMarginPercent ?? 20.0,
-						greenMarginThreshold: data.greenMarginThreshold ?? 20.0,
-						orangeMarginThreshold: data.orangeMarginThreshold ?? 0.0,
-						minimumFare: data.minimumFare ?? 25.0,
-						roundingRule: data.roundingRule ?? null,
-						fuelConsumptionL100km: data.fuelConsumptionL100km ?? null,
-						fuelPricePerLiter: data.fuelPricePerLiter ?? null,
-						tollCostPerKm: data.tollCostPerKm ?? null,
-						wearCostPerKm: data.wearCostPerKm ?? null,
-						driverHourlyCost: data.driverHourlyCost ?? null,
-					};
-
+					// Create new settings
 					settings = await db.organizationPricingSettings.create({
-						data: createData,
+						data: {
+							organizationId,
+							baseRatePerKm: data.baseRatePerKm ?? 1.2,
+							baseRatePerHour: data.baseRatePerHour ?? 35.0,
+							defaultMarginPercent: data.defaultMarginPercent ?? 20.0,
+							greenMarginThreshold: data.greenMarginThreshold ?? 20.0,
+							orangeMarginThreshold: data.orangeMarginThreshold ?? 0.0,
+							minimumFare: data.minimumFare ?? 25.0,
+							roundingRule: data.roundingRule ?? null,
+							fuelConsumptionL100km: data.fuelConsumptionL100km ?? null,
+							fuelPricePerLiter: data.fuelPricePerLiter ?? null,
+							tollCostPerKm: data.tollCostPerKm ?? null,
+							wearCostPerKm: data.wearCostPerKm ?? null,
+							driverHourlyCost: data.driverHourlyCost ?? null,
+							documentLanguage: data.documentLanguage ?? "BILINGUAL",
+							invoiceTerms: data.invoiceTerms ?? null,
+							quoteTerms: data.quoteTerms ?? null,
+							missionOrderTerms: data.missionOrderTerms ?? null,
+							// Include branding fields if present
+							documentLogoUrl: data.documentLogoUrl ?? null,
+							brandColor: data.brandColor ?? "#2563eb",
+							logoPosition: data.logoPosition ?? "LEFT",
+							showCompanyName: data.showCompanyName ?? true,
+							logoWidth: data.logoWidth ?? 150,
+						},
 					});
 				}
 
 				return c.json(serializePricingSettings(settings));
-			} catch (error) {
-				console.error("[pricing-settings] PATCH error:", error);
-				throw error;
+			} catch (error: any) {
+				console.error("[pricing-settings] PATCH error:", {
+					message: error.message,
+					stack: error.stack,
+					organizationId,
+					data
+				});
+				
+				return c.json({ 
+					error: "Internal Server Error", 
+					message: error.message,
+					details: error.toString()
+				}, 500);
 			}
 		}
 	)

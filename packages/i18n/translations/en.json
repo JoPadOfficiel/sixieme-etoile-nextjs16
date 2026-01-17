@@ -1403,6 +1403,25 @@
 				"saveError": "Failed to save logo size",
 				"reset": "Reset Default"
 			},
+			"language": {
+				"title": "Invoice / Quote Language",
+				"description": "Choose the language for Invoices and Quotes. Mission Sheets are always in French.",
+				"french": "French",
+				"english": "English",
+				"bilingual": "Bilingual (FR/EN)",
+				"saveSuccess": "Language setting saved successfully",
+				"saveError": "Failed to save language setting"
+			},
+			"terms": {
+				"title": "Terms & Conditions",
+				"description": "Customize legal terms displayed at the bottom of your documents.",
+				"invoiceLabel": "Invoice Terms (CGV)",
+				"quoteLabel": "Quote Terms (CGV)",
+				"missionLabel": "Mission Order Terms",
+				"placeholder": "Enter your custom terms here...",
+				"saveSuccess": "Terms saved successfully",
+				"saveError": "Failed to save terms"
+			},
 			"preview": {
 				"title": "Document Preview",
 				"description": "Live preview of how your documents will appear."

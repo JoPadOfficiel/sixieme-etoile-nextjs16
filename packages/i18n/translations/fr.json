@@ -1375,6 +1375,15 @@
 				"saveError": "Échec de l'enregistrement de la couleur",
 				"invalidFormat": "Format de couleur invalide. Utilisez #RRGGBB."
 			},
+			"language": {
+				"title": "Langue Devis / Facture",
+				"description": "Choisissez la langue pour les Devis et Factures. Les Fiches Mission sont toujours en français.",
+				"french": "Français",
+				"english": "Anglais",
+				"bilingual": "Bilingue (FR/EN)",
+				"saveSuccess": "Langue enregistrée avec succès",
+				"saveError": "Échec de l'enregistrement de la langue"
+			},
 			"logoPosition": {
 				"title": "Position du Logo",
 				"description": "Choisissez où le logo apparaît dans l'en-tête du document.",

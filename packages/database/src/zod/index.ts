@@ -146,7 +146,7 @@ export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','exc
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','logoWidth','legalName','address','phone','email','siret','vatNumber','iban','bic','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','logoWidth','legalName','address','addressLine2','postalCode','city','phone','email','siret','vatNumber','iban','bic','documentLanguage','invoiceTerms','quoteTerms','missionOrderTerms','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -309,6 +309,10 @@ export type SubcontractorAvailabilityType = `${z.infer<typeof SubcontractorAvail
 export const LogoPositionSchema = z.enum(['LEFT','RIGHT']);
 
 export type LogoPositionType = `${z.infer<typeof LogoPositionSchema>}`
+
+export const DocumentLanguageSchema = z.enum(['FRENCH','ENGLISH','BILINGUAL']);
+
+export type DocumentLanguageType = `${z.infer<typeof DocumentLanguageSchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -1083,6 +1087,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   staffingSelectionPolicy: StaffingSelectionPolicySchema.nullable(),
   timeBucketInterpolationStrategy: TimeBucketInterpolationStrategySchema.nullable(),
   logoPosition: LogoPositionSchema,
+  documentLanguage: DocumentLanguageSchema,
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
@@ -1124,12 +1129,18 @@ export const OrganizationPricingSettingsSchema = z.object({
   logoWidth: z.number().int(),
   legalName: z.string().nullable(),
   address: z.string().nullable(),
+  addressLine2: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  city: z.string().nullable(),
   phone: z.string().nullable(),
   email: z.string().nullable(),
   siret: z.string().nullable(),
   vatNumber: z.string().nullable(),
   iban: z.string().nullable(),
   bic: z.string().nullable(),
+  invoiceTerms: z.string().nullable(),
+  quoteTerms: z.string().nullable(),
+  missionOrderTerms: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

@@ -977,7 +977,10 @@ async function createPricingSettings() {
 
       // Story 25.2: EU-Compliant Invoice Legal Info
       legalName: "Sixieme Etoile VTC",
-      address: "24-30 Avenue du Gué Langlois, Bâtiment B, 77600 Bussy-Saint-Martin",
+      address: "24-30 Avenue du Gué Langlois",
+      addressLine2: "Bâtiment 18",
+      postalCode: "77600",
+      city: "Bussy-Saint-Martin",
       phone: "+33 1 42 86 83 00",
       email: "contact@vtc-sixieme.fr",
       siret: "12345678901234",

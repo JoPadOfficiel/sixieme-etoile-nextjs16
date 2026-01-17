@@ -8,6 +8,14 @@ import { Spinner } from "@shared/components/Spinner";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import { Switch } from "@ui/components/switch";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@ui/components/select";
+import { Textarea } from "@ui/components/textarea";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
 import { AlignLeft, AlignRight, ImageIcon, Trash2 } from "lucide-react";
@@ -24,6 +32,10 @@ interface DocumentSettings {
 	logoPosition: "LEFT" | "RIGHT";
 	showCompanyName: boolean;
 	logoWidth: number;
+	documentLanguage: "FRENCH" | "ENGLISH" | "BILINGUAL";
+	invoiceTerms: string | null;
+	quoteTerms: string | null;
+	missionOrderTerms: string | null;
 }
 
 // API client for pricing settings
@@ -40,6 +52,10 @@ async function getPricingSettings(organizationId: string): Promise<DocumentSetti
 				logoPosition: data.logoPosition ?? "LEFT",
 				showCompanyName: data.showCompanyName ?? true,
 				logoWidth: data.logoWidth ?? 150,
+				documentLanguage: data.documentLanguage ?? "BILINGUAL",
+				invoiceTerms: data.invoiceTerms ?? null,
+				quoteTerms: data.quoteTerms ?? null,
+				missionOrderTerms: data.missionOrderTerms ?? null,
 		  }
 		: null;
 }
@@ -64,6 +80,11 @@ async function updatePricingSettings(
 	return response.ok;
 }
 
+// Default terms for documents
+const DEFAULT_INVOICE_TERMS = "En cas de retard de paiement, des pénalités sont appliquées selon le taux légal en vigueur.\nIndemnité forfaitaire de 40 EUR pour frais de recouvrement.";
+const DEFAULT_QUOTE_TERMS = "Paiement à réception";
+const DEFAULT_MISSION_ORDER_TERMS = "Billet collectif equivalent ordre de mission selon l'arrete du 14 fevrier 1986 article 5";
+
 export function DocumentSettingsForm() {
 	const { toast } = useToast();
 	const t = useTranslations();
@@ -79,6 +100,10 @@ export function DocumentSettingsForm() {
 	const [logoPosition, setLogoPosition] = useState<"LEFT" | "RIGHT">("LEFT");
 	const [showCompanyName, setShowCompanyName] = useState(true);
 	const [logoWidth, setLogoWidth] = useState(150);
+	const [documentLanguage, setDocumentLanguage] = useState<"FRENCH" | "ENGLISH" | "BILINGUAL">("BILINGUAL");
+	const [invoiceTerms, setInvoiceTerms] = useState("");
+	const [quoteTerms, setQuoteTerms] = useState("");
+	const [missionOrderTerms, setMissionOrderTerms] = useState("");
 
 	// Load current settings
 	useEffect(() => {
@@ -94,6 +119,17 @@ export function DocumentSettingsForm() {
 					setLogoPosition(settings.logoPosition);
 					setShowCompanyName(settings.showCompanyName);
 					setLogoWidth(settings.logoWidth);
+					setDocumentLanguage(settings.documentLanguage);
+					
+					// Prepopulate with defaults if empty
+					setInvoiceTerms(settings.invoiceTerms || DEFAULT_INVOICE_TERMS);
+					setQuoteTerms(settings.quoteTerms || DEFAULT_QUOTE_TERMS);
+					setMissionOrderTerms(settings.missionOrderTerms || DEFAULT_MISSION_ORDER_TERMS);
+				} else {
+					// Also set defaults if no settings found (new org)
+					setInvoiceTerms(DEFAULT_INVOICE_TERMS);
+					setQuoteTerms(DEFAULT_QUOTE_TERMS);
+					setMissionOrderTerms(DEFAULT_MISSION_ORDER_TERMS);
 				}
 			} catch (error) {
 				console.error("Failed to load document settings:", error);
@@ -369,6 +405,47 @@ export function DocumentSettingsForm() {
 		}
 	};
 
+	// Handle Document Language Change
+	const handleDocumentLanguageChange = async (value: "FRENCH" | "ENGLISH" | "BILINGUAL") => {
+		if (!activeOrganization) return;
+		setDocumentLanguage(value);
+		setSaving(true);
+		try {
+			const success = await updatePricingSettings(activeOrganization.id, {
+				documentLanguage: value,
+			});
+			if (success) {
+				toast({ variant: "success", title: t("settings.documentSettings.language.saveSuccess") });
+			} else {
+				throw new Error("Failed to save language");
+			}
+		} catch {
+			toast({ variant: "error", title: t("settings.documentSettings.language.saveError") });
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	// Handle Terms Save
+	const handleTermsSave = async (field: "invoiceTerms" | "quoteTerms" | "missionOrderTerms", value: string) => {
+		if (!activeOrganization) return;
+		setSaving(true);
+		try {
+			const success = await updatePricingSettings(activeOrganization.id, {
+				[field]: value,
+			});
+			if (success) {
+				toast({ variant: "success", title: t("settings.documentSettings.terms.saveSuccess") });
+			} else {
+				throw new Error("Failed to save terms");
+			}
+		} catch {
+			toast({ variant: "error", title: t("settings.documentSettings.terms.saveError") });
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	if (!activeOrganization) {
 		return null;
 	}
@@ -566,6 +643,81 @@ export function DocumentSettingsForm() {
 					>
 						Reset
 					</Button>
+				</div>
+			</SettingsItem>
+
+			{/* Document Language */}
+			<SettingsItem
+				title={t("settings.documentSettings.language.title")}
+				description={t("settings.documentSettings.language.description")}
+			>
+				<Select
+					value={documentLanguage}
+					onValueChange={(value) => handleDocumentLanguageChange(value as "FRENCH" | "ENGLISH" | "BILINGUAL")}
+					disabled={saving}
+				>
+					<SelectTrigger className="w-[200px]">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="BILINGUAL">
+							{t("settings.documentSettings.language.bilingual")}
+						</SelectItem>
+						<SelectItem value="FRENCH">
+							{t("settings.documentSettings.language.french")}
+						</SelectItem>
+						<SelectItem value="ENGLISH">
+							{t("settings.documentSettings.language.english")}
+						</SelectItem>
+					</SelectContent>
+				</Select>
+			</SettingsItem>
+
+			{/* Terms & Conditions */}
+			<SettingsItem
+				title={t("settings.documentSettings.terms.title")}
+				description={t("settings.documentSettings.terms.description")}
+			>
+				<div className="space-y-6">
+					<div className="space-y-2">
+						<label className="text-sm font-medium">
+							{t("settings.documentSettings.terms.invoiceLabel")}
+						</label>
+						<Textarea
+							value={invoiceTerms}
+							onChange={(e) => setInvoiceTerms(e.target.value)}
+							onBlur={(e) => handleTermsSave("invoiceTerms", e.target.value)}
+							placeholder={t("settings.documentSettings.terms.placeholder")}
+							className="h-32 font-mono text-sm"
+							disabled={saving}
+						/>
+					</div>
+					<div className="space-y-2">
+						<label className="text-sm font-medium">
+							{t("settings.documentSettings.terms.quoteLabel")}
+						</label>
+						<Textarea
+							value={quoteTerms}
+							onChange={(e) => setQuoteTerms(e.target.value)}
+							onBlur={(e) => handleTermsSave("quoteTerms", e.target.value)}
+							placeholder={t("settings.documentSettings.terms.placeholder")}
+							className="h-32 font-mono text-sm"
+							disabled={saving}
+						/>
+					</div>
+					<div className="space-y-2">
+						<label className="text-sm font-medium">
+							{t("settings.documentSettings.terms.missionLabel")}
+						</label>
+						<Textarea
+							value={missionOrderTerms}
+							onChange={(e) => setMissionOrderTerms(e.target.value)}
+							onBlur={(e) => handleTermsSave("missionOrderTerms", e.target.value)}
+							placeholder={t("settings.documentSettings.terms.placeholder")}
+							className="h-32 font-mono text-sm"
+							disabled={saving}
+						/>
+					</div>
 				</div>
 			</SettingsItem>
 

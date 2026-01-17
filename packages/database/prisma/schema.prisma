@@ -395,6 +395,14 @@ enum LogoPosition {
   RIGHT // Logo on right side of header
 }
 
+/// Story 25.4: Document language settings for PDF generation
+/// Controls the language used in generated PDF documents
+enum DocumentLanguage {
+  FRENCH    // French only
+  ENGLISH   // English only
+  BILINGUAL // Both French and English (default)
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1386,13 +1394,26 @@ model OrganizationPricingSettings {
 
   // Story 25.2: EU-Compliant Invoice Legal Info
   legalName       String?
-  address         String?
+  address         String?   // Line 1 (street address)
+  addressLine2    String?   // Complement (apt, building, etc.)
+  postalCode      String?   // Postal/ZIP code
+  city            String?   // City name
   phone           String?
   email           String?
   siret           String?
   vatNumber       String?
   iban            String?
   bic             String?
+
+  // Story 25.4: Configurable Document Settings
+  // Language preference for PDF documents
+  documentLanguage DocumentLanguage @default(BILINGUAL)
+  // Custom footer terms for invoices (CGV)
+  invoiceTerms     String?
+  // Custom footer terms for quotes (CGV)
+  quoteTerms       String?
+  // Custom footer terms for mission orders
+  missionOrderTerms String?
 
   // Metadata
   createdAt DateTime @default(now())
