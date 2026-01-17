@@ -10,13 +10,14 @@ import {
 } from "@ui/components/table";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
+import { Input } from "@ui/components/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { useToast } from "@ui/hooks/use-toast";
 import { Loader2Icon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { InvoiceLine } from "../types";
 import { formatPrice, formatVatRate, getLineTypeLabel, calculateLineTotals } from "../types";
-import { useDeleteInvoiceLine } from "../hooks/useInvoiceLines";
+import { useDeleteInvoiceLine, useUpdateInvoiceLine } from "../hooks/useInvoiceLines";
 
 export interface InvoiceLinesListProps {
   lines: InvoiceLine[];
@@ -47,12 +48,23 @@ export function InvoiceLinesList({
   const t = useTranslations("invoices");
   const { toast } = useToast();
   const deleteLineMutation = useDeleteInvoiceLine(invoiceId ?? "");
+  const updateLineMutation = useUpdateInvoiceLine(invoiceId ?? "");
 
   const handleDeleteLine = async (lineId: string) => {
     if (!invoiceId) return;
     try {
       await deleteLineMutation.mutateAsync(lineId);
       toast({ title: t("edit.lineDeleted") });
+    } catch {
+      toast({ title: t("edit.error"), variant: "error" });
+    }
+  };
+
+  const handleUpdateQuantity = async (lineId: string, quantity: number) => {
+    if (!invoiceId || quantity <= 0) return;
+    try {
+      await updateLineMutation.mutateAsync({ lineId, quantity });
+      toast({ title: t("edit.lineUpdated") });
     } catch {
       toast({ title: t("edit.error"), variant: "error" });
     }
@@ -105,7 +117,32 @@ export function InvoiceLinesList({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {parseFloat(line.quantity).toFixed(2)}
+                      {editable ? (
+                        <Input
+                          type="number"
+                          className="w-20 ml-auto h-8 text-right"
+                          defaultValue={line.quantity}
+                          min="1"
+                          step="1"
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (val !== parseFloat(line.quantity)) {
+                              handleUpdateQuantity(line.id, val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseFloat((e.target as HTMLInputElement).value);
+                              if (val !== parseFloat(line.quantity)) {
+                                handleUpdateQuantity(line.id, val);
+                              }
+                            }
+                          }}
+                          disabled={updateLineMutation.isPending}
+                        />
+                      ) : (
+                        parseFloat(line.quantity).toFixed(2)
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatPrice(line.unitPriceExclVat)}

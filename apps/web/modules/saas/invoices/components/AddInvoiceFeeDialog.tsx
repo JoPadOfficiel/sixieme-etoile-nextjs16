@@ -52,6 +52,9 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
   const [customPromoCode, setCustomPromoCode] = useState("");
   const [customPromoAmount, setCustomPromoAmount] = useState("");
   const [customPromoDescription, setCustomPromoDescription] = useState("");
+  
+  // New: Quantity support
+  const [quantity, setQuantity] = useState("1");
 
   const { fees, isLoading: feesLoading } = useOptionalFees();
   const { promotions, isLoading: promotionsLoading } = usePromotions();
@@ -67,6 +70,7 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
           description: selectedFee.name,
           unitPriceExclVat: selectedFee.amount,
           vatRate: selectedFee.vatRate ?? 20,
+          quantity: parseFloat(quantity) || 1,
           lineType: "OPTIONAL_FEE",
         });
       } else if (mode === "custom" && customDescription && customAmount) {
@@ -74,6 +78,7 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
           description: customDescription,
           unitPriceExclVat: parseFloat(customAmount),
           vatRate: parseFloat(customVatRate),
+          quantity: parseFloat(quantity) || 1,
           lineType: "OTHER",
         });
       }
@@ -88,6 +93,7 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
           description: `${t("invoices.edit.promotionPrefix")} ${selectedPromotion.code}`,
           unitPriceExclVat: discountAmount,
           vatRate: 20, // Promotions typically follow the main VAT rate
+          quantity: parseFloat(quantity) || 1,
           lineType: "PROMOTION_ADJUSTMENT",
         });
       } else if (promoMode === "custom" && customPromoCode && customPromoAmount) {
@@ -95,6 +101,7 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
           description: `${t("invoices.edit.promotionPrefix")} ${customPromoCode}`,
           unitPriceExclVat: -Math.abs(parseFloat(customPromoAmount)), // Always negative
           vatRate: 20,
+          quantity: parseFloat(quantity) || 1,
           lineType: "PROMOTION_ADJUSTMENT",
         });
       }
@@ -120,6 +127,7 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
     setCustomPromoCode("");
     setCustomPromoAmount("");
     setCustomPromoDescription("");
+    setQuantity("1");
   };
 
   const canSubmit =
@@ -277,6 +285,20 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
                 </div>
               </div>
             )}
+
+            {/* Shared Quantity Field for Fees */}
+            <div className="space-y-2 pt-2 border-t mt-4">
+              <Label htmlFor="fee-quantity">{t("invoices.detail.quantity")}</Label>
+              <Input
+                id="fee-quantity"
+                type="number"
+                step="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="1"
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="promotions" className="space-y-4 pt-4">
@@ -392,6 +414,20 @@ export function AddInvoiceFeeDialog({ invoiceId, disabled }: AddInvoiceFeeDialog
                 </div>
               </div>
             )}
+
+            {/* Shared Quantity Field for Promotions */}
+            <div className="space-y-2 pt-2 border-t mt-4">
+              <Label htmlFor="promo-quantity">{t("invoices.detail.quantity")}</Label>
+              <Input
+                id="promo-quantity"
+                type="number"
+                step="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="1"
+              />
+            </div>
           </TabsContent>
         </Tabs>
 

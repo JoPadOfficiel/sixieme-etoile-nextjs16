@@ -67,3 +67,27 @@ export function useDeleteInvoiceLine(invoiceId: string) {
     },
   });
 }
+
+export function useUpdateInvoiceLine(invoiceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ lineId, quantity }: { lineId: string; quantity: number }) => {
+      const response = await apiClient.vtc.invoices[":id"].lines[":lineId"].$patch({
+        param: { id: invoiceId, lineId },
+        json: { quantity },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to update line" }));
+        throw new Error((error as { message?: string }).message || "Failed to update line");
+      }
+
+      return (await response.json()) as Invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+  });
+}
