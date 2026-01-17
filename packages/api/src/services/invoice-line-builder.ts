@@ -53,8 +53,9 @@ export interface InvoiceTotals {
 
 /**
  * Document language options for PDF generation.
+ * Values must match database enum: 'FRENCH', 'ENGLISH', 'BILINGUAL'
  */
-export type DocumentLanguage = 'FR' | 'EN' | 'BILINGUAL';
+export type DocumentLanguage = 'FRENCH' | 'ENGLISH' | 'BILINGUAL';
 
 /**
  * Trip context for generating detailed invoice line descriptions.
@@ -84,9 +85,9 @@ export function buildTripDescription(ctx: TripContext): string {
 	const formattedDate = pickupDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	const formattedTime = pickupDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 	
-	// Language-specific labels
+	// Language-specific labels - using database enum values
 	const labels = {
-		FR: {
+		FRENCH: {
 			header: "DETAILS DU TRAJET",
 			departure: "Départ",
 			arrival: "Arrivée",
@@ -97,7 +98,7 @@ export function buildTripDescription(ctx: TripContext): string {
 			type: "Type",
 			endCustomer: "Client Final",
 		},
-		EN: {
+		ENGLISH: {
 			header: "TRIP DETAILS",
 			departure: "From",
 			arrival: "To",
@@ -122,7 +123,7 @@ export function buildTripDescription(ctx: TripContext): string {
 	};
 	
 	// Validate language and fallback to BILINGUAL if invalid
-	const validLanguages: DocumentLanguage[] = ['FR', 'EN', 'BILINGUAL'];
+	const validLanguages: DocumentLanguage[] = ['FRENCH', 'ENGLISH', 'BILINGUAL'];
 	const effectiveLang = validLanguages.includes(lang) ? lang : 'BILINGUAL';
 	const l = labels[effectiveLang];
 	
