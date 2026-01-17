@@ -35,6 +35,14 @@ import {
 	getStorageService,
 	LocalStorageService,
 } from "../../services/document-storage";
+import {
+	parseAppliedRules,
+	buildInvoiceLines,
+	calculateTransportAmount,
+	buildStayInvoiceLines,
+	buildTripDescription,
+	type DocumentLanguage,
+} from "../../services/invoice-line-builder";
 
 // ============================================================================
 // Validation Schemas
@@ -258,7 +266,68 @@ function transformQuoteToPdfData(quote: {
 		email?: string | null;
 		phone?: string | null;
 	} | null;
-}): QuotePdfData {
+	// New fields for line item generation
+	appliedRules?: any;
+	stayDays?: any[];
+}, language: DocumentLanguage = 'BILINGUAL'): QuotePdfData {
+	// Parse applied rules
+	const parsedRules = parseAppliedRules(quote.appliedRules);
+	
+	let lines: InvoiceLinePdfData[] = [];
+	
+	if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+		// Use stay invoice line builder
+		const invoiceLines = buildStayInvoiceLines(
+			quote.stayDays,
+			parsedRules,
+			quote.endCustomer ? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}` : null
+		);
+		lines = invoiceLines.map(l => ({
+			description: l.description,
+			quantity: l.quantity,
+			unitPriceExclVat: l.unitPriceExclVat,
+			vatRate: l.vatRate,
+			totalExclVat: l.totalExclVat,
+			totalVat: l.totalVat,
+		}));
+	} else {
+		// Standard quote
+		const transportAmount = calculateTransportAmount(Number(quote.finalPrice), parsedRules);
+		const endCustomerName = quote.endCustomer 
+			? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}` 
+			: null;
+		
+		// Build trip context for detailed descriptions with language support
+		const tripContext = {
+			pickupAddress: quote.pickupAddress,
+			dropoffAddress: quote.dropoffAddress,
+			pickupAt: quote.pickupAt,
+			passengerCount: quote.passengerCount,
+			luggageCount: quote.luggageCount,
+			vehicleCategory: quote.vehicleCategory?.name || "Standard",
+			tripType: quote.tripType,
+			endCustomerName,
+			language, // Pass language for localized descriptions
+		};
+		
+		const invoiceLines = buildInvoiceLines(
+			transportAmount,
+			quote.pickupAddress,
+			quote.dropoffAddress,
+			parsedRules,
+			endCustomerName,
+			tripContext, // Pass trip context for detailed descriptions
+		);
+		lines = invoiceLines.map(l => ({
+			description: l.description,
+			quantity: l.quantity,
+			unitPriceExclVat: l.unitPriceExclVat,
+			vatRate: l.vatRate,
+			totalExclVat: l.totalExclVat,
+			totalVat: l.totalVat,
+		}));
+	}
+
 	return {
 		id: quote.id,
 		pickupAddress: quote.pickupAddress,
@@ -284,6 +353,7 @@ function transformQuoteToPdfData(quote: {
 			email: quote.endCustomer.email,
 			phone: quote.endCustomer.phone,
 		} : null,
+		lines,
 	};
 }
 
@@ -340,7 +410,41 @@ function transformInvoiceToPdfData(invoice: {
 		tripType: string;
 		vehicleCategory?: { name: string } | null;
 	} | null;
-}): InvoicePdfData {
+}, language: DocumentLanguage = 'BILINGUAL'): InvoicePdfData {
+	// Build detailed description for the first line if quote data is available
+	let lines = invoice.lines.map((line): InvoiceLinePdfData => ({
+		description: line.description,
+		quantity: Number(line.quantity),
+		unitPriceExclVat: Number(line.unitPriceExclVat),
+		vatRate: Number(line.vatRate),
+		totalExclVat: Number(line.totalExclVat),
+		totalVat: Number(line.totalVat),
+	}));
+	
+	// Replace first line's description with detailed trip info if quote is available
+	if (invoice.quote && lines.length > 0) {
+		const q = invoice.quote;
+		
+		const endCustomerName = invoice.endCustomer 
+			? `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}` 
+			: null;
+		
+		// Use language-aware description builder
+		const detailedDescription = buildTripDescription({
+			pickupAddress: q.pickupAddress,
+			dropoffAddress: q.dropoffAddress ?? null,
+			pickupAt: q.pickupAt,
+			passengerCount: q.passengerCount,
+			luggageCount: q.luggageCount,
+			vehicleCategory: q.vehicleCategory?.name || 'Standard',
+			tripType: q.tripType,
+			endCustomerName,
+			language,
+		});
+		
+		lines[0] = { ...lines[0], description: detailedDescription };
+	}
+	
 	return {
 		id: invoice.id,
 		number: invoice.number,
@@ -352,14 +456,7 @@ function transformInvoiceToPdfData(invoice: {
 		commissionAmount: invoice.commissionAmount ? Number(invoice.commissionAmount) : null,
 		notes: invoice.notes,
 		contact: transformContactToPdfData(invoice.contact),
-		lines: invoice.lines.map((line): InvoiceLinePdfData => ({
-			description: line.description,
-			quantity: Number(line.quantity),
-			unitPriceExclVat: Number(line.unitPriceExclVat),
-			vatRate: Number(line.vatRate),
-			totalExclVat: Number(line.totalExclVat),
-			totalVat: Number(line.totalVat),
-		})),
+		lines,
 		paymentTerms: invoice.contact.partnerContract?.paymentTerms || null,
 		endCustomer: invoice.endCustomer ? {
 			firstName: invoice.endCustomer.firstName,
@@ -655,6 +752,12 @@ export const documentsRouter = new Hono()
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					stayDays: {
+						include: {
+							services: true,
+						},
+						orderBy: { dayNumber: "asc" },
+					},
 					endCustomer: {
 						select: {
 							firstName: true,
@@ -698,8 +801,9 @@ export const documentsRouter = new Hono()
 			}
 
 			// Generate PDF
-			const pdfData = transformQuoteToPdfData(quote);
 			const orgData = transformOrganizationToPdfData(organization);
+			const documentLanguage = (orgData.documentLanguage || 'BILINGUAL') as DocumentLanguage;
+			const pdfData = transformQuoteToPdfData(quote, documentLanguage);
 			
 			// Fix: Load logo with robust fallback
 			// Try document settings logo first, then organization logo
@@ -826,8 +930,9 @@ export const documentsRouter = new Hono()
 			}
 
 			// Generate PDF
-			const pdfData = transformInvoiceToPdfData(invoice);
 			const orgData = transformOrganizationToPdfData(organization);
+			const documentLanguage = (orgData.documentLanguage || 'BILINGUAL') as DocumentLanguage;
+			const pdfData = transformInvoiceToPdfData(invoice, documentLanguage);
 
 			// Fix: Load logo with robust fallback
 			if (orgData.documentLogoUrl) {

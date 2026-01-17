@@ -473,12 +473,25 @@ export const invoicesRouter = new Hono()
 				const finalPrice = Number(quote.finalPrice);
 				const transportAmount = calculateTransportAmount(finalPrice, parsedRules);
 
+				// Build trip context for detailed descriptions
+				const tripContext = {
+					pickupAddress: quote.pickupAddress,
+					dropoffAddress: quote.dropoffAddress,
+					pickupAt: quote.pickupAt,
+					passengerCount: quote.passengerCount,
+					luggageCount: quote.luggageCount,
+					vehicleCategory: quote.vehicleCategory?.name || "Standard",
+					tripType: quote.tripType,
+					endCustomerName,
+				};
+
 				invoiceLines = buildInvoiceLines(
 					transportAmount,
 					quote.pickupAddress,
 					quote.dropoffAddress,
 					parsedRules,
 					endCustomerName,
+					tripContext, // Pass trip context for detailed descriptions
 				);
 
 				invoiceNotes = `Generated from quote. Trip: ${quote.pickupAddress} → ${quote.dropoffAddress}`;
@@ -813,9 +826,69 @@ export const invoicesRouter = new Hono()
 				throw new HTTPException(404, { message: "Invoice line not found" });
 			}
 
-			// Delete line and update invoice totals in transaction
+			// Return updated invoice
+			const updatedInvoice = await db.invoice.findFirst({
+				where: { id: invoiceId },
+				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+			});
+
+			return c.json(updatedInvoice);
+		},
+	)
+
+	// Update line from invoice (only DRAFT)
+	.patch(
+		"/:id/lines/:lineId",
+		validator("json", z.object({
+			quantity: z.number().positive(),
+		})),
+		describeRoute({
+			summary: "Update line in invoice",
+			description: "Update a line in a DRAFT invoice (currently only quantity). Recalculates totals automatically.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const invoiceId = c.req.param("id");
+			const lineId = c.req.param("lineId");
+			const data = c.req.valid("json");
+
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(invoiceId, organizationId),
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, { message: "Invoice not found" });
+			}
+
+			if (invoice.status !== "DRAFT") {
+				throw new HTTPException(400, { message: "Can only update lines in DRAFT invoices" });
+			}
+
+			// Verify line belongs to this invoice
+			const line = await db.invoiceLine.findFirst({
+				where: { id: lineId, invoiceId },
+			});
+
+			if (!line) {
+				throw new HTTPException(404, { message: "Invoice line not found" });
+			}
+
+			// Update line and recalculate totals in transaction
 			await db.$transaction(async (tx) => {
-				await tx.invoiceLine.delete({ where: { id: lineId } });
+				const unitPrice = Number(line.unitPriceExclVat);
+				const vatRate = Number(line.vatRate);
+				const totalExclVat = Math.round(data.quantity * unitPrice * 100) / 100;
+				const totalVat = Math.round(totalExclVat * (vatRate / 100) * 100) / 100;
+
+				await tx.invoiceLine.update({
+					where: { id: lineId },
+					data: {
+						quantity: data.quantity,
+						totalExclVat,
+						totalVat,
+					},
+				});
 
 				// Recalculate invoice totals
 				const remainingLines = await tx.invoiceLine.findMany({ where: { invoiceId } });
