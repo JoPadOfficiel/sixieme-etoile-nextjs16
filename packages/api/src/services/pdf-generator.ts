@@ -85,6 +85,7 @@ export interface QuotePdfData {
 	// Story 25.2: Trip Details for EU compliance
 	estimatedDistanceKm?: number | null;
 	estimatedDurationMins?: number | null;
+	lines: InvoiceLinePdfData[];
 }
 
 export interface MissionOrderPdfData extends QuotePdfData {
@@ -667,6 +668,10 @@ export async function generateQuotePdf(
 	// PRICING TABLE WITH TRIP DETAILS IN DESIGNATION
 	// =========================================================================
 
+	// =========================================================================
+	// PRICING TABLE
+	// =========================================================================
+	
 	// Rebalance columns for Bilingual support: Description down, others up
 	const colDescW = 230;
 	const colVatW = 45;
@@ -698,85 +703,134 @@ export async function generateQuotePdf(
 
 	y -= headerH;
 
-	// Build designation lines with trip details (bilingual)
-	const designationLines: { text: string; bold?: boolean; small?: boolean }[] = [];
-	designationLines.push({ text: getLabel("DETAILS DU TRAJET", "TRIP DETAILS", lang), bold: true });
+	// Render line items
+	for (const line of quote.lines) {
+		const description = sanitizeText(line.description);
+		
+		// First split by newlines to preserve explicit line breaks
+		const paragraphs = description.split('\n').filter(p => p.trim());
+		const lines: string[] = [];
+		
+		// Then wrap each paragraph
+		for (const paragraph of paragraphs) {
+			const words = paragraph.split(' ');
+			let currentLine = "";
+			
+			for (const word of words) {
+				const testLine = currentLine + (currentLine ? " " : "") + word;
+				if (helvetica.widthOfTextAtSize(testLine, 8) < colDescW - 10) {
+					currentLine = testLine;
+				} else {
+					if (currentLine) lines.push(currentLine);
+					currentLine = word;
+				}
+			}
+			if (currentLine) lines.push(currentLine);
+		}
+
+		const lineSpacing = 11;
+		const rowPadding = 8;
+		const rowH = Math.max(20, (lines.length * lineSpacing) + (rowPadding * 2));
+
+		drawRect(xDesc, y - rowH, colDescW, rowH);
+		drawRect(xVat, y - rowH, colVatW, rowH);
+		drawRect(xUnit, y - rowH, colUnitW, rowH);
+		drawRect(xQty, y - rowH, colQtyW, rowH);
+		drawRect(xTotal, y - rowH, colTotalW, rowH);
+
+		// Render multi-line description
+		let textY = y - rowPadding - 6;
+		for (const l of lines) {
+			draw(l, { x: xDesc + 5, y: textY, size: 8, font: helvetica, color: BLACK });
+			textY -= lineSpacing;
+		}
+
+		// Values (centered vertically)
+		const midY = y - (rowH / 2) - 3;
+		draw(`${line.vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.unitPriceExclVat), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(String(line.quantity), { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.totalExclVat), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+
+		y -= rowH;
+	}
+
+	y -= 20;
+
+	// =========================================================================
+	// VAT BREAKDOWN TABLE
+	// =========================================================================
+	const vatDataTableX = LEFT_MARGIN;
+	const vatDataTableW = 250;
+	const vatColW = [100, 75, 75]; // Rate Base, Rate, Amount
 	
-	// If billing agency, show end customer name
-	if (quote.endCustomer) {
-		const custName = `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`;
-		designationLines.push({ text: `${getLabel("Client", "Client", lang)}: ${custName}`, small: true });
-	}
+	draw(getLabel("DETAIL TVA", "VAT BREAKDOWN", lang), { x: vatDataTableX, y: y, size: 9, font: helveticaBold, color: DARK });
+	y -= 14;
 	
-	designationLines.push({ text: `${getLabel("Départ", "From", lang)}: ${quote.pickupAddress}`.substring(0, 55), small: true });
-	if (quote.dropoffAddress) {
-		designationLines.push({ text: `${getLabel("Arrivée", "To", lang)}: ${quote.dropoffAddress}`.substring(0, 55), small: true });
-	}
-	designationLines.push({ text: `${getLabel("Date / Heure", "Date / Time", lang)}: ${formatDateTime(quote.pickupAt)}`, small: true });
-	designationLines.push({ text: `${getLabel("Passagers", "Pax", lang)}: ${quote.passengerCount} | ${getLabel("Bagages", "Luggage", lang)}: ${quote.luggageCount}`, small: true });
-	designationLines.push({ text: `${getLabel("Véhicule", "Vehicle", lang)}: ${quote.vehicleCategory}`, small: true });
-	designationLines.push({ text: `Type: ${quote.tripType}`, small: true });
-	if (quote.notes) {
-		designationLines.push({ text: `Notes: ${quote.notes.substring(0, 50)}`, small: true });
-	}
+	const vatHeaderH = 15;
+	drawRect(vatDataTableX, y - vatHeaderH, vatColW[0], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(vatDataTableX + vatColW[0], y - vatHeaderH, vatColW[1], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(vatDataTableX + vatColW[0] + vatColW[1], y - vatHeaderH, vatColW[2], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	
+	draw(getLabel("Base HT", "Tax Base", lang), { x: vatDataTableX + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	draw(getLabel("Taux", "Rate", lang), { x: vatDataTableX + vatColW[0] + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	draw(getLabel("Montant", "Amount", lang), { x: vatDataTableX + vatColW[0] + vatColW[1] + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	y -= vatHeaderH;
 
-	// Calculate row height based on content
-	const lineSpacing = 11;
-	const rowPadding = 8;
-	const rowH = (designationLines.length * lineSpacing) + (rowPadding * 2);
-
-	// Draw row cells
-	drawRect(xDesc, y - rowH, colDescW, rowH);
-	drawRect(xVat, y - rowH, colVatW, rowH);
-	drawRect(xUnit, y - rowH, colUnitW, rowH);
-	drawRect(xQty, y - rowH, colQtyW, rowH);
-	drawRect(xTotal, y - rowH, colTotalW, rowH);
-
-	// Render designation text
-	let textY = y - rowPadding - 6;
-	for (const line of designationLines) {
-		const fontSize = line.small ? 7 : 8;
-		const textFont = line.bold ? helveticaBold : helvetica;
-		const textColor = line.bold ? brandColor : BLACK;
-		draw(line.text, { x: xDesc + 5, y: textY, size: fontSize, font: textFont, color: textColor });
-		textY -= lineSpacing;
+	// Group lines by VAT rate
+	const vatMap = new Map<number, { base: number; vat: number }>();
+	for (const line of quote.lines) {
+		const existing = vatMap.get(line.vatRate) || { base: 0, vat: 0 };
+		existing.base += line.totalExclVat;
+		existing.vat += line.totalVat;
+		vatMap.set(line.vatRate, existing);
 	}
 
-	// Pricing values (centered vertically)
-	const vatRate = 10;
-	const totalTTC = quote.finalPrice;
-	const totalHT = totalTTC / (1 + (vatRate / 100));
-	const midY = y - (rowH / 2) - 3;
-
-	draw(`${vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
-	draw(formatPrice(totalHT), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
-	draw("1", { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
-	draw(formatPrice(totalHT), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
-
-	y -= rowH;
+	for (const [rate, data] of Array.from(vatMap.entries()).sort((a, b) => a[0] - b[0])) {
+		const vatRowH = 15;
+		drawRect(vatDataTableX, y - vatRowH, vatColW[0], vatRowH);
+		drawRect(vatDataTableX + vatColW[0], y - vatRowH, vatColW[1], vatRowH);
+		drawRect(vatDataTableX + vatColW[0] + vatColW[1], y - vatRowH, vatColW[2], vatRowH);
+		
+		draw(formatPrice(data.base), { x: vatDataTableX + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		draw(`${rate}%`, { x: vatDataTableX + vatColW[0] + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		draw(formatPrice(data.vat), { x: vatDataTableX + vatColW[0] + vatColW[1] + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		y -= vatRowH;
+	}
 
 	// =========================================================================
 	// TOTALS
 	// =========================================================================
 
-	y -= 15;
-	const totalsW = 200;
+	// Reset y for totals if vat table was too short, but usually it flows
+	let totalsY = y + (Array.from(vatMap.entries()).length * 15) + vatHeaderH + 14; 
+	// Reset to a safe point if necessary, or just continue from y
+	const totalsW = 240;
 	const totalsX = RIGHT_MARGIN - totalsW;
+	const totalsValueOffset = 140;
 
-	drawRect(totalsX, y - 20, totalsW, 20);
-	draw(getLabel("Total HT", "Total Excl. VAT", lang), { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
-	draw(formatPrice(totalHT), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
-	y -= 20;
+	// Draw totals block starting from the same Y as VAT breakdown label for better alignment if space allows
+	let currentTotalsY = totalsY;
 
-	const vatAmount = totalTTC - totalHT;
-	drawRect(totalsX, y - 20, totalsW, 20);
-	draw(`${getLabel("Total TVA", "Total VAT", lang)} ${vatRate}%`, { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
-	draw(formatPrice(vatAmount), { x: totalsX + 110, y: y - 14, size: 9, font: helvetica, color: BLACK });
-	y -= 20;
+	const totalHT = quote.lines.reduce((sum, l) => sum + l.totalExclVat, 0);
+	const totalVAT = quote.lines.reduce((sum, l) => sum + l.totalVat, 0);
+	const totalTTC = totalHT + totalVAT;
 
-	drawRect(totalsX, y - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
-	draw(getLabel("Total TTC", "Total Incl. VAT", lang), { x: totalsX + 10, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
-	draw(formatPrice(totalTTC), { x: totalsX + 110, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+	drawRect(totalsX, currentTotalsY - 20, totalsW, 20);
+	draw(getLabel("Total HT", "Total Excl. VAT", lang), { x: totalsX + 10, y: currentTotalsY - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(totalHT), { x: totalsX + totalsValueOffset, y: currentTotalsY - 14, size: 9, font: helvetica, color: BLACK });
+	currentTotalsY -= 20;
+
+	drawRect(totalsX, currentTotalsY - 20, totalsW, 20);
+	draw(getLabel("Total TVA", "Total VAT", lang), { x: totalsX + 10, y: currentTotalsY - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(totalVAT), { x: totalsX + totalsValueOffset, y: currentTotalsY - 14, size: 9, font: helvetica, color: BLACK });
+	currentTotalsY -= 20;
+
+	drawRect(totalsX, currentTotalsY - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
+	draw(getLabel("Total TTC", "Total Incl. VAT", lang), { x: totalsX + 10, y: currentTotalsY - 16, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(totalTTC), { x: totalsX + totalsValueOffset, y: currentTotalsY - 16, size: 10, font: helveticaBold, color: BLACK });
+	
+	y = Math.min(y, currentTotalsY - 25);
 
 	y -= 50;
 
@@ -1058,109 +1112,127 @@ export async function generateInvoicePdf(
 
 	y -= headerH;
 
-
-	// If we have trip details from the quote, show them WITH pricing in the same row
-	// This replaces the separate line items to avoid duplicate "Transport" lines
-	if (invoice.tripDetails) {
-		const trip = invoice.tripDetails;
+	// Render individual line items
+	for (const line of invoice.lines) {
+		const description = sanitizeText(line.description);
 		
-		// Build designation lines with trip details (bilingual)
-		const designationLines: { text: string; bold?: boolean; small?: boolean }[] = [];
-		designationLines.push({ text: getLabel("DETAILS DU TRAJET", "TRIP DETAILS", lang), bold: true });
+		// First split by newlines to preserve explicit line breaks
+		const paragraphs = description.split('\n').filter(p => p.trim());
+		const lines: string[] = [];
 		
-		// If billing agency, show end customer name
-		if (invoice.endCustomer) {
-			const custName = `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`;
-			designationLines.push({ text: `${getLabel("Client", "Client", lang)}: ${custName}`, small: true });
+		// Then wrap each paragraph
+		for (const paragraph of paragraphs) {
+			const words = paragraph.split(' ');
+			let currentLine = "";
+			
+			for (const word of words) {
+				const testLine = currentLine + (currentLine ? " " : "") + word;
+				if (helvetica.widthOfTextAtSize(testLine, 8) < colDescW - 10) {
+					currentLine = testLine;
+				} else {
+					if (currentLine) lines.push(currentLine);
+					currentLine = word;
+				}
+			}
+			if (currentLine) lines.push(currentLine);
 		}
-		
-		designationLines.push({ text: `${getLabel("Départ", "From", lang)}: ${trip.pickupAddress}`.substring(0, 55), small: true });
-		if (trip.dropoffAddress) {
-			designationLines.push({ text: `${getLabel("Arrivée", "To", lang)}: ${trip.dropoffAddress}`.substring(0, 55), small: true });
-		}
-		designationLines.push({ text: `${getLabel("Date / Heure", "Date / Time", lang)}: ${formatDateTime(trip.pickupAt)}`, small: true });
-		designationLines.push({ text: `${getLabel("Passagers", "Pax", lang)}: ${trip.passengerCount} | ${getLabel("Bagages", "Luggage", lang)}: ${trip.luggageCount}`, small: true });
-		designationLines.push({ text: `${getLabel("Véhicule", "Vehicle", lang)}: ${trip.vehicleCategory}`, small: true });
-		designationLines.push({ text: `Type: ${trip.tripType}`, small: true });
 
-		// Calculate row height based on content
 		const lineSpacing = 11;
 		const rowPadding = 8;
-		const tripRowH = (designationLines.length * lineSpacing) + (rowPadding * 2);
+		const rowH = Math.max(20, (lines.length * lineSpacing) + (rowPadding * 2));
 
-		// Draw row cells
-		drawRect(xDesc, y - tripRowH, colDescW, tripRowH);
-		drawRect(xVat, y - tripRowH, colVatW, tripRowH);
-		drawRect(xUnit, y - tripRowH, colUnitW, tripRowH);
-		drawRect(xQty, y - tripRowH, colQtyW, tripRowH);
-		drawRect(xTotal, y - tripRowH, colTotalW, tripRowH);
+		drawRect(xDesc, y - rowH, colDescW, rowH);
+		drawRect(xVat, y - rowH, colVatW, rowH);
+		drawRect(xUnit, y - rowH, colUnitW, rowH);
+		drawRect(xQty, y - rowH, colQtyW, rowH);
+		drawRect(xTotal, y - rowH, colTotalW, rowH);
 
-		// Render designation text
+		// Render multi-line description
 		let textY = y - rowPadding - 6;
-		for (const line of designationLines) {
-			const fontSize = line.small ? 7 : 8;
-			const textFont = line.bold ? helveticaBold : helvetica;
-			const textColor = line.bold ? brandColor : BLACK;
-			draw(line.text, { x: xDesc + 5, y: textY, size: fontSize, font: textFont, color: textColor });
+		for (const l of lines) {
+			draw(l, { x: xDesc + 5, y: textY, size: 8, font: helvetica, color: BLACK });
 			textY -= lineSpacing;
 		}
 
-		// Get VAT rate from line items (default 10%)
-		const vatRate = invoice.lines[0]?.vatRate ?? 10;
-		
-		// Fill pricing columns in the SAME row (centered vertically)
-		const midY = y - (tripRowH / 2) - 3;
-		draw(`${vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(invoice.totalExclVat), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
-		draw("1", { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
-		draw(formatPrice(invoice.totalExclVat), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		// Values (centered vertically)
+		const midY = y - (rowH / 2) - 3;
+		draw(`${line.vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.unitPriceExclVat), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(String(line.quantity), { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
+		draw(formatPrice(line.totalExclVat), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
 
-		y -= tripRowH;
-	} else {
-		// No trip details - render individual line items (for multi-line invoices)
-		for (const line of invoice.lines) {
-			const rowH = 20;
-			drawRect(xDesc, y - rowH, colDescW, rowH);
-			drawRect(xVat, y - rowH, colVatW, rowH);
-			drawRect(xUnit, y - rowH, colUnitW, rowH);
-			drawRect(xQty, y - rowH, colQtyW, rowH);
-			drawRect(xTotal, y - rowH, colTotalW, rowH);
-
-			const trY = y - 14;
-			draw(line.description.substring(0, 60), { x: xDesc + 5, y: trY, size: 9, font: helvetica, color: BLACK });
-			draw(`${line.vatRate}%`, { x: xVat + 5, y: trY, size: 9, font: helvetica, color: BLACK });
-			draw(formatPrice(line.unitPriceExclVat), { x: xUnit + 5, y: trY, size: 9, font: helvetica, color: BLACK });
-			draw(String(line.quantity), { x: xQty + 10, y: trY, size: 9, font: helvetica, color: BLACK });
-			draw(formatPrice(line.totalExclVat), { x: xTotal + 5, y: trY, size: 9, font: helvetica, color: BLACK });
-
-			y -= rowH;
-		}
+		y -= rowH;
 	}
 
+	y -= 25;
 
-	y -= 20;
+	// =========================================================================
+	// VAT BREAKDOWN TABLE
+	// =========================================================================
+	const vatDataTableX = LEFT_MARGIN;
+	const vatColW = [100, 75, 75]; // Rate Base, Rate, Amount
+	
+	draw(getLabel("DETAIL TVA", "VAT BREAKDOWN", lang), { x: vatDataTableX, y: y, size: 9, font: helveticaBold, color: DARK });
+	y -= 14;
+	
+	const vatHeaderH = 15;
+	drawRect(vatDataTableX, y - vatHeaderH, vatColW[0], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(vatDataTableX + vatColW[0], y - vatHeaderH, vatColW[1], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	drawRect(vatDataTableX + vatColW[0] + vatColW[1], y - vatHeaderH, vatColW[2], vatHeaderH, true, rgb(0.95, 0.95, 0.95));
+	
+	draw(getLabel("Base HT", "Tax Base", lang), { x: vatDataTableX + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	draw(getLabel("Taux", "Rate", lang), { x: vatDataTableX + vatColW[0] + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	draw(getLabel("Montant", "Amount", lang), { x: vatDataTableX + vatColW[0] + vatColW[1] + 5, y: y - 11, size: 7, font: helveticaBold, color: BLACK });
+	y -= vatHeaderH;
+
+	// Group lines by VAT rate
+	const vatMap = new Map<number, { base: number; vat: number }>();
+	for (const line of invoice.lines) {
+		const existing = vatMap.get(line.vatRate) || { base: 0, vat: 0 };
+		existing.base += line.totalExclVat;
+		existing.vat += line.totalVat;
+		vatMap.set(line.vatRate, existing);
+	}
+
+	for (const [rate, data] of Array.from(vatMap.entries()).sort((a, b) => a[0] - b[0])) {
+		const vatRowH = 15;
+		drawRect(vatDataTableX, y - vatRowH, vatColW[0], vatRowH);
+		drawRect(vatDataTableX + vatColW[0], y - vatRowH, vatColW[1], vatRowH);
+		drawRect(vatDataTableX + vatColW[0] + vatColW[1], y - vatRowH, vatColW[2], vatRowH);
+		
+		draw(formatPrice(data.base), { x: vatDataTableX + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		draw(`${rate}%`, { x: vatDataTableX + vatColW[0] + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		draw(formatPrice(data.vat), { x: vatDataTableX + vatColW[0] + vatColW[1] + 5, y: y - 11, size: 8, font: helvetica, color: BLACK });
+		y -= vatRowH;
+	}
 
 	// =========================================================================
 	// TOTALS
 	// =========================================================================
 
-	const totalsW = 240; // Wider to accommodate bilingual labels
+	// Reset y for totals to be consistently aligned with VAT table
+	let totalsY = y + (Array.from(vatMap.entries()).length * 15) + vatHeaderH + 14;
+	const totalsW = 240;
 	const totalsX = RIGHT_MARGIN - totalsW;
-	const valueOffset = 140; // Further right for the numeric values
+	const valueOffset = 140;
 
-	drawRect(totalsX, y - 20, totalsW, 20);
-	draw(getLabel("Total HT", "Total Excl. VAT", lang), { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalExclVat), { x: totalsX + valueOffset, y: y - 14, size: 9, font: helvetica, color: BLACK });
-	y -= 20;
+	let currentTotalsY = totalsY;
 
-	drawRect(totalsX, y - 20, totalsW, 20);
-	draw(getLabel("Total TVA", "Total VAT", lang), { x: totalsX + 10, y: y - 14, size: 9, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalVat), { x: totalsX + valueOffset, y: y - 14, size: 9, font: helvetica, color: BLACK });
-	y -= 20;
+	drawRect(totalsX, currentTotalsY - 20, totalsW, 20);
+	draw(getLabel("Total HT", "Total Excl. VAT", lang), { x: totalsX + 10, y: currentTotalsY - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalExclVat), { x: totalsX + valueOffset, y: currentTotalsY - 14, size: 9, font: helvetica, color: BLACK });
+	currentTotalsY -= 20;
 
-	drawRect(totalsX, y - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
-	draw(getLabel("Total TTC", "Total Incl. VAT", lang), { x: totalsX + 10, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
-	draw(formatPrice(invoice.totalInclVat), { x: totalsX + valueOffset, y: y - 16, size: 10, font: helveticaBold, color: BLACK });
+	drawRect(totalsX, currentTotalsY - 20, totalsW, 20);
+	draw(getLabel("Total TVA", "Total VAT", lang), { x: totalsX + 10, y: currentTotalsY - 14, size: 9, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalVat), { x: totalsX + valueOffset, y: currentTotalsY - 14, size: 9, font: helvetica, color: BLACK });
+	currentTotalsY -= 20;
+
+	drawRect(totalsX, currentTotalsY - 25, totalsW, 25, true, rgb(0.9, 0.9, 0.9));
+	draw(getLabel("Total TTC", "Total Incl. VAT", lang), { x: totalsX + 10, y: currentTotalsY - 16, size: 10, font: helveticaBold, color: BLACK });
+	draw(formatPrice(invoice.totalInclVat), { x: totalsX + valueOffset, y: currentTotalsY - 16, size: 10, font: helveticaBold, color: BLACK });
+
+	y = Math.min(y, currentTotalsY - 25);
 
 	y -= 45;
 
