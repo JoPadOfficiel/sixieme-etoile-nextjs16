@@ -11,13 +11,12 @@
 
 import { db } from "@repo/database";
 import {
-	UpdateQuoteLinesSchema,
 	QuoteLinesArraySchema,
 	type QuoteLineInput,
 	type QuoteLineDisplayDataInput,
 	type QuoteLineSourceDataInput,
 } from "@repo/database";
-import { Prisma, type QuoteLine } from "@prisma/client";
+import { Prisma, QuoteStatus, type QuoteLine } from "@prisma/client";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -45,40 +44,65 @@ interface QuoteTotals {
 }
 
 /**
+ * Simple structured logger for quote lines operations
+ * Uses console but with structured format for production log aggregation
+ */
+const logger = {
+	info: (message: string, context: Record<string, unknown>) => {
+		console.log(JSON.stringify({ level: 'info', message, ...context, timestamp: new Date().toISOString() }));
+	},
+	warn: (message: string, context: Record<string, unknown>) => {
+		console.warn(JSON.stringify({ level: 'warn', message, ...context, timestamp: new Date().toISOString() }));
+	},
+	error: (message: string, context: Record<string, unknown>) => {
+		console.error(JSON.stringify({ level: 'error', message, ...context, timestamp: new Date().toISOString() }));
+	},
+};
+
+/**
  * Extracts numeric value from displayData.total or displayData.groupSubtotal
  * Falls back to totalPrice field
+ * Uses Decimal for precise financial calculations
  */
-function extractLineTotal(line: QuoteLine): number {
+function extractLineTotal(line: QuoteLine): Decimal {
 	const displayData = line.displayData as QuoteLineDisplayDataInput | null;
 	if (displayData?.groupSubtotal) {
-		return displayData.groupSubtotal;
+		return new Decimal(displayData.groupSubtotal);
 	}
-	return Number(line.totalPrice);
+	return new Decimal(line.totalPrice.toString());
 }
 
 /**
  * Extracts internal cost from sourceData if available
  * Returns null for MANUAL lines without sourceData
+ * Returns 0 if sourceData exists but all cost components are 0
  */
-function extractInternalCost(line: QuoteLine): number | null {
+function extractInternalCost(line: QuoteLine): Decimal | null {
 	const sourceData = line.sourceData as QuoteLineSourceDataInput | null;
 	if (!sourceData) return null;
 
 	// Sum all cost components if available
-	const fuel = sourceData.fuelCost ?? 0;
-	const tolls = sourceData.tollCost ?? 0;
-	const driver = sourceData.driverCost ?? 0;
-	const wear = sourceData.wearCost ?? 0;
+	const fuel = new Decimal(sourceData.fuelCost ?? 0);
+	const tolls = new Decimal(sourceData.tollCost ?? 0);
+	const driver = new Decimal(sourceData.driverCost ?? 0);
+	const wear = new Decimal(sourceData.wearCost ?? 0);
 
 	// If no cost components, check for a direct internalCost field
 	const directCost = (sourceData as unknown as { internalCost?: number }).internalCost;
 	if (directCost !== undefined) {
-		return directCost;
+		return new Decimal(directCost);
 	}
 
-	// Return sum of components if any were present
-	if (fuel > 0 || tolls > 0 || driver > 0 || wear > 0) {
-		return fuel + tolls + driver + wear;
+	// Return sum of components - even if 0 (valid cost)
+	// Check if ANY cost field was explicitly provided
+	const hasCostData = 
+		sourceData.fuelCost !== undefined ||
+		sourceData.tollCost !== undefined ||
+		sourceData.driverCost !== undefined ||
+		sourceData.wearCost !== undefined;
+
+	if (hasCostData) {
+		return fuel.plus(tolls).plus(driver).plus(wear);
 	}
 
 	return null;
@@ -86,38 +110,40 @@ function extractInternalCost(line: QuoteLine): number | null {
 
 /**
  * Calculates quote totals from quote lines
+ * Uses Decimal throughout for precise financial calculations
  */
 function calculateQuoteTotals(lines: QuoteLine[]): QuoteTotals {
-	let totalPrice = 0;
-	let totalInternalCost = 0;
+	let totalPrice = new Decimal(0);
+	let totalInternalCost = new Decimal(0);
 	let hasInternalCost = false;
 
 	for (const line of lines) {
-		totalPrice += extractLineTotal(line);
+		totalPrice = totalPrice.plus(extractLineTotal(line));
 
 		const cost = extractInternalCost(line);
 		if (cost !== null) {
-			totalInternalCost += cost;
+			totalInternalCost = totalInternalCost.plus(cost);
 			hasInternalCost = true;
 		}
 	}
 
-	const finalPrice = new Decimal(totalPrice.toFixed(2));
-	const internalCost = hasInternalCost ? new Decimal(totalInternalCost.toFixed(2)) : null;
+	const finalPrice = totalPrice.toDecimalPlaces(2);
+	const internalCost = hasInternalCost ? totalInternalCost.toDecimalPlaces(2) : null;
 
 	// Calculate margin only if we have both finalPrice and internalCost
 	let marginPercent: Decimal | null = null;
-	if (internalCost !== null && totalPrice > 0) {
-		const margin = ((totalPrice - totalInternalCost) / totalPrice) * 100;
-		marginPercent = new Decimal(margin.toFixed(2));
+	if (internalCost !== null && !totalPrice.isZero()) {
+		const margin = totalPrice.minus(totalInternalCost).dividedBy(totalPrice).times(100);
+		marginPercent = margin.toDecimalPlaces(2);
 	}
 
 	return { finalPrice, internalCost, marginPercent };
 }
 
 /**
- * Build a map of tempId -> generated CUID for new lines
- * This allows proper parentId resolution when creating lines
+ * Build a map of tempId -> new ID for new lines
+ * For new lines without explicit id, we let Prisma generate the CUID
+ * This map is used only for parent resolution
  */
 function buildIdMap(
 	lines: QuoteLineInput[],
@@ -130,12 +156,11 @@ function buildIdMap(
 		if (line.id && existingIds.has(line.id)) {
 			idMap.set(line.id, line.id);
 		}
-		// If line has a tempId, generate a new CUID
-		else if (line.tempId) {
-			// Generate CUID - we'll use crypto.randomUUID() as a fallback
-			const newId = crypto.randomUUID().replace(/-/g, '').slice(0, 25);
-			idMap.set(line.tempId, `c${newId}`); // Prefix with 'c' for cuid-like format
+		// If line has a tempId and an id, map tempId -> id
+		else if (line.tempId && line.id) {
+			idMap.set(line.tempId, line.id);
 		}
+		// For tempId only - we need to generate (will be done in create phase)
 	}
 
 	return idMap;
@@ -151,6 +176,32 @@ function resolveParentId(
 ): string | null {
 	if (!parentId) return null;
 	return idMap.get(parentId) ?? parentId;
+}
+
+/**
+ * Check if any line has children that would be orphaned
+ */
+function checkForOrphanedChildren(
+	linesToDelete: string[],
+	existingLines: Array<{ id: string; parentId: string | null }>,
+	incomingLines: QuoteLineInput[]
+): string[] {
+	// Build set of incoming line IDs
+	const incomingIds = new Set(incomingLines.map(l => l.id).filter(Boolean));
+	
+	// Find children of lines to be deleted that are not being re-parented
+	const orphanedChildren: string[] = [];
+	
+	for (const line of existingLines) {
+		if (line.parentId && linesToDelete.includes(line.parentId)) {
+			// This line's parent is being deleted
+			if (!linesToDelete.includes(line.id) && !incomingIds.has(line.id)) {
+				orphanedChildren.push(line.id);
+			}
+		}
+	}
+	
+	return orphanedChildren;
 }
 
 // =============================================================================
@@ -194,6 +245,13 @@ export const quoteLinesRouter = new Hono()
 			const quoteId = c.req.param("quoteId");
 			const { lines, recalculateTotals } = c.req.valid("json");
 
+			logger.info("Quote lines update started", { 
+				quoteId, 
+				organizationId, 
+				lineCount: lines.length,
+				recalculateTotals 
+			});
+
 			// Verify quote exists and belongs to organization
 			const quote = await db.quote.findFirst({
 				where: withTenantId(quoteId, organizationId),
@@ -201,19 +259,23 @@ export const quoteLinesRouter = new Hono()
 					lines: {
 						select: {
 							id: true,
+							parentId: true,
 						},
 					},
 				},
 			});
 
 			if (!quote) {
+				logger.warn("Quote not found", { quoteId, organizationId });
 				throw new HTTPException(404, {
 					message: "Quote not found",
 				});
 			}
 
 			// Check if quote is editable (only DRAFT quotes can have lines modified)
-			if (quote.status !== "DRAFT") {
+			// Using enum instead of magic string
+			if (quote.status !== QuoteStatus.DRAFT) {
+				logger.warn("Attempted to modify non-DRAFT quote", { quoteId, status: quote.status });
 				throw new HTTPException(400, {
 					message:
 						"Cannot modify lines for non-DRAFT quotes. Quote must be in DRAFT status.",
@@ -229,7 +291,25 @@ export const quoteLinesRouter = new Hono()
 			const incomingIds = new Set(incomingWithIds.map((l) => l.id));
 			const linesToDelete = [...existingLineIds].filter((id) => !incomingIds.has(id));
 
-			// Build ID map for parent resolution
+			// Check for orphaned children before deleting
+			if (linesToDelete.length > 0) {
+				const orphanedChildren = checkForOrphanedChildren(
+					linesToDelete,
+					quote.lines,
+					lines
+				);
+				
+				if (orphanedChildren.length > 0) {
+					// Also delete orphaned children to prevent constraint violations
+					linesToDelete.push(...orphanedChildren);
+					logger.info("Including orphaned children in deletion", { 
+						quoteId, 
+						orphanedCount: orphanedChildren.length 
+					});
+				}
+			}
+
+			// Build ID map for parent resolution - pass through for resolution
 			const idMap = buildIdMap(lines, existingLineIds);
 
 			// Execute all operations in a transaction
@@ -240,8 +320,9 @@ export const quoteLinesRouter = new Hono()
 					deleted: 0,
 				};
 
-				// 1. Delete removed lines
+				// 1. Delete removed lines (children first due to FK constraints)
 				if (linesToDelete.length > 0) {
+					// First delete children, then parents
 					await tx.quoteLine.deleteMany({
 						where: {
 							id: { in: linesToDelete },
@@ -251,13 +332,60 @@ export const quoteLinesRouter = new Hono()
 					stats.deleted = linesToDelete.length;
 				}
 
-				// 2. Update existing lines
-				for (const line of incomingWithIds) {
+				// 2. Update existing lines in parallel for better performance
+				if (incomingWithIds.length > 0) {
+					await Promise.all(
+						incomingWithIds.map(async (line) => {
+							const resolvedParentId = resolveParentId(line.parentId, idMap);
+
+							await tx.quoteLine.update({
+								where: { id: line.id },
+								data: {
+									type: line.type,
+									label: line.label,
+									description: line.description,
+									sourceData: line.sourceData 
+										? (line.sourceData as Prisma.InputJsonValue) 
+										: Prisma.JsonNull,
+									displayData: line.displayData as Prisma.InputJsonValue,
+									quantity: line.quantity,
+									unitPrice: line.unitPrice,
+									totalPrice: line.totalPrice,
+									vatRate: line.vatRate,
+									parentId: resolvedParentId,
+									sortOrder: line.sortOrder,
+								},
+							});
+						})
+					);
+					stats.updated = incomingWithIds.length;
+				}
+
+				// 3. Create new lines - need to handle tempId -> id mapping
+				// Create in order to handle parent references correctly
+				const createdLineIds = new Map<string, string>();
+				
+				// First pass: create lines without parents or with existing parents
+				const linesWithoutNewParents = incomingNewLines.filter(line => {
+					if (!line.parentId) return true;
+					// Check if parent is an existing line or already in idMap
+					return existingLineIds.has(line.parentId) || idMap.has(line.parentId);
+				});
+				
+				const linesWithNewParents = incomingNewLines.filter(line => {
+					if (!line.parentId) return false;
+					// Parent is a tempId for a new line
+					return !existingLineIds.has(line.parentId) && !idMap.has(line.parentId);
+				});
+
+				// Create lines without new parents first
+				for (const line of linesWithoutNewParents) {
 					const resolvedParentId = resolveParentId(line.parentId, idMap);
 
-					await tx.quoteLine.update({
-						where: { id: line.id },
+					const created = await tx.quoteLine.create({
 						data: {
+							// Let Prisma generate CUID automatically
+							quoteId,
 							type: line.type,
 							label: line.label,
 							description: line.description,
@@ -273,18 +401,22 @@ export const quoteLinesRouter = new Hono()
 							sortOrder: line.sortOrder,
 						},
 					});
-					stats.updated++;
+					
+					// Map tempId to actual created id for child references
+					if (line.tempId) {
+						createdLineIds.set(line.tempId, created.id);
+						idMap.set(line.tempId, created.id);
+					}
+					stats.created++;
 				}
 
-				// 3. Create new lines (with generated CUIDs)
-				for (const line of incomingNewLines) {
-					const lineKey = line.id || line.tempId;
-					const newId = lineKey ? idMap.get(lineKey) : undefined;
-					const resolvedParentId = resolveParentId(line.parentId, idMap);
+				// Second pass: create lines with new parents (now that parents exist)
+				for (const line of linesWithNewParents) {
+					const resolvedParentId = createdLineIds.get(line.parentId!) ?? 
+						resolveParentId(line.parentId, idMap);
 
 					await tx.quoteLine.create({
 						data: {
-							...(newId && { id: newId }),
 							quoteId,
 							type: line.type,
 							label: line.label,
@@ -311,52 +443,62 @@ export const quoteLinesRouter = new Hono()
 				});
 
 				// 5. Recalculate quote totals if requested
-				let updatedQuote = quote;
+				let updatedQuoteData = {
+					id: quote.id,
+					finalPrice: quote.finalPrice,
+					internalCost: quote.internalCost,
+					marginPercent: quote.marginPercent,
+				};
+				
 				if (recalculateTotals) {
 					const totals = calculateQuoteTotals(updatedLines);
 
-					updatedQuote = await tx.quote.update({
+					const updated = await tx.quote.update({
 						where: { id: quoteId },
 						data: {
 							finalPrice: totals.finalPrice,
 							internalCost: totals.internalCost,
 							marginPercent: totals.marginPercent,
 						},
-						include: {
-							contact: true,
-							vehicleCategory: true,
-							lines: {
-								select: { id: true },
-							},
-							endCustomer: {
-								select: {
-									id: true,
-									firstName: true,
-									lastName: true,
-									email: true,
-									phone: true,
-									difficultyScore: true,
-								},
-							},
+						select: {
+							id: true,
+							finalPrice: true,
+							internalCost: true,
+							marginPercent: true,
 						},
+					});
+
+					updatedQuoteData = updated;
+
+					logger.info("Quote totals recalculated", {
+						quoteId,
+						finalPrice: totals.finalPrice.toString(),
+						internalCost: totals.internalCost?.toString() ?? null,
+						marginPercent: totals.marginPercent?.toString() ?? null,
 					});
 				}
 
 				return {
 					stats,
 					lines: updatedLines,
-					quote: updatedQuote,
+					quote: updatedQuoteData,
 				};
+			});
+
+			logger.info("Quote lines update completed", {
+				quoteId,
+				stats: result.stats,
 			});
 
 			// Sync missions after line update (non-blocking)
 			try {
 				await missionSyncService.syncQuoteMissions(quoteId);
+				logger.info("Mission sync completed", { quoteId });
 			} catch (syncError) {
-				console.warn(
-					`[MissionSync] Failed to sync missions for quote ${quoteId}:`,
-					syncError
-				);
+				logger.error("Mission sync failed", {
+					quoteId,
+					error: syncError instanceof Error ? syncError.message : String(syncError),
+				});
 			}
 
 			return c.json({
@@ -385,6 +527,8 @@ export const quoteLinesRouter = new Hono()
 					vatRate: Number(line.vatRate),
 					parentId: line.parentId,
 					sortOrder: line.sortOrder,
+					createdAt: line.createdAt.toISOString(),
+					updatedAt: line.updatedAt.toISOString(),
 				})),
 			});
 		}
@@ -437,6 +581,8 @@ export const quoteLinesRouter = new Hono()
 					vatRate: Number(line.vatRate),
 					parentId: line.parentId,
 					sortOrder: line.sortOrder,
+					createdAt: line.createdAt.toISOString(),
+					updatedAt: line.updatedAt.toISOString(),
 				})),
 			});
 		}

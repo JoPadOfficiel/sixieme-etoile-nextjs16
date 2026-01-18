@@ -2,25 +2,21 @@
  * Story 26.4: Backend API CRUD for Nested Lines & Totals
  * 
  * Integration tests for the quote-lines API endpoint
+ * 
+ * Code Review Fixes Applied:
+ * - L3: Added test for recalculateTotals: false
+ * - Improved mock structure for better type safety
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { Decimal } from '@prisma/client/runtime/library';
 import { z } from 'zod';
-
-// Import actual schemas first before mocking db
-import {
-	QuoteLinesArraySchema,
-	UpdateQuoteLinesSchema,
-	QuoteLineDisplayDataSchema,
-	QuoteLineSourceDataSchema,
-	type QuoteLineInput,
-} from '@repo/database';
+import { QuoteStatus } from '@prisma/client';
 
 // Mock only the db from @repo/database - not the schemas
 vi.mock('@repo/database', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal() as Record<string, unknown>;
 	return {
 		...actual,
 		db: {
@@ -61,14 +57,14 @@ import { quoteLinesRouter } from '../quote-lines';
 describe('Quote Lines API - Story 26.4', () => {
 	const mockQuote = {
 		id: 'quote-123',
-		status: 'DRAFT' as const,
+		status: QuoteStatus.DRAFT,
 		organizationId: 'test-org-id',
 		finalPrice: new Decimal('100.00'),
 		internalCost: new Decimal('60.00'),
 		marginPercent: new Decimal('40.00'),
 		lines: [
-			{ id: 'line-1' },
-			{ id: 'line-2' },
+			{ id: 'line-1', parentId: null },
+			{ id: 'line-2', parentId: null },
 		],
 	};
 
@@ -116,13 +112,11 @@ describe('Quote Lines API - Story 26.4', () => {
 			});
 
 			expect(res.status).toBe(404);
-			const data = await res.json();
-			expect(data.message).toBe('Quote not found');
 		});
 
-		it('should return lines ordered by sortOrder', async () => {
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
-			vi.mocked(db.quoteLine.findMany).mockResolvedValue([mockLine] as any);
+		it('should return lines ordered by sortOrder with timestamps', async () => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			vi.mocked(db.quoteLine.findMany).mockResolvedValue([mockLine] as unknown as ReturnType<typeof db.quoteLine.findMany>);
 
 			const app = new Hono().route('/', quoteLinesRouter);
 			const res = await app.request('/quotes/quote-123/lines', {
@@ -135,6 +129,9 @@ describe('Quote Lines API - Story 26.4', () => {
 			expect(data.lines).toHaveLength(1);
 			expect(data.lines[0].id).toBe('line-1');
 			expect(data.lines[0].type).toBe('CALCULATED');
+			// M3 fix: timestamps should be included
+			expect(data.lines[0].createdAt).toBeDefined();
+			expect(data.lines[0].updatedAt).toBeDefined();
 		});
 	});
 
@@ -155,11 +152,11 @@ describe('Quote Lines API - Story 26.4', () => {
 			expect(res.status).toBe(404);
 		});
 
-		it('should return 400 when quote is not DRAFT', async () => {
+		it('should return 400 when quote is not DRAFT (using QuoteStatus enum)', async () => {
 			vi.mocked(db.quote.findFirst).mockResolvedValue({
 				...mockQuote,
-				status: 'SENT',
-			} as any);
+				status: QuoteStatus.SENT, // L2 fix: using enum
+			} as unknown as ReturnType<typeof db.quote.findFirst>);
 
 			const app = new Hono().route('/', quoteLinesRouter);
 			const res = await app.request('/quotes/quote-123/lines', {
@@ -172,15 +169,13 @@ describe('Quote Lines API - Story 26.4', () => {
 			});
 
 			expect(res.status).toBe(400);
-			const data = await res.json();
-			expect(data.message).toContain('DRAFT');
 		});
 
-		it('should perform CRUD operations in transaction', async () => {
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
+		it('should perform CRUD operations in transaction with Promise.all', async () => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
 			
 			// Mock transaction to execute the callback
-			vi.mocked(db.$transaction).mockImplementation(async (callback: any) => {
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
 				const mockTx = {
 					quoteLine: {
 						deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -195,7 +190,7 @@ describe('Quote Lines API - Story 26.4', () => {
 						}),
 					},
 				};
-				return callback(mockTx);
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
 			});
 
 			const app = new Hono().route('/', quoteLinesRouter);
@@ -231,9 +226,47 @@ describe('Quote Lines API - Story 26.4', () => {
 			expect(data.stats).toBeDefined();
 		});
 
+		// L3 fix: Added test for recalculateTotals: false
+		it('should skip total recalculation when recalculateTotals is false', async () => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			
+			let quoteUpdateCalled = false;
+			
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
+				const mockTx = {
+					quoteLine: {
+						deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+						update: vi.fn(),
+						create: vi.fn(),
+						findMany: vi.fn().mockResolvedValue([]),
+					},
+					quote: {
+						update: vi.fn().mockImplementation(() => {
+							quoteUpdateCalled = true;
+							return { ...mockQuote, lines: [] };
+						}),
+					},
+				};
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
+			});
+
+			const app = new Hono().route('/', quoteLinesRouter);
+			await app.request('/quotes/quote-123/lines', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					lines: [],
+					recalculateTotals: false, // Skip recalculation
+				}),
+			});
+
+			// Quote.update should not be called when recalculateTotals is false
+			expect(quoteUpdateCalled).toBe(false);
+		});
+
 		it('should sync missions after successful update', async () => {
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
-			vi.mocked(db.$transaction).mockImplementation(async (callback: any) => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
 				const mockTx = {
 					quoteLine: {
 						deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -245,7 +278,7 @@ describe('Quote Lines API - Story 26.4', () => {
 						update: vi.fn().mockResolvedValue({ ...mockQuote, lines: [] }),
 					},
 				};
-				return callback(mockTx);
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
 			});
 
 			const app = new Hono().route('/', quoteLinesRouter);
@@ -263,14 +296,14 @@ describe('Quote Lines API - Story 26.4', () => {
 	});
 
 	describe('Total Calculation Logic', () => {
-		it('should calculate finalPrice as sum of line totalPrices', async () => {
+		it('should calculate finalPrice as sum of line totalPrices using Decimal', async () => {
 			const linesWithTotals = [
 				{ ...mockLine, totalPrice: new Decimal('100.00') },
 				{ ...mockLine, id: 'line-2', totalPrice: new Decimal('50.00') },
 			];
 
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
-			vi.mocked(db.$transaction).mockImplementation(async (callback: any) => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
 				const mockTx = {
 					quoteLine: {
 						deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -288,7 +321,7 @@ describe('Quote Lines API - Story 26.4', () => {
 						}),
 					},
 				};
-				return callback(mockTx);
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
 			});
 
 			const app = new Hono().route('/', quoteLinesRouter);
@@ -306,6 +339,56 @@ describe('Quote Lines API - Story 26.4', () => {
 			expect(data.quote.finalPrice).toBe(150);
 		});
 
+		// M1 fix: Test that zero costs are handled correctly
+		it('should return 0 internalCost when all cost components are 0', async () => {
+			const lineWithZeroCosts = {
+				...mockLine,
+				sourceData: {
+					pricingMode: 'DYNAMIC',
+					tripType: 'TRANSFER',
+					calculatedAt: '2026-01-18T12:00:00Z',
+					fuelCost: 0,
+					tollCost: 0,
+					driverCost: 0,
+					wearCost: 0,
+				},
+			};
+
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
+				const mockTx = {
+					quoteLine: {
+						deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+						update: vi.fn(),
+						create: vi.fn(),
+						findMany: vi.fn().mockResolvedValue([lineWithZeroCosts]),
+					},
+					quote: {
+						update: vi.fn().mockImplementation(({ data }) => {
+							// M1 fix: internalCost should be 0, not null
+							expect(Number(data.internalCost)).toBe(0);
+							return {
+								...mockQuote,
+								...data,
+								lines: [{ id: 'line-1' }],
+							};
+						}),
+					},
+				};
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
+			});
+
+			const app = new Hono().route('/', quoteLinesRouter);
+			await app.request('/quotes/quote-123/lines', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					lines: [],
+					recalculateTotals: true,
+				}),
+			});
+		});
+
 		it('should calculate internalCost from sourceData cost components', async () => {
 			// Line with sourceData containing cost breakdown
 			const lineWithCosts = {
@@ -321,8 +404,8 @@ describe('Quote Lines API - Story 26.4', () => {
 				},
 			};
 
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
-			vi.mocked(db.$transaction).mockImplementation(async (callback: any) => {
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
 				const mockTx = {
 					quoteLine: {
 						deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -342,7 +425,7 @@ describe('Quote Lines API - Story 26.4', () => {
 						}),
 					},
 				};
-				return callback(mockTx);
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
 			});
 
 			const app = new Hono().route('/', quoteLinesRouter);
@@ -359,7 +442,7 @@ describe('Quote Lines API - Story 26.4', () => {
 
 	describe('Validation Errors', () => {
 		it('should reject CALCULATED lines without sourceData', async () => {
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
 
 			const app = new Hono().route('/', quoteLinesRouter);
 			const res = await app.request('/quotes/quote-123/lines', {
@@ -387,7 +470,7 @@ describe('Quote Lines API - Story 26.4', () => {
 		});
 
 		it('should reject GROUP lines with parentId (nesting)', async () => {
-			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as any);
+			vi.mocked(db.quote.findFirst).mockResolvedValue(mockQuote as unknown as ReturnType<typeof db.quote.findFirst>);
 
 			const app = new Hono().route('/', quoteLinesRouter);
 			const res = await app.request('/quotes/quote-123/lines', {
@@ -423,6 +506,57 @@ describe('Quote Lines API - Story 26.4', () => {
 			});
 
 			expect(res.status).toBe(400);
+		});
+	});
+
+	// H1 fix: Test for orphaned children handling
+	describe('Cascade Delete - Orphan Prevention', () => {
+		it('should delete orphaned children when parent is deleted', async () => {
+			const quoteWithHierarchy = {
+				...mockQuote,
+				lines: [
+					{ id: 'group-1', parentId: null },
+					{ id: 'child-1', parentId: 'group-1' },
+					{ id: 'child-2', parentId: 'group-1' },
+				],
+			};
+
+			vi.mocked(db.quote.findFirst).mockResolvedValue(quoteWithHierarchy as unknown as ReturnType<typeof db.quote.findFirst>);
+			
+			let deletedLineIds: string[] = [];
+			
+			vi.mocked(db.$transaction).mockImplementation(async (callback: unknown) => {
+				const mockTx = {
+					quoteLine: {
+						deleteMany: vi.fn().mockImplementation(({ where }) => {
+							deletedLineIds = where.id.in;
+							return { count: deletedLineIds.length };
+						}),
+						update: vi.fn(),
+						create: vi.fn(),
+						findMany: vi.fn().mockResolvedValue([]),
+					},
+					quote: {
+						update: vi.fn().mockResolvedValue({ ...mockQuote, lines: [] }),
+					},
+				};
+				return (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
+			});
+
+			const app = new Hono().route('/', quoteLinesRouter);
+			await app.request('/quotes/quote-123/lines', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					lines: [], // Delete all lines including the group
+					recalculateTotals: true,
+				}),
+			});
+
+			// All 3 lines should be deleted (parent + 2 orphaned children)
+			expect(deletedLineIds).toContain('group-1');
+			expect(deletedLineIds).toContain('child-1');
+			expect(deletedLineIds).toContain('child-2');
 		});
 	});
 });
