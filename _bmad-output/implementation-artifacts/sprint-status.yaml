@@ -306,9 +306,9 @@ development_status:
   26-13-block-presets-templates-bonus: backlog
   26-14-undo-redo-history-support: backlog
   epic-26-retrospective: optional
-  epic-27: backlog
+  epic-27: in-progress
   27-1-dispatch-shell-navigation: backlog
-  27-2-backend-mission-splitter-service: backlog
+  27-2-backend-mission-splitter-service: review
   27-3-gantt-core-timeline-rendering: backlog
   27-4-gantt-mission-rendering-hybrid: backlog
   27-5-unassigned-backlog-sidebar-logic: backlog

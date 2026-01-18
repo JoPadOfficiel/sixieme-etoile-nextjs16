@@ -12,6 +12,7 @@ import {
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import { QuoteStateMachine } from "../../services/quote-state-machine";
+import { missionSyncService } from "../../services/mission-sync.service";
 import type { QuoteStatus } from "@prisma/client";
 
 // Story 16.1: Stop schema for excursion trips
@@ -493,6 +494,14 @@ export const quotesRouter = new Hono()
 				},
 			});
 
+			// Story 27.2: Sync missions after quote creation
+			try {
+				await missionSyncService.syncQuoteMissions(quote.id);
+			} catch (syncError) {
+				// Log sync error but don't fail the quote creation
+				console.warn(`[MissionSync] Failed to sync missions for quote ${quote.id}:`, syncError);
+			}
+
 			return c.json(quote, 201);
 		},
 	)
@@ -712,6 +721,14 @@ export const quotesRouter = new Hono()
 					},
 				},
 			});
+
+			// Story 27.2: Sync missions after quote update
+			try {
+				await missionSyncService.syncQuoteMissions(quote.id);
+			} catch (syncError) {
+				// Log sync error but don't fail the quote update
+				console.warn(`[MissionSync] Failed to sync missions for quote ${quote.id}:`, syncError);
+			}
 
 			return c.json(quote);
 		},
