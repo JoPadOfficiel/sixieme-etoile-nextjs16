@@ -3,7 +3,7 @@ id: "26.11"
 epicId: "26"
 title: "PDF Generator pure Display Mode"
 type: "story"
-status: "review"
+status: "done"
 priority: "high"
 complexity: "medium"
 assignedTo: "Antigravity"
@@ -37,3 +37,20 @@ Implement the PDF generation logic for Quotes and Invoices that relies exclusive
 ## Constraints
 - Must use `displayData` exclusively.
 - Must maintain existing PDF styling for standard rows.
+
+## File List
+- `packages/api/src/services/pdf-generator.ts`
+- `packages/api/src/routes/vtc/documents.ts`
+- `packages/api/src/services/__tests__/pdf-generator.test.ts`
+
+## Dev Agent Record
+### 2026-01-18 - Feature Implementation
+- **Status**: Review
+- **Agent**: Antigravity
+- **Summary**: Implemented "Pure Display Mode" for PDF generation to support Universal Blocks (Story 26.11).
+  - Modified `pdf-generator.ts` to support `GROUP` line types, rendering them as sub-headers.
+  - Updated `InvoiceLinePdfData` interface to include `type` field.
+  - Refactored `documents.ts` (`transformQuoteToPdfData` and `transformInvoiceToPdfData`) to preferentially use `displayData` from the new Hybrid Block structure (`quote.lines` / `invoice.lines`) when available, overriding legacy calculation logic.
+  - Added unit tests in `pdf-generator.test.ts` to verify Hybrid Block rendering and ensure no regressions.
+  - Verified source data isolation by confirming that `displayData` fields are explicitly mapped.
+

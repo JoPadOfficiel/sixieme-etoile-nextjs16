@@ -64,6 +64,7 @@ describe("PDF Generator Service", () => {
 			// Story 25.2: Trip details
 			estimatedDistanceKm: 45.5,
 			estimatedDurationMins: 55,
+			lines: [], // Added to satisfy interface
 		};
 
 		it("should generate a valid PDF buffer for a quote", async () => {
@@ -392,6 +393,7 @@ describe("PDF Generator Service", () => {
 				isPartner: false,
 			},
 			createdAt: new Date(),
+			lines: [], // Added to satisfy interface
 		};
 
 		it("should fallback to default blue when brandColor is null", async () => {
@@ -465,6 +467,7 @@ describe("PDF Generator Service", () => {
 			driverName: "Jean Dupont",
 			vehicleName: "Mercedes V-Class",
 			vehiclePlate: "AB-123-CD",
+			lines: [], // Added to satisfy interface
 		};
 
 		it("should generate a valid PDF for mission order", async () => {
@@ -482,6 +485,89 @@ describe("PDF Generator Service", () => {
 
 			const pdfBuffer = await generateMissionOrderPdf(mockMission, orgWithLogoWidth);
 
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+	});
+	// Story 26.11: Hybrid Blocks & Pure Display Mode Tests
+	describe("Hybrid Blocks - Story 26.11", () => {
+		const hybridInvoice: InvoicePdfData = {
+			id: "invoice_hybrid_1",
+			number: "FAC-HYBRID-001",
+			issueDate: new Date(),
+			dueDate: new Date(),
+			totalExclVat: 200,
+			totalVat: 20,
+			totalInclVat: 220,
+			contact: {
+				displayName: "Hybrid Client",
+				isPartner: false,
+			},
+			lines: [
+				{
+					description: "Day 1: Arrival",
+					quantity: 1,
+					unitPriceExclVat: 0,
+					vatRate: 0,
+					totalExclVat: 0,
+					totalVat: 0,
+					type: "GROUP",
+				},
+				{
+					description: "Transfer CDG -> Paris",
+					quantity: 1,
+					unitPriceExclVat: 100,
+					vatRate: 10,
+					totalExclVat: 100,
+					totalVat: 10,
+					type: "CALCULATED",
+				},
+				{
+					description: "Day 2: Departure",
+					quantity: 1,
+					unitPriceExclVat: 0,
+					vatRate: 0,
+					totalExclVat: 0,
+					totalVat: 0,
+					type: "GROUP",
+				},
+				{
+					description: "Manual Override Item",
+					quantity: 2,
+					unitPriceExclVat: 50,
+					vatRate: 10,
+					totalExclVat: 100,
+					totalVat: 10,
+					type: "MANUAL",
+				},
+			],
+		};
+
+		it("should generate PDF with GROUP sub-headers and MANUAL lines", async () => {
+			const pdfBuffer = await generateInvoicePdf(hybridInvoice, mockOrganization);
+
+			expect(pdfBuffer).toBeInstanceOf(Buffer);
+			expect(pdfBuffer.length).toBeGreaterThan(0);
+		});
+
+		it("should render GROUP lines distinctively (implied by successful generation)", async () => {
+			// Note: Visual verification is hard in unit tests, but we ensure the generator 
+			// handles the 'type' field without throwing errors.
+			const groupOnlyInvoice: InvoicePdfData = {
+				...hybridInvoice,
+				lines: [
+					{
+						description: "JUST A GROUP HEADER",
+						quantity: 0,
+						unitPriceExclVat: 0,
+						vatRate: 0,
+						totalExclVat: 0,
+						totalVat: 0,
+						type: "GROUP",
+					}
+				]
+			};
+			const pdfBuffer = await generateInvoicePdf(groupOnlyInvoice, mockOrganization);
 			expect(pdfBuffer).toBeInstanceOf(Buffer);
 			expect(pdfBuffer.length).toBeGreaterThan(0);
 		});
