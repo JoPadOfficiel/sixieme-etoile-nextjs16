@@ -3,7 +3,7 @@ id: "story-27-11"
 epic: "epic-27"
 title: "Story 27.11 - Inspector Panel Quick Actions"
 description: "Implement the right-side inspector panel (Shadcn Sheet) in the Dispatch Cockpit. This panel appears when a mission is selected from the Gantt chart or list view, displaying mission details and providing quick actions: Unassign, Edit Route (via Yolo modal), and Cancel."
-status: "review"
+status: "done"
 priority: "high"
 assignments:
   - "Amelia (Developer)"

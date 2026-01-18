@@ -317,7 +317,7 @@ development_status:
   27-8-map-smart-assignment-suggestions: backlog
   27-9-dispatch-actions-drag-drop-assignment: backlog
   27-10-conflict-detection-rse-calendar: backlog
-  27-11-inspector-panel-quick-actions: review
+  27-11-inspector-panel-quick-actions: done
   27-12-gantt-time-zoom-controls: backlog
   27-13-real-time-updates-polling-socket: backlog
   27-14-export-schedule: backlog
