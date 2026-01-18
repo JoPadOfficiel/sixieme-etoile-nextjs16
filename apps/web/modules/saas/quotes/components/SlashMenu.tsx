@@ -10,7 +10,7 @@ import {
   Percent,
 } from "lucide-react";
 
-// We define the types compatible with UniversalLineItemRow
+// Define types compatible with UniversalLineItemRow
 export type SlashMenuBlockType = "CALCULATED" | "MANUAL" | "GROUP" | "DISCOUNT";
 
 export interface SlashMenuProps {
@@ -20,36 +20,38 @@ export interface SlashMenuProps {
   anchorRect: DOMRect | null;
 }
 
+const SLASH_MENU_ITEMS = [
+  {
+    label: "Text",
+    icon: Type,
+    type: "MANUAL" as const,
+    description: "Just plain text",
+  },
+  {
+    label: "Heading",
+    icon: Heading,
+    type: "GROUP" as const,
+    description: "Section header",
+  },
+  {
+      label: "Service",
+      icon: Car,
+      type: "CALCULATED" as const,
+      description: "Linked to pricing engine",
+  },
+  {
+      label: "Discount",
+      icon: Percent,
+      type: "DISCOUNT" as const, // Handled specially in parent
+      description: "Apply a discount",
+  }
+];
+
 export function SlashMenu({ isOpen, onClose, onSelect, anchorRect }: SlashMenuProps) {
   const [search, setSearch] = useState("");
 
-  // Create detailed items list
-  const items = [
-    {
-      label: "Text",
-      icon: Type,
-      type: "MANUAL" as const,
-      description: "Just plain text",
-    },
-    {
-      label: "Heading",
-      icon: Heading,
-      type: "GROUP" as const,
-      description: "Section header",
-    },
-    {
-        label: "Service",
-        icon: Car,
-        type: "CALCULATED" as const,
-        description: "Linked to pricing engine",
-    },
-    {
-        label: "Discount",
-        icon: Percent,
-        type: "DISCOUNT" as const, // Handled specially in parent
-        description: "Apply a discount",
-    }
-  ];
+
+
 
   // Virtual ref for Popover positioning
   const virtualRef = React.useRef({
@@ -96,7 +98,7 @@ export function SlashMenu({ isOpen, onClose, onSelect, anchorRect }: SlashMenuPr
               No results found.
             </Command.Empty>
             <Command.Group heading="Basic Blocks" className="text-xs font-medium text-muted-foreground px-2 py-1.5">
-              {items.map((item) => (
+              {SLASH_MENU_ITEMS.map((item) => (
                 <Command.Item
                   key={item.label}
                   value={item.label}

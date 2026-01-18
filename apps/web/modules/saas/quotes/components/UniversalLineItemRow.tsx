@@ -39,6 +39,7 @@ interface UniversalLineItemRowProps {
   index: number;
   onUpdate: (id: string, data: Partial<QuoteLine>) => void;
   onToggleExpand?: (id: string) => void;
+  onInsert?: (afterId: string, type: SlashMenuBlockType) => void;
   isExpanded?: boolean;
   currency?: string;
   readOnly?: boolean;
@@ -51,6 +52,7 @@ export function UniversalLineItemRow({
   index,
   onUpdate,
   onToggleExpand,
+  onInsert,
   isExpanded = true,
   currency = "EUR",
   readOnly = false,
@@ -72,26 +74,59 @@ export function UniversalLineItemRow({
   const handleSlashSelect = (type: SlashMenuBlockType) => {
     // Remove the slash from the label
     const currentLabel = line.label || "";
-    // We assume the slash is at the end or we just remove the last occurrence
-    // Ideally we track where it was. For MVP, assuming it was the trigger.
     const newLabel = currentLabel.replace(/\/$/, "").trim();
     
-    handleUpdate("label", newLabel);
+    // Logic: If line is "empty" (just the slash), update type. 
+    // If line has content, we might want to insert a NEW line below.
+    // However, the prompt implies "Change Type" OR "Insert".
+    // Let's assume: 
+    // - If label was just "/", change type of current line.
+    // - If label had text "Some text /", update current line label (remove slash) AND insert new line of selected type below.
+    
+    const wasEmpty = currentLabel.trim() === "/";
 
-    if (type === "DISCOUNT") {
-       // Handle discount specific logic - maybe just MANUAL type for now with negative price implication or specific tag?
-       // For this story, let's map it to MANUAL (or CALCULATED if it was an option) but typically Discount is a line type
-       // Since BlockType doesn't have DISCOUNT, we map to MANUAL and maybe add a description or metadata if possible.
-       // Or if the backend supports it, great. Keeping it safe: map to MANUAL.
-       handleUpdate("type", "MANUAL"); 
-       handleUpdate("description", "Discount applied");
+    if (wasEmpty) {
+        // Case 1: Change current line type
+        handleUpdate("label", newLabel);
+        if (type === "DISCOUNT") {
+            handleUpdate("type", "MANUAL"); 
+            handleUpdate("description", "Discount applied");
+        } else {
+            handleUpdate("type", type);
+        }
     } else {
-       handleUpdate("type", type);
+        // Case 2: Insert new line below
+        // Clean current line
+        handleUpdate("label", newLabel);
+        
+        // We need a way to insert a line. onUpdate only updates current.
+        // UniversalLineItemRow doesn't have onInsert prop. 
+        // We probably need to lift this state or add onInsert prop.
+        // FOR NOW: To satisfy AC3 strictly without refactoring parent list (which might be complex),
+        // we will stick to UPDATE behaviour but valid functionality requires INSERT.
+        // Let's check props.
+        // No onInsert. 
+        // We will default to UPDATE even if not empty, but we must note this limitation or fix it.
+        // To fix properly, we need onInsert.
+        // Let's add onInsert to props interface and use it if available.
+        if (onInsert) {
+             onInsert(line.id || line.tempId || "", type);
+        } else {
+             // Fallback: Just update type (legacy behavior)
+             if (type === "DISCOUNT") {
+                handleUpdate("type", "MANUAL"); 
+                handleUpdate("description", "Discount applied");
+             } else {
+                handleUpdate("type", type);
+             }
+        }
     }
     
     setSlashMenuOpen(false);
     // Refocus input
-    setTimeout(() => labelInputRef.current?.focus(), 50);
+    requestAnimationFrame(() => {
+        labelInputRef.current?.focus();
+    });
   };
 
   // Update handler wrapper

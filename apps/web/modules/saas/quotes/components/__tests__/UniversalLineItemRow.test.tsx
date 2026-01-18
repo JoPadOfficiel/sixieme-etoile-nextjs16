@@ -5,6 +5,7 @@ import { UniversalLineItemRow, QuoteLine } from "../UniversalLineItemRow";
 describe("UniversalLineItemRow", () => {
   const mockOnUpdate = vi.fn();
   const mockOnToggleExpand = vi.fn();
+  const mockOnInsert = vi.fn();
 
   const manualLine: QuoteLine = {
     id: "line-1",
@@ -165,5 +166,47 @@ describe("UniversalLineItemRow", () => {
     // Using findByText to wait for Popover animation/portal
     const menuOption = await screen.findByText("Heading");
     expect(menuOption).toBeDefined();
+
+    // Select Heading
+    fireEvent.click(menuOption);
+    
+    // Verify AC3: Slash removed (label updated to "Manual Service") AND Type changed to GROUP OR Insert called
+    // Since our test input was "Manual Service /", it wasn't empty. 
+    // And we didn't pass onInsert. So it should fallback to UPDATE type.
+    
+    expect(mockOnUpdate).toHaveBeenCalledWith("line-1", { label: "Manual Service" });
+    // Assuming Heading maps to GROUP
+    expect(mockOnUpdate).toHaveBeenCalledWith("line-1", { type: "GROUP" });
+  });
+
+  it("calls onInsert when '/' menu used on non-empty line", async () => {
+      // Mock for this specific test
+      Element.prototype.getBoundingClientRect = vi.fn(() => ({
+        width: 100, height: 30, top: 0, left: 0, bottom: 30, right: 100, x: 0, y: 0, toJSON: () => {},
+      }));
+
+      render(
+        <UniversalLineItemRow
+          line={manualLine}
+          depth={0}
+          index={0}
+          onUpdate={mockOnUpdate}
+          onInsert={mockOnInsert}
+        />
+      );
+
+      // Click to edit
+      fireEvent.click(screen.getByText("Manual Service"));
+
+      const input = screen.getByDisplayValue("Manual Service");
+      fireEvent.change(input, { target: { value: "Manual Service /" } });
+      
+      const menuOption = await screen.findByText("Heading");
+      fireEvent.click(menuOption);
+
+      // Should clean label
+      expect(mockOnUpdate).toHaveBeenCalledWith("line-1", { label: "Manual Service" });
+      // Should call onInsert because line wasn't empty
+      expect(mockOnInsert).toHaveBeenCalledWith("line-1", "GROUP");
   });
 });
