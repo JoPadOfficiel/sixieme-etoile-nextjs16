@@ -488,6 +488,48 @@ describe("PDF Generator Service", () => {
 			expect(pdfBuffer).toBeInstanceOf(Buffer);
 			expect(pdfBuffer.length).toBeGreaterThan(0);
 		});
+
+		describe("Operational Mode - Story 26.12", () => {
+			const mockManualMission: MissionOrderPdfData = {
+				id: "mission_manual",
+				pickupAddress: "", // Operational address is empty/unknown
+				dropoffAddress: "",
+				pickupAt: new Date(),
+				passengerCount: 1,
+				luggageCount: 0,
+				vehicleCategory: "Van",
+				finalPrice: 0,
+				pricingMode: "MANUAL",
+				tripType: "TRANSFER",
+				status: "ACCEPTED",
+				contact: { displayName: "Test", isPartner: false },
+				createdAt: new Date(),
+				driverName: "Driver X",
+				vehicleName: "Vehicle Y",
+				lines: [],
+				isManual: true,
+				displayLabel: "Custom Event Trip (No GPS)",
+			};
+	
+			it("should generate a valid PDF for MANUAL mission with warning", async () => {
+				 const pdfBuffer = await generateMissionOrderPdf(mockManualMission, mockOrganization);
+				 expect(pdfBuffer).toBeInstanceOf(Buffer);
+				 expect(pdfBuffer.length).toBeGreaterThan(0);
+			});
+			
+			it("should prioritize Source Data (pickupAddress) if NOT manual", async () => {
+				const operationalMission: MissionOrderPdfData = {
+					...mockManualMission,
+					vehicleName: "Vehicle Y", // Ensure vehicleName is present
+					pickupAddress: "Operational Source Address",
+					isManual: false,
+					displayLabel: "Commercial Renamed Label",
+				};
+				 const pdfBuffer = await generateMissionOrderPdf(operationalMission, mockOrganization);
+				 expect(pdfBuffer).toBeInstanceOf(Buffer);
+				 expect(pdfBuffer.length).toBeGreaterThan(0);
+			});
+		});
 	});
 	// Story 26.11: Hybrid Blocks & Pure Display Mode Tests
 	describe("Hybrid Blocks - Story 26.11", () => {

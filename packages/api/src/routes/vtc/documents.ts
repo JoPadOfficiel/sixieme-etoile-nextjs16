@@ -548,6 +548,9 @@ function transformMissionToPdfData(quote: any): MissionOrderPdfData {
 		secondDriverPhone,
 		vehicleName,
 		vehiclePlate: quote.assignedVehicle?.registrationNumber,
+		// Story 26.12: Determine if this is a Manual/Yolo mission
+		isManual: quote.lines && quote.lines.length > 0 ? quote.lines[0].type === "MANUAL" : false,
+		displayLabel: quote.lines && quote.lines.length > 0 ? (quote.lines[0].displayData?.label || quote.lines[0].label) : null,
 	};
 }
 

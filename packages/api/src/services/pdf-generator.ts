@@ -96,6 +96,9 @@ export interface MissionOrderPdfData extends QuotePdfData {
 	secondDriverPhone?: string | null;
 	vehicleName: string;
 	vehiclePlate?: string | null;
+	// Story 26.12: Operational Mode
+	isManual?: boolean;
+	displayLabel?: string | null;
 }
 
 export interface InvoiceLinePdfData {
@@ -307,6 +310,7 @@ const DARK = rgb(0.216, 0.255, 0.318);
 const BLACK = rgb(0, 0, 0);
 const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
 const ORANGE = rgb(0.976, 0.451, 0.086);
+const WARNING_RED = rgb(0.85, 0.1, 0.1);
 
 // ============================================================================
 // PDF Layout Constants - Story 25.2
@@ -1370,12 +1374,12 @@ export async function generateMissionOrderPdf(
 		page.drawText(sanitizeText(text), options);
 	};
 
-	const drawRect = (x: number, y: number, w: number, h: number, fill?: boolean) => {
+	const drawRect = (x: number, y: number, w: number, h: number, fill?: boolean, color?: typeof LIGHT_GRAY) => {
 		page.drawRectangle({
 			x, y, width: w, height: h,
 			borderColor: BLACK,
 			borderWidth: 0.5,
-			color: fill ? LIGHT_GRAY : undefined,
+			color: fill ? (color || LIGHT_GRAY) : undefined,
 		});
 	};
 
@@ -1685,8 +1689,29 @@ export async function generateMissionOrderPdf(
 	// Minute line
 	page.drawLine({ start: { x: LEFT_MARGIN + 50, y: y - 48 }, end: { x: LEFT_MARGIN + 70, y: y - 48 }, thickness: 0.5, color: BLACK });
 
-	// Address
-	draw(mission.pickupAddress.substring(0, 70), { x: LEFT_MARGIN + 85, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
+	// Address or Manual Label
+	const addressX = LEFT_MARGIN + 85;
+	
+	if (mission.isManual) {
+		// Story 26.12: Manual Warning
+		const manualLabel = (mission.displayLabel || mission.pickupAddress || "").substring(0, 50);
+		draw(manualLabel, { x: addressX, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
+		
+		// VOIR NOTES Badge
+		const badgeText = getLabel("VOIR NOTES", "SEE NOTES", lang);
+		const badgeW = helveticaBold.widthOfTextAtSize(badgeText, 8) + 10;
+		drawRect(addressX + helveticaBold.widthOfTextAtSize(manualLabel, 9) + 10, y - 40, badgeW, 14, true, WARNING_RED);
+		draw(badgeText, { 
+			x: addressX + helveticaBold.widthOfTextAtSize(manualLabel, 9) + 15, 
+			y: y - 36, 
+			size: 8, 
+			font: helveticaBold, 
+			color: rgb(1, 1, 1) // White
+		});
+	} else {
+		// Operational Mode: Display Source Address
+		draw(mission.pickupAddress.substring(0, 70), { x: addressX, y: y - 38, size: 9, font: helveticaBold, color: BLACK });
+	}
 
 	y -= 65;
 
