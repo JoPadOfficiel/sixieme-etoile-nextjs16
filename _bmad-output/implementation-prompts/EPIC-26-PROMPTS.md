@@ -897,3 +897,147 @@ AGENT RECOMMANDÉ : Antigravity / Windsurf.
 
 CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
 ```
+
+---
+
+## Story 26.13: Block Presets Templates
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 26 - Flexible "Yolo Mode" Billing
+- Sélectionne la story spécifique : Story 26.13 - Block Presets Templates (Bonus)
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 26.13
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/26-13-block-templates
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET pour la sauvegarde et le chargement de templates de blocs.
+   - Ajoute une table `BlockTemplate` dans le schéma si nécessaire ou utilise un stockage local/JSON.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste la sérialisation/désérialisation d'un bloc en template.
+   - Navigateur MCP : Valide le flux "Enregistrer ce bloc" -> "Insérer depuis modèles".
+   - Curl : Non applicable.
+   - Vérification DB : Vérifie la persistance du template.
+   - Couverture : Teste les templates avec et sans prix.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "26-13-block-presets-templates-bonus: backlog" à "26-13-block-presets-templates-bonus: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 26.13 :
+Productivité pour les opérateurs.
+
+DÉTAILS TECHNIQUES REQUIS :
+- CRUD simple sur une entité Template.
+- Intégration dans le Slash Menu (Story 26.8).
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 26.14: Undo Redo History Support
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 26 - Flexible "Yolo Mode" Billing
+- Sélectionne la story spécifique : Story 26.14 - Undo Redo History Support
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 26.14
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/26-14-undo-redo
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET pour intégrer `zundo` ou une logique custom avec Zustand.
+   - Mappe les raccourcis clavier Cmd+Z / Cmd+Shift+Z.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste la stack d'historique (State A -> Change -> State B -> Undo -> State A).
+   - Navigateur MCP : Valide le comportement utilisateur réel.
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie que l'Undo fonctionne après une suppression de ligne.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "26-14-undo-redo-history-support: backlog" à "26-14-undo-redo-history-support: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 26.14 :
+Filet de sécurité UX.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Store Zustand temporal.
+- Limite de stack (ex: 50 actions).
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
