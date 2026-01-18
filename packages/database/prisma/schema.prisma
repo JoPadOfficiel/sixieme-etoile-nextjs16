@@ -410,6 +410,8 @@ enum QuoteLineType {
   CALCULATED // Linked to sourceData from GPS/pricing engine - auto-calculated
   MANUAL // Free-form entry by operator - no operational link
   GROUP // Grouping header for hierarchical structures (e.g., STAY packages)
+
+  @@map("quote_line_type")
 }
 
 /// Story 26.1: Mission status for operational tracking
@@ -420,6 +422,8 @@ enum MissionStatus {
   IN_PROGRESS // Currently executing
   COMPLETED // Successfully finished
   CANCELLED // Mission cancelled
+
+  @@map("mission_status")
 }
 
 model Purchase {

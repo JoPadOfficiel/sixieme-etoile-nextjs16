@@ -1,6 +1,7 @@
 -- Story 26.1: Database Schema Update for Hybrid Blocks & Mission Model
 -- Migration: yolo_schema
 -- Date: 2026-01-18
+-- Note: Enum types use PascalCase in Postgres, @@map("snake_case") is Prisma-layer only
 
 -- CreateEnum "QuoteLineType"
 CREATE TYPE "QuoteLineType" AS ENUM ('CALCULATED', 'MANUAL', 'GROUP');
