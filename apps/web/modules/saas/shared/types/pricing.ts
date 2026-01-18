@@ -1,3 +1,9 @@
+import {
+  DEFAULT_GREEN_THRESHOLD,
+  DEFAULT_ORANGE_THRESHOLD,
+  getProfitabilityLevel as getProfitabilityLevelUtil,
+} from "../utils/profitability";
+
 /**
  * Shared Pricing Types
  * 
@@ -362,8 +368,8 @@ export interface ProfitabilityThresholds {
  * Default profitability thresholds
  */
 export const DEFAULT_PROFITABILITY_THRESHOLDS: ProfitabilityThresholds = {
-  greenMarginThreshold: 20,
-  orangeMarginThreshold: 0,
+  greenMarginThreshold: DEFAULT_GREEN_THRESHOLD,
+  orangeMarginThreshold: DEFAULT_ORANGE_THRESHOLD,
 };
 
 // ============================================================================
@@ -381,17 +387,11 @@ export function getProfitabilityLevel(
   marginPercent: number | null | undefined,
   thresholds: ProfitabilityThresholds = DEFAULT_PROFITABILITY_THRESHOLDS
 ): ProfitabilityLevel {
-  if (marginPercent === null || marginPercent === undefined) {
-    return "orange"; // Unknown margin treated as warning
-  }
-  
-  if (marginPercent >= thresholds.greenMarginThreshold) {
-    return "green";
-  }
-  if (marginPercent >= thresholds.orangeMarginThreshold) {
-    return "orange";
-  }
-  return "red";
+  return getProfitabilityLevelUtil(
+    marginPercent,
+    thresholds.greenMarginThreshold,
+    thresholds.orangeMarginThreshold
+  );
 }
 
 /**

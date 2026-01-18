@@ -1,3 +1,6 @@
+import type { TripType } from "@repo/database";
+import { calculateMarginPercent } from "@saas/shared/utils/profitability";
+
 /**
  * Quote types for the Quotes module
  * Story 6.1: Implement Quotes List with Status & Profitability
@@ -1084,11 +1087,11 @@ export function isCostOverridden(
 export function recalculateMargin(
   price: number,
   effectiveCosts: EffectiveCosts
-): { margin: number; marginPercent: number; profitabilityIndicator: ProfitabilityLevel } {
+): { margin: number; marginPercent: number | null; profitabilityIndicator: ProfitabilityLevel } {
   const margin = price - effectiveCosts.total;
-  const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+  const marginPercent = calculateMarginPercent(price, effectiveCosts.total);
   const profitabilityIndicator = getProfitabilityLevel(marginPercent);
-  
+
   return { margin, marginPercent, profitabilityIndicator };
 }
 

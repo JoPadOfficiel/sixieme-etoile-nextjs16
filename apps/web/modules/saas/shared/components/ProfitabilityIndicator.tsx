@@ -10,12 +10,24 @@ import {
 import { TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
+import {
+  getProfitabilityLevel as getProfitabilityLevelUtil,
+  calculateMarginPercent,
+  formatMarginPercent,
+  type ProfitabilityLevel,
+  DEFAULT_GREEN_THRESHOLD,
+  DEFAULT_ORANGE_THRESHOLD,
+} from "../utils/profitability";
 
-export type ProfitabilityLevel = "green" | "orange" | "red";
+export type { ProfitabilityLevel };
 
 export interface ProfitabilityIndicatorProps {
-  /** Margin percentage (e.g., 25.5 for 25.5%) */
-  marginPercent: number | string | null | undefined;
+  /** Margin percentage (e.g., 25.5 for 25.5%) - use this OR sellingPrice/internalCost */
+  marginPercent?: number | string | null | undefined;
+  /** Selling price for real-time calculation (alternative to marginPercent) */
+  sellingPrice?: number;
+  /** Internal cost for real-time calculation (alternative to marginPercent) */
+  internalCost?: number;
   /** Threshold for green (profitable) - default 20% */
   greenThreshold?: number;
   /** Threshold for orange (low margin) - default 0% */
@@ -41,27 +53,36 @@ export interface ProfitabilityIndicatorProps {
  */
 export function ProfitabilityIndicator({
   marginPercent,
-  greenThreshold = 20,
-  orangeThreshold = 0,
+  sellingPrice,
+  internalCost,
+  greenThreshold = DEFAULT_GREEN_THRESHOLD,
+  orangeThreshold = DEFAULT_ORANGE_THRESHOLD,
   compact = false,
   className,
 }: ProfitabilityIndicatorProps) {
   const t = useTranslations("quotes.profitability");
 
-  // Parse margin if string
-  const margin = marginPercent === null || marginPercent === undefined
-    ? null
-    : typeof marginPercent === "string"
-      ? parseFloat(marginPercent)
-      : marginPercent;
+  // Calculate margin: either from props or compute from selling price and cost
+  let margin: number | null;
+  
+  if (sellingPrice !== undefined && internalCost !== undefined) {
+    // Real-time calculation from selling price and internal cost
+    margin = calculateMarginPercent(sellingPrice, internalCost);
+  } else if (marginPercent === null || marginPercent === undefined) {
+    margin = null;
+  } else if (typeof marginPercent === "string") {
+    margin = parseFloat(marginPercent);
+  } else {
+    margin = marginPercent;
+  }
 
-  // Determine profitability level
-  const level = getProfitabilityLevel(margin, greenThreshold, orangeThreshold);
+  // Determine profitability level using utility function
+  const level = getProfitabilityLevelUtil(margin, greenThreshold, orangeThreshold);
 
   // Get icon, color, and label based on level
   const config = getIndicatorConfig(level, t);
 
-  const formattedMargin = margin !== null ? `${margin.toFixed(1)}%` : "—";
+  const formattedMargin = formatMarginPercent(margin);
 
   const indicator = (
     <Badge
@@ -97,23 +118,6 @@ export function ProfitabilityIndicator({
       </Tooltip>
     </TooltipProvider>
   );
-}
-
-function getProfitabilityLevel(
-  margin: number | null,
-  greenThreshold: number,
-  orangeThreshold: number
-): ProfitabilityLevel {
-  if (margin === null) {
-    return "orange"; // Unknown margin treated as warning
-  }
-  if (margin >= greenThreshold) {
-    return "green";
-  }
-  if (margin >= orangeThreshold) {
-    return "orange";
-  }
-  return "red";
 }
 
 function getIndicatorConfig(
