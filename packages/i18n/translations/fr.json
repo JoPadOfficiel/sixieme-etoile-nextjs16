@@ -4018,6 +4018,13 @@
 				"driver": "conducteur",
 				"hotelRequired": "Hôtel requis"
 			}
+		},
+		"gantt": {
+			"emptyState": {
+				"title": "Aucun chauffeur disponible",
+				"description": "Ajoutez des chauffeurs à votre flotte pour pouvoir planifier vos missions.",
+				"configureDrivers": "Configurer les chauffeurs"
+			}
 		}
 	},
 	"documents": {

@@ -19,3 +19,5 @@ export * from "./ChainBadge";
 export * from "./MissionComplianceDetails";
 export * from "./ComplianceRulesList";
 export * from "./MissionComplianceAuditLogs";
+// Story 27.3: Gantt Timeline
+export * from "./gantt";

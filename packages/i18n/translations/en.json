@@ -4034,6 +4034,13 @@
 				"driver": "driver",
 				"hotelRequired": "Hotel required"
 			}
+		},
+		"gantt": {
+			"emptyState": {
+				"title": "No drivers available",
+				"description": "Add drivers to your fleet to start planning your missions.",
+				"configureDrivers": "Configure drivers"
+			}
 		}
 	},
 	"documents": {
