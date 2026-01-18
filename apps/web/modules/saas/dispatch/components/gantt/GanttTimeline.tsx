@@ -13,6 +13,7 @@ import { memo, useRef, useCallback, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Clock } from "lucide-react";
 import { Button } from "@ui/components/button";
+import { TooltipProvider } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
 import { useTranslations } from "next-intl";
 import type { GanttTimelineProps } from "./types";
@@ -102,13 +103,14 @@ export const GanttTimeline = memo(function GanttTimeline({
 	const virtualItems = rowVirtualizer.getVirtualItems();
 
 	return (
-		<div
-			className={cn(
-				"flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden",
-				className
-			)}
-		>
-			{/* Toolbar */}
+		<TooltipProvider>
+			<div
+				className={cn(
+					"flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden",
+					className
+				)}
+			>
+				{/* Toolbar */}
 			<div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
 				<div className="flex items-center gap-2">
 					<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -209,5 +211,7 @@ export const GanttTimeline = memo(function GanttTimeline({
 				</div>
 			</div>
 		</div>
+
+		</TooltipProvider>
 	);
 });

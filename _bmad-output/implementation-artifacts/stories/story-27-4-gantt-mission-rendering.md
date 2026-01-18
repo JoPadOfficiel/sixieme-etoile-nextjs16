@@ -1,7 +1,7 @@
 # Story 27.4: Gantt Mission Rendering (Hybrid)
 
 **Epic:** 27 - Unified Dispatch (Cockpit)
-**Status:** Review
+**Status:** Done
 **Priority:** High
 **Assigned:** Amelia (Developer)
 
@@ -41,3 +41,21 @@ Implémentation du composant visuel représentant une mission sur la timeline du
 - Utilisation de `radix-ui/react-tooltip` via le composant UI partagé.
 - Styles Tailwind conditionnels via `cn()`.
 - Remplacement du composant inline `MissionBlock` par le nouveau composant atomique `MissionGanttCard`.
+
+## 🧐 Senior Developer Review (AI)
+
+**Date:** 2026-01-18
+**Reviewer:** Antigravity (AI)
+**Outcome:** Approved (with auto-fixes)
+
+### Findings
+1.  **Medium (Fixed)**: Missing `bg-stripes-gray` in global CSS caused AC3 failure (manual missions indistinguishable). Added utility class to `globals.css`.
+2.  **Medium (Fixed)**: Missing internationalization. Refactored `MissionGanttCard` to use `next-intl` and added keys to `en.json`.
+3.  **Low (Fixed)**: `TooltipProvider` was instantiated for every card. Lifted to `GanttTimeline`.
+
+### Resolution
+All issues have been automatically fixed. Tests updated and passing.
+
+## 🔄 Change Log
+
+- **2026-01-18**: Review conducted. Fixed missing CSS, added i18n, optimized TooltipProvider. Status moved to `done`.

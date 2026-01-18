@@ -3,22 +3,36 @@
 @tailwind utilities;
 
 @layer base {
-	* {
-		@apply border-border;
-	}
+  * {
+    @apply border-border;
+  }
 }
 
 @layer utilities {
-	.no-scrollbar::-webkit-scrollbar {
-		display: none;
-	}
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 
-	.no-scrollbar {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .bg-stripes-gray {
+    background-image: linear-gradient(
+      45deg,
+      rgba(200, 200, 200, 0.25) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(200, 200, 200, 0.25) 50%,
+      rgba(200, 200, 200, 0.25) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 10px 10px;
+  }
 }
 
 pre.shiki {
-	@apply mb-4 rounded-lg p-6;
+  @apply mb-4 rounded-lg p-6;
 }

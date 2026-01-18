@@ -2,10 +2,16 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MissionGanttCard } from "../MissionGanttCard";
 import type { GanttMission } from "../types";
+import { TooltipProvider } from "@ui/components/tooltip";
 
 // Mock Tooltip components to avoid issues with Radix UI in tests if needed, 
 // but usually rendering them is fine. If JSDOM has issues, we might mock.
 // For now, let's try direct rendering.
+
+// Mock next-intl
+vi.mock("next-intl", () => ({
+	useTranslations: () => (key: string) => key,
+}));
 
 describe("MissionGanttCard", () => {
     const baseMission: GanttMission = {
@@ -22,12 +28,14 @@ describe("MissionGanttCard", () => {
 
     it("renders mission information correctly", () => {
         render(
-            <MissionGanttCard
-                mission={baseMission}
-                left={100}
-                width={200}
-                isSelected={false}
-            />
+            <TooltipProvider>
+                <MissionGanttCard
+                    mission={baseMission}
+                    left={100}
+                    width={200}
+                    isSelected={false}
+                />
+            </TooltipProvider>
         );
 
         expect(screen.getByText("Acme Corp")).toBeInTheDocument();
@@ -36,12 +44,14 @@ describe("MissionGanttCard", () => {
 
     it("applies correct styles for CALCULATED mission", () => {
         const { container } = render(
-            <MissionGanttCard
-                mission={{ ...baseMission, type: "CALCULATED" }}
-                left={100}
-                width={200}
-                isSelected={false}
-            />
+            <TooltipProvider>
+                <MissionGanttCard
+                    mission={{ ...baseMission, type: "CALCULATED" }}
+                    left={100}
+                    width={200}
+                    isSelected={false}
+                />
+            </TooltipProvider>
         );
 
         // The first child is the div with the styling (TooltipTrigger renders asChild)
@@ -51,12 +61,14 @@ describe("MissionGanttCard", () => {
 
     it("applies correct styles for MANUAL mission", () => {
         const { container } = render(
-            <MissionGanttCard
-                mission={{ ...baseMission, type: "MANUAL" }}
-                left={100}
-                width={200}
-                isSelected={false}
-            />
+            <TooltipProvider>
+                <MissionGanttCard
+                    mission={{ ...baseMission, type: "MANUAL" }}
+                    left={100}
+                    width={200}
+                    isSelected={false}
+                />
+            </TooltipProvider>
         );
 
         const card = container.firstElementChild;
@@ -65,12 +77,14 @@ describe("MissionGanttCard", () => {
 
     it("applies correct styles for PENDING status", () => {
         const { container } = render(
-            <MissionGanttCard
-                mission={{ ...baseMission, status: "PENDING" }}
-                left={100}
-                width={200}
-                isSelected={false}
-            />
+            <TooltipProvider>
+                <MissionGanttCard
+                    mission={{ ...baseMission, status: "PENDING" }}
+                    left={100}
+                    width={200}
+                    isSelected={false}
+                />
+            </TooltipProvider>
         );
 
         const card = container.firstElementChild;
@@ -82,12 +96,14 @@ describe("MissionGanttCard", () => {
         // unit testing the trigger is often enough. 
         // But we can snapshot the component to ensure structure.
         const { asFragment } = render(
-            <MissionGanttCard
-                mission={baseMission}
-                left={100}
-                width={200}
-                isSelected={false}
-            />
+            <TooltipProvider>
+                <MissionGanttCard
+                    mission={baseMission}
+                    left={100}
+                    width={200}
+                    isSelected={false}
+                />
+            </TooltipProvider>
         );
         expect(asFragment()).toMatchSnapshot();
     });

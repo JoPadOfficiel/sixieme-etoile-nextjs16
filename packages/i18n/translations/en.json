@@ -4049,6 +4049,13 @@
 				"title": "No drivers available",
 				"description": "Add drivers to your fleet to start planning your missions.",
 				"configureDrivers": "Configure drivers"
+			},
+			"card": {
+				"mission": "Mission",
+				"time": "Time",
+				"pickup": "Pickup",
+				"dropoff": "Dropoff",
+				"unknownClient": "Unknown Client"
 			}
 		}
 	},
