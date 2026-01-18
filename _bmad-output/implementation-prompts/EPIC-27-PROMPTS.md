@@ -586,3 +586,433 @@ AGENT RECOMMANDÉ : Windsurf.
 
 CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
 ```
+
+---
+
+## Story 27.7: Live Map - Mission Context Layer
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.7 - Live Map Mission Context Layer
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.7
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-7-map-mission-route
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET pour afficher le tracé (Polyline) de la mission sélectionnée.
+   - Utilise `sourceData.geometry` s'il existe (Google encoded polyline).
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Non applicable.
+   - Navigateur MCP : Vérifie que la carte zoome bien sur le trajet lors de la sélection.
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie le cas d'une mission MANUELLE (Pas de tracé -> Pas d'erreur).
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-7-live-map-mission-context-layer: backlog" à "27-7-live-map-mission-context-layer: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.7 :
+Compréhension contextuelle géographique.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Decodage polyline.
+- FitBounds.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 27.8: Map - Smart Assignment Suggestions
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.8 - Map Smart Assignment Suggestions
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.8
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-8-map-suggestions
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET de l'algorithme de suggestion (Distance Euclidienne simple ou appel API Route Matrix).
+   - Met en surbrillance les 3 chauffeurs les plus proches.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste l'algo de tri par distance.
+   - Navigateur MCP : Vérifie le rendu visuel (Halo ou Couleur distincte pour les candidats).
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie la performance avec 50 chauffeurs.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-8-map-smart-assignment-suggestions: backlog" à "27-8-map-smart-assignment-suggestions: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.8 :
+Aide à la décision.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Calcul géospatial client-side (Turf.js ou simple Haversine) pour réactivité immédiate.
+
+AGENT RECOMMANDÉ : Google Jules / Windsurf.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 27.11: Inspector Panel - Quick Actions
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.11 - Inspector Panel Quick Actions
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.11
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-11-inspector-actions
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET du panneau latéral droit.
+   - Boutons : Unassign, Edit Route (ouvre modal Yolo), Cancel.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste les handlers de clic.
+   - Navigateur MCP : Vérifie que le clic sur 'Unassign' met à jour le Gantt et remet la mission dans le Backlog.
+   - Curl : Non applicable.
+   - Vérification DB : Vérifie l'état de la mission en base.
+   - Couverture : Vérifie l'appel du modal d'édition.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-11-inspector-panel-quick-actions: backlog" à "27-11-inspector-panel-quick-actions: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.11 :
+Panneau de détails et actions rapides.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Composant UI Shadcn Sheet ou Panel.
+- Connexion aux mutations API.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 27.12: Gantt - Time & Zoom Controls
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.12 - Gantt Time Zoom Controls
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.12
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-12-gantt-zoom
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET des contrôles de zoom (X-Axis scale).
+   - Boutons "Today", "Zoom In (+)", "Zoom Out (-)".
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste la logique de changement d'échelle (pixels per hour).
+   - Navigateur MCP : Vérifie que le Gantt se redessine correctement lors du zoom.
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie les bornes (Zoom max / Zoom min).
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-12-gantt-time-zoom-controls: backlog" à "27-12-gantt-time-zoom-controls: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.12 :
+Navigation temporelle.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Manipuler le state du Gantt (viewPort ou timeScale).
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 27.13: Real-Time Updates
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.13 - Real-Time Updates (Polling/Socket)
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.13
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-13-realtime-updates
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET de la configuration TanStack Query ().
+   - OU implémente Supabase Realtime si disponible.
+   - Privilégie le Polling (10s) pour la robustesse initiale.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Non applicable.
+   - Navigateur MCP : Ouvre deux fenêtres. Modifie dans l'une, vérifie la mise à jour dans l'autre.
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie que le focus window revalidation est actif.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-13-real-time-updates-polling-socket: backlog" à "27-13-real-time-updates-polling-socket: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.13 :
+Synchronisation multi-utilisateurs.
+
+DÉTAILS TECHNIQUES REQUIS :
+- React Query configuration globale ou locale au Dispatch.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 27.14: Export Schedule
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 27 - Unified Dispatch (Cockpit)
+- Sélectionne la story spécifique : Story 27.14 - Export Schedule
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 27.14
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/27-14-export-schedule
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Fournis le CODE COMPLET de la génération PDF du planning.
+   - Liste linéaire des missions par chauffeur pour la journée.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Non applicable.
+   - Navigateur MCP : Génère le PDF et vérifie qu'il contient tous les chauffeurs actifs.
+   - Curl : Non applicable.
+   - Vérification DB : Non applicable.
+   - Couverture : Vérifie la lisibilité.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "27-14-export-schedule: backlog" à "27-14-export-schedule: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 27.14 :
+Impression papier pour le bureau.
+
+DÉTAILS TECHNIQUES REQUIS :
+- React-PDF renderer.
+- Format A4 Paysage.
+
+AGENT RECOMMANDÉ : Antigravity / Windsurf.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
