@@ -601,7 +601,7 @@
   },
   {
     "epic": "19",
-    "title": "Critical Pricing Engine Bug Fixes & Quote System Stabilization",
+    "title": "Pricing Engine Critical Fixes & Quote System Stabilization",
     "stories": [
       {
         "id": "19.1",
@@ -621,7 +621,7 @@
       },
       {
         "id": "19.5",
-        "title": "Fix OFF_GRID Trip Type to Show Manual Pricing UI"
+        "title": "Fix OFFGRID Trip Type to Show Manual Pricing UI"
       },
       {
         "id": "19.6",
@@ -679,11 +679,11 @@
       },
       {
         "id": "20.2",
-        "title": "Migrate to Google Routes API"
+        "title": "Migrate Google Maps from Legacy DirectionsService to Routes API"
       },
       {
         "id": "20.3",
-        "title": "Integrate Real Toll Costs from Routes API"
+        "title": "Integrate Real Toll Costs from Google Routes API"
       },
       {
         "id": "20.4",
@@ -746,6 +746,10 @@
       {
         "id": "21.7",
         "title": "Enhanced TripTransparency Interface with Detailed Calculation"
+      },
+      {
+        "id": "21.8",
+        "title": "Automated Testing and API Validation"
       },
       {
         "id": "21.8",
@@ -812,6 +816,268 @@
       {
         "id": "22.13",
         "title": "Update Documentation and Training Materials"
+      }
+    ]
+  },
+  {
+    "epic": "23",
+    "title": "Critical Bug Fixes & Vehicle Category Pricing Filters",
+    "stories": [
+      {
+        "id": "23.1",
+        "title": "Fix Pricing Routes/Excursions/Disposals Loading State Bug"
+      },
+      {
+        "id": "23.2",
+        "title": "Fix MultiZoneSelect Component Click Interaction Bug"
+      },
+      {
+        "id": "23.3",
+        "title": "Fix Pricing Adjustment Dialogs Freeze on Cancel/Save"
+      },
+      {
+        "id": "23.4",
+        "title": "Fix Positioning Costs Display in Quote Trip Transparency"
+      },
+      {
+        "id": "23.5",
+        "title": "Add Vehicle Category Field to Pricing Adjustment Data Models"
+      },
+      {
+        "id": "23.6",
+        "title": "Implement Vehicle Category Filter UI in Pricing Adjustment Forms"
+      },
+      {
+        "id": "23.7",
+        "title": "Update Pricing Engine to Filter by Vehicle Category"
+      },
+      {
+        "id": "23.8",
+        "title": "Display Vehicle Category Column in Pricing Adjustment Lists"
+      },
+      {
+        "id": "23.9",
+        "title": "Add Vehicle Category Filter to Quote Fee/Promotion Catalog"
+      },
+      {
+        "id": "23.10",
+        "title": "Implement Automated E2E Tests for Bug Fixes"
+      },
+      {
+        "id": "23.11",
+        "title": "Implement Vehicle Category Filter Tests"
+      },
+      {
+        "id": "23.12",
+        "title": "Update Documentation and User Guide"
+      }
+    ]
+  },
+  {
+    "epic": "24",
+    "title": "Agency Mini-CRM & Bidirectional Pricing",
+    "stories": [
+      {
+        "id": "24.1",
+        "title": "Create EndCustomer Data Model"
+      },
+      {
+        "id": "24.2",
+        "title": "Implement EndCustomer CRUD API"
+      },
+      {
+        "id": "24.3",
+        "title": "Add EndCustomer Section to Partner Contact Detail Page"
+      },
+      {
+        "id": "24.4",
+        "title": "Add EndCustomer Selector to Quote Creation Form"
+      },
+      {
+        "id": "24.5",
+        "title": "Display EndCustomer Name on Quote Summary and PDF"
+      },
+      {
+        "id": "24.6",
+        "title": "Display EndCustomer Name on Invoice Documents"
+      },
+      {
+        "id": "24.7",
+        "title": "Integrate EndCustomer in Dispatch Interface"
+      },
+      {
+        "id": "24.8",
+        "title": "Link Difficulty Score to EndCustomer for Pricing"
+      },
+      {
+        "id": "24.9",
+        "title": "Implement Bidirectional Pricing Toggle in Quote Form"
+      },
+      {
+        "id": "24.10",
+        "title": "Add EndCustomer Search and Filtering"
+      },
+      {
+        "id": "24.11",
+        "title": "Implement Automated E2E Tests for Mini-CRM"
+      },
+      {
+        "id": "24.12",
+        "title": "Update Documentation for Mini-CRM Feature"
+      }
+    ]
+  },
+  {
+    "epic": "25",
+    "title": "Documents, Payments & Deep Linking Enhancements",
+    "stories": [
+      {
+        "id": "25.1",
+        "title": "Generate & Manage Mission Sheets (Fiche Mission)"
+      },
+      {
+        "id": "25.2",
+        "title": "EU-Compliant Invoice & Quote PDF Layout"
+      },
+      {
+        "id": "25.3",
+        "title": "Organisation Document Personalization"
+      },
+      {
+        "id": "25.4",
+        "title": "B2C Invoicing Address & Agency Transparency"
+      },
+      {
+        "id": "25.5",
+        "title": "Deep Linking Navigation & CRM UX Improvements"
+      },
+      {
+        "id": "25.6",
+        "title": "Multi-Invoice Payment Tracking (Lettrage)"
+      }
+    ]
+  },
+  {
+    "epic": "26",
+    "title": "Flexible \"Yolo Mode\" Billing (Universal Blocks)",
+    "stories": [
+      {
+        "id": "26.1",
+        "title": "Database Schema Update for Hybrid Blocks & Mission Model"
+      },
+      {
+        "id": "26.2",
+        "title": "Backward Compatibility Migration Script"
+      },
+      {
+        "id": "26.3",
+        "title": "Hybrid Block Validation Layer (Zod)"
+      },
+      {
+        "id": "26.4",
+        "title": "Backend API - CRUD for Nested Lines & Totals"
+      },
+      {
+        "id": "26.5",
+        "title": "UI - Universal Block Row Component"
+      },
+      {
+        "id": "26.6",
+        "title": "UI - Click-to-Edit & Inline Forms"
+      },
+      {
+        "id": "26.7",
+        "title": "UI - Drag & Drop Reordering & Grouping"
+      },
+      {
+        "id": "26.8",
+        "title": "UI - Slash Commands Menu"
+      },
+      {
+        "id": "26.9",
+        "title": "Operational \"Detach\" Logic"
+      },
+      {
+        "id": "26.10",
+        "title": "Real-Time Profitability Computation"
+      },
+      {
+        "id": "26.11",
+        "title": "PDF Generator - pure Display Mode"
+      },
+      {
+        "id": "26.12",
+        "title": "PDF Generator - Mission Order (Operational Mode)"
+      },
+      {
+        "id": "26.13",
+        "title": "Block Presets / Templates (Bonus)"
+      },
+      {
+        "id": "26.14",
+        "title": "Undo/Redo History support"
+      }
+    ]
+  },
+  {
+    "epic": "27",
+    "title": "Unified Dispatch (Cockpit) & Live Operations",
+    "stories": [
+      {
+        "id": "27.1",
+        "title": "Dispatch Shell & Navigation"
+      },
+      {
+        "id": "27.2",
+        "title": "Backend - Mission Synchronization Service"
+      },
+      {
+        "id": "27.3",
+        "title": "Gantt - Core Timeline Rendering"
+      },
+      {
+        "id": "27.4",
+        "title": "Gantt - Mission Rendering (Hybrid)"
+      },
+      {
+        "id": "27.5",
+        "title": "Unassigned Backlog - Sidebar Logic"
+      },
+      {
+        "id": "27.6",
+        "title": "Live Map - Driver Locations Layer"
+      },
+      {
+        "id": "27.7",
+        "title": "Live Map - Mission Context Layer"
+      },
+      {
+        "id": "27.8",
+        "title": "Map - Smart Assignment Suggestions"
+      },
+      {
+        "id": "27.9",
+        "title": "Dispatch Actions - Drag & Drop Assignment"
+      },
+      {
+        "id": "27.10",
+        "title": "Conflict Detection - RSE & Calendar"
+      },
+      {
+        "id": "27.11",
+        "title": "Inspector Panel - Quick Actions"
+      },
+      {
+        "id": "27.12",
+        "title": "Gantt - Time & Zoom Controls"
+      },
+      {
+        "id": "27.13",
+        "title": "Real-Time Updates (Polling/Socket)"
+      },
+      {
+        "id": "27.14",
+        "title": "Export Schedule"
       }
     ]
   }
