@@ -35,6 +35,9 @@ Implémentation du composant visuel représentant une mission sur la timeline du
 - `apps/web/modules/saas/dispatch/components/gantt/MissionGanttCard.tsx` (Nouveau)
 - `apps/web/modules/saas/dispatch/components/gantt/__tests__/MissionGanttCard.test.tsx` (Nouveau)
 - `apps/web/modules/saas/dispatch/components/gantt/GanttDriverRow.tsx` (Modifié - Utilisation de MissionGanttCard)
+- `apps/web/modules/saas/dispatch/components/gantt/GanttTimeline.tsx` (Modifié - Lift TooltipProvider)
+- `apps/web/app/globals.css` (Modifié - bg-stripes-gray)
+- `packages/i18n/translations/en.json` (Modifié - Traductions)
 - `apps/web/modules/saas/dispatch/components/gantt/types.ts` (Consulté)
 
 ### Détails Techniques
@@ -59,3 +62,4 @@ All issues have been automatically fixed. Tests updated and passing.
 ## 🔄 Change Log
 
 - **2026-01-18**: Review conducted. Fixed missing CSS, added i18n, optimized TooltipProvider. Status moved to `done`.
+- **2026-01-18**: Adversarial review follow-up. Fixed dark mode stripes via CSS variables, completed internationalization, added missing files to documentation, and improved card responsiveness for small widths. Snapshot tests updated.

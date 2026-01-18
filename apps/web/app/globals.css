@@ -8,6 +8,14 @@
   }
 }
 
+:root {
+	--stripe-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark {
+	--stripe-color: rgba(255, 255, 255, 0.1);
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -21,11 +29,11 @@
   .bg-stripes-gray {
     background-image: linear-gradient(
       45deg,
-      rgba(200, 200, 200, 0.25) 25%,
+      var(--stripe-color) 25%,
       transparent 25%,
       transparent 50%,
-      rgba(200, 200, 200, 0.25) 50%,
-      rgba(200, 200, 200, 0.25) 75%,
+      var(--stripe-color) 50%,
+      var(--stripe-color) 75%,
       transparent 75%,
       transparent
     );

@@ -69,7 +69,10 @@ export const MissionGanttCard = memo(function MissionGanttCard({
 					}}
 				>
 					{/* Card Content */}
-					<div className="flex flex-col w-full">
+					<div className={cn(
+						"flex flex-col w-full",
+						width < 60 && "hidden"
+					)}>
 						<span className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight">
 							{mission.clientName || t("unknownClient")}
 						</span>
@@ -113,7 +116,7 @@ export const MissionGanttCard = memo(function MissionGanttCard({
 							</p>
 						)}
 						<p className="mt-1 pt-1 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 uppercase tracking-wider">
-							{mission.type} Source
+							{t("source", { type: mission.type })}
 						</p>
 					</div>
 				</div>
