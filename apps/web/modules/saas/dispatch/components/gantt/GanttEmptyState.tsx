@@ -10,7 +10,7 @@
 
 import { memo } from "react";
 import { Users, Settings } from "lucide-react";
-import { Button } from "@ui/components/button";
+import { buttonVariants } from "@ui/components/button";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import Link from "next/link";
@@ -44,12 +44,13 @@ export const GanttEmptyState = memo(function GanttEmptyState({
 			</p>
 
 			{organization?.slug && (
-				<Button asChild variant="outline">
-					<Link href={`/app/${organization.slug}/drivers`}>
-						<Settings className="w-4 h-4 mr-2" />
-						{t("emptyState.configureDrivers")}
-					</Link>
-				</Button>
+				<Link 
+					href={`/app/${organization.slug}/drivers`}
+					className={buttonVariants({ variant: "outline" })}
+				>
+					<Settings className="w-4 h-4 mr-2" />
+					{t("emptyState.configureDrivers")}
+				</Link>
 			)}
 		</div>
 	);

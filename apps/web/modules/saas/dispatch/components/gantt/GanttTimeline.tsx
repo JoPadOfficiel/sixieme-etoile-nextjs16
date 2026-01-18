@@ -42,10 +42,8 @@ export const GanttTimeline = memo(function GanttTimeline({
 	className,
 }: GanttTimelineProps) {
 	const t = useTranslations("dispatch.gantt");
-	const parentRef = useRef<HTMLDivElement>(null);
-	const contentRef = useRef<HTMLDivElement>(null);
 	const sidebarRef = useRef<HTMLDivElement>(null);
-	const { headerRef, contentRef: scrollContentRef, handleScroll: handleHorizontalScroll, scrollTo } = useGanttScroll();
+	const { headerRef, contentRef, handleScroll: handleHorizontalScroll, scrollTo } = useGanttScroll();
 
 	// Time scale configuration
 	const { config } = useGanttTimeScale({
@@ -60,7 +58,7 @@ export const GanttTimeline = memo(function GanttTimeline({
 	// Virtualization for driver rows
 	const rowVirtualizer = useVirtualizer({
 		count: drivers.length,
-		getScrollElement: () => parentRef.current,
+		getScrollElement: () => contentRef.current,
 		estimateSize: () => ROW_HEIGHT,
 		overscan: OVERSCAN_COUNT,
 	});
@@ -70,11 +68,11 @@ export const GanttTimeline = memo(function GanttTimeline({
 		if (isNowVisible) {
 			// Scroll to center on current time
 			const nowX = scrollToNow();
-			const containerWidth = scrollContentRef.current?.clientWidth || 0;
+			const containerWidth = contentRef.current?.clientWidth || 0;
 			const scrollPosition = Math.max(0, nowX - containerWidth / 2);
 			scrollTo(scrollPosition);
 		}
-	}, [isNowVisible, scrollToNow, scrollTo, scrollContentRef]);
+	}, [isNowVisible, scrollToNow, scrollTo, contentRef]);
 
 	// Synchronize vertical scroll between sidebar and content (M2 fix)
 	const handleVerticalScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -85,15 +83,15 @@ export const GanttTimeline = memo(function GanttTimeline({
 		if (contentRef.current && e.currentTarget !== contentRef.current) {
 			contentRef.current.scrollTop = scrollTop;
 		}
-	}, []);
+	}, [contentRef]);
 
 	// Handle jump to now button
 	const handleJumpToNow = useCallback(() => {
 		const nowX = scrollToNow();
-		const containerWidth = scrollContentRef.current?.clientWidth || 0;
+		const containerWidth = contentRef.current?.clientWidth || 0;
 		const scrollPosition = Math.max(0, nowX - containerWidth / 2);
 		scrollTo(scrollPosition);
-	}, [scrollToNow, scrollTo, scrollContentRef]);
+	}, [scrollToNow, scrollTo, contentRef]);
 
 	// Empty state
 	if (drivers.length === 0) {

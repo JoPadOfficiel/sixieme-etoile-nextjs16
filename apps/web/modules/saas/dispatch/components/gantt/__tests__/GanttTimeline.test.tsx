@@ -36,10 +36,10 @@ vi.mock("@saas/organizations/hooks/use-active-organization", () => ({
 	}),
 }));
 
-// Mock date-fns locale
-vi.mock("date-fns/locale", () => ({
-	fr: {},
-}));
+// Mock date-fns locale - REMOVED to use real locale
+// vi.mock("date-fns/locale", () => ({
+// 	fr: {},
+// }));
 
 const mockDrivers: GanttDriver[] = [
 	{ id: "driver-1", name: "Jean Dupont", status: "AVAILABLE", missions: [] },

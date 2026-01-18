@@ -3634,6 +3634,7 @@
 	},
 	"dispatch": {
 		"title": "Dispatch",
+		"backlog": "Backlog",
 		"subtitle": "{count, plural, =0 {No missions} one {# mission} other {# missions}} to dispatch",
 		"subcontracted": "Subcontracted",
 		"subcontractedDetails": "Subcontractor Details",
