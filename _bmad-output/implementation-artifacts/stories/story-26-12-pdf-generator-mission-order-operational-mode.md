@@ -55,3 +55,28 @@ As a **dispatcher**, I want the **Mission Order** PDF to reflect the strict oper
 - **Code:** `packages/api/src/services/pdf-generator.ts`
 - **Code:** `packages/api/src/routes/vtc/documents.ts`
 - **Tests:** `packages/api/src/services/__tests__/pdf-generator.test.ts`
+
+## Validated Review
+### Review Findings
+1. **Critical Functionality Bug:** The API endpoint `POST /documents/generate/mission-order/:quoteId` failed to include `lines` in the Prisma query.
+   - **Impact:** `quote.lines` was undefined, causing `isManual` to always evaluate to `false`. This effectively disabled AC2 (Manual Line Handling) and the "VOIR NOTES" warning badge.
+   - **Resolution:** Added `lines: true` to the `include` clause in `packages/api/src/routes/vtc/documents.ts`.
+
+2. **Visual Verification:**
+   - **Operational Mode:** Logic correctly prioritizes `pickupAddress` (Source Data) over display labels for non-manual missions (AC1).
+   - **Manual Mode:** Logic correctly displays `displayLabel` and renders the Red Warning Badge (`WARNING_RED` confirmed defined) (AC2).
+   - **Styling:** Adheres to corporate branding and layout specs (AC3).
+
+3. **Status:**
+   - All critical issues resolved.
+   - Codebase now compliant with requirements.
+   - **Story marked as DONE.**
+
+### Formal Code Review Findings
+1. **Determinism:** The `lines` include in `documents.ts` relied on default DB order, which is not guaranteed.
+   - **Fix:** Added `orderBy: { sortOrder: "asc" }` to ensure deterministic behavior for index-based checks.
+2. **Security:** `loadLogoAsBase64` lacked directory traversal protection.
+   - **Fix:** Added check for `..` in path/url.
+3. **Type Safety:** `transformOrganizationToPdfData` and `transformQuoteToPdfData` used `any`.
+   - **Fix:** Refactored to use `Prisma.OrganizationGetPayload` and typed casts for `displayData` JSON fields.
+4. **Conclusion:** Code quality improved; critical functional and security issues resolved. Status remains **DONE**.

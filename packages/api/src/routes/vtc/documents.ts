@@ -80,6 +80,11 @@ function isSvg(buffer: Buffer): boolean {
  */
 async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<string | null> {
 	if (!pathOrUrl) return null;
+	// Security: Prevent directory traversal
+	if (pathOrUrl.includes("..")) {
+		console.error("Potential directory traversal attempt in logo path:", pathOrUrl);
+		return null;
+	}
 	try {
 		let buffer: Buffer;
 		let mime = "image/jpeg"; // Default
@@ -150,7 +155,12 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 /**
  * Transform organization to PDF data format
  */
-function transformOrganizationToPdfData(org: any): OrganizationPdfData {
+/**
+ * Transform organization to PDF data format
+ */
+function transformOrganizationToPdfData(org: Prisma.OrganizationGetPayload<{
+	include: { organizationPricingSettings: true }
+}>): OrganizationPdfData {
 	const settings = org.organizationPricingSettings;
 
 	// Parse metadata for legal info (Story 25.1)
@@ -193,11 +203,11 @@ function transformOrganizationToPdfData(org: any): OrganizationPdfData {
 		bic: metadata.bic ?? settings?.bic ?? null,
 		
 		// Extended legal info for Mission Order footer
-		rcs: metadata.rcs ?? settings?.rcs ?? null,
+		rcs: metadata.rcs ?? (settings as any)?.rcs ?? null,
 		rm: metadata.rm ?? null,
-		ape: metadata.ape ?? settings?.ape ?? null, // Code NAF
-		capital: settings?.capital ?? null, // Capital often manually set
-		licenseVtc: settings?.licenseVtc ?? null,
+		ape: metadata.ape ?? (settings as any)?.ape ?? null, // Code NAF
+		capital: (settings as any)?.capital ?? null, // Capital often manually set
+		licenseVtc: (settings as any)?.licenseVtc ?? null,
 	};
 }
 
@@ -270,16 +280,7 @@ function transformQuoteToPdfData(quote: {
 	appliedRules?: any;
 	stayDays?: any[];
 	// Story 26.11: Hybrid Blocks support
-	lines?: {
-		label: string;
-		quantity: unknown;
-		unitPrice: unknown;
-		totalPrice: unknown;
-		vatRate: unknown;
-		type: string;
-		displayData: any;
-		sortOrder: number;
-	}[];
+	lines?: Prisma.QuoteLineGetPayload<any>[];
 }, language: DocumentLanguage = 'BILINGUAL'): QuotePdfData {
 	// Parse applied rules
 	const parsedRules = parseAppliedRules(quote.appliedRules);
@@ -343,7 +344,15 @@ function transformQuoteToPdfData(quote: {
 	// This overrides the legacy line generation above
 	if (quote.lines && quote.lines.length > 0) {
 		lines = quote.lines.map(l => {
-			const display = l.displayData || {};
+			const display = (l.displayData as unknown as {
+				label?: string;
+				quantity?: number;
+				unitPrice?: number;
+				totalPrice?: number;
+				vatRate?: number;
+				totalVat?: number;
+			}) || {};
+			
 			return {
 				description: display.label || l.label,
 				quantity: Number(display.quantity ?? 1),
@@ -1045,6 +1054,10 @@ export const documentsRouter = new Hono()
 					endCustomer: true,
 					// Story 25.1: Include second driver for RSE double crew missions
 					secondDriver: true,
+					// Story 26.12: Include lines to detect Manual/Yolo missions
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
 				},
 			});
 
