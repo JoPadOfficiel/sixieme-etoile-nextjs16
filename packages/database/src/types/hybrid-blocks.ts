@@ -123,26 +123,34 @@ export interface MissionExecutionData {
 
 /**
  * Type guards for runtime validation
+ * 
+ * NOTE: These type guards now delegate to Zod schemas from Story 26.3
+ * for validation consistency. The schemas are the single source of truth.
  */
+
+// Import Zod schemas for validation (Story 26.3)
+import {
+  QuoteLineSourceDataSchema,
+  QuoteLineDisplayDataSchema,
+  MissionSourceDataSchema,
+  MissionExecutionDataSchema,
+} from '../schemas/hybrid-blocks';
+
 export function isQuoteLineSourceData(data: unknown): data is QuoteLineSourceData {
-  if (!data || typeof data !== 'object') return false;
-  const d = data as Record<string, unknown>;
-  return typeof d.pricingMode === 'string' && typeof d.tripType === 'string';
+  return QuoteLineSourceDataSchema.safeParse(data).success;
 }
 
 export function isQuoteLineDisplayData(data: unknown): data is QuoteLineDisplayData {
-  if (!data || typeof data !== 'object') return false;
-  const d = data as Record<string, unknown>;
-  return typeof d.label === 'string';
+  return QuoteLineDisplayDataSchema.safeParse(data).success;
 }
 
 export function isMissionSourceData(data: unknown): data is MissionSourceData {
-  if (!data || typeof data !== 'object') return false;
-  const d = data as Record<string, unknown>;
-  return typeof d.pickupAddress === 'string' && typeof d.scheduledPickupAt === 'string';
+  return MissionSourceDataSchema.safeParse(data).success;
 }
 
 export function isMissionExecutionData(data: unknown): data is MissionExecutionData {
-  // ExecutionData is always optional/partial
-  return data === null || data === undefined || typeof data === 'object';
+  // ExecutionData is always optional/partial, empty object is valid
+  if (data === null || data === undefined) return true;
+  return MissionExecutionDataSchema.safeParse(data).success;
 }
+

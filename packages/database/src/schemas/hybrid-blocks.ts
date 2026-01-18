@@ -515,7 +515,25 @@ export type MissionInput = z.infer<typeof MissionInputSchema>;
 
 /**
  * Schema for updating quote lines in bulk
- * Used by PATCH /api/quotes/:id/lines
+ * 
+ * Used by PATCH /api/quotes/:id/lines endpoint to replace all lines in a quote.
+ * 
+ * @example
+ * ```typescript
+ * const input = {
+ *   quoteId: 'clxyz123...',
+ *   lines: [
+ *     { type: 'GROUP', label: 'Day 1', ... },
+ *     { type: 'CALCULATED', label: 'Transfer', parentId: 'clxyz123...', ... }
+ *   ],
+ *   recalculateTotals: true
+ * };
+ * const result = UpdateQuoteLinesSchema.safeParse(input);
+ * ```
+ * 
+ * @property quoteId - The quote to update (CUID format)
+ * @property lines - Array of line items (validated by QuoteLinesArraySchema)
+ * @property recalculateTotals - Whether to recalculate quote totals (default: true)
  */
 export const UpdateQuoteLinesSchema = z.object({
   quoteId: z.string().cuid(),
@@ -527,7 +545,24 @@ export type UpdateQuoteLinesInput = z.infer<typeof UpdateQuoteLinesSchema>;
 
 /**
  * Schema for updating invoice lines in bulk
- * Used by PATCH /api/invoices/:id/lines
+ * 
+ * Used by PATCH /api/invoices/:id/lines endpoint to replace all lines in an invoice.
+ * 
+ * @example
+ * ```typescript
+ * const input = {
+ *   invoiceId: 'clxyz456...',
+ *   lines: [
+ *     { blockType: 'CALCULATED', description: 'Transfer Service', ... }
+ *   ],
+ *   recalculateTotals: true
+ * };
+ * const result = UpdateInvoiceLinesSchema.safeParse(input);
+ * ```
+ * 
+ * @property invoiceId - The invoice to update (CUID format)
+ * @property lines - Array of line items (validated by InvoiceLinesArraySchema)
+ * @property recalculateTotals - Whether to recalculate invoice totals (default: true)
  */
 export const UpdateInvoiceLinesSchema = z.object({
   invoiceId: z.string().cuid(),

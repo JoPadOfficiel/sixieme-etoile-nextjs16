@@ -282,24 +282,31 @@ describe('QuoteLinesArraySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should validate GROUP with children (depth = 1)', () => {
+  /**
+   * DESIGN DECISION TEST: tempId vs id for parentId references
+   * 
+   * The parentId field requires CUID format (z.string().cuid()) which means:
+   * - tempId (any string format) CANNOT be used as parentId
+   * - Only persisted IDs (CUIDs) can establish parent-child relationships
+   * 
+   * This is intentional: hierarchical relationships should only be persisted
+   * after lines have database IDs, preventing orphaned references.
+   */
+  it('should FAIL when tempId is used as parentId (requires CUID)', () => {
     const group: QuoteLineInput = {
       ...validGroupLine,
-      tempId: 'group-1',
+      tempId: 'group-1', // Not a CUID
     };
     const child1: QuoteLineInput = {
       ...validCalculatedLine,
       tempId: 'child-1',
-      parentId: 'group-1' as any, // Match tempId
+      parentId: 'group-1' as any, // Attempting to use tempId - will fail CUID validation
       sortOrder: 1,
     };
-    // Note: For this test to work, we need the parentId to match a group's tempId
-    // But our schema uses CUID validation for parentId
-    // Let's adjust the test to use proper CUIDs
     const result = QuoteLinesArraySchema.safeParse([group, child1]);
-    // This will fail because parentId expects CUID format
-    // The real implementation would use actual CUIDs
-    expect(result.success).toBe(false); // Expected: parentId validation
+    // Expected: FAIL because 'group-1' is not a valid CUID format
+    // Frontend must use actual CUIDs for parent-child relationships
+    expect(result.success).toBe(false);
   });
 
   it('should validate GROUP with CUID children', () => {
