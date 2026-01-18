@@ -3812,7 +3812,14 @@
 			"noCandidates": "No candidate bases within range",
 			"loadingRoutes": "Loading routes...",
 			"clickToSelect": "Click to select this candidate",
-			"more": "more"
+			"more": "more",
+			"driverStatus": {
+				"active": "Active",
+				"inactive": "Inactive",
+				"onMission": "On Mission",
+				"available": "Available",
+				"unavailable": "Unavailable"
+			}
 		},
 		"emptyLegs": {
 			"title": "Empty-Leg Opportunities",

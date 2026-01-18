@@ -25,34 +25,36 @@ La carte doit afficher la dernière position connue de chaque chauffeur sous for
 
 ## Dépendances et Contraintes
 
-- **Tech Stack** : Leaflet (React-Leaflet) requis par instruction spéciale.
+- **Tech Stack** : Google Maps (Intégration via `DispatchMapGoogle`).
 - **Données** : Utiliser un mock JSON pour les positions initiales.
-- **UI** : S'intégrer dans le conteneur de carte existant ou prévu pour `/dispatch`.
-- **Performance** : La carte doit rester fluide même avec 50+ chauffeurs (pas de clustering requis pour l'instant).
+- **UI** : S'intégré dans le composant `DispatchMapGoogle` existant.
+- **Performance** : La carte doit rester fluide même avec 50+ chauffeurs.
 
 ## Notes Techniques
-- Installer `leaflet` et `react-leaflet` si non présents.
-- Créer un composant `LiveFleetMap` isolé.
-- Utiliser des icônes SVG simples ou `L.divIcon` pour les marqueurs personnalisés (Vert/Gris).
-- CSS: Leaflet nécessite l'import de son CSS.
+- Modifier `DispatchMapGoogle.tsx` pour accepter une prop `drivers`.
+- Gérer l'affichage des marqueurs via l'API Google Maps (`google.maps.Marker`).
+- Gestion des couleurs via constantes ou icônes SVG/Path.
+- Intégrer les traductions manquantes pour les statuts.
 
 ## Validation (Amelia)
 **Date:** 2026-01-18
 **Branche:** `feature/27-6-map-drivers`
 
-### Composants Implémentés
-- `LiveFleetMap.tsx`: Carte Leaflet centrée sur Paris avec gestion du zoom et des tuiles (CartoDB Light).
-- `DriverMarker.tsx`: Marqueur personnalisé utilisant `L.divIcon` avec SVG dynamique selon le statut.
-- `driverPositions.ts`: Mock data avec 5 chauffeurs (3 Actifs, 2 Inactifs).
-- `DispatchMain.tsx`: Intégration de la carte Leaflet en remplacement temporaire pour la vue "map".
+### Modifications
+- **Refactoring Majeur** : Passage de Leaflet (initialement implémenté) à Google Maps suite à la Code Review pour maintenir la cohérence du projet.
+- `DispatchMapGoogle.tsx`: Ajout de la logique d'affichage des `drivers` (marqueurs colorés) et gestion du cas sans mission sélectionnée.
+- `DispatchMain.tsx`: Restauration de `DispatchMapGoogle` et suppression des imports Leaflet.
+- `driverPositions.ts`: Mock data conservé.
+- Traductions (`fr.json`, `en.json`): Ajout des clés `driverStatus` et correction de `sidebar.backlog`.
 
 ### Résultat des Tests
-- [x] **Chargement Carte** : La carte s'affiche correctement dans l'onglet Map.
-- [x] **Marqueurs** : 5 marqueurs visibles aux coordonnées spécifiées.
+- [x] **Chargement Carte** : La carte Google Maps s'affiche correctement (API Key OK).
+- [x] **Marqueurs** : 5 marqueurs visibles aux coordonnées spécifiées (Jean Dupont, Marie Curie, etc.).
 - [x] **Code Couleur** : Vérifié via Selenium/Browser.
     - Vert (#10B981) pour les statuts ACTIVE.
     - Gris (#9CA3AF) pour les statuts INACTIVE.
-- [x] **Interaction** : Le survol affiche le nom du chauffeur (ex: "Jean Dupont (ACTIVE)").
+- [x] **Interaction** : Le survol affiche le nom du chauffeur (ex: "Jean Dupont (Active)").
+- [x] **Nettoyage** : Dépendances Leaflet supprimées.
 
 ### Commandes pour Review
 ```bash

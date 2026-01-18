@@ -68,7 +68,7 @@ export function UnassignedSidebar({
 					{!isCollapsed ? (
 						<h2 className="flex items-center gap-2 font-semibold text-muted-foreground text-sm uppercase tracking-wider">
 							<Inbox className="size-4" />
-							{t("sidebar.backlog")} ({totalCount})
+							{t("backlog")} ({totalCount})
 						</h2>
 					) : (
 						<div className="group relative">

@@ -12,6 +12,7 @@ import type { MissionDetail } from "../types";
 import type { OperatingBase } from "../hooks/useOperatingBases";
 import type { CandidateBase, CandidateSegments } from "../types/assignment";
 import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
+import type { DriverPosition } from "../mocks/driverPositions";
 
 /**
  * DispatchMapGoogle Component
@@ -49,6 +50,7 @@ interface DispatchMapGoogleProps {
 	onCandidateSelect?: (vehicleId: string) => void;
 	onCandidateHoverStart?: (vehicleId: string) => void;
 	onCandidateHoverEnd?: () => void;
+	drivers?: DriverPosition[];
 }
 
 // Marker colors
@@ -62,6 +64,8 @@ const COLORS = {
 	candidateBase: "#f59e0b", // amber-500
 	selectedBase: "#8b5cf6", // violet-500
 	hoveredBase: "#ec4899", // pink-500
+	driverActive: "#10B981", // emerald-500
+	driverInactive: "#9CA3AF", // gray-400
 };
 
 export function DispatchMapGoogle({
@@ -80,6 +84,7 @@ export function DispatchMapGoogle({
 	onCandidateSelect,
 	onCandidateHoverStart,
 	onCandidateHoverEnd,
+	drivers = [],
 }: DispatchMapGoogleProps) {
 	const t = useTranslations("dispatch.map");
 	const tCommon = useTranslations("common.map");
@@ -160,9 +165,48 @@ export function DispatchMapGoogle({
 		polylinesRef.current.forEach((polyline) => polyline.setMap(null));
 		polylinesRef.current.clear();
 
-		if (!mission) return;
-
+		polylinesRef.current.clear();
+		
 		const bounds = new google.maps.LatLngBounds();
+
+		// Add Driver Markers (Story 27.6)
+		drivers.forEach((driver) => {
+			if (!driver.lat || !driver.lng) return;
+			const pos = { lat: driver.lat, lng: driver.lng };
+			const isActive = driver.status === "ACTIVE";
+			const color = isActive ? COLORS.driverActive : COLORS.driverInactive;
+			const statusLabel = isActive ? "active" : "inactive";
+			
+			const marker = new google.maps.Marker({
+				map,
+				position: pos,
+				title: `${driver.name} (${t(`driverStatus.${statusLabel}`)})`,
+				icon: {
+					path: google.maps.SymbolPath.CIRCLE,
+					scale: 7,
+					fillColor: color,
+					fillOpacity: 1,
+					strokeColor: "#ffffff",
+					strokeWeight: 2,
+				},
+				zIndex: 60,
+			});
+			
+			markersRef.current.set(`driver-${driver.id}`, marker);
+			bounds.extend(pos);
+		});
+
+		if (!mission) {
+			// If no mission but we have drivers or bases, fit bounds to them
+			if (!bounds.isEmpty()) {
+				map.fitBounds(bounds, 50);
+			} else {
+				// Default to Paris if nothing to show
+				map.setCenter({ lat: 48.8566, lng: 2.3522 });
+				map.setZoom(12);
+			}
+			return;
+		}
 
 		// Add pickup marker
 		if (mission.pickupLatitude && mission.pickupLongitude) {
@@ -382,6 +426,7 @@ export function DispatchMapGoogle({
 		onCandidateSelect,
 		onCandidateHoverStart,
 		onCandidateHoverEnd,
+		drivers,
 	]);
 
 	// Loading state
@@ -405,7 +450,8 @@ export function DispatchMapGoogle({
 	}
 
 	// No mission selected
-	if (!mission) {
+	// No mission selected - still show map if we have drivers
+	if (!mission && drivers.length === 0) {
 		return (
 			<Card className={cn("h-full", className)} data-testid="dispatch-map">
 				<CardContent className="h-full flex items-center justify-center">
@@ -419,7 +465,7 @@ export function DispatchMapGoogle({
 	}
 
 	// Check if mission has coordinates
-	const hasCoordinates = mission.pickupLatitude && mission.pickupLongitude;
+	const hasCoordinates = mission && mission.pickupLatitude && mission.pickupLongitude;
 
 	return (
 		<Card className={cn("h-full overflow-hidden relative", className)} data-testid="dispatch-map">

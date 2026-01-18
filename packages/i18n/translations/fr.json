@@ -3618,6 +3618,7 @@
 	},
 	"dispatch": {
 		"title": "Dispatch",
+		"backlog": "À traiter",
 		"subtitle": "{count, plural, =0 {Aucune mission} one {# mission} other {# missions}} à dispatcher",
 		"subcontracted": "Sous-traité",
 		"subcontractedDetails": "Détails du sous-traitant",
@@ -3795,7 +3796,14 @@
 			"noCandidates": "Aucune base candidate à portée",
 			"loadingRoutes": "Chargement des trajets...",
 			"clickToSelect": "Cliquez pour sélectionner ce candidat",
-			"more": "autres"
+			"more": "autres",
+			"driverStatus": {
+				"active": "Actif",
+				"inactive": "Inactif",
+				"onMission": "En Mission",
+				"available": "Disponible",
+				"unavailable": "Indisponible"
+			}
 		},
 		"emptyLegs": {
 			"title": "Opportunités Empty-Leg",
