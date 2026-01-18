@@ -116,7 +116,7 @@ describe('QuoteLineSourceDataSchema', () => {
 
   it('should allow minimal source data', () => {
     const minimal = {
-      pricingMode: 'FIXED',
+      pricingMode: 'FIXED_GRID', // Use actual Prisma enum value
       tripType: 'EXCURSION',
       calculatedAt: '2026-01-18T10:00:00Z',
     };

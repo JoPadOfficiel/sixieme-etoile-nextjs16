@@ -6,37 +6,41 @@
  * - CALCULATED: requires sourceData (GPS/pricing engine traceability)
  * - MANUAL: allows null sourceData (user-entered values)
  * - GROUP: cannot be nested (max depth = 1), top-level only
+ * 
+ * NOTE: This file imports and re-exports Prisma-generated Zod enums to ensure
+ * consistency with the database schema. Do not manually redefine enums here.
  */
 
 import { z } from 'zod';
 
 // =============================================================================
-// ENUMS (matching Prisma schema)
+// ENUMS (re-exported from Prisma-generated Zod schemas for consistency)
 // =============================================================================
 
-export const QuoteLineTypeInputSchema = z.enum(['CALCULATED', 'MANUAL', 'GROUP']);
-export type QuoteLineTypeInput = z.infer<typeof QuoteLineTypeInputSchema>;
+// Import generated enums from zod-prisma-types to ensure sync with Prisma schema
+import {
+  QuoteLineTypeSchema,
+  MissionStatusSchema,
+  PricingModeSchema,
+  TripTypeSchema,
+  type QuoteLineTypeType,
+  type MissionStatusType,
+  type PricingModeType,
+  type TripTypeType,
+} from '../zod';
 
-export const MissionStatusInputSchema = z.enum([
-  'PENDING',
-  'ASSIGNED',
-  'IN_PROGRESS',
-  'COMPLETED',
-  'CANCELLED'
-]);
-export type MissionStatusInput = z.infer<typeof MissionStatusInputSchema>;
+// Re-export with Input suffix for API validation consistency
+export const QuoteLineTypeInputSchema = QuoteLineTypeSchema;
+export type QuoteLineTypeInput = QuoteLineTypeType;
 
-export const PricingModeInputSchema = z.enum(['FIXED', 'DYNAMIC']);
-export type PricingModeInput = z.infer<typeof PricingModeInputSchema>;
+export const MissionStatusInputSchema = MissionStatusSchema;
+export type MissionStatusInput = MissionStatusType;
 
-export const TripTypeInputSchema = z.enum([
-  'TRANSFER',
-  'EXCURSION',
-  'DISPO',
-  'STAY',
-  'OFF_GRID'
-]);
-export type TripTypeInput = z.infer<typeof TripTypeInputSchema>;
+export const PricingModeInputSchema = PricingModeSchema;
+export type PricingModeInput = PricingModeType;
+
+export const TripTypeInputSchema = TripTypeSchema;
+export type TripTypeInput = TripTypeType;
 
 // =============================================================================
 // DECIMAL HELPERS
@@ -215,15 +219,11 @@ export type QuoteLineInput = z.infer<typeof QuoteLineInputSchema>;
 export const QuoteLinesArraySchema = z.array(QuoteLineInputSchema).superRefine((lines, ctx) => {
   // Build a map of all line identifiers (id or tempId)
   const lineMap = new Map<string, QuoteLineInput>();
-  const groupIds = new Set<string>();
 
-  lines.forEach((line, index) => {
+  lines.forEach((line) => {
     const lineId = line.id || line.tempId;
     if (lineId) {
       lineMap.set(lineId, line);
-      if (line.type === 'GROUP') {
-        groupIds.add(lineId);
-      }
     }
   });
 
@@ -352,15 +352,11 @@ export type InvoiceLineInput = z.infer<typeof InvoiceLineInputSchema>;
  */
 export const InvoiceLinesArraySchema = z.array(InvoiceLineInputSchema).superRefine((lines, ctx) => {
   const lineMap = new Map<string, InvoiceLineInput>();
-  const groupIds = new Set<string>();
 
   lines.forEach((line) => {
     const lineId = line.id || line.tempId;
     if (lineId) {
       lineMap.set(lineId, line);
-      if (line.blockType === 'GROUP') {
-        groupIds.add(lineId);
-      }
     }
   });
 
@@ -443,11 +439,17 @@ export type MissionSourceDataInput = z.infer<typeof MissionSourceDataSchema>;
  * Runtime data recorded during mission execution
  * Based on MissionExecutionData interface from Story 26.1
  */
-const MissionIncidentSchema = z.object({
+/**
+ * Schema for mission incidents during execution
+ * Exported for frontend validation of incident forms
+ */
+export const MissionIncidentSchema = z.object({
   timestamp: z.string().datetime(),
   type: z.string(),
   description: z.string(),
 });
+
+export type MissionIncidentInput = z.infer<typeof MissionIncidentSchema>;
 
 export const MissionExecutionDataSchema = z.object({
   // Actual times
