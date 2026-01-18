@@ -4065,6 +4065,29 @@
 				"unknownClient": "Unknown Client",
 				"source": "{type} Source"
 			}
+		},
+		"inspector": {
+			"title": "Mission Details",
+			"assigned": "Assigned",
+			"unassigned": "Unassigned",
+			"client": "Client",
+			"date": "Date & Time",
+			"assignmentDetails": "Assignment Details",
+			"noVehicleAssigned": "No vehicle assigned",
+			"noDriverAssigned": "No driver assigned",
+			"driver": "Driver",
+			"editRoute": "Edit Route",
+			"unassign": "Unassign",
+			"cancelMission": "Cancel Mission",
+			"cancel": "Cancel",
+			"processing": "Processing...",
+			"missionNotFound": "Select a mission to view details",
+			"confirmUnassignTitle": "Confirm Unassign",
+			"confirmUnassignDescription": "Are you sure you want to unassign this mission? It will return to the backlog.",
+			"confirmUnassign": "Yes, Unassign",
+			"confirmCancelTitle": "Cancel Mission",
+			"confirmCancelDescription": "Are you sure you want to cancel this mission? This action cannot be undone.",
+			"confirmCancel": "Yes, Cancel Mission"
 		}
 	},
 	"documents": {

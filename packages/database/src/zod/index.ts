@@ -232,7 +232,7 @@ export const DriverEmploymentStatusSchema = z.enum(['EMPLOYEE','CONTRACTOR','FRE
 
 export type DriverEmploymentStatusType = `${z.infer<typeof DriverEmploymentStatusSchema>}`
 
-export const QuoteStatusSchema = z.enum(['DRAFT','SENT','VIEWED','ACCEPTED','REJECTED','EXPIRED']);
+export const QuoteStatusSchema = z.enum(['DRAFT','SENT','VIEWED','ACCEPTED','REJECTED','EXPIRED','CANCELLED']);
 
 export type QuoteStatusType = `${z.infer<typeof QuoteStatusSchema>}`
 

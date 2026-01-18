@@ -1495,6 +1495,86 @@ export const missionsRouter = new Hono()
 				},
 			});
 		},
+	)
+
+	// Unassign vehicle/driver from mission (Story 27.11)
+	.post(
+		"/:id/unassign",
+		describeRoute({
+			summary: "Unassign mission",
+			description: "Remove assigned driver and vehicle from mission",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			const quote = await db.quote.findFirst({
+				where: {
+					...withTenantId(id, organizationId),
+					status: "ACCEPTED",
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, { message: "Mission not found" });
+			}
+
+			// Update tripAnalysis to remove assignment data but keep other analysis
+			const tripAnalysis = quote.tripAnalysis as Record<string, unknown> | null;
+			let newTripAnalysis = tripAnalysis;
+			if (tripAnalysis && tripAnalysis.assignment) {
+				const { assignment, ...rest } = tripAnalysis;
+				newTripAnalysis = rest;
+			}
+
+			await db.quote.update({
+				where: { id: quote.id },
+				data: {
+					assignedVehicleId: null,
+					assignedDriverId: null,
+					secondDriverId: null,
+					assignedAt: null,
+					tripAnalysis: newTripAnalysis as any,
+				},
+			});
+
+			return c.json({ success: true, message: "Mission unassigned" });
+		},
+	)
+
+	// Cancel mission (Story 27.11)
+	.post(
+		"/:id/cancel",
+		describeRoute({
+			summary: "Cancel mission",
+			description: "Cancel a mission (changes status to CANCELLED)",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			const quote = await db.quote.findFirst({
+				where: {
+					...withTenantId(id, organizationId),
+					status: "ACCEPTED",
+				},
+			});
+
+			if (!quote) {
+				throw new HTTPException(404, { message: "Mission not found" });
+			}
+
+			await db.quote.update({
+				where: { id: quote.id },
+				data: {
+					status: "CANCELLED",
+				},
+			});
+
+			return c.json({ success: true, message: "Mission cancelled" });
+		},
 	);
 
 /**

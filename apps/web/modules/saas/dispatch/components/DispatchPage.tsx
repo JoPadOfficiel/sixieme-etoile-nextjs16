@@ -1,31 +1,19 @@
 "use client";
 
-import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyPanel";
-import type { PricingResult } from "@saas/quotes/types";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
-import { useMissionCompliance } from "../hooks/useMissionCompliance";
-import { useMissionDetail, useMissionNotesUpdate } from "../hooks/useMissions";
+import { useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
-import { useRemoveSubcontracting } from "../hooks/useRemoveSubcontracting";
-import type { MissionDetail, StayDayListItem } from "../types";
 import type { CandidateBase } from "../types/assignment";
 import { AssignmentDrawer } from "./AssignmentDrawer";
-import { MissionComplianceDetails } from "./MissionComplianceDetails";
-import { MissionContactPanel } from "./MissionContactPanel";
-import { MissionNotesSection } from "./MissionNotesSection";
-import { StaffingCostsSection } from "./StaffingCostsSection";
-import { StaffingTimeline } from "./StaffingTimeline";
-import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { UnassignedSidebar } from "./UnassignedSidebar";
-import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 
-import { DispatchInspector } from "./shell/DispatchInspector";
 // Shell Components
 import { DispatchLayout } from "./shell/DispatchLayout";
 import { DispatchMain } from "./shell/DispatchMain";
 import { DispatchSidebar } from "./shell/DispatchSidebar";
+import { InspectorPanel } from "./InspectorPanel";
 
 /**
  * DispatchPage Component
@@ -70,16 +58,6 @@ export function DispatchPage() {
 		enabled: isAssignmentDrawerOpen && !!selectedMissionId,
 	});
 
-	// Compliance details
-	const { data: complianceDetails, isLoading: complianceLoading } =
-		useMissionCompliance({
-			missionId: selectedMissionId,
-			enabled: !!selectedMissionId,
-		});
-
-	// Notes update hook
-	const { updateNotes, isUpdating: isUpdatingNotes } = useMissionNotesUpdate();
-
 	// Transform candidates to map-friendly format
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const candidateBases = useMemo<CandidateBase[]>(() => {
@@ -100,7 +78,7 @@ export function DispatchPage() {
 
 	// Handle mission selection
 	const handleSelectMission = useCallback(
-		(missionId: string) => {
+		(missionId: string | null) => {
 			setSelectedMissionId(missionId);
 		},
 		[setSelectedMissionId],
@@ -135,33 +113,6 @@ export function DispatchPage() {
 		[],
 	);
 
-	// Remove subcontracting
-	const removeSubcontractingMutation = useRemoveSubcontracting({
-		onSuccess: () => {
-			if (selectedMissionId) {
-				setIsAssignmentDrawerOpen(true);
-			}
-		},
-		onError: (error) => {
-			console.error("Failed to remove subcontracting:", error);
-		},
-	});
-
-	const handleChangeSubcontractor = useCallback(() => {
-		console.log("Change subcontractor for mission:", selectedMissionId);
-	}, [selectedMissionId]);
-
-	const handleRemoveSubcontractor = useCallback(() => {
-		if (selectedMissionId) {
-			removeSubcontractingMutation.mutate(selectedMissionId);
-		}
-	}, [selectedMissionId, removeSubcontractingMutation]);
-
-	// Convert mission detail to PricingResult
-	const pricingResult = selectedMission
-		? missionToPricingResult(selectedMission)
-		: null;
-
 	return (
 		<>
 			<DispatchLayout
@@ -181,85 +132,23 @@ export function DispatchPage() {
 					</DispatchSidebar>
 				}
 				// Right Inspector: Mission Details
-				inspector={
-					selectedMissionId ? (
-						<DispatchInspector>
-							<div className="space-y-4 p-4">
-								<h3 className="border-b pb-2 font-semibold text-lg">
-									Mission Inspector
-								</h3>
-								<TripTransparencyPanel
-									pricingResult={pricingResult}
-									isLoading={missionDetailLoading}
-								/>
-								<MissionContactPanel
-									mission={selectedMission || null}
-									isLoading={missionDetailLoading}
-								/>
-								{selectedMission && (
-									<MissionNotesSection
-										notes={selectedMission.notes}
-										missionId={selectedMissionId}
-										onUpdateNotes={async (notes) => {
-											await updateNotes({
-												quoteId: selectedMission.quoteId,
-												notes,
-											});
-										}}
-										isUpdating={isUpdatingNotes}
-									/>
-								)}
-								<StaffingCostsSection
-									tripAnalysis={selectedMission?.tripAnalysis ?? null}
-									isLoading={missionDetailLoading}
-								/>
-								{selectedMission?.tripType === "STAY" && (
-									<StaffingTimeline
-										stayDays={
-											(selectedMission?.tripAnalysis as Record<string, unknown>)
-												?.stayDays as StayDayListItem[] | undefined
-										}
-									/>
-								)}
-								<MissionComplianceDetails
-									complianceDetails={complianceDetails ?? null}
-									isLoading={complianceLoading}
-								/>
-								<SubcontractingSuggestions missionId={selectedMissionId} />
-								<VehicleAssignmentPanel
-									assignment={selectedMission?.assignment || null}
-									isSubcontracted={selectedMission?.isSubcontracted ?? false}
-									subcontractor={selectedMission?.subcontractor ?? null}
-									isLoading={missionDetailLoading}
-									onAssign={
-										selectedMission && !selectedMission.isSubcontracted
-											? handleOpenAssignmentDrawer
-											: undefined
-									}
-									onChangeSubcontractor={
-										selectedMission?.isSubcontracted
-											? handleChangeSubcontractor
-											: undefined
-									}
-									onRemoveSubcontractor={
-										selectedMission?.isSubcontracted
-											? handleRemoveSubcontractor
-											: undefined
-									}
-									quoteId={selectedMission?.quoteId}
-								/>
-							</div>
-						</DispatchInspector>
-					) : null
-				}
+				inspector={null} // Substituted by InspectorPanel sheet
 			>
 				{/* Main Content: Map / Gantt */}
 				<DispatchMain
 					mission={selectedMission || null}
 					bases={bases}
 					isLoadingBases={basesLoading}
+					onMissionSelect={handleSelectMission}
 				/>
 			</DispatchLayout>
+
+			{/* Inspector Sheet */}
+			<InspectorPanel 
+				missionId={selectedMissionId} 
+				onClose={() => setSelectedMissionId(null)}
+				onOpenAssignment={handleOpenAssignmentDrawer}
+			/>
 
 			{/* Assignment Drawer */}
 			<AssignmentDrawer
@@ -286,38 +175,8 @@ export function DispatchPage() {
 	);
 }
 
-// Helper to convert mission to pricing result
-function missionToPricingResult(mission: MissionDetail): PricingResult | null {
-	if (!mission.tripAnalysis) return null;
+// Helper to ensure number
+// removed
 
-	const tripAnalysis = mission.tripAnalysis as Record<string, unknown>;
-
-	// Helper to ensure number
-	const num = (v: unknown) => (typeof v === "number" ? v : 0);
-
-	return {
-		price: mission.finalPrice,
-		internalCost: mission.internalCost || 0,
-		marginPercent: mission.marginPercent || 0,
-		pricingMode: mission.pricingMode,
-		tripAnalysis: {
-			totalDistanceKm: num(tripAnalysis.totalDistanceKm),
-			totalDurationMinutes: num(tripAnalysis.totalDurationMinutes),
-			totalInternalCost:
-				num(tripAnalysis.totalInternalCost) || mission.internalCost || 0,
-			routingSource: (tripAnalysis.routingSource as string) || "ESTIMATE",
-			segments: (tripAnalysis.segments as Record<string, unknown>) || {},
-			costBreakdown:
-				(tripAnalysis.costBreakdown as Record<string, unknown>) || {},
-			vehicleSelection: tripAnalysis.vehicleSelection as
-				| Record<string, unknown>
-				| undefined,
-		},
-		matchedGrid: null,
-		appliedRules: [],
-		complianceResult:
-			(tripAnalysis.complianceResult as Record<string, unknown>) || null,
-	} as unknown as PricingResult;
-}
 
 export default DispatchPage;

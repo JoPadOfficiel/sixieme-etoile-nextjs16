@@ -237,6 +237,7 @@ enum QuoteStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+  CANCELLED
 }
 
 /// Invoice lifecycle status

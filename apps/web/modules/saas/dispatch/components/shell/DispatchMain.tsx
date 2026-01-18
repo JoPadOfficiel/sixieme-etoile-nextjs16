@@ -14,12 +14,14 @@ interface DispatchMainProps {
   mission: MissionDetail | null;
   bases: OperatingBase[];
   isLoadingBases: boolean;
+  onMissionSelect: (id: string | null) => void;
 }
 
 export function DispatchMain({ 
   mission, 
   bases, 
-  isLoadingBases 
+  isLoadingBases,
+  onMissionSelect
 }: DispatchMainProps) {
   const [viewMode] = useQueryState("view", parseAsString.withDefault("gantt"));
   
@@ -101,7 +103,7 @@ export function DispatchMain({
               endTime={endTime}
               // TODO: Wire up to real actions
               onDriverClick={(id) => console.log("Driver clicked:", id)}
-              onMissionClick={(id) => console.log("Mission clicked:", id)}
+              onMissionClick={(id) => onMissionSelect(id)}
               selectedMissionId={mission?.id}
               className="h-full shadow-sm"
            />
