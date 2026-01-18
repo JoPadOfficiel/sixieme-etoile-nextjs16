@@ -1,0 +1,237 @@
+## Epic 1: VTC ERP Foundation & Data Model Setup
+### Story 1.1: Define VTC ERP Prisma Models
+### Story 1.2: Enforce Organization-Level Multi-Tenancy
+### Story 1.3: Implement EUR-Only Monetary Representation
+### Story 1.4: Implement Europe/Paris Business Time Strategy
+### Story 1.5: Integration Settings Storage for Google Maps & CollectAPI
+## Epic 2: CRM & Partner Contracts
+### Story 2.1: Implement Contact Model & Basic CRM UI
+### Story 2.2: Store Partner Contract Data & Rate Grid Links
+### Story 2.3: Allow Safe Reclassification Between Partner and Private
+### Story 2.4: Link Quotes and Invoices to Contacts & Partner Agencies
+### Story 2.5: Expose Commercial Context in CRM Views
+## Epic 3: Zone Engine & Partner Fixed Grids (Method 1)
+### Story 3.1: Implement PricingZone Model & Zones Editor UI
+### Story 3.2: Implement ZoneRoute Model & Grid Routes Editor
+### Story 3.3: Implement Excursion & Dispo Forfait Configuration
+### Story 3.4: Apply Engagement Rule for Partner Grid Trips
+### Story 3.5: Fallback to Dynamic Pricing When No Grid Match Exists
+### Story 3.6: Visualise Grid Coverage and Gaps
+## Epic 4: Dynamic Pricing & Shadow Calculation (Method 2)
+### Story 4.1: Implement Base Dynamic Price Calculation
+### Story 4.2: Add Operational Cost Components to Internal Cost
+### Story 4.3: Apply Multipliers and Target Margins
+### Story 4.4: Allow Operator Override with Live Profitability Feedback
+### Story 4.5: Implement Multi-Base Candidate Selection & Pre-Filter
+### Story 4.6: Implement Shadow Calculation Segments A/B/C & tripAnalysis Storage
+### Story 4.7: Compute & Expose Profitability Indicator
+### Story 4.8: Use Fuel Price Cache in Pricing Engine
+## Epic 5: Fleet & RSE Compliance Engine
+### Story 5.1: Implement Fleet Models & Fleet/Bases UI
+### Story 5.2: Implement Drivers, Licence Categories & RSE Rules
+### Story 5.3: Implement Heavy-Vehicle Compliance Validator
+### Story 5.4: Suggest Alternative Staffing & Scheduling Options
+### Story 5.5: Track RSE Counters Per Driver & Licence Regime
+### Story 5.6: Surface Compliance Statuses & Logs in UI
+## Epic 6: Quotes & Operator Cockpit
+### Story 6.1: Implement Quotes List with Status & Profitability
+### Story 6.2: Implement Create Quote 3-Column Cockpit
+### Story 6.3: Implement Quote Detail with Stored tripAnalysis
+### Story 6.4: Implement Quote Lifecycle & Status Transitions
+### Story 6.5: Implement Blocking & Non-Blocking Alerts for Impossible or Risky Trips
+### Story 6.6: Implement Helpers for Common Scenarios (Airport & Capacity)
+### Story 6.7: Integrate TripTransparencyPanel & Profitability Indicator Across Screens
+### Story 6.8: Manual Editing of Cost Components in Trip Transparency
+## Epic 7: Invoicing & Documents
+### Story 7.1: Implement Invoice & InvoiceLine Models and Invoices UI
+### Story 7.2: Convert Accepted Quote to Invoice with Deep-Copy Semantics
+### Story 7.3: Implement VAT Breakdown for Transport & Ancillary Services
+### Story 7.4: Integrate Commission Calculation into Invoices
+### Story 7.5: Implement Document Generation & Storage for Quotes, Invoices & Mission Orders
+## Epic 8: Dispatch & Strategic Optimisation
+### Story 8.1: Implement Dispatch Screen Layout (Missions List + Map + Transparency)
+### Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
+### Story 8.3: Implement Multi-Base Optimisation & Visualisation
+### Story 8.4: Detect & Suggest Trip Chaining Opportunities
+### Story 8.5: Model & Surface Empty-Leg Opportunities
+### Story 8.6: Integrate Subcontractor Directory & Subcontracting Suggestions
+### Story 8.7: Surface Profitability & Compliance Badges for Missions
+## Epic 9: Advanced Pricing Configuration & Reporting
+### Story 9.1: Implement Settings → Pricing – Seasonal Multipliers
+### Story 9.2: Implement Settings → Pricing – Advanced Rate Modifiers
+### Story 9.3: Implement Settings → Pricing – Optional Fees Catalogue
+### Story 9.4: Implement Settings → Pricing – Promotions & Promo Codes
+### Story 9.5: Implement Settings → Fleet & Regulatory Configuration
+### Story 9.6: Implement Settings → Integrations (Google Maps & CollectAPI)
+### Story 9.7: Implement Fuel Price Cache Refresh & Staleness Rules
+### Story 9.8: Implement Basic Profitability & Yield Reporting
+## Epic 10: Google Maps Integration Fixes
+### Story 10.1: Fix Google Maps Integration in Quotes & Dispatch
+## Epic 11: Zone Management Refactoring & UI Improvements
+### Story 11.1: Implement Unified Zone Management with Interactive Map
+### Story 11.2: Implement Postal Code Zone Creation
+### Story 11.3: Integrate Zone Pricing Multipliers
+### Story 11.4: Merge Seasonal Multipliers & Advanced Rates UI
+### Story 11.5: Merge Optional Fees & Promotions UI
+### Story 11.6: Implement Collapsible Main Sidebar
+### Story 11.7: Remove Deprecated Advanced Rate Types
+### Story 11.8: Implement Full Responsive Design Mobile Sidebar
+## Epic 12: Partner-Specific Pricing & Contract Enhancements
+### Story 12.1: Implement Partner-Specific Pricing Schema
+### Story 12.2: Implement Pricing Engine Override Support
+### Story 12.3: Implement Partner Contract Override UI
+## Epic 13: Pricing UI Improvements & Partner Filtering
+### Story 13.1: Fix Pricing UI Translations
+### Story 13.2: Implement Pricing Pages Partner Filter
+## Epic 14: Flexible Route Pricing System
+### Story 14.1: Fix Vehicle Category Dropdown Bug
+### Story 14.2: Extend ZoneRoute Schema for Multi-Zone & Address Support
+### Story 14.3: Update Pricing UI for Flexible Routes
+### Story 14.4: Implement Interactive Map for Zone Selection
+### Story 14.5: Update Pricing Engine for Multi-Zone Routes
+### Story 14.6: Assign Rate Grids to Partners from Pricing UI
+## Epic 15: Pricing Engine Accuracy & Real Cost Integration
+### Story 15.1 – Integrate Google Routes API for Real Toll Costs
+### Story 15.2 – Use Vehicle-Specific Fuel Consumption in All Pricing Paths
+### Story 15.3 – Apply Vehicle Category Price Multipliers in Dynamic Pricing
+### Story 15.4 – Use Vehicle Category Default Rates for Dynamic Pricing
+### Story 15.5 – Differentiate Pricing by Trip Type (Transfer/Excursion/Dispo)
+### Story 15.6 – Use Correct Fuel Type from Vehicle/Category
+### Story 15.7 – Propagate Cost Breakdown to Quotes and Invoices
+### Story 15.8 – Validate Pricing Consistency Across Application
+## Epic 16: Refactorisation du Système de Devis par Type de Trajet
+## Epic 17: Advanced Zone Resolution, Compliance Integration & Driver Availability
+### Story 17.1: Configurable Zone Conflict Resolution Strategy
+### Story 17.2: Configurable Zone Multiplier Aggregation Strategy
+### Story 17.3: Automatic Compliance-Driven Staffing Integration
+### Story 17.4: Configurable Staffing Cost Parameters
+### Story 17.5: Quote Estimated End Time (estimatedEndAt)
+### Story 17.6: Driver Calendar Events Model
+### Story 17.7: Driver Availability Overlap Detection
+### Story 17.8: Weighted Day/Night Rate Application
+### Story 17.9: Configurable Time Buckets for MAD Pricing
+### Story 17.10: Zone Fixed Surcharges (Friction Costs)
+### Story 17.11: Zone Topology Validation Tools
+### Story 17.12: Driver Home Location for Deadhead Calculations
+### Story 17.13: Route Segmentation for Multi-Zone Trips
+### Story 17.14: Vehicle TCO Model Enrichment
+### Story 17.15: Client Difficulty Score (Patience Tax)
+### Story 17.16: FR Group 9 Settings UI Integration
+## Epic 18: Advanced Geospatial, Route Optimization & Yield Management
+### Story 18.1: Corridor Zone Type (Highway Buffers)
+### Story 18.2: Automatic Transfer-to-MAD Detection (Dense Zone)
+### Story 18.3: Round-Trip to MAD Automatic Detection
+### Story 18.4: Loss of Exploitation (Opportunity Cost) Calculation
+### Story 18.5: Stay vs. Return Empty Scenario Comparison
+### Story 18.6: Multi-Scenario Route Optimization (min(T), min(D), min(TCO))
+### Story 18.7: Transversal Trip Decomposition
+### Story 18.8: Fixed Temporal Vectors (Classic Destinations)
+### Story 18.9: Shadow Fleet Integration (Subcontractors)
+### Story 18.10: Hierarchical Pricing Algorithm Implementation
+### Story 18.11: Configurable Transfer-to-MAD Thresholds
+## Epic 19: Pricing Engine Critical Fixes & Quote System Stabilization
+### Story 19.1: Fix Double Application of Category Pricing
+### Story 19.2: Implement Automatic RSE-Compliant Staffing for Long Trips
+### Story 19.3: Fix Excursion Pricing to Include Return Trip Cost
+### Story 19.4: Fix DISPO (Mise à Disposition) Pricing Formula
+### Story 19.5: Fix OFF_GRID Trip Type to Show Manual Pricing UI
+### Story 19.6: Implement Automatic Vehicle Category Selection Based on Capacity
+### Story 19.7: Fix Route Trace Display on Quote Map
+### Story 19.8: Fix Vehicle/Driver Assignment in Dispatch
+### Story 19.9: Enlarge Assignment and Detail Panels in Dispatch
+### Story 19.10: Move UI Blocks for Better Quote Layout
+### Story 19.11: Add Address Field to Operating Base Form
+### Story 19.12: Display Driver Missions in Driver Calendar
+### Story 19.13: Validate Zone Conflict Resolution for Concentric Circles
+### Story 19.14: Add Comprehensive Pricing Tests
+### Story 19.15: Decompose pricing-engine.ts into Modular Architecture
+### Story 19.16: Implement Mandatory Testing Protocol for All Stories
+## Epic 20: Critical Bug Fixes, Google Maps Migration & Comprehensive Testing
+## Epic 21: Complete Pricing System Refactor with Full Transparency
+### Story 21.1: Ultra-Detailed Staffing Costs Display in TripTransparency
+### Story 21.2: Detailed Approach Fee and Empty Return Display
+### Story 21.3: Ultra-Detailed Travel Time Calculation Breakdown
+### Story 21.4: Pricing Segments and Traversed Zones Visualization
+### Story 21.5: RSE Staffing Integration in Dispatch
+### Story 21.6: Automatic Empty Return and Availability Calculation
+### Story 21.7: Enhanced TripTransparency Interface with Detailed Calculation
+### Story 21.8: Automated Testing and API Validation
+### Story 21.8: Zone-Based Cost Transparency Enhancement
+### Story 21.9: Real-Time Cost Calculation Validation
+## Epic 22: VTC ERP Complete System Enhancement & Critical Fixes
+### Story 22.1: Fix Round Trip Pricing Calculation
+### Story 22.2: Display Staffing Costs in Quote Creation
+### Story 22.3: Enable Quote Notes Modification After Sending
+### Story 22.4: Implement Complete Subcontracting System
+### Story 22.5: Add STAY Trip Type - Data Model & API
+### Story 22.6: Implement STAY Trip Type - Frontend Interface
+### Story 22.7: Implement STAY Trip Type - Pricing Engine
+### Story 22.8: Implement STAY Trip Type - Invoice Integration
+### Story 22.9: Enhance Dispatch with Staffing Information Display
+### Story 22.10: Implement Advanced Subcontracting Workflow
+### Story 22.11: Fix Quote Notes Display in Dispatch
+### Story 22.12: Implement Comprehensive Testing Suite
+### Story 22.13: Update Documentation and Training Materials
+## Epic 23: Critical Bug Fixes & Vehicle Category Pricing Filters
+### Story 23.1: Fix Pricing Routes/Excursions/Disposals Loading State Bug
+### Story 23.2: Fix MultiZoneSelect Component Click Interaction Bug
+### Story 23.3: Fix Pricing Adjustment Dialogs Freeze on Cancel/Save
+### Story 23.4: Fix Positioning Costs Display in Quote Trip Transparency
+### Story 23.5: Add Vehicle Category Field to Pricing Adjustment Data Models
+### Story 23.6: Implement Vehicle Category Filter UI in Pricing Adjustment Forms
+### Story 23.7: Update Pricing Engine to Filter by Vehicle Category
+### Story 23.8: Display Vehicle Category Column in Pricing Adjustment Lists
+### Story 23.9: Add Vehicle Category Filter to Quote Fee/Promotion Catalog
+### Story 23.10: Implement Automated E2E Tests for Bug Fixes
+### Story 23.11: Implement Vehicle Category Filter Tests
+### Story 23.12: Update Documentation and User Guide
+## Epic 24: Agency Mini-CRM & Bidirectional Pricing
+### Story 24.1: Create EndCustomer Data Model
+### Story 24.2: Implement EndCustomer CRUD API
+### Story 24.3: Add EndCustomer Section to Partner Contact Detail Page
+### Story 24.4: Add EndCustomer Selector to Quote Creation Form
+### Story 24.5: Display EndCustomer Name on Quote Summary and PDF
+### Story 24.6: Display EndCustomer Name on Invoice Documents
+### Story 24.7: Integrate EndCustomer in Dispatch Interface
+### Story 24.8: Link Difficulty Score to EndCustomer for Pricing
+### Story 24.9: Implement Bidirectional Pricing Toggle in Quote Form
+### Story 24.10: Add EndCustomer Search and Filtering
+### Story 24.11: Implement Automated E2E Tests for Mini-CRM
+### Story 24.12: Update Documentation for Mini-CRM Feature
+## Epic 25: Documents, Payments & Deep Linking Enhancements
+### Story 25.1: Generate & Manage Mission Sheets (Fiche Mission)
+### Story 25.2: EU-Compliant Invoice & Quote PDF Layout
+### Story 25.3: Organisation Document Personalization
+### Story 25.4: B2C Invoicing Address & Agency Transparency
+### Story 25.5: Deep Linking Navigation & CRM UX Improvements
+### Story 25.6: Multi-Invoice Payment Tracking (Lettrage)
+## Epic 26: Flexible "Yolo Mode" Billing (Universal Blocks)
+### Story 26.1: Database Schema Update for Hybrid Blocks
+### Story 26.2: Backward Compatibility Migration Script
+### Story 26.3: Hybrid Block Validation Layer (Zod)
+### Story 26.4: Backend API - CRUD for Nested Lines
+### Story 26.5: UI - Universal Block Row Component
+### Story 26.6: UI - Click-to-Edit & Inline Forms
+### Story 26.7: UI - Drag & Drop Reordering & Grouping
+### Story 26.8: UI - Slash Commands Menu
+### Story 26.9: Operational "Detach" Logic
+### Story 26.10: Real-Time Profitability Computation
+### Story 26.11: PDF Generator - pure Display Mode
+### Story 26.12: PDF Generator - Mission Order (Operational Mode)
+### Story 26.13: Block Presets / Templates (Bonus)
+### Story 26.14: Undo/Redo History support
+## Epic 27: Unified Dispatch (Cockpit) & Live Operations
+### Story 27.1: Dispatch Shell & Navigation
+### Story 27.2: Backend - Mission Splitter Service
+### Story 27.3: Gantt - Core Timeline Rendering
+### Story 27.4: Gantt - Mission Rendering (Hybrid)
+### Story 27.5: Unassigned Backlog - Sidebar Logic
+### Story 27.6: Live Map - Driver Locations Layer
+### Story 27.7: Live Map - Mission Context Layer
+### Story 27.8: Map - Smart Assignment Suggestions
+### Story 27.9: Dispatch Actions - Drag & Drop Assignment
+### Story 27.10: Conflict Detection - RSE & Calendar
+### Story 27.11: Inspector Panel - Quick Actions
+### Story 27.12: Gantt - Time & Zoom Controls
+### Story 27.13: Real-Time Updates (Polling/Socket)
+### Story 27.14: Export Schedule

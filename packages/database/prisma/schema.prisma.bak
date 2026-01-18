@@ -1,0 +1,2317 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "../src/zod"
+  createInputTypes = false
+  addIncludeType   = false
+  addSelectType    = false
+}
+
+model User {
+  id                 String       @id
+  name               String
+  email              String
+  emailVerified      Boolean
+  image              String?
+  createdAt          DateTime
+  updatedAt          DateTime
+  username           String?
+  role               String?
+  banned             Boolean?
+  banReason          String?
+  banExpires         DateTime?
+  onboardingComplete Boolean      @default(false)
+  locale             String?
+  sessions           Session[]
+  accounts           Account[]
+  passkeys           Passkey[]
+  invitations        Invitation[]
+  purchases          Purchase[]
+  memberships        Member[]
+
+  @@unique([email])
+  @@unique([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
+
+  activeOrganizationId String?
+
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id           String    @id
+  accountId    String
+  providerId   String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  expiresAt    DateTime?
+  password     String?
+
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+
+  createdAt DateTime?
+  updatedAt DateTime?
+
+  @@map("verification")
+}
+
+model Passkey {
+  id             String    @id
+  name           String?
+  publicKey      String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webauthnUserID String
+  counter        Int
+  deviceType     String
+  backedUp       Boolean
+  transports     String?
+  createdAt      DateTime?
+
+  @@map("passkey")
+}
+
+model Organization {
+  id          String       @id
+  name        String
+  slug        String?
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  members     Member[]
+  invitations Invitation[]
+  purchases   Purchase[]
+
+  // VTC ERP Relations
+  contacts                    Contact[]
+  vehicleCategories           VehicleCategory[]
+  operatingBases              OperatingBase[]
+  vehicles                    Vehicle[]
+  licenseCategories           LicenseCategory[]
+  organizationLicenseRules    OrganizationLicenseRule[]
+  drivers                     Driver[]
+  pricingZones                PricingZone[]
+  zoneRoutes                  ZoneRoute[]
+  excursionPackages           ExcursionPackage[]
+  dispoPackages               DispoPackage[]
+  organizationPricingSettings OrganizationPricingSettings?
+  advancedRates               AdvancedRate[]
+  seasonalMultipliers         SeasonalMultiplier[]
+  optionalFees                OptionalFee[]
+  promotions                  Promotion[]
+  emptyLegOpportunities       EmptyLegOpportunity[]
+  quotes                      Quote[]
+  invoices                    Invoice[]
+  documents                   Document[]
+  integrationSettings         OrganizationIntegrationSettings?
+  partnerContracts            PartnerContract[]
+  subcontractorProfiles       SubcontractorProfile[]
+  driverRSECounters           DriverRSECounter[]
+  driverCalendarEvents        DriverCalendarEvent[]
+  complianceAuditLogs         ComplianceAuditLog[]
+  quoteStatusAuditLogs        QuoteStatusAuditLog[]
+  quoteNotesAuditLogs         QuoteNotesAuditLog[]
+  subcontractorFeedbacks      SubcontractorFeedback[]
+  endCustomers                EndCustomer[]
+  activities                  Activity[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime
+
+  @@unique([userId, organizationId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}
+
+enum PurchaseType {
+  SUBSCRIPTION
+  ONE_TIME
+}
+
+// ============================================================================
+// VTC ERP ENUMS
+// ============================================================================
+
+/// Contact type for CRM - distinguishes individuals, businesses, and agencies
+enum ContactType {
+  INDIVIDUAL
+  BUSINESS
+  AGENCY
+}
+
+/// Client type for pricing rules - partner clients get fixed grids, private get dynamic pricing
+enum ClientType {
+  PARTNER
+  PRIVATE
+}
+
+/// Vehicle regulatory category - determines RSE constraints and driver requirements
+enum VehicleRegulatoryCategory {
+  LIGHT
+  HEAVY
+}
+
+/// Vehicle operational status
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+/// Driver employment status
+enum DriverEmploymentStatus {
+  EMPLOYEE
+  CONTRACTOR
+  FREELANCE
+}
+
+/// Quote lifecycle status
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+/// Invoice lifecycle status
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIAL    // Story 25.6: Partially paid invoice
+  PAID
+  CANCELLED
+}
+
+/// Pricing mode - Method 1 (fixed grids) vs Method 2 (dynamic)
+enum PricingMode {
+  FIXED_GRID
+  DYNAMIC
+  PARTNER_GRID
+  CLIENT_DIRECT
+  MANUAL
+}
+
+/// Trip type classification
+enum TripType {
+  TRANSFER
+  EXCURSION
+  DISPO
+  OFF_GRID
+  STAY // Story 22.5: Multi-day package with multiple services
+}
+
+/// Story 22.5: Service type within a stay day
+enum StayServiceType {
+  TRANSFER
+  DISPO
+  EXCURSION
+}
+
+/// Amount type for fees and discounts
+enum AmountType {
+  FIXED
+  PERCENTAGE
+}
+
+/// Adjustment type for advanced rates
+enum AdjustmentType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+/// Zone type for geographic definitions
+enum ZoneType {
+  POLYGON
+  RADIUS
+  POINT
+  CORRIDOR // Story 18.1: Buffer zones around route polylines (highways, ring roads)
+}
+
+/// Story 17.1: Zone conflict resolution strategy
+/// Determines how the system resolves conflicts when a point falls within multiple overlapping zones
+enum ZoneConflictStrategy {
+  PRIORITY // Select zone with highest priority field value
+  MOST_EXPENSIVE // Select zone with highest priceMultiplier
+  CLOSEST // Select zone whose center is closest to the point
+  COMBINED // Filter by priority first, then by multiplier among equal-priority zones
+}
+
+/// Story 17.2: Zone multiplier aggregation strategy
+/// Determines how pickup and dropoff zone multipliers are combined
+enum ZoneMultiplierAggregationStrategy {
+  MAX // Math.max(pickup, dropoff) - use highest multiplier
+  PICKUP_ONLY // Use pickup zone multiplier only
+  DROPOFF_ONLY // Use dropoff zone multiplier only
+  AVERAGE // (pickup + dropoff) / 2 - average of both
+}
+
+/// Story 17.3: Staffing selection policy
+/// Determines how the system selects the best staffing plan when RSE violations are detected
+enum StaffingSelectionPolicy {
+  CHEAPEST // Select plan with lowest additional cost
+  FASTEST // Select plan that minimizes total duration
+  PREFER_INTERNAL // Prefer internal options (double crew over relay driver)
+}
+
+/// Route direction for zone-to-zone pricing
+enum RouteDirection {
+  BIDIRECTIONAL
+  A_TO_B
+  B_TO_A
+}
+
+/// Advanced rate application scope
+/// Note: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed in Story 11.4
+/// Zone-based pricing now handled by PricingZone.priceMultiplier (Story 11.3)
+enum AdvancedRateAppliesTo {
+  NIGHT
+  WEEKEND
+}
+
+/// Fuel type for price cache
+enum FuelType {
+  GASOLINE
+  DIESEL
+  LPG
+}
+
+/// Invoice line type
+enum InvoiceLineType {
+  SERVICE
+  OPTIONAL_FEE
+  PROMOTION_ADJUSTMENT
+  OTHER
+}
+
+/// Payment terms for partner contracts
+enum PaymentTerms {
+  IMMEDIATE
+  DAYS_15
+  DAYS_30
+  DAYS_45
+  DAYS_60
+}
+
+/// Story 17.14: Depreciation method for vehicle TCO calculation
+enum DepreciationMethod {
+  LINEAR // Straight-line depreciation: purchasePrice / expectedLifespanKm
+  DECLINING_BALANCE // Accelerated depreciation: higher in early years
+}
+
+/// Story 17.6: Calendar event types for driver unavailability
+enum CalendarEventType {
+  HOLIDAY // Congés payés
+  SICK // Arrêt maladie
+  PERSONAL // Absence personnelle
+  TRAINING // Formation
+  OTHER // Autre
+}
+
+/// Story 17.9: Time bucket interpolation strategy for MAD pricing
+/// Determines how to calculate price when requested duration falls between defined buckets
+enum TimeBucketInterpolationStrategy {
+  ROUND_UP // Use next higher bucket price
+  ROUND_DOWN // Use previous lower bucket price
+  PROPORTIONAL // Interpolate linearly between bucket prices
+}
+
+/// Story 18.9: Subcontractor availability status for Shadow Fleet
+/// Indicates whether a subcontractor is available to take missions
+enum SubcontractorAvailability {
+  AVAILABLE // Ready to accept missions
+  BUSY // Currently occupied, may become available
+  OFFLINE // Not accepting missions (vacation, maintenance, etc.)
+}
+
+/// Story 25.3: Logo position for PDF documents
+/// Controls where the organization logo appears in generated PDFs
+enum LogoPosition {
+  LEFT  // Logo on left side of header (default)
+  RIGHT // Logo on right side of header
+}
+
+/// Story 25.4: Document language settings for PDF generation
+/// Controls the language used in generated PDF documents
+enum DocumentLanguage {
+  FRENCH    // French only
+  ENGLISH   // English only
+  BILINGUAL // Both French and English (default)
+}
+
+model Purchase {
+  id             String        @id @default(cuid())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String?
+  type           PurchaseType
+  customerId     String
+  subscriptionId String?       @unique
+  productId      String
+  status         String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([subscriptionId])
+}
+
+// ============================================================================
+// VTC ERP MODELS
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// CORE TENANCY & CRM
+// ----------------------------------------------------------------------------
+
+/// Contact - Unifies private customers, corporate clients, and agencies
+model Contact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Contact type
+  type        ContactType @default(INDIVIDUAL)
+  displayName String
+
+  // Person fields
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String?
+
+  // Company fields
+  companyName    String?
+  vatNumber      String?
+  siret          String?
+  billingAddress String?
+
+  // Commercial flags
+  isPartner         Boolean    @default(false)
+  defaultClientType ClientType @default(PRIVATE)
+
+  // Story 17.15: Client difficulty score for "Patience Tax" pricing adjustment
+  // Scale 1-5, null means no difficulty adjustment applied
+  difficultyScore Int?
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  quotes                 Quote[]
+  invoices               Invoice[]
+  partnerContract        PartnerContract?
+  subcontractorProfile   SubcontractorProfile? @relation(fields: [subcontractorProfileId], references: [id])
+  subcontractorProfileId String?
+  endCustomers           EndCustomer[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([isPartner])
+  @@map("contact")
+}
+/// EndCustomer - Individual end-customers within agency partner profiles (Story 24.1)
+model EndCustomer {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Identity
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+
+  // Story 24.8: Difficulty score for "Patience Tax" pricing adjustment
+  // Scale 1-5, null means no difficulty adjustment applied
+  difficultyScore Int?
+
+  // Notes
+  notes String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  quotes   Quote[]
+  invoices Invoice[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@map("end_customer")
+}
+
+/// PartnerContract - Commercial settings for partner contacts
+model PartnerContract {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Link to Contact (1:1)
+  contactId String  @unique
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Billing (optional override)
+  billingAddress String?
+
+  // Payment terms
+  paymentTerms PaymentTerms @default(DAYS_30)
+
+  // Commission
+  commissionPercent Decimal @default(0) @db.Decimal(5, 2) // 0.00 to 100.00
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Grid assignments (many-to-many)
+  zoneRoutes        PartnerContractZoneRoute[]
+  excursionPackages PartnerContractExcursionPackage[]
+  dispoPackages     PartnerContractDispoPackage[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@map("partner_contract")
+}
+
+/// Junction table: PartnerContract <-> ZoneRoute
+/// Story 12.1: Added overridePrice for partner-specific pricing
+model PartnerContractZoneRoute {
+  id                String          @id @default(cuid())
+  partnerContractId String
+  partnerContract   PartnerContract @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  zoneRouteId       String
+  zoneRoute         ZoneRoute       @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+
+  // Story 12.1: Partner-specific price override (null = use catalog price from ZoneRoute.fixedPrice)
+  overridePrice Decimal? @db.Decimal(10, 2)
+
+  @@unique([partnerContractId, zoneRouteId])
+  @@map("partner_contract_zone_route")
+}
+
+/// Junction table: PartnerContract <-> ExcursionPackage
+/// Story 12.1: Added overridePrice for partner-specific pricing
+model PartnerContractExcursionPackage {
+  id                 String           @id @default(cuid())
+  partnerContractId  String
+  partnerContract    PartnerContract  @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  excursionPackageId String
+  excursionPackage   ExcursionPackage @relation(fields: [excursionPackageId], references: [id], onDelete: Cascade)
+
+  // Story 12.1: Partner-specific price override (null = use catalog price from ExcursionPackage.price)
+  overridePrice Decimal? @db.Decimal(10, 2)
+
+  @@unique([partnerContractId, excursionPackageId])
+  @@map("partner_contract_excursion_package")
+}
+
+/// Junction table: PartnerContract <-> DispoPackage
+/// Story 12.1: Added overridePrice for partner-specific pricing
+model PartnerContractDispoPackage {
+  id                String          @id @default(cuid())
+  partnerContractId String
+  partnerContract   PartnerContract @relation(fields: [partnerContractId], references: [id], onDelete: Cascade)
+  dispoPackageId    String
+  dispoPackage      DispoPackage    @relation(fields: [dispoPackageId], references: [id], onDelete: Cascade)
+
+  // Story 12.1: Partner-specific price override (null = use catalog price from DispoPackage.basePrice)
+  overridePrice Decimal? @db.Decimal(10, 2)
+
+  @@unique([partnerContractId, dispoPackageId])
+  @@map("partner_contract_dispo_package")
+}
+
+// ----------------------------------------------------------------------------
+// SUBCONTRACTOR MODELS (Story 8.6)
+// ----------------------------------------------------------------------------
+
+/// SubcontractorProfile - Partner company for subcontracting missions
+/// Story 22.4: Refactored to be independent entity (not linked to Contact)
+model SubcontractorProfile {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Company information (independent from Contact)
+  companyName String  @db.VarChar(255)
+  siret       String? @db.VarChar(20)
+  vatNumber   String? @db.VarChar(50)
+
+  // Contact details
+  contactName String? @db.VarChar(255) // Main contact person
+  email       String? @db.VarChar(255)
+  phone       String? @db.VarChar(50)
+  address     String? // Company/depot address
+
+  // Coverage: if allZones=true, operates everywhere (France/Europe)
+  allZones Boolean @default(false)
+
+  // Indicative pricing (EUR)
+  ratePerKm   Decimal? @db.Decimal(8, 2)
+  ratePerHour Decimal? @db.Decimal(8, 2)
+  minimumFare Decimal? @db.Decimal(8, 2)
+
+  // Status
+  isActive           Boolean                   @default(true)
+  availabilityStatus SubcontractorAvailability @default(AVAILABLE)
+  availabilityNotes  String?
+  notes              String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  operatingZones      SubcontractorZone[]
+  vehicleCategories   SubcontractorVehicleCategory[]
+  subcontractedQuotes Quote[]
+  contacts            Contact[]
+  feedbacks           SubcontractorFeedback[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([companyName])
+  @@map("subcontractor_profile")
+}
+
+/// SubcontractorZone - Junction: SubcontractorProfile <-> PricingZone
+model SubcontractorZone {
+  id                     String               @id @default(cuid())
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  pricingZoneId          String
+  pricingZone            PricingZone          @relation(fields: [pricingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([subcontractorProfileId, pricingZoneId])
+  @@map("subcontractor_zone")
+}
+
+/// SubcontractorVehicleCategory - Junction: SubcontractorProfile <-> VehicleCategory
+model SubcontractorVehicleCategory {
+  id                     String               @id @default(cuid())
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  vehicleCategoryId      String
+  vehicleCategory        VehicleCategory      @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subcontractorProfileId, vehicleCategoryId])
+  @@map("subcontractor_vehicle_category")
+}
+
+/// SubcontractorFeedback - Feedback for completed subcontracted missions
+/// Story 22.10: Advanced Subcontracting Workflow
+model SubcontractorFeedback {
+  id                     String               @id @default(cuid())
+  organizationId         String
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subcontractorProfileId String
+  subcontractorProfile   SubcontractorProfile @relation(fields: [subcontractorProfileId], references: [id], onDelete: Cascade)
+  quoteId                String
+  quote                  Quote                @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Overall rating (1-5 stars)
+  rating Int
+
+  // Detailed ratings (1-5 stars, optional)
+  punctuality           Int?
+  vehicleCondition      Int?
+  driverProfessionalism Int?
+  communication         Int?
+
+  // Comments
+  comments String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  createdBy String // User ID who submitted feedback
+
+  @@index([organizationId])
+  @@index([subcontractorProfileId])
+  @@index([quoteId])
+  @@map("subcontractor_feedback")
+}
+
+// ----------------------------------------------------------------------------
+// FLEET & REGULATORY MODELS
+// ----------------------------------------------------------------------------
+
+/// VehicleCategory - Groups vehicles by commercial and regulatory category
+model VehicleCategory {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name String
+  code String
+
+  // Regulatory
+  regulatoryCategory VehicleRegulatoryCategory @default(LIGHT)
+
+  // Capacity
+  maxPassengers    Int
+  maxLuggageVolume Int? // in liters
+
+  // Pricing multipliers
+  priceMultiplier    Decimal  @default(1.0) @db.Decimal(5, 2)
+  defaultRatePerKm   Decimal? @db.Decimal(10, 4)
+  defaultRatePerHour Decimal? @db.Decimal(10, 2)
+
+  // Story 15.2: Average fuel consumption for this category (L/100km)
+  averageConsumptionL100km Decimal? @db.Decimal(5, 2)
+
+  // Story 17.14: TCO defaults for category (used when vehicle has no TCO configured)
+  defaultPurchasePrice           Decimal?            @db.Decimal(12, 2) // EUR
+  defaultExpectedLifespanKm      Int? // km
+  defaultExpectedLifespanYears   Int? // years
+  defaultAnnualMaintenanceBudget Decimal?            @db.Decimal(10, 2) // EUR
+  defaultAnnualInsuranceCost     Decimal?            @db.Decimal(10, 2) // EUR
+  defaultDepreciationMethod      DepreciationMethod?
+
+  // Story 18.4: Daily reference revenue for loss of exploitation calculation
+  // If null, calculated as 8h × defaultRatePerHour or from MadTimeBucket 8h
+  dailyReferenceRevenue Decimal? @db.Decimal(10, 2) // EUR
+
+  // Metadata
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  vehicles                       Vehicle[]
+  zoneRoutes                     ZoneRoute[]
+  excursionPackages              ExcursionPackage[]
+  dispoPackages                  DispoPackage[]
+  quotes                         Quote[]
+  subcontractorVehicleCategories SubcontractorVehicleCategory[]
+  madTimeBuckets                 MadTimeBucket[]
+
+  intraCentralFlatRates          IntraCentralFlatRate[]
+
+  // Story 23.5: Pricing adjustments linked to this category
+  advancedRates       AdvancedRate[]
+  seasonalMultipliers SeasonalMultiplier[]
+  optionalFees        OptionalFee[]
+  promotions          Promotion[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("vehicle_category")
+}
+
+/// OperatingBase - Physical bases/garages for multi-base model
+model OperatingBase {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name String
+
+  // Address
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  postalCode   String
+  countryCode  String  @default("FR")
+
+  // Coordinates for Google Maps
+  latitude  Decimal @db.Decimal(10, 7)
+  longitude Decimal @db.Decimal(10, 7)
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  vehicles Vehicle[]
+
+  @@index([organizationId])
+  @@map("operating_base")
+}
+
+/// Vehicle - Individual fleet vehicles
+model Vehicle {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Category and base
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+  operatingBaseId   String
+  operatingBase     OperatingBase   @relation(fields: [operatingBaseId], references: [id])
+
+  // Identification
+  registrationNumber String
+  internalName       String?
+  vin                String?
+
+  // Capacity
+  passengerCapacity Int
+  luggageCapacity   Int? // in liters
+
+  // Cost drivers
+  consumptionLPer100Km Decimal? @db.Decimal(5, 2)
+  averageSpeedKmh      Int?
+  costPerKm            Decimal? @db.Decimal(10, 4)
+
+  // Story 17.14: TCO (Total Cost of Ownership) fields
+  purchasePrice           Decimal?            @db.Decimal(12, 2) // EUR - Vehicle purchase price
+  expectedLifespanKm      Int? // Expected lifespan in kilometers (e.g., 300000)
+  expectedLifespanYears   Int? // Expected lifespan in years (e.g., 5)
+  annualMaintenanceBudget Decimal?            @db.Decimal(10, 2) // EUR - Annual maintenance budget
+  annualInsuranceCost     Decimal?            @db.Decimal(10, 2) // EUR - Annual insurance cost
+  depreciationMethod      DepreciationMethod? // LINEAR or DECLINING_BALANCE
+  currentOdometerKm       Int? // Current odometer reading in km
+
+  // Regulatory - required license
+  requiredLicenseCategoryId String?
+  requiredLicenseCategory   LicenseCategory? @relation(fields: [requiredLicenseCategoryId], references: [id])
+
+  // Status
+  status VehicleStatus @default(ACTIVE)
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  emptyLegOpportunities EmptyLegOpportunity[]
+  assignedQuotes        Quote[]               @relation("AssignedVehicle")
+  quotes                Quote[]
+
+  @@unique([organizationId, registrationNumber])
+  @@index([organizationId])
+  @@index([vehicleCategoryId])
+  @@index([operatingBaseId])
+  @@index([status])
+  @@map("vehicle")
+}
+
+/// LicenseCategory - Encodes license types (B, D, D_CMI, etc.)
+model LicenseCategory {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  code        String
+  name        String
+  description String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organizationRules     OrganizationLicenseRule[]
+  vehiclesRequiringThis Vehicle[]
+  driverLicenses        DriverLicense[]
+  driverRSECounters     DriverRSECounter[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("license_category")
+}
+
+/// OrganizationLicenseRule - RSE limits per license type (zero-hardcoding)
+model OrganizationLicenseRule {
+  id                String          @id @default(cuid())
+  organizationId    String
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  licenseCategoryId String
+  licenseCategory   LicenseCategory @relation(fields: [licenseCategoryId], references: [id])
+
+  // RSE constraints
+  maxDailyDrivingHours        Decimal @db.Decimal(4, 2) // e.g. 10.00
+  maxDailyAmplitudeHours      Decimal @db.Decimal(4, 2) // e.g. 14.00 or 18.00 with double crew
+  breakMinutesPerDrivingBlock Int // e.g. 45
+  drivingBlockHoursForBreak   Decimal @db.Decimal(4, 2) // e.g. 4.50
+  cappedAverageSpeedKmh       Int? // e.g. 85 for heavy vehicles
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, licenseCategoryId])
+  @@index([organizationId])
+  @@map("organization_license_rule")
+}
+
+/// Driver - Driver profiles with cost information
+model Driver {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Person data
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+
+  // HR data
+  employmentStatus DriverEmploymentStatus @default(EMPLOYEE)
+  hourlyCost       Decimal?               @db.Decimal(10, 2)
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Story 17.12: Home location for deadhead calculations
+  homeLat     Decimal? @db.Decimal(10, 7)
+  homeLng     Decimal? @db.Decimal(10, 7)
+  homeAddress String?
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  driverLicenses       DriverLicense[]
+  driverRSECounters    DriverRSECounter[]
+  driverCalendarEvents DriverCalendarEvent[]
+  complianceAuditLogs  ComplianceAuditLog[]
+  assignedQuotes       Quote[]               @relation("AssignedDriver")
+  // Story 20.8: Second driver relation for RSE double crew missions
+  secondDriverQuotes   Quote[]               @relation("SecondDriver")
+  quotes               Quote[]
+  activities           Activity[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("driver")
+}
+
+/// DriverLicense - Junction between Driver and LicenseCategory
+model DriverLicense {
+  id                String          @id @default(cuid())
+  driverId          String
+  driver            Driver          @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  licenseCategoryId String
+  licenseCategory   LicenseCategory @relation(fields: [licenseCategoryId], references: [id])
+
+  // License details
+  licenseNumber String
+  validFrom     DateTime
+  validTo       DateTime?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([driverId, licenseCategoryId])
+  @@index([driverId])
+  @@index([licenseCategoryId])
+  @@map("driver_license")
+}
+
+/// Story 17.6: DriverCalendarEvent - Tracks driver unavailability periods
+model DriverCalendarEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Event details
+  eventType CalendarEventType
+  title     String?
+  notes     String?
+
+  // Time range
+  startAt DateTime
+  endAt   DateTime
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([startAt, endAt])
+  @@map("driver_calendar_event")
+}
+
+// ----------------------------------------------------------------------------
+// PRICING, ZONES & GRIDS
+// ----------------------------------------------------------------------------
+
+/// PricingZone - Geographic zones (central Paris, rings, satellites)
+model PricingZone {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name String
+  code String
+
+  // Zone definition
+  zoneType        ZoneType @default(POLYGON)
+  geometry        Json? // GeoJSON-like structure
+  centerLatitude  Decimal? @db.Decimal(10, 7)
+  centerLongitude Decimal? @db.Decimal(10, 7)
+  radiusKm        Decimal? @db.Decimal(10, 2) // For RADIUS type zones
+
+  // Hierarchy
+  parentZoneId String?
+  parentZone   PricingZone?  @relation("ZoneHierarchy", fields: [parentZoneId], references: [id])
+  childZones   PricingZone[] @relation("ZoneHierarchy")
+
+  // Display
+  color String? // Hex color for map display (e.g., "#10b981")
+
+  // Postal code creation (Story 11.2)
+  postalCodes    String[] // Array of postal codes used to create zone
+  creationMethod String? // "DRAW" | "POSTAL_CODE" | "COORDINATES"
+
+  // Zone pricing multiplier (Story 11.3)
+  priceMultiplier       Decimal @default(1.0) @db.Decimal(4, 2) // 0.50 to 3.00
+  multiplierDescription String? // Optional description for the multiplier
+
+  // Story 17.1: Zone priority for conflict resolution
+  priority Int @default(0) // Higher priority zones are selected first when using PRIORITY or COMBINED strategy
+
+  // Story 17.10: Zone fixed surcharges (friction costs)
+  fixedParkingSurcharge Decimal? @db.Decimal(10, 2) // Parking fee in EUR
+  fixedAccessFee        Decimal? @db.Decimal(10, 2) // Access/entry fee in EUR
+  surchargeDescription  String? // Description of surcharges
+
+  // Story 18.10: Central zone flag for hierarchical pricing algorithm
+  // When true, this zone is considered a "central zone" (Z_0) for Priority 1 flat rate pricing
+  isCentralZone Boolean @default(false)
+
+  // Story 18.1: Corridor-specific fields (for CORRIDOR zone type)
+  corridorPolyline     String? // Encoded polyline of the road axis (Google Polyline format)
+  corridorBufferMeters Int? // Buffer distance in meters (default 500, range 100-5000)
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  fromRoutes                  ZoneRoute[]                  @relation("FromZone")
+  toRoutes                    ZoneRoute[]                  @relation("ToZone")
+  // Story 14.2: Multi-zone route relations
+  originZoneRoutes            ZoneRouteOriginZone[]        @relation("OriginZones")
+  destinationZoneRoutes       ZoneRouteDestinationZone[]   @relation("DestinationZones")
+  excursionOrigins            ExcursionPackage[]           @relation("ExcursionOrigin")
+  excursionDestinations       ExcursionPackage[]           @relation("ExcursionDestination")
+  advancedRates               AdvancedRate[]
+  emptyLegFrom                EmptyLegOpportunity[]        @relation("EmptyLegFrom")
+  emptyLegTo                  EmptyLegOpportunity[]        @relation("EmptyLegTo")
+  subcontractorZones          SubcontractorZone[]
+  zoneRouteOriginZones        ZoneRouteOriginZone[]
+  zoneRouteDestinationZones   ZoneRouteDestinationZone[]
+  // Story 18.8: Allowed origin zones for temporal vectors
+  excursionPackageOriginZones ExcursionPackageOriginZone[] @relation("ExcursionAllowedOrigins")
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("pricing_zone")
+}
+
+/// Origin/Destination type for flexible route configuration (Story 14.2)
+enum OriginDestinationType {
+  ZONES // Multiple zones can be selected
+  ADDRESS // Specific address via Google Places
+}
+
+/// ZoneRoute - Method 1 zone-to-zone fixed pricing for transfers
+/// Extended in Story 14.2 to support multi-zone and address-based origins/destinations
+model ZoneRoute {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Origin configuration (Story 14.2)
+  originType    OriginDestinationType @default(ZONES)
+  originZones   ZoneRouteOriginZone[]
+  originPlaceId String? // Google Place ID for ADDRESS type
+  originAddress String? // Human-readable address
+  originLat     Float?
+  originLng     Float?
+
+  // Destination configuration (Story 14.2)
+  destinationType  OriginDestinationType      @default(ZONES)
+  destinationZones ZoneRouteDestinationZone[]
+  destPlaceId      String? // Google Place ID for ADDRESS type
+  destAddress      String? // Human-readable address
+  destLat          Float?
+  destLng          Float?
+
+  // Legacy fields (kept for backward compatibility)
+  fromZoneId String?
+  fromZone   PricingZone? @relation("FromZone", fields: [fromZoneId], references: [id])
+  toZoneId   String?
+  toZone     PricingZone? @relation("ToZone", fields: [toZoneId], references: [id])
+
+  // Vehicle category
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  // Pricing
+  direction  RouteDirection @default(BIDIRECTIONAL)
+  fixedPrice Decimal        @db.Decimal(10, 2) // EUR
+
+  // Status
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  partnerContractZoneRoutes PartnerContractZoneRoute[]
+
+  @@index([organizationId])
+  @@index([fromZoneId, toZoneId])
+  @@index([vehicleCategoryId])
+  @@index([originType])
+  @@index([destinationType])
+  @@map("zone_route")
+}
+
+/// Junction table for multi-zone origins (Story 14.2)
+model ZoneRouteOriginZone {
+  id            String       @id @default(cuid())
+  zoneRouteId   String
+  zoneRoute     ZoneRoute    @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+  zoneId        String
+  zone          PricingZone  @relation("OriginZones", fields: [zoneId], references: [id])
+  pricingZone   PricingZone? @relation(fields: [pricingZoneId], references: [id])
+  pricingZoneId String?
+
+  @@unique([zoneRouteId, zoneId])
+  @@index([zoneRouteId])
+  @@index([zoneId])
+  @@map("zone_route_origin_zone")
+}
+
+/// Junction table for multi-zone destinations (Story 14.2)
+model ZoneRouteDestinationZone {
+  id            String       @id @default(cuid())
+  zoneRouteId   String
+  zoneRoute     ZoneRoute    @relation(fields: [zoneRouteId], references: [id], onDelete: Cascade)
+  zoneId        String
+  zone          PricingZone  @relation("DestinationZones", fields: [zoneId], references: [id])
+  pricingZone   PricingZone? @relation(fields: [pricingZoneId], references: [id])
+  pricingZoneId String?
+
+  @@unique([zoneRouteId, zoneId])
+  @@index([zoneRouteId])
+  @@index([zoneId])
+  @@map("zone_route_destination_zone")
+}
+
+/// ExcursionPackage - Forfaits for excursions (Normandy, Loire Valley, etc.)
+model ExcursionPackage {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Package details
+  name        String
+  description String?
+
+  // Zones
+  originZoneId      String?
+  originZone        PricingZone? @relation("ExcursionOrigin", fields: [originZoneId], references: [id])
+  destinationZoneId String?
+  destinationZone   PricingZone? @relation("ExcursionDestination", fields: [destinationZoneId], references: [id])
+
+  // Vehicle category
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  // Included service
+  includedDurationHours Decimal @db.Decimal(5, 2)
+  includedDistanceKm    Decimal @db.Decimal(8, 2)
+
+  // Pricing
+  price Decimal @db.Decimal(10, 2) // EUR
+
+  // Story 18.8: Temporal Vector fields for classic destinations
+  isTemporalVector       Boolean  @default(false)
+  minimumDurationHours   Decimal? @db.Decimal(5, 2)
+  destinationName        String?
+  destinationDescription String?
+
+  // Status
+  isActive                         Boolean                           @default(true)
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
+  partnerContractExcursionPackages PartnerContractExcursionPackage[]
+  // Story 18.8: Allowed origin zones for temporal vectors
+  allowedOriginZones               ExcursionPackageOriginZone[]
+
+  @@index([organizationId])
+  @@index([vehicleCategoryId])
+  @@index([isTemporalVector])
+  @@map("excursion_package")
+}
+
+/// Story 18.8: Junction table for ExcursionPackage allowed origin zones
+model ExcursionPackageOriginZone {
+  id                 String           @id @default(cuid())
+  excursionPackageId String
+  excursionPackage   ExcursionPackage @relation(fields: [excursionPackageId], references: [id], onDelete: Cascade)
+  pricingZoneId      String
+  pricingZone        PricingZone      @relation("ExcursionAllowedOrigins", fields: [pricingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([excursionPackageId, pricingZoneId])
+  @@map("excursion_package_origin_zone")
+}
+
+/// DispoPackage - Forfaits de mise à disposition (hourly dispos)
+model DispoPackage {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Package details
+  name        String
+  description String?
+
+  // Vehicle category
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  // Included service
+  includedDurationHours Decimal @db.Decimal(5, 2)
+  includedDistanceKm    Decimal @db.Decimal(8, 2)
+
+  // Pricing
+  basePrice          Decimal @db.Decimal(10, 2) // EUR
+  overageRatePerKm   Decimal @db.Decimal(10, 4) // EUR per km
+  overageRatePerHour Decimal @db.Decimal(10, 2) // EUR per hour
+
+  // Status
+  isActive                     Boolean                       @default(true)
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  partnerContractDispoPackages PartnerContractDispoPackage[]
+
+  @@index([organizationId])
+  @@index([vehicleCategoryId])
+  @@map("dispo_package")
+}
+
+/// OrganizationPricingSettings - Base commercial parameters per organisation
+model OrganizationPricingSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Base rates
+  baseRatePerKm   Decimal @db.Decimal(10, 4) // EUR per km
+  baseRatePerHour Decimal @db.Decimal(10, 2) // EUR per hour
+
+  // Margin settings
+  defaultMarginPercent Decimal @db.Decimal(5, 2) // e.g. 20.00 for 20%
+
+  // Story 4.7: Profitability indicator thresholds (configurable)
+  // Green threshold: margin >= this value is "green" (profitable)
+  greenMarginThreshold  Decimal @default(20.00) @db.Decimal(5, 2) // Default 20%
+  // Orange threshold: margin >= this value (but < green) is "orange" (low margin)
+  // Below this threshold is "red" (loss)
+  orangeMarginThreshold Decimal @default(0.00) @db.Decimal(5, 2) // Default 0%
+
+  // Minimum fare
+  minimumFare Decimal @db.Decimal(10, 2) // EUR
+
+  // Rounding rule (optional)
+  roundingRule String? // e.g. "NEAREST_5", "NEAREST_10"
+
+  // Story 4.2: Operational cost parameters (optional, defaults in pricing-engine.ts)
+  fuelConsumptionL100km Decimal? @db.Decimal(5, 2) // Liters per 100km (e.g., 8.0)
+  fuelPricePerLiter     Decimal? @db.Decimal(5, 2) // EUR per liter (e.g., 1.80)
+  tollCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.15)
+  wearCostPerKm         Decimal? @db.Decimal(5, 4) // EUR per km (e.g., 0.10)
+  driverHourlyCost      Decimal? @db.Decimal(8, 2) // EUR per hour (e.g., 25.00)
+
+  // Story 17.1: Zone conflict resolution strategy
+  // Determines how to resolve conflicts when a point falls within multiple overlapping zones
+  // null = use default specificity logic (POINT > RADIUS > POLYGON)
+  zoneConflictStrategy ZoneConflictStrategy?
+
+  // Story 17.2: Zone multiplier aggregation strategy
+  // Determines how pickup and dropoff zone multipliers are combined
+  // null = use MAX (current behaviour for backward compatibility)
+  zoneMultiplierAggregationStrategy ZoneMultiplierAggregationStrategy?
+
+  // Story 17.3: Staffing selection policy
+  // Determines how the system selects the best staffing plan when RSE violations are detected
+  // null = use CHEAPEST (default)
+  staffingSelectionPolicy StaffingSelectionPolicy?
+
+  // Story 17.4: Staffing cost parameters (configurable, no hardcoding per FR66)
+  // All fields are optional - defaults are applied in application layer
+  hotelCostPerNight      Decimal? @db.Decimal(8, 2) // EUR per night (default: 100)
+  mealCostPerDay         Decimal? @db.Decimal(8, 2) // EUR per day (default: 30)
+  driverOvernightPremium Decimal? @db.Decimal(8, 2) // EUR premium for overnight (default: 50)
+  secondDriverHourlyRate Decimal? @db.Decimal(8, 2) // EUR per hour for 2nd driver (default: 25)
+  relayDriverFixedFee    Decimal? @db.Decimal(8, 2) // EUR fixed fee for relay (default: 150)
+
+  // Story 17.9: Time bucket interpolation strategy for MAD pricing
+  // null = use hourly rate calculation (backward compatible)
+  timeBucketInterpolationStrategy TimeBucketInterpolationStrategy?
+
+  // Story 17.12: Use driver home for deadhead calculations
+  // When true and driver has home location, use it instead of vehicle base
+  useDriverHomeForDeadhead Boolean @default(false)
+
+  // Story 17.15: Client difficulty multipliers (Patience Tax)
+  // JSON mapping difficulty score (1-5) to price multiplier
+  // Example: {"1": 1.00, "2": 1.02, "3": 1.05, "4": 1.08, "5": 1.10}
+  difficultyMultipliers Json?
+
+  // Story 18.2: Dense zone detection for Transfer-to-MAD switching
+  // Speed threshold below which MAD pricing is suggested (default: 15 km/h)
+  denseZoneSpeedThreshold Decimal? @db.Decimal(5, 2)
+  // When true, automatically switch to MAD pricing; when false, only suggest
+  autoSwitchToMAD         Boolean  @default(false)
+  // Zone codes considered "dense" (e.g., ["PARIS_0", "PARIS_10"])
+  // Empty array means use default ["PARIS_0"]
+  denseZoneCodes          String[] @default([])
+
+  // Story 18.3: Round-trip to MAD detection
+  // Minimum waiting time on-site for separate transfers to be viable (default: 180 min = 3h)
+  minWaitingTimeForSeparateTransfers Int?     @default(180)
+  // Maximum return distance to consider returning to base (default: 50 km)
+  maxReturnDistanceKm                Decimal? @db.Decimal(10, 2)
+  // Buffer time to add to return calculation (default: 30 min)
+  roundTripBuffer                    Int?     @default(30)
+  // When true, automatically switch round-trip to MAD; when false, only suggest
+  autoSwitchRoundTripToMAD           Boolean  @default(false)
+
+  // Story 18.4: Loss of exploitation seasonality coefficients
+  // These coefficients determine what % of daily revenue is "lost" during idle days
+  // Higher coefficient = higher opportunity cost (e.g., 0.80 in high season)
+  defaultSeasonalityCoefficient Decimal? @default(0.65) @db.Decimal(3, 2) // 65%
+  highSeasonCoefficient         Decimal? @default(0.80) @db.Decimal(3, 2) // 80%
+  lowSeasonCoefficient          Decimal? @default(0.50) @db.Decimal(3, 2) // 50%
+
+  // Story 18.5: Stay vs Return Empty scenario comparison
+  // Maximum distance for return empty to be viable (default: 300 km)
+  maxReturnEmptyDistanceKm Decimal? @default(300.0) @db.Decimal(10, 2)
+  // Minimum idle days to trigger comparison (default: 1)
+  minIdleDaysForComparison Int?     @default(1)
+
+  // Story 21.6: Empty return cost percentage
+  // Percentage of operational cost to charge for empty return (no client = reduced cost)
+  // 100 = full cost, 70 = 70% of cost, etc. Default: 100%
+  emptyReturnCostPercent Int? @default(100)
+
+  // Story 18.10: Hierarchical pricing algorithm configuration
+  // JSON config: { enabled: boolean, skipLevel1?: boolean, skipLevel2?: boolean, skipLevel3?: boolean, centralZoneCodes?: string[] }
+  hierarchicalPricingConfig Json?
+
+  // Story 25.3: Document Personalization fields
+  // URL of the logo to display on PDF documents (stored in Supabase Storage)
+  documentLogoUrl String?
+  // Brand color for document highlights (titles, accents) - hex format #RRGGBB
+  brandColor      String?      @default("#2563eb")
+  // Logo position in PDF document header (LEFT or RIGHT)
+  logoPosition    LogoPosition @default(LEFT)
+  // Whether to show company name next to the logo in document header
+  showCompanyName Boolean      @default(true)
+  // Width of the logo in pixels (default: 150)
+  logoWidth       Int          @default(150)
+
+  // Story 25.2: EU-Compliant Invoice Legal Info
+  legalName       String?
+  address         String?   // Line 1 (street address)
+  addressLine2    String?   // Complement (apt, building, etc.)
+  postalCode      String?   // Postal/ZIP code
+  city            String?   // City name
+  phone           String?
+  email           String?
+  siret           String?
+  vatNumber       String?
+  iban            String?
+  bic             String?
+
+  // Story 25.4: Configurable Document Settings
+  // Language preference for PDF documents
+  documentLanguage DocumentLanguage @default(BILINGUAL)
+  // Custom footer terms for invoices (CGV)
+  invoiceTerms     String?
+  // Custom footer terms for quotes (CGV)
+  quoteTerms       String?
+  // Custom footer terms for mission orders
+  missionOrderTerms String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Story 17.9: Time buckets for MAD pricing
+  madTimeBuckets MadTimeBucket[]
+
+  // Story 18.10: Intra-central zone flat rates for hierarchical pricing
+  intraCentralFlatRates IntraCentralFlatRate[]
+
+  @@map("organization_pricing_settings")
+}
+
+/// Story 17.9: MadTimeBucket - Time buckets for mise-à-disposition pricing
+/// Allows defining fixed prices for specific duration ranges (e.g., 3h=150€, 4h=180€)
+model MadTimeBucket {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Link to pricing settings (for cascade delete)
+  pricingSettingsId String
+  pricingSettings   OrganizationPricingSettings @relation(fields: [pricingSettingsId], references: [id], onDelete: Cascade)
+
+  // Bucket configuration
+  durationHours     Int // Duration in hours (e.g., 3, 4, 6, 8, 10)
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+  price             Decimal         @db.Decimal(10, 2) // Fixed price in EUR for this bucket
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pricingSettingsId, durationHours, vehicleCategoryId])
+  @@index([pricingSettingsId])
+  @@index([vehicleCategoryId])
+  @@map("mad_time_bucket")
+}
+
+/// Story 18.10: IntraCentralFlatRate - Flat rates for intra-central zone trips
+/// Priority 1 in the hierarchical pricing algorithm
+model IntraCentralFlatRate {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Link to pricing settings (for cascade delete)
+  pricingSettingsId String
+  pricingSettings   OrganizationPricingSettings @relation(fields: [pricingSettingsId], references: [id], onDelete: Cascade)
+
+  // Vehicle category for this flat rate
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  // Flat rate price in EUR for intra-central zone trips
+  flatRate Decimal @db.Decimal(10, 2)
+
+  // Optional description
+  description String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pricingSettingsId, vehicleCategoryId])
+  @@index([pricingSettingsId])
+  @@index([vehicleCategoryId])
+  @@map("intra_central_flat_rate")
+}
+
+/// AdvancedRate - Advanced modifiers (night, weekend, long-distance, zone-based)
+model AdvancedRate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name String
+
+  // Application scope
+  appliesTo AdvancedRateAppliesTo
+
+  // Time conditions (for NIGHT, WEEKEND)
+  startTime  String? // HH:MM format
+  endTime    String? // HH:MM format
+  daysOfWeek String? // e.g. "0,6" for weekend
+
+  // Legacy fields (kept for backward compatibility, no longer used)
+  // Story 11.4: LONG_DISTANCE, ZONE_SCENARIO, HOLIDAY removed
+  minDistanceKm Decimal?     @db.Decimal(8, 2)
+  maxDistanceKm Decimal?     @db.Decimal(8, 2)
+  zoneId        String?
+  zone          PricingZone? @relation(fields: [zoneId], references: [id])
+
+  // Adjustment
+  adjustmentType AdjustmentType
+  value          Decimal        @db.Decimal(10, 4) // percentage or fixed amount
+
+  // Priority for stacking
+  priority Int @default(0)
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
+
+  @@index([organizationId])
+  @@index([appliesTo])
+  @@map("advanced_rate")
+}
+
+/// SeasonalMultiplier - Seasonal or event-based multipliers
+model SeasonalMultiplier {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name        String
+  description String?
+
+  // Date range
+  startDate DateTime
+  endDate   DateTime
+
+  // Multiplier
+  multiplier Decimal @db.Decimal(5, 3) // e.g. 1.300 for 30% increase
+
+  // Priority for overlapping periods
+  priority Int @default(0)
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
+
+  @@index([organizationId])
+  @@index([startDate, endDate])
+  @@map("seasonal_multiplier")
+}
+
+/// OptionalFee - Catalogue of optional fees (baby seat, waiting, cleaning)
+model OptionalFee {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  name        String
+  description String?
+
+  // Amount
+  amountType AmountType
+  amount     Decimal    @db.Decimal(10, 4) // EUR or percentage
+
+  // Tax
+  isTaxable Boolean @default(true)
+  vatRate   Decimal @default(20.0) @db.Decimal(5, 2) // e.g. 20.00 for 20%
+
+  // Auto-apply rules (JSON conditions)
+  autoApplyRules Json?
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
+
+  @@index([organizationId])
+  @@map("optional_fee")
+}
+
+/// Promotion - Promo codes and discounts
+model Promotion {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identification
+  code        String
+  description String?
+
+  // Discount
+  discountType AmountType
+  value        Decimal    @db.Decimal(10, 4) // EUR or percentage
+
+  // Validity
+  validFrom DateTime
+  validTo   DateTime
+
+  // Usage limits
+  maxTotalUses      Int?
+  maxUsesPerContact Int?
+  currentUses       Int  @default(0)
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Story 23.5: Vehicle category constraint (multi-select)
+  vehicleCategories VehicleCategory[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([validFrom, validTo])
+  @@map("promotion")
+}
+
+/// EmptyLegOpportunity - Empty-leg segments that can be sold with special strategies (Story 8.5)
+model EmptyLegOpportunity {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Vehicle
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+
+  // Route - Zone-based (optional)
+  fromZoneId String?
+  fromZone   PricingZone? @relation("EmptyLegFrom", fields: [fromZoneId], references: [id])
+  toZoneId   String?
+  toZone     PricingZone? @relation("EmptyLegTo", fields: [toZoneId], references: [id])
+
+  // Route - Address-based (Story 8.5)
+  fromAddress   String?
+  fromLatitude  Decimal? @db.Decimal(10, 7)
+  fromLongitude Decimal? @db.Decimal(10, 7)
+  toAddress     String?
+  toLatitude    Decimal? @db.Decimal(10, 7)
+  toLongitude   Decimal? @db.Decimal(10, 7)
+
+  // Estimated metrics (Story 8.5)
+  estimatedDistanceKm   Decimal? @db.Decimal(8, 2)
+  estimatedDurationMins Int?
+
+  // Time window
+  windowStart DateTime
+  windowEnd   DateTime
+
+  // Pricing strategy (JSON)
+  // Example: { "type": "PERCENTAGE_DISCOUNT", "value": 30 }
+  // Example: { "type": "FIXED_PRICE", "value": 50 }
+  // Example: { "type": "COST_PLUS_MARGIN", "marginPercent": 10 }
+  pricingStrategy Json?
+
+  // Source mission reference (Story 8.5)
+  sourceMissionId String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Metadata
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([windowStart, windowEnd])
+  @@index([isActive])
+  @@map("empty_leg_opportunity")
+}
+
+// ----------------------------------------------------------------------------
+// QUOTES, INVOICES & DOCUMENTS
+// ----------------------------------------------------------------------------
+
+/// Quote - Central commercial object for pricing and feasibility
+model Quote {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Contact
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id])
+
+  // Story 24.4: End-customer attribution for agency sub-contacts
+  endCustomerId String?
+  endCustomer   EndCustomer? @relation(fields: [endCustomerId], references: [id])
+
+  // Status
+  status QuoteStatus @default(DRAFT)
+
+  // Pricing mode and trip type
+  pricingMode PricingMode
+  tripType    TripType
+
+  // Pickup details
+  pickupAt        DateTime
+  pickupAddress   String
+  pickupLatitude  Decimal? @db.Decimal(10, 7)
+  pickupLongitude Decimal? @db.Decimal(10, 7)
+
+  // Dropoff details
+  // Story 16.1: Made optional for DISPO and OFF_GRID trip types
+  dropoffAddress   String?
+  dropoffLatitude  Decimal? @db.Decimal(10, 7)
+  dropoffLongitude Decimal? @db.Decimal(10, 7)
+
+  // Story 16.1: Trip type specific fields
+  isRoundTrip   Boolean   @default(false) // For TRANSFER - indicates round-trip
+  stops         Json? // For EXCURSION - array of intermediate stops
+  returnDate    DateTime? // For EXCURSION - optional return date
+  durationHours Decimal?  @db.Decimal(5, 2) // For DISPO - duration in hours
+  maxKilometers Decimal?  @db.Decimal(8, 2) // For DISPO - max km included (calculated)
+
+  // Passengers and luggage
+  passengerCount Int
+  luggageCount   Int @default(0)
+
+  // Vehicle category
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  // Monetary fields (EUR only)
+  suggestedPrice Decimal  @db.Decimal(10, 2)
+  finalPrice     Decimal  @db.Decimal(10, 2)
+  internalCost   Decimal? @db.Decimal(10, 2)
+  marginPercent  Decimal? @db.Decimal(5, 2)
+
+  // Story 24.9: Bidirectional pricing fields
+  partnerGridPrice  Decimal? @db.Decimal(10, 2)
+  clientDirectPrice Decimal? @db.Decimal(10, 2)
+
+  // Commission data (Story 7.4)
+  commissionPercent Decimal? @db.Decimal(5, 2) // Snapshot from partner contract at quote time
+  commissionAmount  Decimal? @db.Decimal(10, 2) // Calculated commission amount
+
+  // Analysis context (JSON)
+  tripAnalysis  Json? // Shadow calculation: segments A/B/C, distances, durations, cost breakdown
+  appliedRules  Json? // Which grids, multipliers, promotions, optional fees were used
+  costBreakdown Json? // Story 15.7: Detailed cost breakdown (fuel, tolls, driver, wear)
+
+  // Validity
+  validUntil DateTime?
+
+  // Story 17.5: Estimated end time for driver availability detection
+  estimatedEndAt DateTime?
+
+  // Notes
+  notes String?
+
+  // Status transition timestamps (Story 6.4)
+  sentAt     DateTime?
+  viewedAt   DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  expiredAt  DateTime?
+
+  // Assignment fields (Story 8.2)
+  assignedVehicleId String?
+  assignedVehicle   Vehicle?  @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id])
+  assignedDriverId  String?
+  assignedDriver    Driver?   @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+  // Story 20.8: Second driver for RSE double crew missions
+  secondDriverId    String?
+  secondDriver      Driver?   @relation("SecondDriver", fields: [secondDriverId], references: [id])
+  assignedAt        DateTime?
+
+  // Chaining fields (Story 8.4)
+  chainId       String? // Shared ID for chained missions (UUID)
+  chainOrder    Int? // Order in chain (1, 2, 3...)
+  chainedWithId String? // Direct link to next mission in chain
+  chainedWith   Quote?  @relation("ChainLink", fields: [chainedWithId], references: [id])
+  chainedBy     Quote[] @relation("ChainLink")
+
+  // Subcontracting fields (Story 8.6)
+  isSubcontracted     Boolean               @default(false)
+  subcontractorId     String?
+  subcontractor       SubcontractorProfile? @relation(fields: [subcontractorId], references: [id])
+  subcontractedPrice  Decimal?              @db.Decimal(10, 2)
+  subcontractedAt     DateTime?
+  subcontractingNotes String?
+
+  // Story 22.5: STAY trip type fields
+  stayStartDate DateTime? // First day of stay
+  stayEndDate   DateTime? // Last day of stay
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  invoice                Invoice?
+  statusAuditLogs        QuoteStatusAuditLog[]
+  documents              Document[]
+  vehicle                Vehicle?                @relation(fields: [vehicleId], references: [id])
+  vehicleId              String?
+  driver                 Driver?                 @relation(fields: [driverId], references: [id])
+  driverId               String?
+  quoteNotesAuditLogs    QuoteNotesAuditLog[]
+  // Story 22.5: Stay days relation
+  stayDays               StayDay[]
+  subcontractorFeedbacks SubcontractorFeedback[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([status])
+  @@index([pickupAt])
+  @@index([assignedVehicleId])
+  @@index([assignedDriverId])
+  @@index([secondDriverId])
+  @@index([chainId])
+  @@index([isSubcontracted])
+  @@index([subcontractorId])
+  @@index([stayStartDate])
+  @@index([endCustomerId])
+  @@map("quote")
+}
+
+/// Invoice - Immutable financial document derived from accepted quotes
+model Invoice {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Source quote (optional - can be standalone invoice)
+  quoteId String? @unique
+  quote   Quote?  @relation(fields: [quoteId], references: [id])
+
+  // Contact
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id])
+
+  // Invoice number (unique per org)
+  number String
+
+  // Status
+  status InvoiceStatus @default(DRAFT)
+
+  // Dates
+  issueDate DateTime
+  dueDate   DateTime
+
+  // Totals (EUR only)
+  totalExclVat Decimal @db.Decimal(10, 2)
+  totalVat     Decimal @db.Decimal(10, 2)
+  totalInclVat Decimal @db.Decimal(10, 2)
+  currency     String  @default("EUR")
+
+  // Commission (for partner invoices)
+  commissionAmount Decimal? @db.Decimal(10, 2)
+
+  // Story 25.6: Payment tracking for partial payments (Lettrage)
+  paidAmount       Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Story 15.7: Deep-copied cost breakdown from quote
+  costBreakdown Json? // Immutable snapshot of cost breakdown at invoice creation
+
+  // Notes
+  notes String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  lines     InvoiceLine[]
+  documents Document[]
+
+  // Story 24.6: End-customer attribution for invoices
+  endCustomerId String?
+  endCustomer   EndCustomer? @relation(fields: [endCustomerId], references: [id])
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([endCustomerId])
+  @@index([status])
+  @@index([issueDate])
+  @@map("invoice")
+}
+
+/// InvoiceLine - Line items for services, optional fees, discounts
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Line type
+  lineType InvoiceLineType
+
+  // Description
+  description String
+
+  // Quantity and pricing
+  quantity         Decimal @db.Decimal(10, 3)
+  unitPriceExclVat Decimal @db.Decimal(10, 4)
+  vatRate          Decimal @db.Decimal(5, 2) // e.g. 20.00 for 20%
+
+  // Computed totals (stored for immutability)
+  totalExclVat Decimal @db.Decimal(10, 2)
+  totalVat     Decimal @db.Decimal(10, 2)
+
+  // Sort order
+  sortOrder Int @default(0)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@map("invoice_line")
+}
+
+/// DocumentType - Classify generated documents
+model DocumentType {
+  id          String  @id @default(cuid())
+  code        String  @unique // e.g. QUOTE_PDF, INVOICE_PDF, MISSION_ORDER
+  name        String
+  description String?
+
+  // Relations
+  documents Document[]
+
+  @@map("document_type")
+}
+
+/// Document - Store generated artefacts (PDFs, etc.)
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Document type
+  documentTypeId String
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  // Related entities (optional)
+  quoteId   String?
+  quote     Quote?   @relation(fields: [quoteId], references: [id])
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  // Storage
+  storagePath String?
+  url         String?
+  filename    String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([documentTypeId])
+  @@index([quoteId])
+  @@index([invoiceId])
+  @@map("document")
+}
+
+// ----------------------------------------------------------------------------
+// FUEL & INTEGRATIONS
+// ----------------------------------------------------------------------------
+
+/// FuelPriceCache - Cache layer for fuel prices from CollectAPI
+model FuelPriceCache {
+  id String @id @default(cuid())
+
+  // Location
+  countryCode String  @default("FR")
+  latitude    Decimal @db.Decimal(10, 7)
+  longitude   Decimal @db.Decimal(10, 7)
+
+  // Fuel type and price
+  fuelType      FuelType
+  pricePerLitre Decimal  @db.Decimal(10, 4) // EUR
+  currency      String   @default("EUR")
+
+  // Source
+  source String @default("COLLECT_API")
+
+  // Timestamp
+  fetchedAt DateTime
+
+  @@unique([countryCode, fuelType])
+  @@index([fetchedAt])
+  @@map("fuel_price_cache")
+}
+
+/// OrganizationIntegrationSettings - Per-organisation integration settings and API keys
+model OrganizationIntegrationSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // API Keys (should be encrypted at rest in production)
+  googleMapsApiKey String?
+  collectApiKey    String?
+
+  // Preferences
+  preferredFuelType String? @default("DIESEL") // DIESEL, GASOLINE, LPG
+
+  // Connection status cache (updated after test)
+  googleMapsStatus   String? // connected, invalid, unknown
+  googleMapsTestedAt DateTime?
+  collectApiStatus   String? // connected, invalid, unknown
+  collectApiTestedAt DateTime?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organization_integration_settings")
+}
+
+// ----------------------------------------------------------------------------
+// RSE COUNTERS & COMPLIANCE AUDIT (Story 5.5)
+// ----------------------------------------------------------------------------
+
+/// DriverRSECounter - Tracks RSE counters per driver, per day, per regulatory regime
+model DriverRSECounter {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Date (business date in Europe/Paris)
+  date DateTime @db.Date
+
+  // Regulatory regime
+  regulatoryCategory VehicleRegulatoryCategory
+  licenseCategoryId  String?
+  licenseCategory    LicenseCategory?          @relation(fields: [licenseCategoryId], references: [id])
+
+  // Counters (in minutes for precision)
+  drivingMinutes   Int @default(0)
+  amplitudeMinutes Int @default(0)
+  breakMinutes     Int @default(0)
+  restMinutes      Int @default(0)
+
+  // Work period tracking
+  workStartTime DateTime? // First activity start time
+  workEndTime   DateTime? // Last activity end time
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, driverId, date, regulatoryCategory])
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([date])
+  @@map("driver_rse_counter")
+}
+
+/// ComplianceAuditLog - Logs compliance decisions for audit purposes (FR30)
+model ComplianceAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driverId       String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  // Context
+  quoteId            String?
+  missionId          String?
+  vehicleCategoryId  String?
+  regulatoryCategory VehicleRegulatoryCategory
+
+  // Decision
+  decision   String // "APPROVED", "BLOCKED", "WARNING"
+  violations Json? // Array of ComplianceViolation
+  warnings   Json? // Array of ComplianceWarning
+  reason     String
+
+  // Counters snapshot at time of decision
+  countersSnapshot Json?
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([timestamp])
+  @@map("compliance_audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// QUOTE STATUS AUDIT LOG (Story 6.4)
+// ----------------------------------------------------------------------------
+
+/// QuoteStatusAuditLog - Tracks quote status transitions for audit purposes
+model QuoteStatusAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quoteId        String
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Transition details
+  previousStatus QuoteStatus
+  newStatus      QuoteStatus
+
+  // Actor
+  userId String?
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  // Optional context/reason
+  reason String?
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@index([timestamp])
+  @@map("quote_status_audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// QUOTE NOTES AUDIT LOG (Story 22.3)
+// ----------------------------------------------------------------------------
+
+/// QuoteNotesAuditLog - Tracks quote notes changes for audit purposes
+/// Story 22.3: Enable Quote Notes Modification After Sending
+model QuoteNotesAuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quoteId        String
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Notes change details
+  previousNotes String? @db.Text
+  newNotes      String? @db.Text
+
+  // Actor
+  userId String?
+
+  // Timestamp
+  timestamp DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@index([timestamp])
+  @@map("quote_notes_audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// TOLL CACHE (Story 15.1)
+// ----------------------------------------------------------------------------
+
+/// TollCache - Caches toll costs from Google Routes API
+/// Story 15.1: Integrate Google Routes API for Real Toll Costs
+/// Story 17.13: Added encodedPolyline for route segmentation
+model TollCache {
+  id String @id @default(cuid())
+
+  // Route identification (hashed coordinates for efficient lookup)
+  originHash      String // SHA256 hash of "lat,lng" rounded to 4 decimals
+  destinationHash String // SHA256 hash of "lat,lng" rounded to 4 decimals
+
+  // Toll data
+  tollAmount Decimal @db.Decimal(10, 2)
+  currency   String  @default("EUR")
+
+  // Story 17.13: Encoded polyline for route segmentation
+  encodedPolyline String? @db.Text
+
+  // Metadata
+  source    String   @default("GOOGLE_API") // "GOOGLE_API" or "ESTIMATE"
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([originHash, destinationHash])
+  @@index([expiresAt])
+  @@map("toll_cache")
+}
+
+// ----------------------------------------------------------------------------
+// STAY TRIP TYPE (Story 22.5)
+// ----------------------------------------------------------------------------
+
+/// StayDay - Individual day within a STAY quote
+/// Story 22.5: Multi-day package with multiple services per day
+model StayDay {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  dayNumber Int // Order: 1, 2, 3...
+  date      DateTime // Specific date for this day
+
+  // Staffing costs for this day
+  hotelRequired       Boolean @default(false)
+  hotelCost           Decimal @default(0) @db.Decimal(10, 2)
+  mealCount           Int     @default(0)
+  mealCost            Decimal @default(0) @db.Decimal(10, 2)
+  driverCount         Int     @default(1)
+  driverOvernightCost Decimal @default(0) @db.Decimal(10, 2)
+
+  // Day totals
+  dayTotalCost         Decimal @default(0) @db.Decimal(10, 2)
+  dayTotalInternalCost Decimal @default(0) @db.Decimal(10, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  services StayService[]
+
+  @@unique([quoteId, dayNumber])
+  @@index([quoteId])
+  @@index([date])
+  @@map("stay_day")
+}
+
+/// StayService - Individual service within a stay day
+/// Story 22.5: Services can be TRANSFER, DISPO, or EXCURSION
+model StayService {
+  id        String  @id @default(cuid())
+  stayDayId String
+  stayDay   StayDay @relation(fields: [stayDayId], references: [id], onDelete: Cascade)
+
+  serviceOrder Int // Order within day: 1, 2, 3...
+  serviceType  StayServiceType
+
+  // Pickup details
+  pickupAt        DateTime
+  pickupAddress   String
+  pickupLatitude  Decimal? @db.Decimal(10, 7)
+  pickupLongitude Decimal? @db.Decimal(10, 7)
+
+  // Dropoff details (optional for DISPO)
+  dropoffAddress   String?
+  dropoffLatitude  Decimal? @db.Decimal(10, 7)
+  dropoffLongitude Decimal? @db.Decimal(10, 7)
+
+  // Service-specific fields
+  durationHours Decimal? @db.Decimal(5, 2) // For DISPO
+  stops         Json? // For EXCURSION - intermediate stops
+
+  // Calculated fields
+  distanceKm      Decimal? @db.Decimal(10, 2)
+  durationMinutes Int?
+
+  // Pricing
+  serviceCost         Decimal @default(0) @db.Decimal(10, 2)
+  serviceInternalCost Decimal @default(0) @db.Decimal(10, 2)
+
+  // Analysis
+  tripAnalysis Json? // Service-specific trip analysis
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([stayDayId, serviceOrder])
+  @@index([stayDayId])
+  @@map("stay_service")
+}
+
+// ----------------------------------------------------------------------------
+// ACTIVITY LOG (Story 25.1)
+// ----------------------------------------------------------------------------
+
+/// Activity - Tracks business events (e.g. document generation) for CRM
+model Activity {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  driverId       String?
+  driver         Driver?      @relation(fields: [driverId], references: [id])
+
+  // Context
+  quoteId        String?
+  entityType     String // QUOTE, DRIVER, etc.
+  entityId       String
+
+  // Event
+  type           String // DOCUMENT_GENERATED, etc.
+  description    String
+  metadata       Json?
+
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([entityId, entityType])
+  @@map("activity")
+}
