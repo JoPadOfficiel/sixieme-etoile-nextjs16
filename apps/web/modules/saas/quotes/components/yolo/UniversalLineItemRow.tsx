@@ -97,6 +97,9 @@ function formatNumber(value: number): string {
   });
 }
 
+/** Indentation size in pixels per depth level */
+const INDENT_SIZE_PX = 24;
+
 export function UniversalLineItemRow({
   id,
   type,
@@ -121,7 +124,9 @@ export function UniversalLineItemRow({
         // Convert to appropriate type
         if (field === "quantity" || field === "unitPrice" || field === "vatRate" || field === "total") {
           const numValue = parseFloat(value.replace(",", ".")) || 0;
-          onDisplayDataChange(field, numValue);
+          // Ensure non-negative values for business fields
+          const sanitizedValue = Math.max(0, numValue);
+          onDisplayDataChange(field, sanitizedValue);
         } else {
           onDisplayDataChange(field, value);
         }
@@ -134,7 +139,7 @@ export function UniversalLineItemRow({
   const isLinked = type === "CALCULATED" && sourceData !== null && sourceData !== undefined;
 
   // Indentation based on depth
-  const indentPadding = depth * 24;
+  const indentPadding = depth * INDENT_SIZE_PX;
 
   // Row background based on state
   const rowBackground = cn(

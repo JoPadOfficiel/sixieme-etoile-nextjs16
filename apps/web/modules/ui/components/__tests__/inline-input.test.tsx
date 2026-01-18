@@ -104,9 +104,7 @@ describe("InlineInput", () => {
 
   describe("AC6: Layout stability", () => {
     it("should maintain wrapper element in both modes", () => {
-      const { rerender } = render(
-        <InlineInput value="Test Value" onChange={vi.fn()} />
-      );
+      render(<InlineInput value="Test Value" onChange={vi.fn()} />);
 
       // Read mode - span exists
       const span = screen.getByText("Test Value");
@@ -132,14 +130,15 @@ describe("InlineInput", () => {
 
   describe("AC7: Type support", () => {
     it("should support number type", async () => {
-      const onChange = vi.fn();
       const user = userEvent.setup();
-      render(<InlineInput value="42" onChange={onChange} type="number" />);
+      render(<InlineInput value="42" onChange={vi.fn()} type="number" />);
 
       await user.click(screen.getByText("42"));
 
-      const input = screen.getByRole("textbox");
+      // Note: input type="number" has role="spinbutton", not "textbox"
+      const input = screen.getByRole("spinbutton");
       expect(input).toHaveAttribute("type", "number");
+      expect(input).toHaveValue(42);
     });
 
     it("should apply formatValue for display", () => {

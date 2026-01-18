@@ -64,7 +64,6 @@ export function InlineInput({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
-  const spanRef = useRef<HTMLSpanElement>(null);
 
   // Sync edit value when external value changes (and not currently editing)
   useEffect(() => {
