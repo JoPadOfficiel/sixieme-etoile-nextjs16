@@ -4020,6 +4020,14 @@
 			}
 		},
 		"gantt": {
+			"driversCount": "{count, plural, =0 {Aucun chauffeur} one {# chauffeur} other {# chauffeurs}}",
+			"jumpToNow": "Maintenant",
+			"driversLabel": "Chauffeurs",
+			"status": {
+				"available": "Disponible",
+				"onMission": "En mission",
+				"unavailable": "Indisponible"
+			},
 			"emptyState": {
 				"title": "Aucun chauffeur disponible",
 				"description": "Ajoutez des chauffeurs à votre flotte pour pouvoir planifier vos missions.",

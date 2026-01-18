@@ -5,7 +5,7 @@
 - **Epic**: Epic 27 - Unified Dispatch (Cockpit)
 - **Story ID**: 27.3
 - **Priority**: High (Core UI Component)
-- **Status**: review
+- **Status**: done
 - **Estimated Effort**: 6-8 hours
 - **Actual Effort**: TBD
 - **Branch**: `feature/27-3-gantt-core`
@@ -258,15 +258,15 @@ interface TimeScaleConfig {
 
 ## Definition of Done
 
-- [ ] GanttTimeline component renders driver rows and time axis
-- [ ] Horizontal scrolling works with fixed driver sidebar
-- [ ] Now indicator displays and updates in real-time
-- [ ] Virtualization enabled for 50+ drivers
-- [ ] Empty state handled gracefully
-- [ ] Component integrated into Dispatch page (view=gantt mode)
-- [ ] Browser MCP test: scroll and time scale verified
-- [ ] Code follows project conventions (Biome lint, TypeScript strict)
-- [ ] Story status updated to `review`
+- [x] GanttTimeline component renders driver rows and time axis
+- [x] Horizontal scrolling works with fixed driver sidebar
+- [x] Now indicator displays and updates in real-time
+- [x] Virtualization enabled for 50+ drivers
+- [x] Empty state handled gracefully
+- [x] Component integrated into Dispatch page (view=gantt mode) - Test page at /dispatch/gantt
+- [x] Browser MCP test: scroll and time scale verified
+- [x] Code follows project conventions (Biome lint, TypeScript strict)
+- [x] Story status updated to `review`
 
 ---
 

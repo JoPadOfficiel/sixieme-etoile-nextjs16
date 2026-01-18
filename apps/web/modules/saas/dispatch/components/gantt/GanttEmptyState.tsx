@@ -45,7 +45,7 @@ export const GanttEmptyState = memo(function GanttEmptyState({
 
 			{organization?.slug && (
 				<Button asChild variant="outline">
-					<Link href={`/app/${organization.slug}/settings/fleet/drivers`}>
+					<Link href={`/app/${organization.slug}/drivers`}>
 						<Settings className="w-4 h-4 mr-2" />
 						{t("emptyState.configureDrivers")}
 					</Link>

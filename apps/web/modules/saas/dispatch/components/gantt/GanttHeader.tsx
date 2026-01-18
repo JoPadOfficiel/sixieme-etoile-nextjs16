@@ -12,6 +12,7 @@ import { memo, useMemo } from "react";
 import { format, addHours, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@ui/lib";
+import { useTranslations } from "next-intl";
 import type { GanttHeaderProps } from "./types";
 import { HEADER_HEIGHT, SIDEBAR_WIDTH, DATE_FORMAT } from "./constants";
 
@@ -19,6 +20,7 @@ export const GanttHeader = memo(function GanttHeader({
 	config,
 	className,
 }: GanttHeaderProps) {
+	const t = useTranslations("dispatch.gantt");
 	const hourLabels = useMemo(() => {
 		const labels: { hour: number; label: string; x: number; showDate: boolean; dateLabel: string }[] = [];
 		let prevDate: Date | null = null;
@@ -54,7 +56,7 @@ export const GanttHeader = memo(function GanttHeader({
 				style={{ width: SIDEBAR_WIDTH }}
 			>
 				<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-					Chauffeurs
+					{t("driversLabel")}
 				</span>
 			</div>
 

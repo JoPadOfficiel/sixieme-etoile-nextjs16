@@ -12,7 +12,7 @@
 import { useMemo } from "react";
 import { addHours, startOfDay } from "date-fns";
 import { GanttTimeline } from "@saas/dispatch/components/gantt";
-import { useDriversForGantt } from "@saas/dispatch/hooks/useDriversForGantt";
+import { useDriversForGantt } from "@saas/dispatch/hooks";
 import { Skeleton } from "@ui/components/skeleton";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -31,10 +31,7 @@ export default function GanttTestPage() {
 	}, []);
 
 	// Fetch drivers
-	const { drivers, isLoading, error } = useDriversForGantt({
-		startTime,
-		endTime,
-	});
+	const { drivers, isLoading, error } = useDriversForGantt();
 
 	return (
 		<div className="flex flex-col h-screen p-4">

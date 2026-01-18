@@ -4036,6 +4036,14 @@
 			}
 		},
 		"gantt": {
+			"driversCount": "{count, plural, =0 {No drivers} one {# driver} other {# drivers}}",
+			"jumpToNow": "Now",
+			"driversLabel": "Drivers",
+			"status": {
+				"available": "Available",
+				"onMission": "On mission",
+				"unavailable": "Unavailable"
+			},
 			"emptyState": {
 				"title": "No drivers available",
 				"description": "Add drivers to your fleet to start planning your missions.",

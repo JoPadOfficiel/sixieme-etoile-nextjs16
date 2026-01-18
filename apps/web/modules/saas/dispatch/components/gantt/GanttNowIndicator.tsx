@@ -9,14 +9,18 @@
  */
 
 import { memo } from "react";
-import { useNowIndicator } from "./hooks";
 import type { GanttNowIndicatorProps } from "./types";
 
+interface ExtendedGanttNowIndicatorProps extends GanttNowIndicatorProps {
+	nowPosition: number | null;
+	isNowVisible: boolean;
+}
+
 export const GanttNowIndicator = memo(function GanttNowIndicator({
-	config,
 	height,
-}: GanttNowIndicatorProps) {
-	const { nowPosition, isNowVisible } = useNowIndicator({ config });
+	nowPosition,
+	isNowVisible,
+}: ExtendedGanttNowIndicatorProps) {
 
 	if (!isNowVisible || nowPosition === null) {
 		return null;

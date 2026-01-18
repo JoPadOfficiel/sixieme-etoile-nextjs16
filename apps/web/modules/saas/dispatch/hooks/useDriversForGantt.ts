@@ -14,8 +14,6 @@ import type { GanttDriver, DriverStatus } from "../components/gantt/types";
 import type { DriversResponse } from "@saas/fleet/types";
 
 interface UseDriversForGanttOptions {
-	startTime: Date;
-	endTime: Date;
 	enabled?: boolean;
 }
 
@@ -27,12 +25,10 @@ interface UseDriversForGanttReturn {
 }
 
 export function useDriversForGantt({
-	startTime,
-	endTime,
 	enabled = true,
-}: UseDriversForGanttOptions): UseDriversForGanttReturn {
+}: UseDriversForGanttOptions = {}): UseDriversForGanttReturn {
 	const { data, isLoading, error, refetch } = useQuery({
-		queryKey: ["gantt-drivers", startTime.toISOString(), endTime.toISOString()],
+		queryKey: ["gantt-drivers"],
 		queryFn: async (): Promise<GanttDriver[]> => {
 			// Fetch active drivers
 			const response = await apiClient.vtc.drivers.$get({
