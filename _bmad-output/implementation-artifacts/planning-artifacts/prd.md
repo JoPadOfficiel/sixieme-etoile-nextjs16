@@ -971,3 +971,23 @@ This appendix consolidates the advanced modules that adjust and explain the comp
 - **FR129:** When bidirectional pricing is active, the system shall log both prices in the quote record and display the selected pricing mode clearly on the quote summary and generated documents.
 
 - **FR130:** The end customer management interface shall support searching and filtering by name, difficulty score, and mission history (last mission date, total mission count), enabling efficient management of large sub-contact databases.
+
+### FR Group 15 - Unified Dispatch (Cockpit) & Live Operations
+
+Requirements for the consolidated "Command Center" that merges planning and list views.
+
+- **FR140:** The system shall provide a single "Unified Cockpit" page (`/dispatch`) that allows operators to instantly toggle between a **Gantt Planning View** and a **Legacy List View** without losing context or state.
+- **FR141:** The Gantt view shall visualize ALL missions, including "Manual/Yolo" missions that lack a calculated route, by using a generic or manually defined duration/timestamp, ensuring total visibility.
+- **FR142:** The system shall include a **Live Map Layer** in the Cockpit that, upon selecting a mission, visualizes the trip vector (Pickup $\rightarrow$ Dropoff) and highlights available drivers sorted by proximity to the pickup point.
+- **FR143:** The Dispatch system must visually alert users (e.g., red shake animation) if a drag-and-drop assignment violates an RSE constraint or overlaps with a Driver Calendar Event (Holiday/Sick).
+- **FR144:** The planner shall support a "Backlog" pane of unassigned missions that allows filtering/sorting and drag-and-drop assignment onto the Gantt timeline or driver rows.
+
+### FR Group 16 - Flexible "Yolo" Billing (Universal Blocks)
+
+Requirements for the new Universal Line Item architecture ("Hybrid Blocks").
+
+- **FR145:** The system shall implement a **Universal "Hybrid Block"** data structure for Quotes and Invoices, where every line item is distinctively typed as `CALCULATED` (linked to engine), `MANUAL` (free text), or `GROUP` (container).
+- **FR146:** The system shall separate **Source Data** (Operational Truth, immutable from engine) from **Display Data** (Commercial Truth, editable by user) for every line item, allowing users to rename/reprice trips without breaking the dispatch link.
+- **FR147:** The system shall enforce **"Detach Logic"**: If a user validates a change to Display Data that contradicts Source Data (e.g., changing the date), the system must warn the user and, upon confirmation, "detach" the line, converting it to a MANUAL type and clearing the operational link.
+- **FR148:** The Quote/Invoice Builders shall provide a "Notion-like" experience, allowing distinct service blocks (e.g., "Day 1", "Day 2", "Options") to be created, reordered via drag-and-drop, and nested within Groups.
+- **FR149:** The system shall calculate Profitability (`(DisplayTotal - SourceCost) / DisplayTotal`) for every line item in real-time, even when the price is manually overridden.

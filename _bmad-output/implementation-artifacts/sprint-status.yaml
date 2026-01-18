@@ -1,4 +1,4 @@
-# generated: 2026-01-15T09:55:00Z
+# generated: 2026-01-18T15:35:00+01:00
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-15T09:55:00Z
+generated: 2026-01-18T15:35:00+01:00
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -282,11 +282,43 @@ development_status:
   24-11-implement-automated-e2e-tests-for-mini-crm: done
   24-12-update-documentation-for-mini-crm-feature: done
   epic-24-retrospective: optional
-  epic-25: in-progress
+  epic-25: done
   25-1-generate-manage-mission-sheets-fiche-mission: done
   25-2-eu-compliant-invoice-quote-pdf-layout: done
-  25-3-organisation-document-personalization: review
+  25-3-organisation-document-personalization: done
   25-4-b2c-invoicing-address-agency-transparency: done
   25-5-deep-linking-navigation-crm-ux-improvements: done
   25-6-multi-invoice-payment-tracking-lettrage: done
   epic-25-retrospective: optional
+  epic-26: backlog
+  26-1-database-schema-update-for-hybrid-blocks: backlog
+  26-2-backward-compatibility-migration-script: backlog
+  26-3-hybrid-block-validation-layer-zod: backlog
+  26-4-backend-api-crud-for-nested-lines: backlog
+  26-5-ui-universal-block-row-component: backlog
+  26-6-ui-click-to-edit-inline-forms: backlog
+  26-7-ui-drag-drop-reordering-grouping: backlog
+  26-8-ui-slash-commands-menu: backlog
+  26-9-operational-detach-logic: backlog
+  26-10-real-time-profitability-computation: backlog
+  26-11-pdf-generator-pure-display-mode: backlog
+  26-12-pdf-generator-mission-order-operational-mode: backlog
+  26-13-block-presets-templates-bonus: backlog
+  26-14-undo-redo-history-support: backlog
+  epic-26-retrospective: optional
+  epic-27: backlog
+  27-1-dispatch-shell-navigation: backlog
+  27-2-backend-mission-splitter-service: backlog
+  27-3-gantt-core-timeline-rendering: backlog
+  27-4-gantt-mission-rendering-hybrid: backlog
+  27-5-unassigned-backlog-sidebar-logic: backlog
+  27-6-live-map-driver-locations-layer: backlog
+  27-7-live-map-mission-context-layer: backlog
+  27-8-map-smart-assignment-suggestions: backlog
+  27-9-dispatch-actions-drag-drop-assignment: backlog
+  27-10-conflict-detection-rse-calendar: backlog
+  27-11-inspector-panel-quick-actions: backlog
+  27-12-gantt-time-zoom-controls: backlog
+  27-13-real-time-updates-polling-socket: backlog
+  27-14-export-schedule: backlog
+  epic-27-retrospective: optional

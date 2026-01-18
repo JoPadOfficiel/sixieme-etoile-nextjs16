@@ -1370,11 +1370,6 @@ So that I can pick assignments that minimise deadhead cost and preserve profit.
 
 **Prerequisites:** Stories 4.5, 5.1, 8.1–8.2.
 
-**Technical Notes:**
-
-- Share multi-base evaluation logic with pricing engine to avoid divergence.
-- Consider caching route evaluations to avoid repeated external API calls.
-
 ### Story 8.4: Detect & Suggest Trip Chaining Opportunities
 
 As a **dispatcher**,  
@@ -7163,3 +7158,392 @@ So that **I can handle bulk virements from large agencies efficiently and track 
 **And** a global "Remaining Balance" indicator is visible in the Contact header.
 
 
+
+## Epic 26: Flexible "Yolo Mode" Billing (Universal Blocks)
+
+**Goal:** Implement the "Hybrid Block" architecture to allow mixing calculated trips, manual text lines, and groups in Quotes and Invoices, enabling full editability ("Notion-like") while preserving operational data.
+
+### Story 26.1: Database Schema Update for Hybrid Blocks & Mission Model
+
+As a **backend engineer**,
+I want to restructure the database to support "Service Blocks" and "Missions",
+So that we can decouple the Commercial Quote (flexible) from the Operational Mission (strict).
+
+**Related FRs:** FR143, FR144.
+
+**Acceptance Criteria:**
+- **Create `QuoteLine` model**: `type` (CALCULATED, MANUAL, GROUP), `sourceData` (Json - Immutable Operational Truth), `displayData` (Json - Mutable Commercial Truth), `parentId` (Nest), `sortOrder`.
+- **Create `Mission` model**: As per Epic 27 requirements (`driverId`, `vehicleId`, `sourceData`, `status`). Link to `Quote` (or `QuoteLine` if granular tracking is needed).
+- Update `InvoiceLine` to match the new `QuoteLine` structure.
+- Deprecate `TripType` enum (replaced by `QuoteLine.type`).
+
+### Story 26.2: Backward Compatibility Migration Script
+
+As a **backend engineer**,
+I want to migrate existing Quotes to the Service Block structure,
+So that historic data is preserved and accessible in the new editor.
+
+**Related FRs:** FR143.
+
+**Acceptance Criteria:**
+- Script iterates all existing `Quote` records.
+- **Standard Trips**: Create a single `QuoteLine` (Type: `CALCULATED`) with `sourceData` from Quote fields.
+- **STAY Trips**:
+    - Create a root `GROUP` line for the Stay.
+    - Iterate `Quote.stayDays` (if exists) or generate days between start/end.
+    - Create nested `GROUP` lines for each "Day".
+    - Move services into respective Days.
+- **Mission Creation**: Generate `Mission` records for all resulting lines.
+- Verify total amounts match pre-migration values exactly.
+- **Validation**: Run against a production dump before applying.
+
+### Story 26.3: Hybrid Block Validation Layer (Zod)
+
+As a **backend developer**,
+I want strict validation for the nested block structure,
+So that the API rejects malformed trees or groups nested too deep.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- Update `quoteSchema` and `invoiceSchema` to accept `lines` as a recursive or flat-with-parent array.
+- Validate that `GROUP` lines cannot have a `parentId` that is also a `GROUP` (max depth 1).
+- Validate that `CALCULATED` lines MUST have valid `sourceData` matching the pricing engine schema.
+
+### Story 26.4: Backend API - CRUD for Nested Lines & Totals
+
+As a **frontend developer**,
+I want the API to handle batch updates of lines including re-parenting and auto-calculation,
+So that when I drag a line or change a price, the Quote Total reflects reality.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- `PATCH /quotes/:id` accepts the full list of lines.
+- **Aggregation**: Triggers a recalculation of `Quote.finalPrice` and `Quote.internalCost` (Sum of all lines) and updates the parent Quote record.
+- The service handles diffing or delete-and-replace to update `parentId` and `sortOrder`.
+- Ensure transaction safety (all lines update or fail).
+
+### Story 26.5: UI - Universal Block Row Component
+
+As a **frontend developer**,
+I want a versatile row component that changes appearance based on block type,
+So that I don't need multiple table components.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- If type=`CALCULATED`: Render "Linked" icon, show Route summary in tooltip.
+- If type=`MANUAL`: Render "Text" icon, show simple inputs.
+- If type=`GROUP`: Render as a Section Header with a "Collapse/Expand" toggle.
+- Inputs for Qty/Price/VAT are auto-sized to content.
+
+### Story 26.6: UI - Click-to-Edit & Inline Forms
+
+As an **operator**,
+I want to click text to edit it immediately,
+So that I can work fast without opening modals.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- Clicking `displayData.label` transforms `<span>` into `<input autoFocus>`.
+- Blurring the input saves the local state.
+- Pressing `Enter` commits the change and moves focus to the next line.
+
+### Story 26.7: UI - Drag & Drop Reordering & Grouping
+
+As an **operator**,
+I want to drag lines to reorder them or drop them into groups,
+So that I can organize the quote logically (e.g., by Day).
+
+**Related FRs:** FR146, FR148.
+
+**Acceptance Criteria:**
+- Use `dnd-kit` (sortable).
+- Dragging a line changes its `sortOrder`.
+- Dragging a line *under* a Group Header sets its `parentId` to that Group.
+- Dragging a Group moves the group and all its children.
+
+### Story 26.8: UI - Slash Commands Menu
+
+As an **power user**,
+I want to type `/` to see a menu of block types,
+So that I can quickly add headers or text lines.
+
+**Related FRs:** FR146 (Notion-like).
+
+**Acceptance Criteria:**
+- Typing `/` in the Label input opens a Popover.
+- Options: "Text Block", "Heading (Group)", "Service", "Discount".
+- Selecting an option changes the current line's type or inserts a new one.
+
+### Story 26.9: Operational "Detach" Logic
+
+As an **operator**,
+I want protection against invalidating the operational route,
+So that I don't accidentally sell a "Paris Trip" as a "London Trip".
+
+**Related FRs:** FR145, FR147.
+
+**Acceptance Criteria:**
+- If user edits `label` significantly (heuristic?) -> Warning toast.
+- If user edits `Date/Time` (if exposed in line) -> Modal: "Detach from Route logic?".
+- Confirming "Detach" clears `sourceData`, sets type to `MANUAL`, and removes the "Linked" icon.
+
+### Story 26.10: Real-Time Profitability Computation
+
+As a **finance user**,
+I want to see the specific margin for each line item,
+So that I can spot under-priced custom items.
+
+**Related FRs:** FR149.
+
+**Acceptance Criteria:**
+- `QuoteBuilder` computes `(displayPrice - internalCost) / displayPrice` for every line.
+- `internalCost` comes from `sourceData` (Calculated) or user input (Manual).
+- Margin is displayed as a colored badge (Green > 30%, Red < 0%) on the far right of the row.
+
+### Story 26.11: PDF Generator - pure Display Mode
+
+As a **developer**,
+I want the PDF to respect my manual edits strictly,
+So that the customer gets exactly what I prepared.
+
+**Related FRs:** FR144.
+
+**Acceptance Criteria:**
+- The PDF renderer maps `displayData` to the pricing table.
+- `sourceData` is ignored for the Commercial Invoice/Quote.
+- Groups are rendered as Sub-headers in the PDF table (breaking the grid).
+
+### Story 26.12: PDF Generator - Mission Order (Operational Mode)
+
+As a **dispatcher**,
+I want the Mission Order to show the implementation details,
+So that the driver knows the real route, not the "Commercial Label".
+
+**Related FRs:** FR144.
+
+**Acceptance Criteria:**
+- The Mission Order PDF reads `sourceData` (Origin/Dest/Times).
+- If a line is `MANUAL` (no source), it prints the `displayData.label` with a "See Notes" warning.
+
+### Story 26.13: Block Presets / Templates (Bonus)
+
+As an **operator**,
+I want to save common text blocks (e.g., "Champagne Bottle"),
+So that I can reuse them without re-typing.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- "Save as Template" action on a row.
+- "Insert Template" option in the Slash Menu.
+- Templates are stored in a simple `BlockTemplate` table.
+
+### Story 26.14: Undo/Redo History support
+
+As an **operator**,
+I want to undo my last action if I made a mistake,
+So that I don't lose work during complex editing.
+
+**Related FRs:** FR146.
+
+**Acceptance Criteria:**
+- `useTemporalStore` (Zustand) tracks the state of the line items array.
+- `Cmd+Z` reverts the last change (text edit, reorder, or delete).
+
+---
+
+## Epic 27: Unified Dispatch (Cockpit) & Live Operations
+
+**Goal:** Consolidate the dispatch system into a single "Command Center" (`/dispatch`) featuring a synchronized Gantt, Live Map, and Unassigned Backlog, replacing the legacy list view while maintaining its functionality.
+
+### Story 27.1: Dispatch Shell & Navigation
+
+As a **dispatcher**,
+I want a unified page layout that maximizes screen real estate,
+So that I can see the timeline and map simultaneously.
+
+**Related FRs:** FR140.
+
+**Acceptance Criteria:**
+- `/dispatch` route loads the shell.
+- Header contains "View Mode" (Gantt/List) and "Date Range Picker".
+- Sidebar (Backlog) is collapsible.
+- Layout uses CSS Grid/Flex to adapt to window height (no double scrollbars).
+
+### Story 27.2: Backend - Mission Synchronization Service
+
+As a **backend engineer**,
+I want a service that automatically syncs Quote Lines to Missions,
+So that any change in the Commercial Quote (Date, Time, new Line) is instantly reflected in Dispatch.
+
+**Related FRs:** FR141 (Multi-leg).
+
+**Acceptance Criteria:**
+- **Sync Logic**:
+    - On `Quote` Create/Update: Identify `CALCULATED` or time-bound `GROUP` lines.
+    - Create/Update/Delete corresponding `Mission` records.
+- **Handling Deletions**: If a Quote Line is removed, the associated Mission is removed (unless it was already Started/Done -> Error or Archive?).
+    - *Decision*: If Mission is `ASSIGNED` or deeper, block deletion of Quote Line or warn user.
+- **Independence**: `Mission` has its own `driverId` and `status` which are NOT overwritten by Quote updates (unless the Date changes completely).
+
+### Story 27.3: Gantt - Core Timeline Rendering
+
+As a **dispatcher**,
+I want to see a timeline with hours and days,
+So that I have a temporal reference.
+
+**Related FRs:** FR141.
+
+**Acceptance Criteria:**
+- Render Svar Gantt (or Dnd-Kit timeline).
+- X-Axis: Time (Zoomable: Day, Week).
+- Y-Axis: Drivers (Grouped by Base/Vehicle Type optional).
+- Current time indicator (Vertical red line).
+
+### Story 27.4: Gantt - Mission Rendering (Hybrid)
+
+As a **dispatcher**,
+I want to see both standard transfers and manual "Yolo" missions,
+So that no job is hidden.
+
+**Related FRs:** FR141.
+
+**Acceptance Criteria:**
+- `CALCULATED` missions: Render exact duration from `sourceData`.
+- `MANUAL` missions: Render using `startAt` and default duration (1h), with "Dashed" visual style to indicate "No GPS".
+- Labels on bars show "Client Name - Trip Type".
+
+### Story 27.5: Unassigned Backlog - Sidebar Logic
+
+As a **dispatcher**,
+I want to filter the unassigned jobs to find what I need,
+So that the list isn't overwhelming.
+
+**Related FRs:** FR144.
+
+**Acceptance Criteria:**
+- Sidebar lists unassigned missions.
+- Sort by: Time (soonest first).
+- Filter by: Zone, Vehicle Category.
+- Search: Client Name.
+
+### Story 27.6: Live Map - Driver Locations Layer
+
+As a **dispatcher**,
+I want to see where my drivers are right now,
+So that I can make informed decisions.
+
+**Related FRs:** FR142.
+
+**Acceptance Criteria:**
+- Fetch latest GPS coordinates from `DriverPosition` (or Mock for now).
+- Render Pins on Map.
+- Color code pins by Status (Green=Active, Grey=Off).
+
+### Story 27.7: Live Map - Mission Context Layer
+
+As a **dispatcher**,
+I want to see the route of the selected mission on the map,
+So that I understand the geography.
+
+**Related FRs:** FR142.
+
+**Acceptance Criteria:**
+- When a Mission is clicked (Gantt or Backlog), Map clears.
+- Map renders the Route Polyline (from `sourceData`).
+- Map fits bounds to the route.
+
+### Story 27.8: Map - Smart Assignment Suggestions
+
+As a **dispatcher**,
+I want the map to highlight the best drivers for a selected unassigned job,
+So that I minimize deadhead.
+
+**Related FRs:** FR142.
+
+**Acceptance Criteria:**
+- When Unassigned Mission is selected:
+- Calculate distance from each Available Driver to Mission Pickup.
+- Highlight the 3 closest drivers on the map.
+- Show "Estimated Approach Time" in tooltip.
+
+### Story 27.9: Dispatch Actions - Drag & Drop Assignment
+
+As a **dispatcher**,
+I want to drag a job onto a driver to assign it,
+So that scheduling is tactile and fast.
+
+**Related FRs:** FR144.
+
+**Acceptance Criteria:**
+- Drag card from Backlog -> Drop on Driver Row -> `PATCH /missions/:id` with `driverId`.
+- Drag bar from status "Unassigned" -> Drop on Driver -> Same effect.
+- Revert drop if backend returns error.
+
+### Story 27.10: Conflict Detection - RSE & Calendar
+
+As a **dispatcher**,
+I want the system to refuse or warn about illegal assignments,
+So that I stay compliant.
+
+**Related FRs:** FR143.
+
+**Acceptance Criteria:**
+- Check overlap with `DriverCalendarEvent` (Holiday). -> Block assignment.
+- Check RSE (Max driving time). -> Warn assignment (Red Shake).
+- Check overlap with another Mission. -> Warn assignment.
+
+### Story 27.11: Inspector Panel - Quick Actions
+
+As a **dispatcher**,
+I want to resolve issues quickly from the details panel,
+So that I don't have to navigate away.
+
+**Related FRs:** FR140.
+
+**Acceptance Criteria:**
+- Right Panel shows selected mission.
+- Actions: "Unassign", "Edit Route", "Contact Driver", "Cancel".
+- Edit Route opens the Yolo Editor (Epic 26 components) in a Modal.
+
+### Story 27.12: Gantt - Time & Zoom Controls
+
+As a **dispatcher**,
+I want to zoom out to see the week or zoom in to see the hour,
+So that I can manage different horizons.
+
+**Related FRs:** FR140.
+
+**Acceptance Criteria:**
+- Zoom Controls (+/-).
+- "Today" button jumps to current time.
+- Date Picker jumps to specific day.
+
+### Story 27.13: Real-Time Updates (Polling/Socket)
+
+As a **dispatcher**,
+I want the screen to update if another dispatcher triggers a change,
+So that we don't double-book.
+
+**Related FRs:** FR140.
+
+**Acceptance Criteria:**
+- Use TanStack Query polling (e.g. 10s) or WebSocket subscription.
+- If a mission state changes (e.g. becomes assigned), it moves from Backlog to Timeline automatically.
+
+### Story 27.14: Export Schedule
+
+As a **dispatcher**,
+I want to print the daily schedule for the wall,
+So that we have a backup.
+
+**Related FRs:** FR140 (Legacy).
+
+**Acceptance Criteria:**
+- "Export PDF" button.
+- Generates a linear list or simplified Gantt image for the current view.
+- Includes Driver Names and assigned Missions.
