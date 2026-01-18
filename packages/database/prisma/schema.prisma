@@ -422,8 +422,6 @@ enum MissionStatus {
   IN_PROGRESS // Currently executing
   COMPLETED // Successfully finished
   CANCELLED // Mission cancelled
-
-  @@map("mission_status")
 }
 
 model Purchase {

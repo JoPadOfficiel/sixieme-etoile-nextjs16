@@ -307,7 +307,7 @@ development_status:
   26-14-undo-redo-history-support: backlog
   epic-26-retrospective: optional
   epic-27: in-progress
-  27-1-dispatch-shell-navigation: backlog
+  27-1-dispatch-shell-navigation: done
   27-2-backend-mission-sync-service: done
   27-3-gantt-core-timeline-rendering: done
   27-4-gantt-mission-rendering-hybrid: backlog

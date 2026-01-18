@@ -157,6 +157,7 @@ async function main() {
     await createIntegrationSettings();
     await seedDocumentTypes();
     await seedFuelPriceCache();
+    await createQuotesAndMissions();
 
     console.log("\n✅ VTC Database seed completed successfully!");
     printSummary();
@@ -1916,6 +1917,158 @@ async function seedFuelPriceCache() {
     });
   }
   console.log(`   ✅ ${prices.length} fuel prices`);
+}
+
+async function createQuotesAndMissions() {
+  console.log("\n📝 Creating Quotes and Missions...");
+  
+  // Need some contacts and vehicle categories
+  const contactIds = Object.values(CONTACT_IDS);
+  const vehicleCategoryIds = Object.values(VEHICLE_CATEGORY_IDS);
+  const driverIds = DRIVER_IDS;
+  const vehicleIds = VEHICLE_IDS;
+
+  if (contactIds.length === 0 || vehicleCategoryIds.length === 0) {
+    console.warn("⚠️ Cannot create missions: No contacts or vehicle categories found.");
+    return;
+  }
+
+  // Realistic coordinates around Paris
+  const locations = [
+    { address: "123 Avenue des Champs-Élysées, Paris", lat: 48.8698, lng: 2.3078 },
+    { address: "Tour Eiffel, Paris", lat: 48.8584, lng: 2.2945 },
+    { address: "Aéroport CDG, Roissy", lat: 49.0097, lng: 2.5479 },
+    { address: "Aéroport Orly, Orly", lat: 48.7262, lng: 2.3652 },
+    { address: "La Défense, Puteaux", lat: 48.8922, lng: 2.2367 },
+    { address: "Gare de Lyon, Paris", lat: 48.8443, lng: 2.3744 },
+    { address: "Gare du Nord, Paris", lat: 48.8809, lng: 2.3553 },
+    { address: "Château de Versailles", lat: 48.8049, lng: 2.1204 },
+    { address: "Disneyland Paris", lat: 48.8722, lng: 2.7758 },
+    { address: "Stade de France, Saint-Denis", lat: 48.9245, lng: 2.3602 }
+  ];
+
+  const statuses = ["PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED"];
+  
+  // Generate dates relative to NOW
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0); // 8:00 AM today
+
+  const missionsToCreate = [];
+
+  // Create 20 realistic missions
+  for (let i = 0; i < 20; i++) {
+    const isToday = i < 10; // First 10 are today
+    const contactId = contactIds[Math.floor(Math.random() * contactIds.length)];
+    const vehicleCategoryId = vehicleCategoryIds[Math.floor(Math.random() * vehicleCategoryIds.length)];
+    
+    // Random pickup/dropoff
+    const pickup = locations[Math.floor(Math.random() * locations.length)];
+    let dropoff = locations[Math.floor(Math.random() * locations.length)];
+    while (dropoff === pickup) {
+      dropoff = locations[Math.floor(Math.random() * locations.length)];
+    }
+
+    // Time: Scatter around today and tomorrow
+    const baseDate = new Date(todayStart);
+    if (!isToday) {
+       baseDate.setDate(baseDate.getDate() + (Math.random() > 0.5 ? 1 : -1)); // Tomorrow or yesterday
+    }
+    // Random time between 08:00 and 20:00
+    const startHour = 8 + Math.floor(Math.random() * 12);
+    baseDate.setHours(startHour, Math.floor(Math.random() * 4) * 15, 0, 0);
+    
+    const durationMins = 30 + Math.floor(Math.random() * 90); // 30-120 mins
+    const endAt = new Date(baseDate.getTime() + durationMins * 60000);
+
+    // Status logic
+    let status = "PENDING";
+    let type: any = "TRANSFER";
+    
+    if (i % 5 === 0) status = "COMPLETED";
+    else if (i % 4 === 0) status = "IN_PROGRESS";
+    else if (i % 2 === 0) status = "ASSIGNED";
+    else status = "PENDING";
+
+    // Assignment
+    const driverId = (status !== "PENDING" && driverIds.length > 0) ? driverIds[Math.floor(Math.random() * driverIds.length)] : null;
+    const vehicleId = (status !== "PENDING" && vehicleIds.length > 0) ? vehicleIds[Math.floor(Math.random() * vehicleIds.length)] : null;
+    
+    missionsToCreate.push({
+      contactId,
+      vehicleCategoryId,
+      pickup,
+      dropoff,
+      startAt: baseDate,
+      endAt,
+      status,
+      driverId,
+      vehicleId,
+       passengerCount: 1 + Math.floor(Math.random() * 3),
+      luggageCount: Math.floor(Math.random() * 4),
+      price: 50 + Math.floor(Math.random() * 200)
+    });
+  }
+
+  // Batch create
+  for (const m of missionsToCreate) {
+    try {
+      // 1. Create Accepted Quote
+      const quote = await prisma.quote.create({
+        data: {
+          id: randomUUID(),
+          organizationId: ORGANIZATION_ID,
+          contactId: m.contactId,
+          status: "ACCEPTED", // Must be accepted to have a mission usually
+          pricingMode: "FIXED_GRID",
+          tripType: "TRANSFER",
+          pickupAt: m.startAt,
+          pickupAddress: m.pickup.address,
+          pickupLatitude: m.pickup.lat,
+          pickupLongitude: m.pickup.lng,
+          dropoffAddress: m.dropoff.address,
+          dropoffLatitude: m.dropoff.lat,
+          dropoffLongitude: m.dropoff.lng,
+          passengerCount: m.passengerCount,
+          luggageCount: m.luggageCount,
+          vehicleCategoryId: m.vehicleCategoryId,
+          suggestedPrice: m.price,
+          finalPrice: m.price,
+          acceptedAt: new Date(),
+          assignedDriverId: m.driverId,
+          assignedVehicleId: m.vehicleId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      });
+
+      // 2. Create Mission
+      await prisma.mission.create({
+        data: {
+          id: randomUUID(),
+          organizationId: ORGANIZATION_ID,
+          quoteId: quote.id,
+          status: m.status as any,
+          startAt: m.startAt,
+          endAt: m.endAt,
+          driverId: m.driverId,
+          vehicleId: m.vehicleId,
+          sourceData: {
+            pickup: m.pickup,
+            dropoff: m.dropoff,
+            passengerCount: m.passengerCount,
+            luggageCount: m.luggageCount
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      });
+    } catch (error) {
+       console.error("❌ Failed to create mission/quote:", error);
+       console.error("Data:", m);
+    }
+  }
+  
+  console.log(`   ✅ Created ${missionsToCreate.length} quotes and missions for testing`);
 }
 
 function printSummary() {
