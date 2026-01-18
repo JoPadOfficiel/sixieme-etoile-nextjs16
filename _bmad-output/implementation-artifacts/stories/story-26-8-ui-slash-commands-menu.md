@@ -3,7 +3,7 @@ id: "26.8"
 epicId: "26"
 title: "UI - Slash Commands Menu"
 description: "Implement a Notion-like slash command menu that appears when a user types '/' in a line item label, allowing quick insertion of different block types (Text, Heading, Service, Discount)."
-status: "todo"
+status: "review"
 assignedTo: "UI/UX Developer"
 priority: "Medium"
 complexity: "Medium"
@@ -70,3 +70,10 @@ complexity: "Medium"
 -   **Constraints**:
     -   Must work within the existing table structure (beware of z-index/overflow clipping).
     -   Must be responsive and accessible.
+
+## Implementation Notes (Amelia)
+
+- **SlashMenu Component**: Created using Radix UI Popover and `cmdk`. Matches Notion-style interaction.
+- **Integration**: Integrated into `UniversalLineItemRow`. Triggers on typing `/` at the end of the label.
+- **Tests**: Added unit test in `UniversalLineItemRow.test.tsx` verifying menu opening and option presence.
+- **Dependencies**: Added `cmdk` and updated `popover.tsx` to export `PopoverAnchor` for precise positioning.

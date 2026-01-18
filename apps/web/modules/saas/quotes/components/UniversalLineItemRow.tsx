@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, AlignLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@ui/lib"; // Assuming standard shadcn utils
 import { Input } from "@ui/components/input";
+import { SlashMenu, SlashMenuBlockType } from "./SlashMenu";
 import { 
   Tooltip, 
   TooltipContent, 
@@ -56,6 +57,10 @@ export function UniversalLineItemRow({
 }: UniversalLineItemRowProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const labelInputRef = useRef<HTMLInputElement>(null);
+  
+  // Slash Menu State
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [slashAnchorRect, setSlashAnchorRect] = useState<DOMRect | null>(null);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -63,6 +68,31 @@ export function UniversalLineItemRow({
       labelInputRef.current.focus();
     }
   }, [isEditingLabel]);
+
+  const handleSlashSelect = (type: SlashMenuBlockType) => {
+    // Remove the slash from the label
+    const currentLabel = line.label || "";
+    // We assume the slash is at the end or we just remove the last occurrence
+    // Ideally we track where it was. For MVP, assuming it was the trigger.
+    const newLabel = currentLabel.replace(/\/$/, "").trim();
+    
+    handleUpdate("label", newLabel);
+
+    if (type === "DISCOUNT") {
+       // Handle discount specific logic - maybe just MANUAL type for now with negative price implication or specific tag?
+       // For this story, let's map it to MANUAL (or CALCULATED if it was an option) but typically Discount is a line type
+       // Since BlockType doesn't have DISCOUNT, we map to MANUAL and maybe add a description or metadata if possible.
+       // Or if the backend supports it, great. Keeping it safe: map to MANUAL.
+       handleUpdate("type", "MANUAL"); 
+       handleUpdate("description", "Discount applied");
+    } else {
+       handleUpdate("type", type);
+    }
+    
+    setSlashMenuOpen(false);
+    // Refocus input
+    setTimeout(() => labelInputRef.current?.focus(), 50);
+  };
 
   // Update handler wrapper
   const handleUpdate = (field: keyof QuoteLine, value: unknown) => {
@@ -157,8 +187,26 @@ export function UniversalLineItemRow({
           <Input
             ref={labelInputRef}
             value={line.label}
-            onChange={(e) => handleUpdate("label", e.target.value)}
-            onBlur={() => setIsEditingLabel(false)}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleUpdate("label", val);
+              
+              // Trigger Slash Menu
+              if (val.endsWith("/")) {
+                 setSlashAnchorRect(e.target.getBoundingClientRect());
+                 setSlashMenuOpen(true);
+              } else {
+                 setSlashMenuOpen(false);
+              }
+            }}
+            onBlur={() => {
+                // Delay closing editing to allow slash menu click if needed?
+                // Actually Popover usually handles focus.
+                // If slash menu is open, we don't want to stop editing label immediately.
+                if (!slashMenuOpen) {
+                   setIsEditingLabel(false);
+                }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") setIsEditingLabel(false);
             }}
@@ -226,6 +274,13 @@ export function UniversalLineItemRow({
            Section
         </div>
       )}
+      
+      <SlashMenu 
+        isOpen={slashMenuOpen} 
+        onClose={() => setSlashMenuOpen(false)} 
+        onSelect={handleSlashSelect}
+        anchorRect={slashAnchorRect}
+      />
     </div>
   );
 }

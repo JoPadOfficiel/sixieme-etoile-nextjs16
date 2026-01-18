@@ -116,4 +116,54 @@ describe("UniversalLineItemRow", () => {
     
     expect(mockOnUpdate).toHaveBeenCalledWith("line-1", { quantity: 2 });
   });
+
+  it("opens slash menu when '/' is typed in label", async () => {
+    // Mock getBoundingClientRect for Popover positioning
+    Element.prototype.getBoundingClientRect = vi.fn(() => ({
+      width: 100,
+      height: 30,
+      top: 0,
+      left: 0,
+      bottom: 30,
+      right: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    }));
+
+    // Mock scrollIntoView for Command list
+    Element.prototype.scrollIntoView = vi.fn();
+    
+    // Mock ResizeObserver
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+
+    render(
+      <UniversalLineItemRow
+        line={manualLine}
+        depth={0}
+        index={0}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    // Click label to enter edit mode
+    fireEvent.click(screen.getByText("Manual Service"));
+
+    // Find input
+    const input = screen.getByDisplayValue("Manual Service");
+    
+    // Type "/"
+    fireEvent.change(input, { target: { value: "Manual Service /" } });
+
+    // Check onUpdate was called
+    expect(mockOnUpdate).toHaveBeenCalledWith("line-1", { label: "Manual Service /" });
+
+    // Using findByText to wait for Popover animation/portal
+    const menuOption = await screen.findByText("Heading");
+    expect(menuOption).toBeDefined();
+  });
 });
