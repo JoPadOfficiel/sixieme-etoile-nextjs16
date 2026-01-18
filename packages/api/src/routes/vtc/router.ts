@@ -28,6 +28,8 @@ import { pricingCalculateRouter } from "./pricing-calculate";
 import { pricingSettingsRouter } from "./pricing-settings";
 import { pricingZonesRouter } from "./pricing-zones";
 import { quotesRouter } from "./quotes";
+// Story 26.4: Quote Lines CRUD API for Hybrid Blocks
+import { quoteLinesRouter } from "./quote-lines";
 import { quoteCostsRouter } from "./quote-costs";
 import { seasonalMultipliersRouter } from "./seasonal-multipliers";
 import { timeBucketsRouter } from "./time-buckets";
@@ -60,6 +62,8 @@ export const vtcRouter = new Hono()
 	.route("/", licenseCategoriesRouter)
 	.route("/", licenseRulesRouter)
 	.route("/", quotesRouter)
+	// Story 26.4: Quote Lines CRUD API for Hybrid Blocks
+	.route("/", quoteLinesRouter)
 	.route("/", quoteCostsRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)
