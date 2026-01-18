@@ -376,6 +376,120 @@ describe("MissionSyncService", () => {
       expect(result.deleted).toBe(0);
       expect(result.detached).toBe(1);
     });
+
+    // H3 Fix: Tests for error scenarios
+    it("should record error when mission create fails", async () => {
+      // Given: Quote with line, but create will fail
+      const mockQuote = createMockQuote({
+        lines: [
+          createMockQuoteLine({
+            id: "line-1",
+            type: "CALCULATED",
+          }),
+        ],
+        missions: [],
+      });
+
+      mockPrisma.quote.findUnique.mockResolvedValue(mockQuote);
+      mockPrisma.mission.create.mockRejectedValue(new Error("Database connection failed"));
+
+      // When: Sync service runs
+      const result = await service.syncQuoteMissions("quote-1");
+
+      // Then: Error is recorded, not thrown
+      expect(result.created).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].type).toBe("CREATE_FAILED");
+      expect(result.errors[0].quoteLineId).toBe("line-1");
+      expect(result.errors[0].message).toContain("Database connection failed");
+    });
+
+    it("should record error when mission update fails", async () => {
+      // Given: Quote with changed timing, but update will fail
+      const oldPickupAt = new Date("2026-01-20T09:00:00");
+      const newPickupAt = new Date("2026-01-20T14:00:00");
+
+      const mockQuote = createMockQuote({
+        pickupAt: newPickupAt,
+        lines: [
+          createMockQuoteLine({
+            id: "line-1",
+            type: "CALCULATED",
+          }),
+        ],
+        missions: [
+          createMockMission({
+            id: "mission-1",
+            quoteLineId: "line-1",
+            startAt: oldPickupAt,
+            status: "PENDING",
+          }),
+        ],
+      });
+
+      mockPrisma.quote.findUnique.mockResolvedValue(mockQuote);
+      mockPrisma.mission.update.mockRejectedValue(new Error("Constraint violation"));
+
+      // When: Sync service runs
+      const result = await service.syncQuoteMissions("quote-1");
+
+      // Then: Error is recorded
+      expect(result.updated).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].type).toBe("UPDATE_FAILED");
+      expect(result.errors[0].missionId).toBe("mission-1");
+    });
+
+    it("should record error when mission delete fails", async () => {
+      // Given: Orphan PENDING mission, but delete will fail
+      const mockQuote = createMockQuote({
+        lines: [],
+        missions: [
+          createMockMission({
+            id: "mission-1",
+            quoteLineId: "line-1",
+            status: "PENDING",
+          }),
+        ],
+      });
+
+      mockPrisma.quote.findUnique.mockResolvedValue(mockQuote);
+      mockPrisma.mission.delete.mockRejectedValue(new Error("Foreign key constraint"));
+
+      // When: Sync service runs
+      const result = await service.syncQuoteMissions("quote-1");
+
+      // Then: Error is recorded
+      expect(result.deleted).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].type).toBe("DELETION_BLOCKED");
+      expect(result.errors[0].missionId).toBe("mission-1");
+    });
+
+    it("should record error when mission detach fails", async () => {
+      // Given: Orphan ASSIGNED mission, but detach (update) will fail
+      const mockQuote = createMockQuote({
+        lines: [],
+        missions: [
+          createMockMission({
+            id: "mission-1",
+            quoteLineId: "line-1",
+            status: "ASSIGNED",
+          }),
+        ],
+      });
+
+      mockPrisma.quote.findUnique.mockResolvedValue(mockQuote);
+      mockPrisma.mission.update.mockRejectedValue(new Error("Lock timeout"));
+
+      // When: Sync service runs
+      const result = await service.syncQuoteMissions("quote-1");
+
+      // Then: Error is recorded
+      expect(result.detached).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].type).toBe("UPDATE_FAILED");
+    });
   });
 });
 

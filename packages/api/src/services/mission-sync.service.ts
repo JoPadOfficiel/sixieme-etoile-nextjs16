@@ -83,6 +83,8 @@ export class MissionSyncService {
       errors: [],
     };
 
+    console.log(`[MissionSync] Starting sync for quote ${quoteId}`);
+
     // Use a transaction to ensure data consistency
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Step 1: Fetch Quote with all QuoteLines and existing Missions
@@ -95,12 +97,15 @@ export class MissionSyncService {
       });
 
       if (!quote) {
+        console.warn(`[MissionSync] Quote ${quoteId} not found`);
         result.errors.push({
           type: "UPDATE_FAILED",
           message: `Quote ${quoteId} not found`,
         });
         return;
       }
+
+      console.log(`[MissionSync] Quote ${quoteId}: ${quote.lines.length} lines, ${quote.missions.length} existing missions`);
 
       // Step 2: Identify eligible quote lines (CALCULATED or GROUP with timing)
       const eligibleLines = quote.lines.filter((line) =>
@@ -144,6 +149,7 @@ export class MissionSyncService {
                 },
               });
               result.updated++;
+              console.log(`[MissionSync] Updated mission ${existingMission.id} for line ${line.id}`);
             } catch (error) {
               result.errors.push({
                 type: "UPDATE_FAILED",
@@ -172,6 +178,7 @@ export class MissionSyncService {
               },
             });
             result.created++;
+            console.log(`[MissionSync] Created mission for line ${line.id}`);
           } catch (error) {
             result.errors.push({
               type: "CREATE_FAILED",
@@ -196,6 +203,7 @@ export class MissionSyncService {
               where: { id: mission.id },
             });
             result.deleted++;
+            console.log(`[MissionSync] Deleted orphan mission ${mission.id}`);
           } catch (error) {
             result.errors.push({
               type: "DELETION_BLOCKED",
@@ -212,6 +220,7 @@ export class MissionSyncService {
                 data: { quoteLineId: null },
               });
               result.detached++;
+              console.log(`[MissionSync] Detached mission ${mission.id} (protected status: ${mission.status})`);
             } catch (error) {
               result.errors.push({
                 type: "UPDATE_FAILED",
@@ -226,6 +235,8 @@ export class MissionSyncService {
       }
     });
 
+    console.log(`[MissionSync] Sync complete for quote ${quoteId}: created=${result.created}, updated=${result.updated}, deleted=${result.deleted}, detached=${result.detached}, errors=${result.errors.length}`);
+    
     return result;
   }
 
@@ -336,16 +347,6 @@ export class MissionSyncService {
    */
   private canDeleteMission(status: MissionStatus): boolean {
     return DELETABLE_STATUSES.includes(status);
-  }
-
-  /**
-   * Check if a mission is protected from deletion
-   *
-   * @param status - The mission status
-   * @returns true if the mission is protected
-   */
-  private isProtectedMission(status: MissionStatus): boolean {
-    return PROTECTED_STATUSES.includes(status);
   }
 }
 
