@@ -2,7 +2,7 @@
 id: "26-5"
 title: "UI - Universal Block Row Component"
 epicId: "26"
-status: "review"
+status: "done"
 original_status: "todo"
 story_type: "feature"
 priority: "high"
