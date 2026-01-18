@@ -2,7 +2,7 @@
 id: "27.5"
 epic: "27"
 title: "Unassigned Backlog - Sidebar Logic"
-status: "review"
+status: "done"
 priority: "high"
 complexity: "medium"
 assigned_agent: "Amelia"

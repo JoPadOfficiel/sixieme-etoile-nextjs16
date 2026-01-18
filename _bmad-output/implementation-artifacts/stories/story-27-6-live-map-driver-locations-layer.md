@@ -1,6 +1,6 @@
 # Story 27.6 : Live Map - Driver Locations Layer
 
-**Status:** REVIEW
+**Status:** DONE
 **Epic:** Epic 27 - Unified Dispatch (Cockpit)
 
 ## Description
