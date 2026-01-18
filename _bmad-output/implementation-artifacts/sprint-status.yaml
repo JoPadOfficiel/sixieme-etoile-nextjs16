@@ -290,8 +290,8 @@ development_status:
   25-5-deep-linking-navigation-crm-ux-improvements: done
   25-6-multi-invoice-payment-tracking-lettrage: done
   epic-25-retrospective: optional
-  epic-26: backlog
-  26-1-database-schema-update-for-hybrid-blocks: backlog
+  epic-26: in-progress
+  26-1-database-schema-update-for-hybrid-blocks: review
   26-2-backward-compatibility-migration-script: backlog
   26-3-hybrid-block-validation-layer-zod: backlog
   26-4-backend-api-crud-for-nested-lines: backlog

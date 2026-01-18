@@ -162,11 +162,15 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
+export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','label','description','sourceData','displayData','quantity','unitPrice','totalPrice','vatRate','parentId','sortOrder','createdAt','updatedAt']);
+
+export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','createdAt','updatedAt']);
+
 export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId']);
 
-export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sortOrder','createdAt','updatedAt']);
+export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
 
 export const DocumentTypeScalarFieldEnumSchema = z.enum(['id','code','name','description']);
 
@@ -195,6 +199,8 @@ export const ActivityScalarFieldEnumSchema = z.enum(['id','organizationId','driv
 export const SortOrderSchema = z.enum(['asc','desc']);
 
 export const NullableJsonNullValueInputSchema = z.enum(['DbNull','JsonNull',]).transform((value) => value === 'JsonNull' ? Prisma.JsonNull : value === 'DbNull' ? Prisma.DbNull : value);
+
+export const JsonNullValueInputSchema = z.enum(['JsonNull',]).transform((value) => (value === 'JsonNull' ? Prisma.JsonNull : value));
 
 export const QueryModeSchema = z.enum(['default','insensitive']);
 
@@ -313,6 +319,14 @@ export type LogoPositionType = `${z.infer<typeof LogoPositionSchema>}`
 export const DocumentLanguageSchema = z.enum(['FRENCH','ENGLISH','BILINGUAL']);
 
 export type DocumentLanguageType = `${z.infer<typeof DocumentLanguageSchema>}`
+
+export const QuoteLineTypeSchema = z.enum(['CALCULATED','MANUAL','GROUP']);
+
+export type QuoteLineTypeType = `${z.infer<typeof QuoteLineTypeSchema>}`
+
+export const MissionStatusSchema = z.enum(['PENDING','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED']);
+
+export type MissionStatusType = `${z.infer<typeof MissionStatusSchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -1326,6 +1340,61 @@ export const EmptyLegOpportunitySchema = z.object({
 export type EmptyLegOpportunity = z.infer<typeof EmptyLegOpportunitySchema>
 
 /////////////////////////////////////////
+// QUOTE LINE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * QuoteLine - Story 26.1: Structured line items for Hybrid Blocks architecture
+ * Enables mix of calculated (GPS-based) and manual line items with full traceability
+ */
+export const QuoteLineSchema = z.object({
+  type: QuoteLineTypeSchema,
+  id: z.string().cuid(),
+  quoteId: z.string(),
+  label: z.string(),
+  description: z.string().nullable(),
+  sourceData: JsonValueSchema.nullable(),
+  displayData: JsonValueSchema,
+  quantity: z.instanceof(Prisma.Decimal, { message: "Field 'quantity' must be a Decimal. Location: ['Models', 'QuoteLine']"}),
+  unitPrice: z.instanceof(Prisma.Decimal, { message: "Field 'unitPrice' must be a Decimal. Location: ['Models', 'QuoteLine']"}),
+  totalPrice: z.instanceof(Prisma.Decimal, { message: "Field 'totalPrice' must be a Decimal. Location: ['Models', 'QuoteLine']"}),
+  vatRate: z.instanceof(Prisma.Decimal, { message: "Field 'vatRate' must be a Decimal. Location: ['Models', 'QuoteLine']"}),
+  parentId: z.string().nullable(),
+  sortOrder: z.number().int(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type QuoteLine = z.infer<typeof QuoteLineSchema>
+
+/////////////////////////////////////////
+// MISSION SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Mission - Story 26.1: Operational bridge between commercial quotes and execution
+ * Prepares dispatch infrastructure for Epic 27 (Unified Dispatch)
+ */
+export const MissionSchema = z.object({
+  status: MissionStatusSchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  quoteId: z.string(),
+  quoteLineId: z.string().nullable(),
+  driverId: z.string().nullable(),
+  vehicleId: z.string().nullable(),
+  startAt: z.coerce.date(),
+  endAt: z.coerce.date().nullable(),
+  sourceData: JsonValueSchema.nullable(),
+  executionData: JsonValueSchema.nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type Mission = z.infer<typeof MissionSchema>
+
+/////////////////////////////////////////
 // QUOTE SCHEMA
 /////////////////////////////////////////
 
@@ -1433,9 +1502,11 @@ export type Invoice = z.infer<typeof InvoiceSchema>
 
 /**
  * InvoiceLine - Line items for services, optional fees, discounts
+ * Story 26.1: Enhanced with Hybrid Blocks architecture support
  */
 export const InvoiceLineSchema = z.object({
   lineType: InvoiceLineTypeSchema,
+  blockType: QuoteLineTypeSchema,
   id: z.string().cuid(),
   invoiceId: z.string(),
   description: z.string(),
@@ -1444,6 +1515,9 @@ export const InvoiceLineSchema = z.object({
   vatRate: z.instanceof(Prisma.Decimal, { message: "Field 'vatRate' must be a Decimal. Location: ['Models', 'InvoiceLine']"}),
   totalExclVat: z.instanceof(Prisma.Decimal, { message: "Field 'totalExclVat' must be a Decimal. Location: ['Models', 'InvoiceLine']"}),
   totalVat: z.instanceof(Prisma.Decimal, { message: "Field 'totalVat' must be a Decimal. Location: ['Models', 'InvoiceLine']"}),
+  sourceData: JsonValueSchema.nullable(),
+  displayData: JsonValueSchema.nullable(),
+  parentId: z.string().nullable(),
   sortOrder: z.number().int(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

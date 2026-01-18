@@ -154,6 +154,7 @@ model Organization {
   subcontractorFeedbacks      SubcontractorFeedback[]
   endCustomers                EndCustomer[]
   activities                  Activity[]
+  missions                    Mission[] // Story 26.1: Operational missions
 
   @@unique([slug])
   @@map("organization")
@@ -242,7 +243,7 @@ enum QuoteStatus {
 enum InvoiceStatus {
   DRAFT
   ISSUED
-  PARTIAL    // Story 25.6: Partially paid invoice
+  PARTIAL // Story 25.6: Partially paid invoice
   PAID
   CANCELLED
 }
@@ -391,16 +392,34 @@ enum SubcontractorAvailability {
 /// Story 25.3: Logo position for PDF documents
 /// Controls where the organization logo appears in generated PDFs
 enum LogoPosition {
-  LEFT  // Logo on left side of header (default)
+  LEFT // Logo on left side of header (default)
   RIGHT // Logo on right side of header
 }
 
 /// Story 25.4: Document language settings for PDF generation
 /// Controls the language used in generated PDF documents
 enum DocumentLanguage {
-  FRENCH    // French only
-  ENGLISH   // English only
+  FRENCH // French only
+  ENGLISH // English only
   BILINGUAL // Both French and English (default)
+}
+
+/// Story 26.1: Quote/Invoice line type for Hybrid Blocks architecture
+/// Classifies line items by their source and editability
+enum QuoteLineType {
+  CALCULATED // Linked to sourceData from GPS/pricing engine - auto-calculated
+  MANUAL // Free-form entry by operator - no operational link
+  GROUP // Grouping header for hierarchical structures (e.g., STAY packages)
+}
+
+/// Story 26.1: Mission status for operational tracking
+/// Tracks the lifecycle of a mission from creation to completion
+enum MissionStatus {
+  PENDING // Mission created, awaiting assignment
+  ASSIGNED // Driver/vehicle assigned, awaiting execution
+  IN_PROGRESS // Currently executing
+  COMPLETED // Successfully finished
+  CANCELLED // Mission cancelled
 }
 
 model Purchase {
@@ -476,6 +495,7 @@ model Contact {
   @@index([isPartner])
   @@map("contact")
 }
+
 /// EndCustomer - Individual end-customers within agency partner profiles (Story 24.1)
 model EndCustomer {
   id             String       @id @default(cuid())
@@ -758,7 +778,7 @@ model VehicleCategory {
   subcontractorVehicleCategories SubcontractorVehicleCategory[]
   madTimeBuckets                 MadTimeBucket[]
 
-  intraCentralFlatRates          IntraCentralFlatRate[]
+  intraCentralFlatRates IntraCentralFlatRate[]
 
   // Story 23.5: Pricing adjustments linked to this category
   advancedRates       AdvancedRate[]
@@ -854,6 +874,7 @@ model Vehicle {
   emptyLegOpportunities EmptyLegOpportunity[]
   assignedQuotes        Quote[]               @relation("AssignedVehicle")
   quotes                Quote[]
+  missions              Mission[]             @relation("MissionVehicle") // Story 26.1
 
   @@unique([organizationId, registrationNumber])
   @@index([organizationId])
@@ -952,6 +973,7 @@ model Driver {
   secondDriverQuotes   Quote[]               @relation("SecondDriver")
   quotes               Quote[]
   activities           Activity[]
+  missions             Mission[]             @relation("MissionDriver") // Story 26.1
 
   @@index([organizationId])
   @@index([isActive])
@@ -1393,25 +1415,25 @@ model OrganizationPricingSettings {
   logoWidth       Int          @default(150)
 
   // Story 25.2: EU-Compliant Invoice Legal Info
-  legalName       String?
-  address         String?   // Line 1 (street address)
-  addressLine2    String?   // Complement (apt, building, etc.)
-  postalCode      String?   // Postal/ZIP code
-  city            String?   // City name
-  phone           String?
-  email           String?
-  siret           String?
-  vatNumber       String?
-  iban            String?
-  bic             String?
+  legalName    String?
+  address      String? // Line 1 (street address)
+  addressLine2 String? // Complement (apt, building, etc.)
+  postalCode   String? // Postal/ZIP code
+  city         String? // City name
+  phone        String?
+  email        String?
+  siret        String?
+  vatNumber    String?
+  iban         String?
+  bic          String?
 
   // Story 25.4: Configurable Document Settings
   // Language preference for PDF documents
-  documentLanguage DocumentLanguage @default(BILINGUAL)
+  documentLanguage  DocumentLanguage @default(BILINGUAL)
   // Custom footer terms for invoices (CGV)
-  invoiceTerms     String?
+  invoiceTerms      String?
   // Custom footer terms for quotes (CGV)
-  quoteTerms       String?
+  quoteTerms        String?
   // Custom footer terms for mission orders
   missionOrderTerms String?
 
@@ -1697,6 +1719,100 @@ model EmptyLegOpportunity {
 // QUOTES, INVOICES & DOCUMENTS
 // ----------------------------------------------------------------------------
 
+/// QuoteLine - Story 26.1: Structured line items for Hybrid Blocks architecture
+/// Enables mix of calculated (GPS-based) and manual line items with full traceability
+model QuoteLine {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Line classification
+  type QuoteLineType @default(CALCULATED)
+
+  // Display content
+  label       String // Primary display label (e.g., "Transfert CDG → Paris")
+  description String? // Optional extended description
+
+  // Story 26.1: Source/Display data separation
+  // sourceData: Original pricing engine output (null for MANUAL lines)
+  // displayData: User-editable values for display purposes
+  sourceData  Json? // Pricing calculation context (pricingMode, distances, costs)
+  displayData Json // Editable display values (label, unitLabel, etc.)
+
+  // Pricing fields
+  quantity   Decimal @default(1) @db.Decimal(10, 3)
+  unitPrice  Decimal @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(10, 2)
+  vatRate    Decimal @default(10.00) @db.Decimal(5, 2) // 10% for transport
+
+  // Hierarchical structure (for GROUP lines containing children)
+  parentId String?     @map("parent_id")
+  parent   QuoteLine?  @relation("QuoteLineHierarchy", fields: [parentId], references: [id])
+  children QuoteLine[] @relation("QuoteLineHierarchy")
+
+  // Ordering
+  sortOrder Int @default(0)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  missions Mission[] // Operational missions linked to this line
+
+  @@index([quoteId])
+  @@index([parentId])
+  @@index([sortOrder])
+  @@map("quote_line")
+}
+
+/// Mission - Story 26.1: Operational bridge between commercial quotes and execution
+/// Prepares dispatch infrastructure for Epic 27 (Unified Dispatch)
+model Mission {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Link to quote (required) and optional specific line
+  quoteId     String
+  quote       Quote      @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quoteLineId String?
+  quoteLine   QuoteLine? @relation(fields: [quoteLineId], references: [id])
+
+  // Assignment (nullable - may be unassigned initially)
+  driverId  String?
+  driver    Driver?  @relation("MissionDriver", fields: [driverId], references: [id])
+  vehicleId String?
+  vehicle   Vehicle? @relation("MissionVehicle", fields: [vehicleId], references: [id])
+
+  // Status
+  status MissionStatus @default(PENDING)
+
+  // Timing
+  startAt DateTime // Planned start time
+  endAt   DateTime? // Planned end time (null for open-ended missions)
+
+  // Operational data
+  sourceData    Json? // Context from quote (pickup, dropoff, distance, etc.)
+  executionData Json? // Runtime data (actual times, km, driver notes, etc.)
+
+  // Notes
+  notes String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@index([quoteLineId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([startAt])
+  @@map("mission")
+}
+
 /// Quote - Central commercial object for pricing and feasibility
 model Quote {
   id             String       @id @default(cuid())
@@ -1825,6 +1941,10 @@ model Quote {
   // Story 22.5: Stay days relation
   stayDays               StayDay[]
   subcontractorFeedbacks SubcontractorFeedback[]
+  // Story 26.1: Hybrid Blocks - structured line items
+  lines                  QuoteLine[]
+  // Story 26.1: Operational missions linked to this quote
+  missions               Mission[]
 
   @@index([organizationId])
   @@index([contactId])
@@ -1875,7 +1995,7 @@ model Invoice {
   commissionAmount Decimal? @db.Decimal(10, 2)
 
   // Story 25.6: Payment tracking for partial payments (Lettrage)
-  paidAmount       Decimal  @default(0) @db.Decimal(10, 2)
+  paidAmount Decimal @default(0) @db.Decimal(10, 2)
 
   // Story 15.7: Deep-copied cost breakdown from quote
   costBreakdown Json? // Immutable snapshot of cost breakdown at invoice creation
@@ -1905,13 +2025,17 @@ model Invoice {
 }
 
 /// InvoiceLine - Line items for services, optional fees, discounts
+/// Story 26.1: Enhanced with Hybrid Blocks architecture support
 model InvoiceLine {
   id        String  @id @default(cuid())
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  // Line type
+  // Line type (existing - for backward compatibility)
   lineType InvoiceLineType
+
+  // Story 26.1: Block type for Hybrid Blocks architecture
+  blockType QuoteLineType @default(CALCULATED)
 
   // Description
   description String
@@ -1925,6 +2049,15 @@ model InvoiceLine {
   totalExclVat Decimal @db.Decimal(10, 2)
   totalVat     Decimal @db.Decimal(10, 2)
 
+  // Story 26.1: Hybrid Blocks - source and display data separation
+  sourceData  Json? // Original pricing engine data (null for MANUAL lines)
+  displayData Json? // User-editable display values (nullable for backward compat)
+
+  // Story 26.1: Hierarchical structure for GROUP lines
+  parentId String?       @map("parent_id")
+  parent   InvoiceLine?  @relation("InvoiceLineHierarchy", fields: [parentId], references: [id])
+  children InvoiceLine[] @relation("InvoiceLineHierarchy")
+
   // Sort order
   sortOrder Int @default(0)
 
@@ -1933,6 +2066,7 @@ model InvoiceLine {
   updatedAt DateTime @updatedAt
 
   @@index([invoiceId])
+  @@index([parentId])
   @@map("invoice_line")
 }
 
@@ -2295,20 +2429,20 @@ model Activity {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  driverId       String?
-  driver         Driver?      @relation(fields: [driverId], references: [id])
+  driverId String?
+  driver   Driver? @relation(fields: [driverId], references: [id])
 
   // Context
-  quoteId        String?
-  entityType     String // QUOTE, DRIVER, etc.
-  entityId       String
+  quoteId    String?
+  entityType String // QUOTE, DRIVER, etc.
+  entityId   String
 
   // Event
-  type           String // DOCUMENT_GENERATED, etc.
-  description    String
-  metadata       Json?
+  type        String // DOCUMENT_GENERATED, etc.
+  description String
+  metadata    Json?
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([driverId])
