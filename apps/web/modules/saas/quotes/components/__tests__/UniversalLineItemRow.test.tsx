@@ -77,11 +77,28 @@ describe("UniversalLineItemRow", () => {
     );
     expect(screen.getByText("Day 1")).toBeDefined();
     expect(container.firstChild).toHaveClass("font-medium");
+  });
     
-    // Test toggle
-    // Using a class selector for the toggle area or generally clicking the chevron area
-    // Since we don't have test-ids on the icon wrapper specifically, we can find by visual cue or just the row if logic allows
-    // Added onClick on the icon wrapper
+  it("calls onToggleExpand when group header is clicked", () => {
+    const { container } = render(
+      <UniversalLineItemRow
+        line={groupLine}
+        depth={0}
+        index={2}
+        onUpdate={mockOnUpdate}
+        onToggleExpand={mockOnToggleExpand}
+      />
+    );
+    
+    // Find the icon wrapper which has the onClick handler
+    // It's the div containing the chevron
+    const toggleButton = container.querySelector('.cursor-pointer');
+    if (toggleButton) {
+      fireEvent.click(toggleButton);
+      expect(mockOnToggleExpand).toHaveBeenCalledWith("line-3");
+    } else {
+      throw new Error("Toggle button not found");
+    }
   });
 
   it("calls onUpdate when quantity changes", () => {

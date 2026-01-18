@@ -12,6 +12,7 @@ created_at: "2026-01-18"
 updated_at: "2026-01-18"
 tags:
   - "ui"
+  - "ui"
   - "react"
   - "yolo-mode"
 ---
@@ -87,5 +88,6 @@ interface UniversalLineItemRowProps {
     *   `renders MANUAL line correctly` (PASS)
     *   `renders CALCULATED line with Link indicator` (PASS)
     *   `renders GROUP line with distinct style` (PASS)
+    *   `calls onToggleExpand when group header is clicked` (PASS)
     *   `calls onUpdate when quantity changes` (PASS)
 

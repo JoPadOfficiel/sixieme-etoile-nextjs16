@@ -179,34 +179,32 @@ export function UniversalLineItemRow({
       </div>
 
       {/* 4. Commercial Columns (Hidden for Groups if they serve as headers only, but typically groups can have totals) */}
+      {/* 4. Commercial Columns (Hidden for Groups if they serve as headers only, but typically groups can have totals) */}
       {line.type !== "GROUP" && (
         <div className="flex items-center space-x-2 shrink-0 text-sm">
           {/* Quantity */}
           <div className="w-16">
-            <Input
-              type="number"
-              min="0"
-              step="1"
+            <NumberInput
               value={line.quantity ?? 1}
-              onChange={(e) => handleUpdate("quantity", parseFloat(e.target.value))}
+              onChange={(val) => handleUpdate("quantity", val)}
               disabled={readOnly}
-              className="h-7 px-2 text-right text-xs bg-transparent border-transparent hover:border-gray-200 focus-visible:bg-white focus-visible:border-gray-300"
               placeholder="Qty"
+              className="h-7 px-2 text-right text-xs bg-transparent border-transparent hover:border-gray-200 focus-visible:bg-white focus-visible:border-gray-300"
             />
           </div>
 
           {/* Unit Price */}
           <div className="w-24 relative">
-             <Input
-                type="number"
-                min="0"
-                step="0.01"
+             <NumberInput
                 value={line.unitPrice ?? 0}
-                onChange={(e) => handleUpdate("unitPrice", parseFloat(e.target.value))}
+                onChange={(val) => handleUpdate("unitPrice", val)}
                 disabled={readOnly}
+                step={0.01}
                 className="h-7 pl-6 pr-2 text-right text-xs bg-transparent border-transparent hover:border-gray-200 focus-visible:bg-white focus-visible:border-gray-300"
               />
-              <span className="absolute left-2 top-1.5 text-xs text-gray-400 pointer-events-none">€</span>
+              <span className="absolute left-2 top-1.5 text-xs text-gray-400 pointer-events-none">
+                {getCurrencySymbol(currency)}
+              </span>
           </div>
 
           {/* Total (Read Only) */}
@@ -230,4 +228,60 @@ export function UniversalLineItemRow({
       )}
     </div>
   );
+}
+
+// Helper component to handle local state for decimal inputs
+function NumberInput({ 
+  value = 0, 
+  onChange, 
+  className, 
+  step = 1,
+  ...props 
+}: Omit<React.ComponentProps<typeof Input>, 'onChange'> & { onChange: (val: number) => void }) {
+  const [localValue, setLocalValue] = useState<string>(value.toString());
+
+  // Sync local state when external value changes
+  useEffect(() => {
+    // Only update if the parsed value is different to avoid cursor jumping or fighting validation
+    if (parseFloat(localValue) !== value) {
+      setLocalValue(value.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setLocalValue(raw);
+    
+    // Only fire onChange if it's a valid number
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) {
+      onChange(parsed);
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, force valid number format from parent
+    setLocalValue(value.toString());
+  };
+
+  return (
+    <Input
+      type="number"
+      step={step}
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className={className}
+      {...props}
+    />
+  );
+}
+
+function getCurrencySymbol(code: string): string {
+  try {
+    return (0).toLocaleString('fr-FR', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\d/g, '').trim();
+  } catch {
+    return code; // Fallback
+  }
 }
