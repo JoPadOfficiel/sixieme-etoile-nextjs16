@@ -93,3 +93,13 @@ Chaque élément de la liste doit afficher :
   - `apps/web/modules/saas/dispatch/hooks/useMissions.ts`: Updated hook.
 - **Tests:**
   - `UnassignedSidebar.test.tsx` passed.
+
+## Code Review
+- **Reviewer:** BMM-Workflow-Reviewer
+- **Date:** 2026-01-18
+- **Findings:**
+  - [High] Search input was updating state on every keystroke, causing potential API spam. Fixed by implementing `useDebounceValue`.
+  - [Medium] Collapsed state was not handled in `UnassignedSidebar`, leading to UI clutter when sidebar collapsed. Fixed by passing `isCollapsed` prop and rendering minimal view.
+  - [Low] Test needed update to handle async debounce behavior. Fixed in `UnassignedSidebar.test.tsx`.
+- **Resolution:** All critical issues resolved. Performance optimized.
+

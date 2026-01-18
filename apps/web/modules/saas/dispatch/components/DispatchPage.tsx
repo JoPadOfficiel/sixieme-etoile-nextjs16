@@ -160,6 +160,7 @@ export function DispatchPage() {
 						<UnassignedSidebar
 							selectedMissionId={selectedMissionId}
 							onSelectMission={handleSelectMission}
+							isCollapsed={isSidebarCollapsed}
 						/>
 					</DispatchSidebar>
 				}
