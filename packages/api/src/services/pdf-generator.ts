@@ -105,6 +105,8 @@ export interface InvoiceLinePdfData {
 	vatRate: number;
 	totalExclVat: number;
 	totalVat: number;
+	// Story 26.11: Support for Hybrid Block types
+	type?: "CALCULATED" | "MANUAL" | "GROUP";
 }
 
 export interface InvoicePdfData {
@@ -707,6 +709,22 @@ export async function generateQuotePdf(
 	for (const line of quote.lines) {
 		const description = sanitizeText(line.description);
 		
+		// STORY 26.11: GROUP lines rendered as Sub-headers
+		if (line.type === "GROUP") {
+			const groupRowH = 25;
+			drawRect(xDesc, y - groupRowH, CONTENT_WIDTH, groupRowH, true, rgb(0.98, 0.98, 0.98));
+			// Draw Description centered-ish or left aligned but bold and covering the whole width
+			draw(description.toUpperCase(), { 
+				x: xDesc + 5, 
+				y: y - 16, 
+				size: 9, 
+				font: helveticaBold, 
+				color: DARK 
+			});
+			y -= groupRowH;
+			continue;
+		}
+
 		// First split by newlines to preserve explicit line breaks
 		const paragraphs = description.split('\n').filter(p => p.trim());
 		const lines: string[] = [];
@@ -748,6 +766,7 @@ export async function generateQuotePdf(
 		// Values (centered vertically)
 		const midY = y - (rowH / 2) - 3;
 		draw(`${line.vatRate}%`, { x: xVat + 5, y: midY, size: 9, font: helvetica, color: BLACK });
+		// Story 26.11: Show empty for zero/null prices if needed, but Manual lines might have prices
 		draw(formatPrice(line.unitPriceExclVat), { x: xUnit + 5, y: midY, size: 9, font: helvetica, color: BLACK });
 		draw(String(line.quantity), { x: xQty + 10, y: midY, size: 9, font: helvetica, color: BLACK });
 		draw(formatPrice(line.totalExclVat), { x: xTotal + 5, y: midY, size: 9, font: helvetica, color: BLACK });
@@ -1116,6 +1135,21 @@ export async function generateInvoicePdf(
 	for (const line of invoice.lines) {
 		const description = sanitizeText(line.description);
 		
+		// STORY 26.11: GROUP lines rendered as Sub-headers
+		if (line.type === "GROUP") {
+			const groupRowH = 25;
+			drawRect(xDesc, y - groupRowH, CONTENT_WIDTH, groupRowH, true, rgb(0.98, 0.98, 0.98));
+			draw(description.toUpperCase(), { 
+				x: xDesc + 5, 
+				y: y - 16, 
+				size: 9, 
+				font: helveticaBold, 
+				color: DARK 
+			});
+			y -= groupRowH;
+			continue;
+		}
+
 		// First split by newlines to preserve explicit line breaks
 		const paragraphs = description.split('\n').filter(p => p.trim());
 		const lines: string[] = [];

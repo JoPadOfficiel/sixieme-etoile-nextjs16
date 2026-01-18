@@ -269,6 +269,17 @@ function transformQuoteToPdfData(quote: {
 	// New fields for line item generation
 	appliedRules?: any;
 	stayDays?: any[];
+	// Story 26.11: Hybrid Blocks support
+	lines?: {
+		label: string;
+		quantity: unknown;
+		unitPrice: unknown;
+		totalPrice: unknown;
+		vatRate: unknown;
+		type: string;
+		displayData: any;
+		sortOrder: number;
+	}[];
 }, language: DocumentLanguage = 'BILINGUAL'): QuotePdfData {
 	// Parse applied rules
 	const parsedRules = parseAppliedRules(quote.appliedRules);
@@ -326,6 +337,24 @@ function transformQuoteToPdfData(quote: {
 			totalExclVat: l.totalExclVat,
 			totalVat: l.totalVat,
 		}));
+	}
+
+	// Story 26.11: Use QuoteLine lines if available (Hybrid Blocks / Universal Mode)
+	// This overrides the legacy line generation above
+	if (quote.lines && quote.lines.length > 0) {
+		lines = quote.lines.map(l => {
+			const display = l.displayData || {};
+			return {
+				description: display.label || l.label,
+				quantity: Number(display.quantity ?? 1),
+				unitPriceExclVat: Number(display.unitPrice ?? 0),
+				vatRate: Number(display.vatRate ?? 0),
+				totalExclVat: Number(display.totalPrice ?? 0),
+				// Calculate VAT amount if not present
+				totalVat: Number(display.totalVat ?? (Number(display.totalPrice ?? 0) * (Number(display.vatRate ?? 0) / 100))),
+				type: (l.type as any) || "CALCULATED",
+			};
+		});
 	}
 
 	return {
@@ -411,18 +440,29 @@ function transformInvoiceToPdfData(invoice: {
 		vehicleCategory?: { name: string } | null;
 	} | null;
 }, language: DocumentLanguage = 'BILINGUAL'): InvoicePdfData {
-	// Build detailed description for the first line if quote data is available
-	let lines = invoice.lines.map((line): InvoiceLinePdfData => ({
-		description: line.description,
-		quantity: Number(line.quantity),
-		unitPriceExclVat: Number(line.unitPriceExclVat),
-		vatRate: Number(line.vatRate),
-		totalExclVat: Number(line.totalExclVat),
-		totalVat: Number(line.totalVat),
-	}));
+	// Build detailed description (legacy behavior) or use displayData (Hybrid behavior)
+	const lines = invoice.lines.map((line): InvoiceLinePdfData => {
+		const display = (line as any).displayData || {};
+		return {
+			description: display.label || line.description,
+			quantity: Number(display.quantity ?? line.quantity),
+			unitPriceExclVat: Number(display.unitPrice ?? line.unitPriceExclVat),
+			vatRate: Number(display.vatRate ?? line.vatRate),
+			totalExclVat: Number(display.totalPrice ?? line.totalExclVat),
+			totalVat: Number(display.totalVat ?? line.totalVat),
+			type: (line as any).blockType || "CALCULATED",
+		};
+	});
 	
-	// Replace first line's description with detailed trip info if quote is available
-	if (invoice.quote && lines.length > 0) {
+	// Legacy: Replace first line's description with detailed trip info IFF it's a legacy invoice (no Hybrid lines)
+	// We assume it's legacy if all lines are standard CALCULATED and don't explicitly rely on displayData overrides
+	// However, usually Hybrid Mode implies we want strict display.
+	// If the user manually edited lines (MANUAL or modified CALCULATED), we should respect it.
+	// We skip the legacy override if we detect we are in "Universal Blocks" mode (Story 26.1).
+	// A simple heuristic: if we have more than 1 line OR any line is GROUP/MANUAL, we skip the override.
+	const isStrictDisplayMode = lines.some(l => l.type === "GROUP" || l.type === "MANUAL") || lines.length > 1;
+
+	if (!isStrictDisplayMode && invoice.quote && lines.length > 0 && lines[0].type === "CALCULATED") {
 		const q = invoice.quote;
 		
 		const endCustomerName = invoice.endCustomer 
@@ -752,6 +792,10 @@ export const documentsRouter = new Hono()
 				include: {
 					contact: true,
 					vehicleCategory: true,
+					// Story 26.1: Include Hybrid Block lines
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
 					stayDays: {
 						include: {
 							services: true,
