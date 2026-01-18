@@ -5,6 +5,12 @@ import { useQueryState, parseAsString } from "nuqs";
 import { startOfDay, endOfDay } from "date-fns";
 import { DispatchMapGoogle } from "../DispatchMapGoogle";
 import { GanttTimeline } from "../gantt";
+import dynamic from 'next/dynamic';
+
+const LiveFleetMap = dynamic(() => import('../map/LiveFleetMap'), { 
+  ssr: false, 
+  loading: () => <div className="h-full w-full bg-muted flex items-center justify-center">Loading Map...</div> 
+});
 import type { MissionDetail } from "../../types";
 import type { OperatingBase } from "../../hooks/useOperatingBases";
 import type { GanttDriver } from "../gantt/types";
@@ -115,11 +121,15 @@ export function DispatchMain({
 
       {viewMode === "map" && (
         <div className="h-full w-full">
-           <DispatchMapGoogle
+           {/* Story 27.6: Live Map (Leaflet) */}
+           <LiveFleetMap />
+           {/* 
+            <DispatchMapGoogle
               mission={mission}
               bases={bases}
               isLoading={isLoadingBases}
-           />
+           /> 
+           */}
         </div>
       )}
     </div>
