@@ -205,6 +205,8 @@ export interface MissionsFilters {
 	search?: string;
 	// Story 22.4: Filter for subcontracted missions
 	subcontracted?: "ALL" | "SUBCONTRACTED" | "INTERNAL";
+	// Story 27.5: Filter for unassigned missions
+	unassignedOnly?: boolean;
 }
 
 export interface MissionsListResponse {

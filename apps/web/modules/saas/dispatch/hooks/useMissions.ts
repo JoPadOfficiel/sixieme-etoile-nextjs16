@@ -39,6 +39,7 @@ export function useMissions({
 			if (filters.vehicleCategoryId) params.set("vehicleCategoryId", filters.vehicleCategoryId);
 			if (filters.clientType) params.set("clientType", filters.clientType);
 			if (filters.search) params.set("search", filters.search);
+			if (filters.unassignedOnly) params.set("unassignedOnly", "true");
 
 			const response = await apiClient.vtc.missions.$get({
 				query: Object.fromEntries(params),

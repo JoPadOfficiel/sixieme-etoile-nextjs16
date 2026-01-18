@@ -1,28 +1,23 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useState, useCallback, useMemo } from "react";
 import { useQueryState, parseAsString } from "nuqs";
-import { useTranslations } from "next-intl";
 import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyPanel";
-import { useVehicleCategories } from "@saas/quotes/hooks/useVehicleCategories";
-import { MissionsList } from "./MissionsList";
-import { MissionsFilters } from "./MissionsFilters";
+import { UnassignedSidebar } from "./UnassignedSidebar";
 import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 import { AssignmentDrawer } from "./AssignmentDrawer";
-import { EmptyLegsList } from "./EmptyLegsList";
 import { SubcontractingSuggestions } from "./SubcontractingSuggestions";
 import { MissionComplianceDetails } from "./MissionComplianceDetails";
 import { StaffingCostsSection } from "./StaffingCostsSection";
 import { StaffingTimeline } from "./StaffingTimeline";
-import { useMissions, useMissionDetail, useMissionNotesUpdate } from "../hooks/useMissions";
+import { useMissionDetail, useMissionNotesUpdate } from "../hooks/useMissions";
 import { MissionNotesSection } from "./MissionNotesSection";
 import { MissionContactPanel } from "./MissionContactPanel";
 import { useMissionCompliance } from "../hooks/useMissionCompliance";
 import { useOperatingBases } from "../hooks/useOperatingBases";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useRemoveSubcontracting } from "../hooks/useRemoveSubcontracting";
-import type { MissionsFilters as Filters, MissionDetail, StayDayListItem } from "../types";
+import type { MissionDetail, StayDayListItem } from "../types";
 import type { PricingResult } from "@saas/quotes/types";
 import type { CandidateBase } from "../types/assignment";
 
@@ -36,27 +31,12 @@ import { DispatchInspector } from "./shell/DispatchInspector";
  * DispatchPage Component
  *
  * Story 27.1: Unified Dispatch Shell & Navigation (Cockpit)
- * Refactored to use a 3-column layout: Sidebar (Backlog), Main (Gantt/Map), Inspector.
+ * Story 27.5: Unassigned Backlog Sidebar Logic
  *
- * @see Story 27.1
+ * Refactored to use a 3-column layout: Sidebar (Backlog), Main (Gantt/Map), Inspector.
  */
 
 export function DispatchPage() {
-	const t = useTranslations("dispatch");
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
-
-	// Parse filters from URL
-	const initialFilters: Filters = {
-		dateFrom: searchParams.get("dateFrom") || undefined,
-		dateTo: searchParams.get("dateTo") || undefined,
-		vehicleCategoryId: searchParams.get("vehicleCategoryId") || undefined,
-		clientType: (searchParams.get("clientType") as Filters["clientType"]) || "ALL",
-		search: searchParams.get("search") || undefined,
-	};
-
-	const [filters, setFilters] = useState<Filters>(initialFilters);
 	const [selectedMissionId, setSelectedMissionId] = useQueryState("missionId", parseAsString);
 	const [isAssignmentDrawerOpen, setIsAssignmentDrawerOpen] = useState(false);
 	
@@ -68,21 +48,16 @@ export function DispatchPage() {
 	const [hoveredCandidateId, setHoveredCandidateId] = useState<string | null>(null);
 
 	// Fetch data
-	const { data: missionsData, isLoading: missionsLoading } = useMissions({
-		filters,
-		page: 1,
-		limit: 50,
-	});
+	// Note: Missions list fetching is now handled by UnassignedSidebar for the Backlog
 
 	const { data: selectedMission, isLoading: missionDetailLoading } = useMissionDetail({
 		missionId: selectedMissionId,
 	});
 
 	const { data: bases = [], isLoading: basesLoading } = useOperatingBases();
-	const { categories: vehicleCategories = [] } = useVehicleCategories();
 
 	// Fetch candidates when drawer is open
-	const { data: candidatesData, isLoading: candidatesLoading } = useAssignmentCandidates({
+	const { data: candidatesData } = useAssignmentCandidates({
 		missionId: selectedMissionId,
 		enabled: isAssignmentDrawerOpen && !!selectedMissionId,
 	});
@@ -97,6 +72,7 @@ export function DispatchPage() {
 	const { updateNotes, isUpdating: isUpdatingNotes } = useMissionNotesUpdate();
 
 	// Transform candidates to map-friendly format
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const candidateBases = useMemo<CandidateBase[]>(() => {
 		if (!candidatesData?.candidates) return [];
 		return candidatesData.candidates.map((candidate) => ({
@@ -112,25 +88,6 @@ export function DispatchPage() {
 			segments: candidate.segments,
 		}));
 	}, [candidatesData, selectedCandidateId, hoveredCandidateId]);
-
-	// Update URL when filters change
-	const handleFiltersChange = useCallback(
-		(newFilters: Filters) => {
-			setFilters(newFilters);
-			const params = new URLSearchParams();
-			if (newFilters.dateFrom) params.set("dateFrom", newFilters.dateFrom);
-			if (newFilters.dateTo) params.set("dateTo", newFilters.dateTo);
-			if (newFilters.vehicleCategoryId) params.set("vehicleCategoryId", newFilters.vehicleCategoryId);
-			if (newFilters.clientType && newFilters.clientType !== "ALL") {
-				params.set("clientType", newFilters.clientType);
-			}
-			if (newFilters.search) params.set("search", newFilters.search);
-
-			const queryString = params.toString();
-			router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, { scroll: false });
-		},
-		[pathname, router]
-	);
 
 	// Handle mission selection
 	const handleSelectMission = useCallback((missionId: string) => {
@@ -187,7 +144,6 @@ export function DispatchPage() {
 
 	// Convert mission detail to PricingResult
 	const pricingResult = selectedMission ? missionToPricingResult(selectedMission) : null;
-	const missions = missionsData?.data || [];
 
 	return (
 		<>
@@ -201,27 +157,10 @@ export function DispatchPage() {
 						isCollapsed={isSidebarCollapsed} 
 						onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
 					>
-						<div className="flex flex-col h-full p-2 space-y-4">
-							<div className="flex-shrink-0">
-								<h2 className="text-sm font-semibold mb-2 px-2 uppercase tracking-wider text-muted-foreground">
-									{t("title")}
-								</h2>
-								<MissionsFilters
-									filters={filters}
-									onFiltersChange={handleFiltersChange}
-									vehicleCategories={vehicleCategories}
-								/>
-							</div>
-							<div className="flex-1 overflow-y-auto space-y-3 min-h-0">
-								<MissionsList
-									missions={missions}
-									selectedMissionId={selectedMissionId}
-									onSelectMission={handleSelectMission}
-									isLoading={missionsLoading}
-								/>
-								<EmptyLegsList />
-							</div>
-						</div>
+						<UnassignedSidebar
+							selectedMissionId={selectedMissionId}
+							onSelectMission={handleSelectMission}
+						/>
 					</DispatchSidebar>
 				}
 				

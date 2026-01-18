@@ -311,7 +311,7 @@ development_status:
   27-2-backend-mission-sync-service: done
   27-3-gantt-core-timeline-rendering: done
   27-4-gantt-mission-rendering-hybrid: done
-  27-5-unassigned-backlog-sidebar-logic: backlog
+  27-5-unassigned-backlog-sidebar-logic: review
   27-6-live-map-driver-locations-layer: backlog
   27-7-live-map-mission-context-layer: backlog
   27-8-map-smart-assignment-suggestions: backlog

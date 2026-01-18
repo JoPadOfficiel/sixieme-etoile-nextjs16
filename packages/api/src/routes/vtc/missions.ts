@@ -75,6 +75,11 @@ const listMissionsSchema = z.object({
 		.string()
 		.optional()
 		.describe("Search in contact name, pickup/dropoff addresses"),
+	unassignedOnly: z
+		.enum(["true", "false"])
+		.optional()
+		.transform((val) => val === "true")
+		.describe("Filter unassigned missions (no driver)"),
 });
 
 // Response types
@@ -427,7 +432,14 @@ export const missionsRouter = new Hono()
 					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
+					// Also search by ID/Ref
+					{ id: { contains: search, mode: "insensitive" } },
 				];
+			}
+
+			// Story 27.5: Unassigned filter
+			if (c.req.valid("query").unassignedOnly) {
+				baseWhere.assignedDriverId = null;
 			}
 
 			const where = withTenantFilter(baseWhere, organizationId);
