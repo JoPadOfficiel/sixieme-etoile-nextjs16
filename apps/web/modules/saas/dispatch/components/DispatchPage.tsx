@@ -44,11 +44,9 @@ export function DispatchPage() {
 
 	// Fetch data
 	// Note: Missions list fetching is now handled by UnassignedSidebar for the Backlog
-
-	const { data: selectedMission, isLoading: missionDetailLoading } =
-		useMissionDetail({
-			missionId: selectedMissionId,
-		});
+	const { data: selectedMission } = useMissionDetail({
+		missionId: selectedMissionId,
+	});
 
 	const { data: bases = [], isLoading: basesLoading } = useOperatingBases();
 

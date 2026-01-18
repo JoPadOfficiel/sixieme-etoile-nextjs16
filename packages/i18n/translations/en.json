@@ -4088,6 +4088,12 @@
 			"confirmCancelTitle": "Cancel Mission",
 			"confirmCancelDescription": "Are you sure you want to cancel this mission? This action cannot be undone.",
 			"confirmCancel": "Yes, Cancel Mission"
+		},
+		"actions": {
+			"unassignSuccess": "Mission unassigned successfully",
+			"unassignError": "Failed to unassign mission",
+			"cancelSuccess": "Mission cancelled successfully",
+			"cancelError": "Failed to cancel mission"
 		}
 	},
 	"documents": {
