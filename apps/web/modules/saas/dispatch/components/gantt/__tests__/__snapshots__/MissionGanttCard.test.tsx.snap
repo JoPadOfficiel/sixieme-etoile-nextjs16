@@ -1,0 +1,26 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MissionGanttCard > renders tooltip content on hover (simulated via snapshot or check) 1`] = `
+<DocumentFragment>
+  <div
+    class="absolute top-1 bottom-1 rounded-md border-2 cursor-pointer transition-all hover:shadow-md hover:z-10 group flex flex-col justify-center px-1.5 overflow-hidden bg-blue-100 border-blue-400 dark:bg-blue-900/30 dark:border-blue-600 border-solid bg-opacity-100"
+    data-state="closed"
+    style="left: 100px; width: 200px;"
+  >
+    <div
+      class="flex flex-col w-full"
+    >
+      <span
+        class="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight"
+      >
+        Acme Corp
+      </span>
+      <span
+        class="text-[10px] font-medium text-gray-600 dark:text-gray-400 truncate leading-tight opacity-90"
+      >
+        CALCULATED • Airport Transfer
+      </span>
+    </div>
+  </div>
+</DocumentFragment>
+`;
