@@ -35,6 +35,7 @@ import {
 import type { QuoteLine } from "../UniversalLineItemRow";
 import { UniversalLineItemRow } from "./UniversalLineItemRow";
 import { SortableQuoteLine } from "./SortableQuoteLine";
+import { getLineId, validateNestingDepth } from "./dnd-utils";
 
 /** Extended QuoteLine with children for tree structure */
 export interface QuoteLineWithChildren extends QuoteLine {
@@ -56,13 +57,6 @@ interface SortableQuoteLinesListProps {
   readOnly?: boolean;
   /** Currency code */
   currency?: string;
-}
-
-/**
- * Get unique ID for a line
- */
-function getLineId(line: QuoteLine): string {
-  return line.id || line.tempId || "";
 }
 
 /**
@@ -160,11 +154,7 @@ function getDescendantIds(
 /**
  * Determine if dragged item should be nested under a group
  */
-function shouldNestUnderGroup(
-  overLine: QuoteLine,
-  _activeIndex: number,
-  _overIndex: number
-): boolean {
+function shouldNestUnderGroup(overLine: QuoteLine): boolean {
   // If dropping on/after a GROUP, nest inside it
   return overLine.type === "GROUP";
 }
@@ -176,7 +166,6 @@ export function SortableQuoteLinesList({
   onToggleExpand,
   expandedGroups = new Set(),
   readOnly = false,
-  currency = "EUR",
 }: SortableQuoteLinesListProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -206,7 +195,8 @@ export function SortableQuoteLinesList({
           ids.push(id);
         }
         if (node.children?.length) {
-          const isExpanded = expandedGroups.has(id) || true; // Default expanded
+          // Default expanded only when no explicit state is provided
+          const isExpanded = expandedGroups.size === 0 || expandedGroups.has(id);
           addIds(node.children, parentExpanded && isExpanded);
         }
       }
@@ -260,12 +250,17 @@ export function SortableQuoteLinesList({
       const descendantIds =
         activeLine.type === "GROUP" ? getDescendantIds(lines, activeId) : new Set<string>();
 
-      // Check if we should nest under the target group
-      const nestUnder = shouldNestUnderGroup(overLine, activeIndex, overIndex);
+      const nestUnder = shouldNestUnderGroup(overLine);
 
       let newLines: QuoteLine[];
 
       if (nestUnder && overLine.type === "GROUP") {
+        // Validate nesting depth before re-parenting
+        if (!validateNestingDepth(lines, activeId, overId)) {
+          // Cannot nest here - would exceed max depth
+          return;
+        }
+        
         // Re-parent: move active line (and children) under the GROUP
         newLines = lines.map((line) => {
           const id = getLineId(line);
@@ -343,15 +338,15 @@ export function SortableQuoteLinesList({
   // Render a single line with sortable wrapper
   const renderLine = (
     line: QuoteLineWithChildren,
-    depth: number,
-    index: number
+    depth: number
   ): React.ReactNode => {
     const id = getLineId(line);
-    const isExpanded = line.type === "GROUP" ? expandedGroups.has(id) || true : true;
+    // Default expanded when no explicit state is provided
+    const isExpanded = line.type === "GROUP" ? (expandedGroups.size === 0 || expandedGroups.has(id)) : true;
 
     return (
       <React.Fragment key={id}>
-        <SortableQuoteLine id={id} line={line} isOver={overId === id}>
+        <SortableQuoteLine id={id} isOver={overId === id}>
           {({ dragHandleProps, isDragging, setNodeRef, style, isOver }) => (
             <div
               ref={setNodeRef}
@@ -389,10 +384,9 @@ export function SortableQuoteLinesList({
           )}
         </SortableQuoteLine>
 
-        {/* Render children if expanded */}
         {isExpanded &&
-          line.children?.map((child, childIndex) =>
-            renderLine(child, depth + 1, childIndex)
+          line.children?.map((child) =>
+            renderLine(child, depth + 1)
           )}
       </React.Fragment>
     );
@@ -419,8 +413,7 @@ export function SortableQuoteLinesList({
             <div className="w-12 text-right">VAT</div>
           </div>
 
-          {/* Lines */}
-          {tree.map((line, index) => renderLine(line, 0, index))}
+          {tree.map((line) => renderLine(line, 0))}
 
           {/* Empty state */}
           {tree.length === 0 && (

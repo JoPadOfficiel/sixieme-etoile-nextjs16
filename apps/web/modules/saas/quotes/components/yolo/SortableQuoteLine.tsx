@@ -10,11 +10,8 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { QuoteLine } from "../UniversalLineItemRow";
 
 interface SortableQuoteLineProps {
-  /** The quote line data */
-  line: QuoteLine;
   /** Unique ID for the sortable item */
   id: string;
   /** Whether the line is currently being dragged over */
