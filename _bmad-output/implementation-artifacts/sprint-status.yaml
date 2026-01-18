@@ -301,7 +301,7 @@ development_status:
   26-8-ui-slash-commands-menu: done
   26-9-operational-detach-logic: backlog
   26-10-real-time-profitability-computation: done
-  26-11-pdf-generator-pure-display-mode: backlog
+  26-11-pdf-generator-pure-display-mode: review
   26-12-pdf-generator-mission-order-operational-mode: backlog
   26-13-block-presets-templates-bonus: backlog
   26-14-undo-redo-history-support: backlog
