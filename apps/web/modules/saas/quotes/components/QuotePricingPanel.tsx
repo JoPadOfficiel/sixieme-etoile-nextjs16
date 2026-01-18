@@ -31,7 +31,8 @@ import { ContractPriceBadge } from "./ContractPriceBadge";
 import { ConfirmOverrideDialog } from "./ConfirmOverrideDialog";
 import { BidirectionalPriceToggle } from "./BidirectionalPriceToggle";
 import type { CreateQuoteFormData, PricingResult, PricingMode } from "../types";
-import { formatPrice } from "../types";
+import { formatPrice } from "@saas/shared/types/pricing";
+import { calculateMarginPercent } from "@saas/shared/utils/profitability";
 
 interface QuotePricingPanelProps {
   formData: CreateQuoteFormData;
@@ -102,12 +103,6 @@ export function QuotePricingPanel({
   // Story 19.5: Check if this is an OFF_GRID trip (manual pricing only)
   const isManualPricingMode = formData.tripType === "OFF_GRID" || pricingResult?.pricingMode === "MANUAL";
 
-  // Calculate margin based on final price and internal cost
-  const calculateMargin = (finalPrice: number, internalCost: number): number => {
-    if (finalPrice <= 0) return 0;
-    return ((finalPrice - internalCost) / finalPrice) * 100;
-  };
-
   const internalCost = pricingResult?.internalCost ?? 0;
   
   // Story 24.9: Bidirectional Pricing Logic
@@ -159,7 +154,7 @@ export function QuotePricingPanel({
   
   // Total price including fees and promotions
   const totalPriceWithFees = formData.finalPrice + addedFeesTotal;
-  const currentMargin = calculateMargin(totalPriceWithFees, internalCost);
+  const currentMargin = calculateMarginPercent(totalPriceWithFees, internalCost);
 
   // Format date for date input
   const formatDateInput = (date: Date | null): string => {
@@ -409,8 +404,14 @@ export function QuotePricingPanel({
                   {t("quotes.create.marginPercent")}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{currentMargin.toFixed(1)}%</span>
-                  <ProfitabilityIndicator marginPercent={currentMargin} compact />
+                  <span className="font-medium">
+                    {currentMargin !== null ? `${currentMargin.toFixed(1)}%` : "—"}
+                  </span>
+                  <ProfitabilityIndicator
+                    sellingPrice={totalPriceWithFees}
+                    internalCost={internalCost}
+                    compact
+                  />
                 </div>
               </div>
             </div>

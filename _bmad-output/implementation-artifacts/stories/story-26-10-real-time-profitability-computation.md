@@ -4,7 +4,7 @@
 
 - **Story ID**: 26.10
 - **Epic**: 26 - Flexible "Yolo Mode" Billing
-- **Status**: review
+- **Status**: done
 - **Priority**: High
 - **Estimated Points**: 3
 - **Branch**: `feature/26-10-profitability-badge`
@@ -131,7 +131,7 @@ La marge doit être calculée dynamiquement et affichée via un badge visuel.
 - [x] Tests Vitest passent (100% coverage sur les fonctions)
 - [x] Badge change de couleur dynamiquement dans l'UI (via props sellingPrice/internalCost)
 - [x] Tooltip affiche le pourcentage exact
-- [ ] Code review effectuée (en attente)
+- [x] Code review effectuée (fixes appliquées)
 
 ## Usage Example
 
@@ -155,3 +155,25 @@ La marge doit être calculée dynamiquement et affichée via un badge visuel.
 />
 // → Affiche badge orange (15% < 30%)
 ```
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-01-18
+**Reviewer:** JoPad
+
+### Issues Fixed
+
+1. **AC6 dynamique câblé**: utilisation de `sellingPrice/internalCost` dans `QuotePricingPanel` pour un recalcul live du badge.
+2. **Seuils unifiés**: alignement de `shared/types/pricing.ts` sur les utilitaires `shared/utils/profitability.ts`.
+3. **Division par zéro cohérente**: `recalculateMargin` utilise désormais `calculateMarginPercent` (retour `null`).
+
+### Files Updated During Review
+
+- `apps/web/modules/saas/quotes/components/QuotePricingPanel.tsx`
+- `apps/web/modules/saas/shared/types/pricing.ts`
+- `apps/web/modules/saas/quotes/types.ts`
+
+## Change Log
+
+- 2026-01-18: Initial implementation (utilities + tests + component refactor).
+- 2026-01-18: Review fixes applied (live badge wiring + threshold alignment + zero-division consistency).
