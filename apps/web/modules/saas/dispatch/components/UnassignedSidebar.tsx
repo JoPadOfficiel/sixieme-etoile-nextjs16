@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { useDebounceValue } from "usehooks-ts";
+import { useVehicleCategories } from "@saas/quotes/hooks/useVehicleCategories";
+import { Badge } from "@ui/components/badge";
 import { Input } from "@ui/components/input";
+import { ScrollArea } from "@ui/components/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -11,13 +11,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@ui/components/select";
-import { Search, SlidersHorizontal, Inbox } from "lucide-react";
-import { ScrollArea } from "@ui/components/scroll-area";
-import { useVehicleCategories } from "@saas/quotes/hooks/useVehicleCategories";
+import { cn } from "@ui/lib";
+import { Inbox, Search, SlidersHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { useDebounceValue } from "usehooks-ts";
 import { useMissions } from "../hooks/useMissions";
 import { MissionsList } from "./MissionsList";
-import { cn } from "@ui/lib";
-import { Badge } from "@ui/components/badge";
 
 interface UnassignedSidebarProps {
 	selectedMissionId: string | null;
@@ -33,7 +33,9 @@ export function UnassignedSidebar({
 	const t = useTranslations("dispatch");
 	const [searchInput, setSearchInput] = useState("");
 	const [search] = useDebounceValue(searchInput, 500);
-	const [vehicleCategoryId, setVehicleCategoryId] = useState<string | undefined>(undefined);
+	const [vehicleCategoryId, setVehicleCategoryId] = useState<
+		string | undefined
+	>(undefined);
 
 	// Fetch unassigned missions
 	const { data: missionsData, isLoading } = useMissions({
@@ -50,17 +52,30 @@ export function UnassignedSidebar({
 	const totalCount = missionsData?.meta.total || 0;
 
 	return (
-		<div className="flex flex-col h-full bg-background relative transition-all duration-300">
-			<div className={cn("flex-none p-4 space-y-4 border-b", isCollapsed && "p-2 space-y-2 border-b-0")}>
-				<div className={cn("flex items-center justify-between", isCollapsed && "justify-center")}>
+		<div className="relative flex h-full flex-col bg-background transition-all duration-300">
+			<div
+				className={cn(
+					"flex-none space-y-4 border-b p-4",
+					isCollapsed && "space-y-2 border-b-0 p-2",
+				)}
+			>
+				<div
+					className={cn(
+						"flex items-center justify-between",
+						isCollapsed && "justify-center",
+					)}
+				>
 					{!isCollapsed ? (
-						<h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+						<h2 className="flex items-center gap-2 font-semibold text-muted-foreground text-sm uppercase tracking-wider">
 							<Inbox className="size-4" />
 							{t("sidebar.backlog")} ({totalCount})
 						</h2>
 					) : (
-						<div className="relative group">
-							<Badge variant="secondary" className="rounded-full size-8 flex items-center justify-center p-0">
+						<div className="group relative">
+							<Badge
+								variant="secondary"
+								className="flex size-8 items-center justify-center rounded-full p-0"
+							>
 								{totalCount > 99 ? "99+" : totalCount}
 							</Badge>
 						</div>
@@ -71,7 +86,7 @@ export function UnassignedSidebar({
 					<div className="space-y-2">
 						{/* Search */}
 						<div className="relative">
-							<Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" />
+							<Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
 							<Input
 								placeholder={t("filters.searchPlaceholder")}
 								value={searchInput}
@@ -109,25 +124,28 @@ export function UnassignedSidebar({
 				)}
 			</div>
 
-			<div className="flex-1 min-h-0">
+			<div className="min-h-0 flex-1">
 				<ScrollArea className="h-full">
 					<div className={cn("p-2", isCollapsed && "px-1")}>
 						{isCollapsed ? (
 							// Collapsed view - generic indicators
-							<div className="flex flex-col gap-2 items-center pt-2">
+							<div className="flex flex-col items-center gap-2 pt-2">
 								{missions.length > 0 ? (
-									missions.slice(0, 5).map((m) => (
-										<div 
-											key={m.id} 
-											className={cn(
-												"size-2 rounded-full bg-primary",
-												selectedMissionId === m.id && "ring-2 ring-offset-2 ring-primary"
-											)}
-											title={m.pickupAddress}
-										/>
-									))
+									missions
+										.slice(0, 5)
+										.map((m) => (
+											<div
+												key={m.id}
+												className={cn(
+													"size-2 rounded-full bg-primary",
+													selectedMissionId === m.id &&
+														"ring-2 ring-primary ring-offset-2",
+												)}
+												title={m.pickupAddress}
+											/>
+										))
 								) : (
-									<span className="text-xs text-muted-foreground">-</span>
+									<span className="text-muted-foreground text-xs">-</span>
 								)}
 							</div>
 						) : (
