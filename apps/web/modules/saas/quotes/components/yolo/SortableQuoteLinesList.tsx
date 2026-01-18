@@ -1,0 +1,460 @@
+/**
+ * Story 26.7: SortableQuoteLinesList Component
+ * 
+ * Main container component that provides DndContext and SortableContext
+ * for drag & drop reordering of quote lines.
+ * 
+ * Features:
+ * - Flat list with visual nesting via depth
+ * - Re-parenting: drop a line inside a GROUP to nest it
+ * - Groups can be dragged with all their children
+ * - Accessible keyboard navigation
+ */
+
+"use client";
+
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import type { QuoteLine } from "../UniversalLineItemRow";
+import { UniversalLineItemRow } from "./UniversalLineItemRow";
+import { SortableQuoteLine } from "./SortableQuoteLine";
+
+/** Extended QuoteLine with children for tree structure */
+export interface QuoteLineWithChildren extends QuoteLine {
+  children?: QuoteLineWithChildren[];
+}
+
+interface SortableQuoteLinesListProps {
+  /** Flat list of quote lines (with parentId for nesting) */
+  lines: QuoteLine[];
+  /** Callback when lines are reordered */
+  onLinesChange: (updatedLines: QuoteLine[]) => void;
+  /** Callback when a single line is updated */
+  onLineUpdate?: (id: string, data: Partial<QuoteLine>) => void;
+  /** Callback when a line should be toggled (expand/collapse) */
+  onToggleExpand?: (id: string) => void;
+  /** Map of expanded group IDs */
+  expandedGroups?: Set<string>;
+  /** Whether the list is in read-only mode */
+  readOnly?: boolean;
+  /** Currency code */
+  currency?: string;
+}
+
+/**
+ * Get unique ID for a line
+ */
+function getLineId(line: QuoteLine): string {
+  return line.id || line.tempId || "";
+}
+
+/**
+ * Build a tree structure from flat lines
+ */
+function buildTree(lines: QuoteLine[]): QuoteLineWithChildren[] {
+  const lineMap = new Map<string, QuoteLineWithChildren>();
+  const roots: QuoteLineWithChildren[] = [];
+
+  // First pass: create map
+  for (const line of lines) {
+    const id = getLineId(line);
+    lineMap.set(id, { ...line, children: [] });
+  }
+
+  // Second pass: build tree
+  for (const line of lines) {
+    const id = getLineId(line);
+    const node = lineMap.get(id)!;
+
+    if (line.parentId && lineMap.has(line.parentId)) {
+      const parent = lineMap.get(line.parentId)!;
+      parent.children = parent.children || [];
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  // Sort by sortOrder at each level
+  const sortNodes = (nodes: QuoteLineWithChildren[]) => {
+    nodes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    for (const node of nodes) {
+      if (node.children?.length) {
+        sortNodes(node.children);
+      }
+    }
+  };
+  sortNodes(roots);
+
+  return roots;
+}
+
+/**
+ * Flatten tree back to sorted array
+ */
+function flattenTree(
+  nodes: QuoteLineWithChildren[],
+  parentId: string | null = null,
+  startOrder = 0
+): QuoteLine[] {
+  const result: QuoteLine[] = [];
+  let order = startOrder;
+
+  for (const node of nodes) {
+    const { children, ...lineWithoutChildren } = node;
+    result.push({
+      ...lineWithoutChildren,
+      parentId,
+      sortOrder: order++,
+    });
+
+    if (children?.length) {
+      result.push(...flattenTree(children, getLineId(node), 0));
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Get all descendant IDs of a group
+ */
+function getDescendantIds(
+  lines: QuoteLine[],
+  groupId: string
+): Set<string> {
+  const descendants = new Set<string>();
+  const queue = [groupId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    for (const line of lines) {
+      if (line.parentId === currentId) {
+        const id = getLineId(line);
+        descendants.add(id);
+        queue.push(id);
+      }
+    }
+  }
+
+  return descendants;
+}
+
+/**
+ * Determine if dragged item should be nested under a group
+ */
+function shouldNestUnderGroup(
+  overLine: QuoteLine,
+  _activeIndex: number,
+  _overIndex: number
+): boolean {
+  // If dropping on/after a GROUP, nest inside it
+  return overLine.type === "GROUP";
+}
+
+export function SortableQuoteLinesList({
+  lines,
+  onLinesChange,
+  onLineUpdate,
+  onToggleExpand,
+  expandedGroups = new Set(),
+  readOnly = false,
+  currency = "EUR",
+}: SortableQuoteLinesListProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  // Configure sensors for mouse/touch and keyboard
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Prevent accidental drags
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Build tree for rendering
+  const tree = useMemo(() => buildTree(lines), [lines]);
+
+  // Get IDs for sortable context (only visible items)
+  const sortableIds = useMemo(() => {
+    const ids: string[] = [];
+    const addIds = (nodes: QuoteLineWithChildren[], parentExpanded = true) => {
+      for (const node of nodes) {
+        const id = getLineId(node);
+        if (parentExpanded) {
+          ids.push(id);
+        }
+        if (node.children?.length) {
+          const isExpanded = expandedGroups.has(id) || true; // Default expanded
+          addIds(node.children, parentExpanded && isExpanded);
+        }
+      }
+    };
+    addIds(tree);
+    return ids;
+  }, [tree, expandedGroups]);
+
+  // Find active line for overlay
+  const activeLine = useMemo(
+    () => (activeId ? lines.find((l) => getLineId(l) === activeId) : null),
+    [activeId, lines]
+  );
+
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  // Handle drag over (for visual feedback)
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    setOverId(event.over?.id as string | null);
+  }, []);
+
+  // Handle drag end
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      setActiveId(null);
+      setOverId(null);
+
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const activeId = active.id as string;
+      const overId = over.id as string;
+
+      const activeIndex = lines.findIndex((l) => getLineId(l) === activeId);
+      const overIndex = lines.findIndex((l) => getLineId(l) === overId);
+
+      if (activeIndex === -1 || overIndex === -1) {
+        return;
+      }
+
+      const activeLine = lines[activeIndex];
+      const overLine = lines[overIndex];
+
+      // Get all descendants if dragging a GROUP
+      const descendantIds =
+        activeLine.type === "GROUP" ? getDescendantIds(lines, activeId) : new Set<string>();
+
+      // Check if we should nest under the target group
+      const nestUnder = shouldNestUnderGroup(overLine, activeIndex, overIndex);
+
+      let newLines: QuoteLine[];
+
+      if (nestUnder && overLine.type === "GROUP") {
+        // Re-parent: move active line (and children) under the GROUP
+        newLines = lines.map((line) => {
+          const id = getLineId(line);
+          if (id === activeId) {
+            return { ...line, parentId: overId };
+          }
+          return line;
+        });
+
+        // Recalculate sort orders
+        const tree = buildTree(newLines);
+        newLines = flattenTree(tree);
+      } else if (activeLine.parentId && !nestUnder) {
+        // Moving OUT of a group to root level
+        newLines = lines.map((line) => {
+          const id = getLineId(line);
+          if (id === activeId) {
+            return { ...line, parentId: null };
+          }
+          return line;
+        });
+
+        // Apply move
+        const updatedActiveIndex = newLines.findIndex((l) => getLineId(l) === activeId);
+        newLines = arrayMove(newLines, updatedActiveIndex, overIndex);
+
+        // Recalculate sort orders
+        const tree = buildTree(newLines);
+        newLines = flattenTree(tree);
+      } else {
+        // Simple reorder within same level
+        // First, collect items to move (active + descendants)
+        const itemsToMove = [activeId, ...Array.from(descendantIds)];
+        const movingLines = lines.filter((l) => itemsToMove.includes(getLineId(l)));
+        const remainingLines = lines.filter((l) => !itemsToMove.includes(getLineId(l)));
+
+        // Find new position in remaining lines
+        const newOverIndex = remainingLines.findIndex((l) => getLineId(l) === overId);
+        if (newOverIndex === -1) {
+          newLines = [...remainingLines, ...movingLines];
+        } else {
+          newLines = [
+            ...remainingLines.slice(0, newOverIndex + 1),
+            ...movingLines,
+            ...remainingLines.slice(newOverIndex + 1),
+          ];
+        }
+
+        // Recalculate sort orders while preserving tree structure
+        const tree = buildTree(newLines);
+        newLines = flattenTree(tree);
+      }
+
+      onLinesChange(newLines);
+    },
+    [lines, onLinesChange]
+  );
+
+  // Handle line update
+  const handleLineUpdate = useCallback(
+    (id: string, data: Partial<QuoteLine>) => {
+      if (onLineUpdate) {
+        onLineUpdate(id, data);
+      } else {
+        // Default: update locally
+        const newLines = lines.map((line) =>
+          getLineId(line) === id ? { ...line, ...data } : line
+        );
+        onLinesChange(newLines);
+      }
+    },
+    [lines, onLinesChange, onLineUpdate]
+  );
+
+  // Render a single line with sortable wrapper
+  const renderLine = (
+    line: QuoteLineWithChildren,
+    depth: number,
+    index: number
+  ): React.ReactNode => {
+    const id = getLineId(line);
+    const isExpanded = line.type === "GROUP" ? expandedGroups.has(id) || true : true;
+
+    return (
+      <React.Fragment key={id}>
+        <SortableQuoteLine id={id} line={line} isOver={overId === id}>
+          {({ dragHandleProps, isDragging, setNodeRef, style, isOver }) => (
+            <div
+              ref={setNodeRef}
+              style={style}
+              className={isOver ? "ring-2 ring-primary ring-offset-1" : ""}
+            >
+              <UniversalLineItemRow
+                id={id}
+                type={line.type}
+                displayData={{
+                  label: line.label || "",
+                  description: line.description ?? undefined,
+                  quantity: line.quantity ?? 1,
+                  unitPrice: line.unitPrice ?? 0,
+                  vatRate: line.vatRate ?? 10,
+                  total: (line.quantity ?? 1) * (line.unitPrice ?? 0),
+                }}
+                sourceData={line.sourceData ?? null}
+                depth={depth}
+                isExpanded={isExpanded}
+                isDragging={isDragging}
+                disabled={readOnly}
+                onDisplayDataChange={(field, value) => {
+                  // Map displayData field to QuoteLine field
+                  if (field === "label") {
+                    handleLineUpdate(id, { label: value as string });
+                  } else if (field === "quantity" || field === "unitPrice" || field === "vatRate") {
+                    handleLineUpdate(id, { [field]: value });
+                  }
+                }}
+                onToggleExpand={() => onToggleExpand?.(id)}
+                dragHandleProps={dragHandleProps}
+              />
+            </div>
+          )}
+        </SortableQuoteLine>
+
+        {/* Render children if expanded */}
+        {isExpanded &&
+          line.children?.map((child, childIndex) =>
+            renderLine(child, depth + 1, childIndex)
+          )}
+      </React.Fragment>
+    );
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+        <div className="border rounded-md bg-background">
+          {/* Header row */}
+          <div className="flex items-center px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
+            <div className="w-8" /> {/* Drag handle space */}
+            <div className="w-8" /> {/* Icon space */}
+            <div className="flex-1">Description</div>
+            <div className="w-16 text-right">Qty</div>
+            <div className="w-24 text-right">Unit Price</div>
+            <div className="w-24 text-right">Total</div>
+            <div className="w-12 text-right">VAT</div>
+          </div>
+
+          {/* Lines */}
+          {tree.map((line, index) => renderLine(line, 0, index))}
+
+          {/* Empty state */}
+          {tree.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground">
+              No line items yet. Add a line to get started.
+            </div>
+          )}
+        </div>
+      </SortableContext>
+
+      {/* Drag overlay for smooth dragging */}
+      <DragOverlay>
+        {activeLine ? (
+          <div className="bg-background shadow-lg rounded border opacity-90">
+            <UniversalLineItemRow
+              id={getLineId(activeLine)}
+              type={activeLine.type}
+              displayData={{
+                label: activeLine.label || "",
+                quantity: activeLine.quantity ?? 1,
+                unitPrice: activeLine.unitPrice ?? 0,
+                vatRate: activeLine.vatRate ?? 10,
+                total: (activeLine.quantity ?? 1) * (activeLine.unitPrice ?? 0),
+              }}
+              sourceData={activeLine.sourceData ?? null}
+              depth={0}
+              isDragging
+              disabled
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+export default SortableQuoteLinesList;
