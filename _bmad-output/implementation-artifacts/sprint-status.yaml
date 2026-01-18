@@ -296,7 +296,7 @@ development_status:
   26-3-hybrid-block-validation-layer-zod: done
   26-4-backend-api-crud-for-nested-lines: backlog
   26-5-ui-universal-block-row-component: backlog
-  26-6-ui-click-to-edit-inline-forms: backlog
+  26-6-ui-click-to-edit-inline-forms: review
   26-7-ui-drag-drop-reordering-grouping: backlog
   26-8-ui-slash-commands-menu: backlog
   26-9-operational-detach-logic: backlog
