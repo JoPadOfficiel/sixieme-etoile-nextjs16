@@ -26,7 +26,10 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useBlockTemplateActions } from "../../hooks/useBlockTemplateActions";
+import {
+	type BlockTemplate,
+	useBlockTemplateActions,
+} from "../../hooks/useBlockTemplateActions";
 import { SlashMenu, type SlashMenuBlockType } from "../SlashMenu";
 import { DetachWarningModal } from "./DetachWarningModal";
 import {
@@ -100,7 +103,7 @@ export interface UniversalLineItemRowProps {
 	/** Callback when the line should be detached from operational data */
 	onDetach?: () => void;
 	/** Callback to insert a new line (for slash commands) */
-	onInsert?: (type: LineItemType, data?: any) => void;
+	onInsert?: (type: LineItemType, data?: Record<string, unknown>) => void;
 	/** Drag handle props (from dnd-kit) */
 	dragHandleProps?: Record<string, unknown>;
 	/** Children rows (for GROUP type) */
@@ -304,7 +307,7 @@ export function UniversalLineItemRow({
 	 * Handle template selection
 	 */
 	const handleTemplateSelect = useCallback(
-		(template: any) => {
+		(template: BlockTemplate) => {
 			// Remove trailing slash
 			const currentLabel = displayData.label;
 			const newLabel = currentLabel.replace(/\/$/, "").trim();

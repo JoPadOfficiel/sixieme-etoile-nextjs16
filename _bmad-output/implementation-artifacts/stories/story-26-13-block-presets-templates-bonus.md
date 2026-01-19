@@ -2,7 +2,7 @@
 
 **Epic:** 26 - Flexible "Yolo Mode" Billing
 **Agent:** Bob (Scrum Master)
-**Status:** In Progress
+**Status:** Done
 **Priority:** Bonus (High Value for Productivity)
 
 ## Description
@@ -41,7 +41,7 @@ This story focuses on creating a lightweight "Templates" system for Yolo blocks 
 ### AC4: Template Management (Optional/Basic)
 - **Given** the list of templates in the insertion menu,
 - **When** I want to delete an old template,
-- **Then** there is a way to remove it (e.g., a small "x" or Trash icon in the menu list, or via a simple settings modal). *MVP: Minimal deletion support in the insertion UI is acceptable.*
+- **Then** there is a way to remove it (e.g., a small "x" or Trash icon in the menu list, or via a simple settings modal).
 
 ## Technical Details NOT Specified in PRD
 - **Storage:** Use a proper Postgres table `BlockTemplate` rather than local storage to ensuring sharing across the team.

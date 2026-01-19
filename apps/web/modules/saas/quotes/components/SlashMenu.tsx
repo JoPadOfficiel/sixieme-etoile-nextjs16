@@ -2,7 +2,7 @@
 
 import { Popover, PopoverAnchor, PopoverContent } from "@ui/components/popover";
 import { Command } from "cmdk";
-import { Car, FolderIcon, Heading, Percent, Type } from "lucide-react";
+import { Car, FolderIcon, Heading, Percent, Trash2, Type } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useBlockTemplateActions } from "../hooks/useBlockTemplateActions";
 
@@ -59,7 +59,7 @@ export function SlashMenu({
 	anchorRect,
 }: SlashMenuProps) {
 	const [search, setSearch] = useState("");
-	const { templates } = useBlockTemplateActions();
+	const { templates, deleteTemplate } = useBlockTemplateActions();
 
 	// Virtual ref for Popover positioning
 	const virtualRef = React.useRef({
@@ -143,15 +143,26 @@ export function SlashMenu({
 											if (onTemplateSelect) onTemplateSelect(template);
 											handleClose();
 										}}
-										className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-900 dark:data-[selected=true]:bg-slate-800 dark:data-[selected=true]:text-slate-100"
+										className="group relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-900 dark:data-[selected=true]:bg-slate-800 dark:data-[selected=true]:text-slate-100"
 									>
 										<FolderIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-										<div className="flex flex-col">
+										<div className="flex flex-1 flex-col">
 											<span className="font-medium">{template.label}</span>
 											<span className="text-[10px] text-muted-foreground">
 												Template
 											</span>
 										</div>
+										<button
+											type="button"
+											onClick={(e) => {
+												e.stopPropagation();
+												deleteTemplate(template.id);
+											}}
+											className="rounded p-1 opacity-0 transition-all hover:bg-red-100 hover:text-red-600 group-hover:opacity-100"
+											title="Delete template"
+										>
+											<Trash2 className="h-3 w-3" />
+										</button>
 									</Command.Item>
 								))}
 							</Command.Group>
