@@ -66,39 +66,74 @@ export function DispatchPage() {
 	});
 
 	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
+	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
 	const { data: driversData } = useQuery({
-		queryKey: ["fleet-drivers"],
+		queryKey: ["fleet-drivers", "with-events"],
 		queryFn: async () => {
-			const res = await apiClient.vtc.drivers.$get({ query: { isActive: "true", limit: "100" } });
+			const res = await apiClient.vtc.drivers.$get({ query: { isActive: "true", limit: "100", includeEvents: "true", includeMissions: "true" } });
 			if (!res.ok) throw new Error("Failed to fetch drivers");
 			return res.json();
 		},
 	});
 
-	// Mock Calendar Events (Story 27.10)
-	const mockCalendarEvents: DriverCalendarEvent[] = useMemo(() => {
+	// Real Calendar Events (Story 27.10)
+	const calendarEvents: DriverCalendarEvent[] = useMemo(() => {
 		if (!driversData?.data) return [];
-		// Assign a holiday to the first driver for testing
-		const firstDriver = driversData.data[0];
-		if (!firstDriver) return [];
-		
-		return [{
-			id: "evt-mock-1",
-			driverId: firstDriver.id,
-			startAt: new Date(), // Today
-			endAt: new Date(new Date().getTime() + 24 * 3600000), // Tomorrow
-			type: "HOLIDAY"
-		}];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		return driversData.data.flatMap((d: any) => d.driverCalendarEvents || []).map((e: any) => ({
+			id: e.id,
+			driverId: e.driverId,
+			startAt: new Date(e.startAt),
+			endAt: new Date(e.endAt),
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			type: e.eventType as any,
+		}));
 	}, [driversData]);
 
 	const drivers = useMemo<GanttDriver[]>(() => {
 		if (!driversData?.data) return [];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		return driversData.data.map((d: any) => ({
 			id: d.id,
 			name: `${d.firstName} ${d.lastName}`,
 			avatar: undefined,
 			status: d.isActive ? "AVAILABLE" : "UNAVAILABLE", 
-			missions: [], // TODO: Populate with real missions
+			// Map API missions to MissionListItem subset needed for Gantt & Compliance
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			missions: (d.missions || []).map((m: any) => {
+				const missionPartial: any = {
+					id: m.id,
+					pickupAt: m.startAt, // Assuming startAt is ISO string from API
+					// We don't have all details here, but enough for Gantt
+					title: m.title || "Mission",
+					status: m.status,
+					clientName: "Client", // TODO: Need client name in API
+					type: "TRANS", // Default type
+				};
+				
+				// Determine conflict (Visual feedback AC4)
+				// We need to check against OTHER missions and events for this driver
+				// This is "display-time" check, slightly expensive but necessary for red borders
+				const otherMissions = (d.missions || []).filter((om: any) => om.id !== m.id).map((om: any) => ({
+					id: om.id,
+					pickupAt: om.startAt
+				}));
+				
+				const driverEvents = (d.driverCalendarEvents || []).map((e: any) => ({
+					id: e.id,
+					driverId: d.id,
+					startAt: e.startAt,
+					endAt: e.endAt,
+					type: e.eventType
+				}));
+
+				const compliance = checkCompliance(missionPartial, d.id, otherMissions, driverEvents);
+				
+				return {
+					...missionPartial,
+					isConflict: !compliance.valid || compliance.level !== "OK", // Red border if BLOCK or WARN
+				};
+			}),
 		}));
 	}, [driversData]);
 
@@ -202,10 +237,13 @@ export function DispatchPage() {
 			if (active.data.current?.mission) {
 				const mission = active.data.current.mission as MissionListItem;
 				
+				
 				// Filter events for this driver
-				const driverEvents = mockCalendarEvents.filter(e => e.driverId === driverId);
-				// Get existing missions (Mocking empty for now as they are not easily available in this context yet)
-				const existingMissions: MissionListItem[] = []; 
+				const driverEvents = calendarEvents.filter(e => e.driverId === driverId);
+				
+				// Get existing missions from the drivers list (which now uses real data)
+				const targetDriver = drivers.find(d => d.id === driverId);
+				const existingMissions: MissionListItem[] = targetDriver?.missions || [];
 
 				const compliance = checkCompliance(mission, driverId, existingMissions, driverEvents);
 

@@ -1,4 +1,4 @@
-import { areIntervalsOverlapping, differenceInMinutes, parseISO } from "date-fns";
+import { areIntervalsOverlapping } from "date-fns";
 import type { MissionListItem } from "../types";
 
 export interface DriverCalendarEvent {
@@ -72,7 +72,7 @@ export function checkCompliance(
 
   // 3. RSE Check (WARN)
   // Simplified: If total minutes > 10 * 60
-  const dailyTotalMinutes = existingMissions.reduce((acc, m) => acc + 60, 0) + durationMins;
+  const dailyTotalMinutes = existingMissions.reduce((acc) => acc + 60, 0) + durationMins;
   if (dailyTotalMinutes > 600) {
     return {
       valid: true,

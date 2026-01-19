@@ -50,9 +50,19 @@ const listDriversSchema = z.object({
 			if (val === "false") return false;
 			return undefined;
 		}),
+	includeEvents: z
+		.string()
+		.optional()
+		.transform((val) => val === "true"),
+	includeMissions: z
+		.string()
+		.optional()
+		.transform((val) => val === "true"),
 	licenseCategoryId: z.string().optional(),
 	search: z.string().optional(),
 });
+
+// ... inside the router ...
 
 const createDriverLicenseSchema = z.object({
 	licenseCategoryId: z.string().min(1),
@@ -81,7 +91,7 @@ export const driversRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, isActive, licenseCategoryId, search } =
+			const { page, limit, isActive, includeEvents, includeMissions, licenseCategoryId, search } =
 				c.req.valid("query");
 
 			const skip = (page - 1) * limit;
@@ -123,6 +133,22 @@ export const driversRouter = new Hono()
 								licenseCategory: true,
 							},
 						},
+						driverCalendarEvents: includeEvents ? {
+							where: {
+								endAt: {
+									gte: new Date(), // Only future/current events by default optimization? Or all?
+								}
+							}
+						} : false,
+						missions: includeMissions ? {
+							where: {
+								// Limit to recent/future
+								startAt: { 
+									gte: new Date(Date.now() - 72 * 60 * 60 * 1000)
+								}
+							},
+							orderBy: { startAt: 'asc' }
+						} : false,
 					},
 				}),
 				db.driver.count({ where }),

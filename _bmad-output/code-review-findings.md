@@ -1,39 +1,21 @@
-
 **🔥 CODE REVIEW FINDINGS, JoPad!**
 
-**Story:** Story 26.9 - Operational "Detach" Logic
+**Story:** story-27-10-conflict-detection-rse-calendar.md
 **Git vs Story Discrepancies:** 0 found
-**Issues Found:** 2 Critical, 1 Medium, 1 Low
+**Issues Found:** 1 High, 1 Medium, 2 Low
 
 ## 🔴 CRITICAL ISSUES
+None.
 
-1. **AC2 Non-Functional / Dead Code**: 
-   - The Acceptance Criteria #2 requires a warning modal when modifying sensitive fields like `pickupAt`, `origin`, or `destination`. 
-   - However, `UniversalLineItemRow.tsx` **only renders inputs for** `label`, `quantity`, `unitPrice`, and `vatRate`. 
-   - The sensitive fields are NOT editable in this component, so `handleFieldChange` will NEVER receive a sensitive field key provided in `SENSITIVE_FIELDS`. 
-   - The implemented detection logic (`if (isSensitiveField(field))`) is effectively dead code and the User Story generic requirement is impossible to trigger in the current UI state.
-
-2. **Missing Integration Tests**: 
-   - The story checks off "[x] Task 5: Create Unit Tests (AC: All)". 
-   - While `detach-utils.test.ts` is excellent, **`UniversalLineItemRow.test.tsx` was NOT updated** to test the new props (`onDetach`) or interactions (Modal, Toast, Label warning). 
-   - There is NO verification that the UI actually triggers the logic you built.
-
-## 🟡 MEDIUM ISSUES
-
-1. **Fragile `getOriginalLabelFromSource` Logic**: 
-   - In `detach-utils.ts`, attempting to reconstruct the label from `origin + ' -> ' + destination` or guessing typical fields (`tripDescription`) is brittle. 
-   - If the business logic for label generation changes, this heuristic will fail silently, potentially breaking the label similarity check (AC1). 
-   - It should ideally rely on a dedicated `originalLabel` field from the backend or stronger typing.
+## 🟡 MEDIUM/HIGH ISSUES
+- **[HIGH] Mocked Data in Production**: `DispatchPage.tsx` uses a hardcoded `mockCalendarEvents` array. Real calendar events are never fetched from the API, which exists (`/drivers/:id/calendar-events`). This renders the "Driver Calendar Conflict" check useless for real data.
+- **[MEDIUM] Hardcoded Mission Duration**: `checkCompliance.ts` hardcodes mission duration to 60 minutes because `MissionListItem` lacks an explicit `duration` or `dropoffAt` field. This reduces accuracy of overlap checks.
 
 ## 🟢 LOW ISSUES
+- **Unused Imports**: `checkCompliance.ts` imports `differenceInMinutes` and `parseISO` which are unused.
+- **Unused Variable**: `m` in `reduce` callback in `checkCompliance.ts`.
 
-1. **Hardcoded Locale**: 
-   - `UniversalLineItemRow.tsx` uses `fr-FR` locale hardcoded for numbers, ignoring the user's potential locale preferences, although `currency` is passed as a prop.
-
----
-
-**Recommendation:**
-Since AC2 is functionally blocked by the UI design (no inputs for sensitive fields), I propose we:
-1.  **Fix changes** in `UniversalLineItemRow` to at least fully test the parts that DO work (Label Warning, Detach Callback).
-2.  **Add comments** explaining why AC2 is partial (waiting for UI to expose those fields).
-3.  **Implement missing tests** in `UniversalLineItemRow.test.tsx`.
+I will **automatically fix** the HIGH and LOW issues.
+1. **Fix HIGH**: Update the Backend `GET /drivers` endpoint to optionally include `calendarEvents` (e.g. `?includeEvents=true` or via `limit`), and then update `DispatchPage.tsx` to use this real data.
+2. **Fix LOW**: Cleanup unused code.
+3. The MEDIUM issue (duration) will be left as a documented limitation (TODO) as updating the entire `MissionListItem` schema is a larger scope change.
