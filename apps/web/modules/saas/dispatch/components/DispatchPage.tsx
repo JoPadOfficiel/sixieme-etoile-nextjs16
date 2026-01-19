@@ -1,13 +1,27 @@
 "use client";
 
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
+import { useToast } from "@ui/hooks/use-toast";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
+import { useAssignMission } from "../hooks/useAssignMission";
 import type { CandidateBase } from "../types/assignment";
+import type { MissionListItem } from "../types";
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { UnassignedSidebar } from "./UnassignedSidebar";
+import { MissionRow } from "./MissionRow";
 
 // Shell Components
 import { DispatchLayout } from "./shell/DispatchLayout";
@@ -111,8 +125,56 @@ export function DispatchPage() {
 		[],
 	);
 
+	// DnD State
+	const [activeDragMission, setActiveDragMission] = useState<MissionListItem | null>(null);
+	const { toast } = useToast();
+
+	// Story 27.9: Assignment Mutation
+	const assignMissionMutation = useAssignMission({
+		onSuccess: () => toast({ title: "Mission assigned" }),
+		onError: () =>
+			toast({ title: "Assignment failed", variant: "error" }),
+	});
+
+	const sensors = useSensors(
+		useSensor(MouseSensor, {
+			activationConstraint: {
+				distance: 8,
+			},
+		}),
+		useSensor(TouchSensor),
+	);
+
+	const handleDragStart = (event: DragStartEvent) => {
+		if (event.active.data.current?.type === "MISSION") {
+			setActiveDragMission(
+				event.active.data.current.mission as MissionListItem,
+			);
+		}
+	};
+
+	const handleDragEnd = (event: DragEndEvent) => {
+		const { active, over } = event;
+		setActiveDragMission(null);
+
+		if (over && over.data.current?.type === "DRIVER") {
+			const missionId = String(active.id).replace("mission-", "");
+			const driverId = over.data.current.driverId;
+
+			assignMissionMutation.mutate({
+				missionId,
+				driverId,
+				vehicleId: "temp-vehicle-id", // Placeholder until we have vehicle selection logic
+			});
+		}
+	};
+
 	return (
-		<>
+		<DndContext
+			sensors={sensors}
+			onDragStart={handleDragStart}
+			onDragEnd={handleDragEnd}
+		>
 			<DispatchLayout
 				isSidebarCollapsed={isSidebarCollapsed}
 				onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -142,8 +204,8 @@ export function DispatchPage() {
 			</DispatchLayout>
 
 			{/* Inspector Sheet */}
-			<InspectorPanel 
-				missionId={selectedMissionId} 
+			<InspectorPanel
+				missionId={selectedMissionId}
 				onClose={() => setSelectedMissionId(null)}
 				onOpenAssignment={handleOpenAssignmentDrawer}
 			/>
@@ -162,14 +224,26 @@ export function DispatchPage() {
 								endCustomerName: selectedMission.endCustomer
 									? `${selectedMission.endCustomer.firstName} ${selectedMission.endCustomer.lastName}`
 									: undefined,
-							}
+						  }
 						: undefined
 				}
 				onCandidateHoverStart={handleCandidateHoverStart}
 				onCandidateHoverEnd={handleCandidateHoverEnd}
 				onSelectedCandidateChange={handleSelectedCandidateChange}
 			/>
-		</>
+
+			<DragOverlay>
+				{activeDragMission ? (
+					<div className="w-[350px] opacity-90 cursor-grabbing bg-background shadow-xl rounded-lg border pointer-events-none">
+						<MissionRow
+							mission={activeDragMission}
+							isSelected={false}
+							onSelect={() => {}}
+						/>
+					</div>
+				) : null}
+			</DragOverlay>
+		</DndContext>
 	);
 }
 

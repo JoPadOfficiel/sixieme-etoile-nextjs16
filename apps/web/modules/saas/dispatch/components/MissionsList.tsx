@@ -5,7 +5,7 @@ import { Skeleton } from "@ui/components/skeleton";
 import { MapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
-import { MissionRow } from "./MissionRow";
+import { DraggableMissionRow } from "./DraggableMissionRow";
 import type { MissionListItem } from "../types";
 
 /**
@@ -51,7 +51,7 @@ export function MissionsList({
 				{/* Compact card layout - no horizontal scroll */}
 				<div className="divide-y">
 					{missions.map((mission) => (
-						<MissionRow
+						<DraggableMissionRow
 							key={mission.id}
 							mission={mission}
 							isSelected={mission.id === selectedMissionId}

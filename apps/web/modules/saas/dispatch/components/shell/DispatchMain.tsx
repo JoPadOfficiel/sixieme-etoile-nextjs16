@@ -94,38 +94,38 @@ export function DispatchMain({
   const endTime = endOfDay(today);
 
   return (
-    <div className="flex-1 h-full w-full relative overflow-hidden bg-background">
-      {viewMode === "gantt" && (
-        <div className="h-full w-full p-4 overflow-hidden">
-           <GanttTimeline
-              drivers={drivers}
-              startTime={startTime}
-              endTime={endTime}
-              // TODO: Wire up to real actions
-              onDriverClick={(id) => console.log("Driver clicked:", id)}
-              onMissionClick={(id) => onMissionSelect(id)}
-              selectedMissionId={mission?.id}
-              className="h-full shadow-sm"
-           />
-        </div>
-      )}
-      
-      {viewMode === "list" && (
-        <div className="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed m-4 rounded-lg bg-muted/10">
-          Advanced List View Placeholder
-        </div>
-      )}
-
-      {viewMode === "map" && (
-        <div className="h-full w-full">
-           <DispatchMapGoogle
-              mission={mission}
-              bases={bases}
-              isLoading={isLoadingBases}
-              drivers={DRIVER_POSITIONS_MOCK}
-           />
-        </div>
-      )}
-    </div>
+      <div className="flex-1 h-full w-full relative overflow-hidden bg-background">
+        {viewMode === "gantt" && (
+          <div className="h-full w-full p-4 overflow-hidden">
+             <GanttTimeline
+                drivers={drivers}
+                startTime={startTime}
+                endTime={endTime}
+                // TODO: Wire up to real actions
+                onDriverClick={(id) => console.log("Driver clicked:", id)}
+                onMissionClick={(id) => onMissionSelect(id)}
+                selectedMissionId={mission?.id}
+                className="h-full shadow-sm"
+             />
+          </div>
+        )}
+        
+        {viewMode === "list" && (
+          <div className="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed m-4 rounded-lg bg-muted/10">
+            Advanced List View Placeholder
+          </div>
+        )}
+  
+        {viewMode === "map" && (
+          <div className="h-full w-full">
+             <DispatchMapGoogle
+                mission={mission}
+                bases={bases}
+                isLoading={isLoadingBases}
+                drivers={DRIVER_POSITIONS_MOCK}
+             />
+          </div>
+        )}
+      </div>
   );
 }

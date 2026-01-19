@@ -9,6 +9,7 @@
  * Placeholder for missions - actual mission blocks will be added in Story 27.4.
  */
 
+import { useDroppable } from "@dnd-kit/core";
 import { memo, useMemo } from "react";
 import { differenceInMinutes } from "date-fns";
 import { cn } from "@ui/lib";
@@ -25,6 +26,14 @@ export const GanttDriverRow = memo(function GanttDriverRow({
 	onMissionClick,
 	selectedMissionId,
 }: GanttDriverRowProps) {
+	const { setNodeRef, isOver } = useDroppable({
+		id: `driver-${driver.id}`,
+		data: {
+			type: "DRIVER",
+			driverId: driver.id,
+		},
+	});
+
 	// Calculate mission positions
 	const missionBlocks = useMemo(() => {
 		if (!driver.missions || driver.missions.length === 0) {
@@ -47,10 +56,12 @@ export const GanttDriverRow = memo(function GanttDriverRow({
 
 	return (
 		<div
+			ref={setNodeRef}
 			className={cn(
 				"absolute left-0 right-0 border-b border-gray-200 dark:border-gray-700",
 				"hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors",
-				rowIndex % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50/30 dark:bg-gray-800/30"
+				rowIndex % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50/30 dark:bg-gray-800/30",
+				isOver && "ring-2 ring-primary ring-inset z-10 bg-primary/10"
 			)}
 			style={{
 				top: rowIndex * ROW_HEIGHT,

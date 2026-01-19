@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@shared/lib/api-client";
+import type { MissionsListResponse } from "../types";
 import type { AssignMissionRequest, AssignMissionResponse } from "../types/assignment";
 
 /**
@@ -37,19 +38,50 @@ export function useAssignMission(options?: UseAssignMissionOptions) {
 
 			return response.json() as Promise<AssignMissionResponse>;
 		},
-		onSuccess: (data) => {
-			// Invalidate related queries
+		onMutate: async (newAssignment) => {
+			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+			await queryClient.cancelQueries({ queryKey: ["missions"] });
+
+			// Snapshot the previous value
+			const previousMissions = queryClient.getQueryData(["missions"]);
+
+			// Optimistically update to the new value
+			queryClient.setQueryData<MissionsListResponse>(["missions"], (old) => {
+				if (!old) return old;
+
+				// Safe approach: If it's a paginated list, we filter it out from items
+				if (old.data && Array.isArray(old.data)) {
+					return {
+						...old,
+						data: old.data.filter((m) => m.id !== newAssignment.missionId),
+					};
+				}
+				return old;
+			});
+
+			// Return a context object with the snapshotted value
+			return { previousMissions };
+		},
+		onError: (err, newAssignment, context) => {
+			// If the mutation fails, use the context returned from onMutate to roll back
+			if (context?.previousMissions) {
+				queryClient.setQueryData(["missions"], context.previousMissions);
+			}
+			options?.onError?.(err);
+		},
+		onSettled: (data) => {
+			// Always refetch after error or success:
 			queryClient.invalidateQueries({ queryKey: ["missions"] });
 			queryClient.invalidateQueries({ queryKey: ["mission"] });
-			queryClient.invalidateQueries({ queryKey: ["mission", data.mission.id] });
+			if (data) {
+				queryClient.invalidateQueries({ queryKey: ["mission", data.mission.id] });
+				queryClient.invalidateQueries({ queryKey: ["quote", data.mission.id] });
+			}
 			queryClient.invalidateQueries({ queryKey: ["assignment-candidates"] });
 			queryClient.invalidateQueries({ queryKey: ["quote"] });
-			queryClient.invalidateQueries({ queryKey: ["quote", data.mission.id] });
-
-			options?.onSuccess?.(data);
 		},
-		onError: (error: Error) => {
-			options?.onError?.(error);
+		onSuccess: (data) => {
+			options?.onSuccess?.(data);
 		},
 	});
 }
