@@ -22,6 +22,7 @@ export interface GanttMission {
 	pickupAddress?: string;
 	dropoffAddress?: string;
 	clientName?: string;
+	isConflict?: boolean;
 }
 
 export interface GanttDriver {

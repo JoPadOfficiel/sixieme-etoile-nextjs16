@@ -20,6 +20,11 @@ import type { MissionListItem } from "../types";
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { UnassignedSidebar } from "./UnassignedSidebar";
 import { MissionRow } from "./MissionRow";
+import { useToast } from "@ui/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@shared/lib/api-client";
+import { checkCompliance, type DriverCalendarEvent } from "../utils/checkCompliance";
+import type { GanttDriver } from "./gantt/types";
 
 // Shell Components
 import { DispatchLayout } from "./shell/DispatchLayout";
@@ -59,6 +64,43 @@ export function DispatchPage() {
 	const { data: selectedMission } = useMissionDetail({
 		missionId: selectedMissionId,
 	});
+
+	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
+	const { data: driversData } = useQuery({
+		queryKey: ["fleet-drivers"],
+		queryFn: async () => {
+			const res = await apiClient.vtc.drivers.$get({ query: { isActive: "true", limit: "100" } });
+			if (!res.ok) throw new Error("Failed to fetch drivers");
+			return res.json();
+		},
+	});
+
+	// Mock Calendar Events (Story 27.10)
+	const mockCalendarEvents: DriverCalendarEvent[] = useMemo(() => {
+		if (!driversData?.data) return [];
+		// Assign a holiday to the first driver for testing
+		const firstDriver = driversData.data[0];
+		if (!firstDriver) return [];
+		
+		return [{
+			id: "evt-mock-1",
+			driverId: firstDriver.id,
+			startAt: new Date(), // Today
+			endAt: new Date(new Date().getTime() + 24 * 3600000), // Tomorrow
+			type: "HOLIDAY"
+		}];
+	}, [driversData]);
+
+	const drivers = useMemo<GanttDriver[]>(() => {
+		if (!driversData?.data) return [];
+		return driversData.data.map((d: any) => ({
+			id: d.id,
+			name: `${d.firstName} ${d.lastName}`,
+			avatar: undefined,
+			status: d.isActive ? "AVAILABLE" : "UNAVAILABLE", 
+			missions: [], // TODO: Populate with real missions
+		}));
+	}, [driversData]);
 
 	const { data: bases = [], isLoading: basesLoading } = useOperatingBases();
 
@@ -128,6 +170,7 @@ export function DispatchPage() {
 	);
 
 	// DnD State
+	const { toast } = useToast();
 	const [activeDragMission, setActiveDragMission] = useState<MissionListItem | null>(null);
 
 	const sensors = useSensors(
@@ -154,6 +197,37 @@ export function DispatchPage() {
 		if (over && over.data.current?.type === "DRIVER") {
 			const missionId = String(active.id).replace("mission-", "");
 			const driverId = over.data.current.driverId;
+
+			// Story 27.10: Check Compliance
+			if (active.data.current?.mission) {
+				const mission = active.data.current.mission as MissionListItem;
+				
+				// Filter events for this driver
+				const driverEvents = mockCalendarEvents.filter(e => e.driverId === driverId);
+				// Get existing missions (Mocking empty for now as they are not easily available in this context yet)
+				const existingMissions: MissionListItem[] = []; 
+
+				const compliance = checkCompliance(mission, driverId, existingMissions, driverEvents);
+
+				if (!compliance.valid && compliance.level === "BLOCK") {
+					toast({
+						title: "Impossible d'assigner",
+						description: compliance.reason,
+						variant: "destructive",
+					});
+					return; // Block assignment
+				}
+
+				if (compliance.valid && compliance.level === "WARN") {
+					toast({
+						title: "Attention",
+						description: compliance.reason,
+						variant: "warning", // Ensure variant exists in toast or use default
+						className: "bg-yellow-100 border-yellow-500 text-yellow-900" 
+					});
+					// Proceed but warn
+				}
+			}
 
 			// Story 27.9: Open assignment drawer with pre-selected driver
 			setSelectedMissionId(missionId);
@@ -192,6 +266,7 @@ export function DispatchPage() {
 					mission={selectedMission || null}
 					bases={bases}
 					isLoadingBases={basesLoading}
+					drivers={drivers}
 					onMissionSelect={handleSelectMission}
 				/>
 			</DispatchLayout>

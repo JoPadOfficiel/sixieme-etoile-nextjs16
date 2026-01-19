@@ -57,7 +57,10 @@ export const MissionGanttCard = memo(function MissionGanttCard({
 						"flex flex-col justify-center px-1.5 overflow-hidden",
 						statusStyle,
 						typeStyle,
-						isSelected && "ring-2 ring-blue-500 ring-offset-1 z-20"
+						statusStyle,
+						typeStyle,
+						isSelected && "ring-2 ring-blue-500 ring-offset-1 z-20",
+						mission.isConflict && "border-red-600 border-2 animate-pulse shadow-red-200 shadow-lg z-30"
 					)}
 					style={{
 						left,
