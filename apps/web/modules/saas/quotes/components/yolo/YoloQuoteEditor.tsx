@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@ui/components/button";
+import { FolderPlusIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "zustand";
@@ -126,6 +128,35 @@ export function YoloQuoteEditor({
 		}));
 	}, [lines.length]);
 
+	/**
+	 * Story 26.17: Handle group addition
+	 */
+	const handleAddGroup = useCallback(() => {
+		const newGroup: QuoteLine = {
+			tempId: `group-${Date.now()}`,
+			type: "GROUP",
+			label: t("actions.newGroup") || "Nouveau Groupe",
+			description: "",
+			quantity: 1,
+			unitPrice: 0,
+			totalPrice: 0,
+			vatRate: 0,
+			sortOrder: lines.length,
+			parentId: null,
+			displayData: {
+				label: t("actions.newGroup") || "Nouveau Groupe",
+				quantity: 1,
+				unitPrice: 0,
+				vatRate: 0,
+				total: 0,
+			},
+		};
+
+		useQuoteLinesStore.setState((state) => ({
+			lines: [...state.lines, newGroup],
+		}));
+	}, [lines.length, t]);
+
 	return (
 		<div className="space-y-4">
 			{/* Optional Toolbar / Status Indicators */}
@@ -163,6 +194,30 @@ export function YoloQuoteEditor({
 				currency={currency}
 				onLineAdd={handleManualAdd}
 			/>
+
+			{/* Story 26.17: Explicit Action Buttons */}
+			{!readOnly && (
+				<div className="mt-4 flex gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleManualAdd}
+						className="flex-1 border-dashed text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+					>
+						<PlusIcon className="mr-2 h-4 w-4" />
+						{t("actions.addManualLine") || "Ajouter ligne"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleAddGroup}
+						className="flex-1 border-dashed text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+					>
+						<FolderPlusIcon className="mr-2 h-4 w-4" />
+						{t("actions.addGroup") || "Ajouter groupe"}
+					</Button>
+				</div>
+			)}
 		</div>
 	);
 }

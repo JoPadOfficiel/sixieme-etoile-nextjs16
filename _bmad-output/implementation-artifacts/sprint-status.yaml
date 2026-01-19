@@ -307,6 +307,7 @@ development_status:
   26-14-undo-redo-history-support: done
   26-15-remove-legacy-modes: done
   26-16-multi-trip-flow: done
+  26-17-ux-improvements: done
   epic-26-retrospective: optional
   epic-27: in-progress
   27-1-dispatch-shell-navigation: done
