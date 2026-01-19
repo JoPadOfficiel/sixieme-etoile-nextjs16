@@ -1,10 +1,15 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@shared/lib/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@ui/hooks/use-toast";
 import { useTranslations } from "next-intl";
-import type { MissionsFilters, MissionsListResponse, MissionDetail } from "../types";
+import type {
+	MissionDetail,
+	MissionsFilters,
+	MissionsListResponse,
+} from "../types";
+import { DISPATCH_QUERY_OPTIONS } from "./useDispatchRealtime";
 
 /**
  * useMissions Hook
@@ -36,7 +41,8 @@ export function useMissions({
 
 			if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
 			if (filters.dateTo) params.set("dateTo", filters.dateTo);
-			if (filters.vehicleCategoryId) params.set("vehicleCategoryId", filters.vehicleCategoryId);
+			if (filters.vehicleCategoryId)
+				params.set("vehicleCategoryId", filters.vehicleCategoryId);
 			if (filters.clientType) params.set("clientType", filters.clientType);
 			if (filters.search) params.set("search", filters.search);
 			if (filters.unassignedOnly) params.set("unassignedOnly", "true");
@@ -52,8 +58,8 @@ export function useMissions({
 			return response.json() as Promise<MissionsListResponse>;
 		},
 		enabled,
-		staleTime: 30000, // 30 seconds
-		refetchInterval: 60000, // Refetch every minute for dispatch updates
+		// Story 27.13: Real-time polling configuration (10s interval, window focus revalidation)
+		...DISPATCH_QUERY_OPTIONS,
 	});
 }
 
@@ -82,7 +88,8 @@ export function useMissionDetail({
 			return response.json() as Promise<MissionDetail>;
 		},
 		enabled: enabled && !!missionId,
-		staleTime: 30000,
+		// Story 27.13: Real-time polling configuration
+		...DISPATCH_QUERY_OPTIONS,
 	});
 }
 

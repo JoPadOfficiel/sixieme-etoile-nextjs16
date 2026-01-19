@@ -1,36 +1,40 @@
 "use client";
 
 import {
-  DndContext,
-  DragOverlay,
-  useSensor,
-  useSensors,
-  MouseSensor,
-  TouchSensor,
-  type DragEndEvent,
-  type DragStartEvent,
+	DndContext,
+	type DragEndEvent,
+	DragOverlay,
+	type DragStartEvent,
+	MouseSensor,
+	TouchSensor,
+	useSensor,
+	useSensors,
 } from "@dnd-kit/core";
+import { apiClient } from "@shared/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@ui/hooks/use-toast";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
+import { DISPATCH_QUERY_OPTIONS } from "../hooks/useDispatchRealtime";
 import { useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
-import type { CandidateBase } from "../types/assignment";
 import type { MissionListItem } from "../types";
+import type { CandidateBase } from "../types/assignment";
+import {
+	type DriverCalendarEvent,
+	checkCompliance,
+} from "../utils/checkCompliance";
 import { AssignmentDrawer } from "./AssignmentDrawer";
-import { UnassignedSidebar } from "./UnassignedSidebar";
 import { MissionRow } from "./MissionRow";
-import { useToast } from "@ui/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@shared/lib/api-client";
-import { checkCompliance, type DriverCalendarEvent } from "../utils/checkCompliance";
+import { UnassignedSidebar } from "./UnassignedSidebar";
 import type { GanttDriver } from "./gantt/types";
 
+import { InspectorPanel } from "./InspectorPanel";
 // Shell Components
 import { DispatchLayout } from "./shell/DispatchLayout";
 import { DispatchMain } from "./shell/DispatchMain";
 import { DispatchSidebar } from "./shell/DispatchSidebar";
-import { InspectorPanel } from "./InspectorPanel";
 
 /**
  * DispatchPage Component
@@ -66,28 +70,38 @@ export function DispatchPage() {
 	});
 
 	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
-	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
+	// Story 27.13: Real-time polling configuration (10s interval, window focus revalidation)
 	const { data: driversData } = useQuery({
 		queryKey: ["fleet-drivers", "with-events"],
 		queryFn: async () => {
-			const res = await apiClient.vtc.drivers.$get({ query: { isActive: "true", limit: "100", includeEvents: "true", includeMissions: "true" } });
+			const res = await apiClient.vtc.drivers.$get({
+				query: {
+					isActive: "true",
+					limit: "100",
+					includeEvents: "true",
+					includeMissions: "true",
+				},
+			});
 			if (!res.ok) throw new Error("Failed to fetch drivers");
 			return res.json();
 		},
+		...DISPATCH_QUERY_OPTIONS,
 	});
 
 	// Real Calendar Events (Story 27.10)
 	const calendarEvents: DriverCalendarEvent[] = useMemo(() => {
 		if (!driversData?.data) return [];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return driversData.data.flatMap((d: any) => d.driverCalendarEvents || []).map((e: any) => ({
-			id: e.id,
-			driverId: e.driverId,
-			startAt: new Date(e.startAt),
-			endAt: new Date(e.endAt),
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			type: e.eventType as any,
-		}));
+		return driversData.data
+			.flatMap((d: any) => d.driverCalendarEvents || [])
+			.map((e: any) => ({
+				id: e.id,
+				driverId: e.driverId,
+				startAt: new Date(e.startAt),
+				endAt: new Date(e.endAt),
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				type: e.eventType as any,
+			}));
 	}, [driversData]);
 
 	const drivers = useMemo<GanttDriver[]>(() => {
@@ -97,17 +111,19 @@ export function DispatchPage() {
 			id: d.id,
 			name: `${d.firstName} ${d.lastName}`,
 			avatar: undefined,
-			status: d.isActive ? "AVAILABLE" : "UNAVAILABLE", 
+			status: d.isActive ? "AVAILABLE" : "UNAVAILABLE",
 			// Map API missions to MissionListItem subset needed for Gantt & Compliance
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			missions: (d.missions || []).map((m: any) => {
 				const startAt = new Date(m.startAt);
-				const endAt = m.endAt ? new Date(m.endAt) : new Date(startAt.getTime() + 60 * 60000); // Default 1h if null
+				const endAt = m.endAt
+					? new Date(m.endAt)
+					: new Date(startAt.getTime() + 60 * 60000); // Default 1h if null
 
 				const missionPartial: any = {
 					id: m.id,
 					startAt, // Required by GanttMission
-					endAt,   // Required by GanttMission
+					endAt, // Required by GanttMission
 					pickupAt: m.startAt, // Keep raw string for other uses if needed
 					// We don't have all details here, but enough for Gantt
 					title: m.title || "Mission",
@@ -115,25 +131,32 @@ export function DispatchPage() {
 					clientName: "Client", // TODO: Need client name in API
 					type: "TRANS", // Default type
 				};
-				
+
 				// Determine conflict (Visual feedback AC4)
 				// We need to check against OTHER missions and events for this driver
 				// This is "display-time" check, slightly expensive but necessary for red borders
-				const otherMissions = (d.missions || []).filter((om: any) => om.id !== m.id).map((om: any) => ({
-					id: om.id,
-					pickupAt: om.startAt
-				}));
-				
+				const otherMissions = (d.missions || [])
+					.filter((om: any) => om.id !== m.id)
+					.map((om: any) => ({
+						id: om.id,
+						pickupAt: om.startAt,
+					}));
+
 				const driverEvents = (d.driverCalendarEvents || []).map((e: any) => ({
 					id: e.id,
 					driverId: d.id,
 					startAt: e.startAt,
 					endAt: e.endAt,
-					type: e.eventType
+					type: e.eventType,
 				}));
 
-				const compliance = checkCompliance(missionPartial, d.id, otherMissions, driverEvents);
-				
+				const compliance = checkCompliance(
+					missionPartial,
+					d.id,
+					otherMissions,
+					driverEvents,
+				);
+
 				return {
 					...missionPartial,
 					isConflict: !compliance.valid || compliance.level !== "OK", // Red border if BLOCK or WARN
@@ -169,7 +192,9 @@ export function DispatchPage() {
 	}, [candidatesData, selectedCandidateId, hoveredCandidateId]);
 
 	// Story 27.9: Pre-selected driver for Assignment Drawer
-	const [preSelectedDriverId, setPreSelectedDriverId] = useState<string | null>(null);
+	const [preSelectedDriverId, setPreSelectedDriverId] = useState<string | null>(
+		null,
+	);
 
 	// Handle mission selection
 	const handleSelectMission = useCallback(
@@ -211,7 +236,8 @@ export function DispatchPage() {
 
 	// DnD State
 	const { toast } = useToast();
-	const [activeDragMission, setActiveDragMission] = useState<MissionListItem | null>(null);
+	const [activeDragMission, setActiveDragMission] =
+		useState<MissionListItem | null>(null);
 
 	const sensors = useSensors(
 		useSensor(MouseSensor, {
@@ -241,16 +267,23 @@ export function DispatchPage() {
 			// Story 27.10: Check Compliance
 			if (active.data.current?.mission) {
 				const mission = active.data.current.mission as MissionListItem;
-				
-				
-				// Filter events for this driver
-				const driverEvents = calendarEvents.filter(e => e.driverId === driverId);
-				
-				// Get existing missions from the drivers list (which now uses real data)
-				const targetDriver = drivers.find(d => d.id === driverId);
-				const existingMissions: MissionListItem[] = targetDriver?.missions || [];
 
-				const compliance = checkCompliance(mission, driverId, existingMissions, driverEvents);
+				// Filter events for this driver
+				const driverEvents = calendarEvents.filter(
+					(e) => e.driverId === driverId,
+				);
+
+				// Get existing missions from the drivers list (which now uses real data)
+				const targetDriver = drivers.find((d) => d.id === driverId);
+				const existingMissions: MissionListItem[] =
+					targetDriver?.missions || [];
+
+				const compliance = checkCompliance(
+					mission,
+					driverId,
+					existingMissions,
+					driverEvents,
+				);
 
 				if (!compliance.valid && compliance.level === "BLOCK") {
 					toast({
@@ -266,7 +299,7 @@ export function DispatchPage() {
 						title: "Attention",
 						description: compliance.reason,
 						variant: "warning", // Ensure variant exists in toast or use default
-						className: "bg-yellow-100 border-yellow-500 text-yellow-900" 
+						className: "bg-yellow-100 border-yellow-500 text-yellow-900",
 					});
 					// Proceed but warn
 				}
@@ -335,7 +368,7 @@ export function DispatchPage() {
 								endCustomerName: selectedMission.endCustomer
 									? `${selectedMission.endCustomer.firstName} ${selectedMission.endCustomer.lastName}`
 									: undefined,
-						  }
+							}
 						: undefined
 				}
 				onCandidateHoverStart={handleCandidateHoverStart}
@@ -346,7 +379,7 @@ export function DispatchPage() {
 
 			<DragOverlay>
 				{activeDragMission ? (
-					<div className="w-[350px] opacity-90 cursor-grabbing bg-background shadow-xl rounded-lg border pointer-events-none">
+					<div className="pointer-events-none w-[350px] cursor-grabbing rounded-lg border bg-background opacity-90 shadow-xl">
 						<MissionRow
 							mission={activeDragMission}
 							isSelected={false}
@@ -361,6 +394,5 @@ export function DispatchPage() {
 
 // Helper to ensure number
 // removed
-
 
 export default DispatchPage;

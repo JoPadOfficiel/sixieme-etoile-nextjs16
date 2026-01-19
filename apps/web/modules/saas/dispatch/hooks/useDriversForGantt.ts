@@ -8,10 +8,11 @@
  * Fetches drivers and their assigned missions for the Gantt timeline display.
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@shared/lib/api-client";
-import type { GanttDriver, DriverStatus } from "../components/gantt/types";
 import type { DriversResponse } from "@saas/fleet/types";
+import { apiClient } from "@shared/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
+import type { DriverStatus, GanttDriver } from "../components/gantt/types";
+import { DISPATCH_QUERY_OPTIONS } from "./useDispatchRealtime";
 
 interface UseDriversForGanttOptions {
 	enabled?: boolean;
@@ -49,7 +50,9 @@ export function useDriversForGantt({
 			// For now, missions are empty - they will be populated in Story 27.4
 			const ganttDrivers: GanttDriver[] = driversResponse.data.map((driver) => {
 				// Determine status based on current missions (placeholder logic)
-				const status: DriverStatus = driver.isActive ? "AVAILABLE" : "UNAVAILABLE";
+				const status: DriverStatus = driver.isActive
+					? "AVAILABLE"
+					: "UNAVAILABLE";
 
 				return {
 					id: driver.id,
@@ -63,8 +66,8 @@ export function useDriversForGantt({
 			return ganttDrivers;
 		},
 		enabled,
-		staleTime: 30000, // 30 seconds
-		refetchInterval: 60000, // Refetch every minute
+		// Story 27.13: Real-time polling configuration (10s interval, window focus revalidation)
+		...DISPATCH_QUERY_OPTIONS,
 	});
 
 	return {
