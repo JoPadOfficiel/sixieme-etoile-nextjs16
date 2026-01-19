@@ -305,7 +305,7 @@ development_status:
   26-12-pdf-generator-mission-order-operational-mode: done
   26-13-block-presets-templates-bonus: done
   26-14-undo-redo-history-support: done
-  26-15-remove-legacy-modes: backlog
+  26-15-remove-legacy-modes: done
   26-16-multi-trip-flow: backlog
   epic-26-retrospective: optional
   epic-27: in-progress

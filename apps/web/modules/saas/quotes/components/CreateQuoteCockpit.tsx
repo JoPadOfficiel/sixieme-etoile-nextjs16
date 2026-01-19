@@ -15,7 +15,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOptionalFees } from "../hooks/useOptionalFees";
 import { usePricingCalculation } from "../hooks/usePricingCalculation";
 import { useScenarioHelpers } from "../hooks/useScenarioHelpers";
-import { useStayPricingCalculation } from "../hooks/useStayPricingCalculation";
 import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
@@ -69,35 +68,15 @@ export function CreateQuoteCockpit() {
 	// Story 26: Quote lines for Yolo Mode
 	const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
 
-	// Pricing calculation hook (for non-STAY trip types)
+	// Pricing calculation hook (for standard trip types)
 	const {
-		pricingResult: standardPricingResult,
-		isCalculating: isStandardCalculating,
-		error: standardPricingError,
-		calculate: calculateStandard,
+		pricingResult,
+		isCalculating,
+		error: pricingError,
+		calculate,
 	} = usePricingCalculation({
 		debounceMs: 500,
 	});
-
-	// Story 22.12: STAY pricing calculation hook
-	const {
-		pricingResult: stayPricingResult,
-		isCalculating: isStayCalculating,
-		error: stayPricingError,
-		calculate: calculateStay,
-	} = useStayPricingCalculation({
-		debounceMs: 500,
-	});
-
-	// Unified pricing result based on trip type
-	const pricingResult =
-		formData.tripType === "STAY" ? stayPricingResult : standardPricingResult;
-	const isCalculating =
-		formData.tripType === "STAY" ? isStayCalculating : isStandardCalculating;
-	const pricingError =
-		formData.tripType === "STAY" ? stayPricingError : standardPricingError;
-	const calculate =
-		formData.tripType === "STAY" ? calculateStay : calculateStandard;
 
 	// Story 6.6: Vehicle categories and optional fees for helpers
 	const { categories: allVehicleCategories } = useVehicleCategories();
@@ -181,10 +160,6 @@ export function CreateQuoteCockpit() {
 		formData.durationHours,
 		formData.maxKilometers,
 		formData.isRoundTrip,
-		// Story 22.12: Add STAY-specific fields to trigger recalculation
-		// Using JSON.stringify to detect deep changes in stayDays array
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		JSON.stringify(formData.stayDays),
 		// Note: calculate is NOT a dependency - we use ref to avoid infinite loops
 	]);
 
@@ -218,11 +193,9 @@ export function CreateQuoteCockpit() {
 		if (!pricingResult || !formData.pickupAddress) return null;
 
 		const tripLabel =
-			formData.tripType === "STAY"
-				? `Séjour - ${formData.stayDays.length} jours`
-				: formData.tripType === "DISPO"
-					? `Mise à disposition - ${formData.durationHours}h`
-					: `${formData.pickupAddress} → ${formData.dropoffAddress || "..."}`;
+			formData.tripType === "DISPO"
+				? `Mise à disposition - ${formData.durationHours}h`
+				: `${formData.pickupAddress} → ${formData.dropoffAddress || "..."}`;
 
 		return {
 			tempId: `pricing-${Date.now()}`,
@@ -300,65 +273,7 @@ export function CreateQuoteCockpit() {
 			const basePrice = isYoloMode ? yoloTotal : formData.finalPrice;
 			const computedFinalPrice = basePrice + addedFeesTotal;
 
-			// Story 22.6: Handle STAY trip type with dedicated API
-			if (formData.tripType === "STAY" && !isYoloMode) {
-				const stayDaysPayload = formData.stayDays.map((day) => ({
-					date:
-						day.date?.toISOString().split("T")[0] ??
-						new Date().toISOString().split("T")[0],
-					hotelRequired: day.hotelRequired,
-					mealCount: day.mealCount,
-					driverCount: day.driverCount,
-					notes: day.notes || null,
-					services: day.services.map((svc) => ({
-						serviceType: svc.serviceType,
-						pickupAt: svc.pickupAt?.toISOString() ?? new Date().toISOString(),
-						pickupAddress: svc.pickupAddress,
-						pickupLatitude: svc.pickupLatitude,
-						pickupLongitude: svc.pickupLongitude,
-						dropoffAddress: svc.dropoffAddress || null,
-						dropoffLatitude: svc.dropoffLatitude,
-						dropoffLongitude: svc.dropoffLongitude,
-						durationHours: svc.durationHours,
-						stops:
-							svc.stops.length > 0
-								? svc.stops
-										.filter(
-											(
-												s,
-											): s is typeof s & {
-												latitude: number;
-												longitude: number;
-											} => s.latitude !== null && s.longitude !== null,
-										)
-										.map((s) => ({
-											latitude: s.latitude,
-											longitude: s.longitude,
-											address: s.address,
-											order: s.order,
-										}))
-								: null,
-						notes: svc.notes || null,
-					})),
-				}));
-
-				const response = await apiClient.vtc["stay-quotes"].$post({
-					json: {
-						contactId: formData.contactId,
-						vehicleCategoryId: formData.vehicleCategoryId,
-						passengerCount: formData.passengerCount,
-						luggageCount: formData.luggageCount,
-						notes: formData.notes || null,
-						stayDays: stayDaysPayload,
-					},
-				});
-
-				if (!response.ok) {
-					throw new Error("Failed to create stay quote");
-				}
-
-				return response.json();
-			}
+			// Standard quote creation for all supported trip types
 
 			// Standard quote creation for other trip types
 			const response = await apiClient.vtc.quotes.$post({
