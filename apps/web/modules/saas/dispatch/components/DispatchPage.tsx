@@ -101,9 +101,14 @@ export function DispatchPage() {
 			// Map API missions to MissionListItem subset needed for Gantt & Compliance
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			missions: (d.missions || []).map((m: any) => {
+				const startAt = new Date(m.startAt);
+				const endAt = m.endAt ? new Date(m.endAt) : new Date(startAt.getTime() + 60 * 60000); // Default 1h if null
+
 				const missionPartial: any = {
 					id: m.id,
-					pickupAt: m.startAt, // Assuming startAt is ISO string from API
+					startAt, // Required by GanttMission
+					endAt,   // Required by GanttMission
+					pickupAt: m.startAt, // Keep raw string for other uses if needed
 					// We don't have all details here, but enough for Gantt
 					title: m.title || "Mission",
 					status: m.status,
