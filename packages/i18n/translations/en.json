@@ -3144,7 +3144,10 @@
 				"calculated": "Calculated",
 				"manual": "Manual",
 				"group": "Group"
-			}
+			},
+			"linkedToSource": "Linked to pricing engine",
+			"manualLine": "Manual line (no source data)",
+			"labelPlaceholder": "Description..."
 		}
 	},
 	"fleet": {

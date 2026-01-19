@@ -41,6 +41,8 @@ import {
   buildTree, 
   flattenTree, 
   getDescendantIds,
+  calculateLineTotal,
+  getLineDepth,
   type QuoteLine,
   type QuoteLineWithChildren
 } from "./dnd-utils";
@@ -272,7 +274,8 @@ export function SortableQuoteLinesList({
                   quantity: line.quantity ?? 1,
                   unitPrice: line.unitPrice ?? 0,
                   vatRate: line.vatRate ?? 10,
-                  total: (line.quantity ?? 1) * (line.unitPrice ?? 0),
+                  // Use calculateLineTotal for correct GROUP totals (L1 fix)
+                  total: calculateLineTotal(line, lines),
                 }}
                 sourceData={line.sourceData ?? null}
                 depth={depth}
@@ -342,14 +345,18 @@ export function SortableQuoteLinesList({
               id={getLineId(activeLine)}
               type={activeLine.type}
               displayData={{
-                label: activeLine.label || "",
+                label: activeLine.type === "GROUP" 
+                  ? `${activeLine.label || ""} (${getDescendantIds(lines, getLineId(activeLine)).length} items)`
+                  : activeLine.label || "",
                 quantity: activeLine.quantity ?? 1,
                 unitPrice: activeLine.unitPrice ?? 0,
                 vatRate: activeLine.vatRate ?? 10,
-                total: (activeLine.quantity ?? 1) * (activeLine.unitPrice ?? 0),
+                // Use calculateLineTotal for correct GROUP totals (H2, H4 fix)
+                total: calculateLineTotal(activeLine, lines),
               }}
               sourceData={activeLine.sourceData ?? null}
-              depth={0}
+              // Preserve correct depth in overlay (M2 fix)
+              depth={getLineDepth(activeLine, lines)}
               isDragging
               disabled
             />

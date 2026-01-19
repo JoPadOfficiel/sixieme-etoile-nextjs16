@@ -3128,7 +3128,10 @@
 				"calculated": "Calculé",
 				"manual": "Manuel",
 				"group": "Groupe"
-			}
+			},
+			"linkedToSource": "Lié au moteur de tarification",
+			"manualLine": "Ligne manuelle (sans données sources)",
+			"labelPlaceholder": "Description..."
 		}
 	},
 	"fleet": {

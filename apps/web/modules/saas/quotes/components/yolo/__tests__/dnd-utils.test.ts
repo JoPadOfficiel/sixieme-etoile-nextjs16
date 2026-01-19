@@ -12,6 +12,8 @@ import {
   getDescendantIds,
   isDescendantOf,
   validateNestingDepth,
+  calculateLineTotal,
+  getLineDepth,
 } from "../dnd-utils";
 import type { QuoteLine } from "../../UniversalLineItemRow";
 
@@ -182,5 +184,71 @@ describe("dnd-utils", () => {
       // group-2 has a parent, so can't nest under it
       expect(validateNestingDepth(lines, "line-1", "group-2")).toBe(false);
     });
+
+    it("should return false for GROUP nesting under another GROUP (H3 fix)", () => {
+      const lines: QuoteLine[] = [
+        { id: "group-1", type: "GROUP", label: "Day 1" },
+        { id: "group-2", type: "GROUP", label: "Day 2" },
+      ];
+      // GROUP cannot be nested under another GROUP
+      expect(validateNestingDepth(lines, "group-2", "group-1")).toBe(false);
+    });
+  });
+
+  describe("calculateLineTotal", () => {
+    it("should calculate total for MANUAL line (qty * unitPrice)", () => {
+      const lines: QuoteLine[] = [
+        { id: "line-1", type: "MANUAL", label: "Item", quantity: 2, unitPrice: 50 },
+      ];
+      expect(calculateLineTotal(lines[0], lines)).toBe(100);
+    });
+
+    it("should sum children totals for GROUP line", () => {
+      const lines: QuoteLine[] = [
+        { id: "group-1", type: "GROUP", label: "Day 1" },
+        { id: "line-1", type: "MANUAL", label: "Item 1", quantity: 2, unitPrice: 50, parentId: "group-1" },
+        { id: "line-2", type: "MANUAL", label: "Item 2", quantity: 1, unitPrice: 100, parentId: "group-1" },
+      ];
+      expect(calculateLineTotal(lines[0], lines)).toBe(200); // 100 + 100
+    });
+
+    it("should return 0 for empty GROUP", () => {
+      const lines: QuoteLine[] = [
+        { id: "group-1", type: "GROUP", label: "Empty Day" },
+      ];
+      expect(calculateLineTotal(lines[0], lines)).toBe(0);
+    });
+
+    it("should use default values when qty/price missing", () => {
+      const lines: QuoteLine[] = [
+        { id: "line-1", type: "MANUAL", label: "Item" },
+      ];
+      expect(calculateLineTotal(lines[0], lines)).toBe(0); // 1 * 0
+    });
+  });
+
+  describe("getLineDepth", () => {
+    it("should return 0 for root lines", () => {
+      const lines: QuoteLine[] = [
+        { id: "line-1", type: "MANUAL", label: "Item" },
+      ];
+      expect(getLineDepth(lines[0], lines)).toBe(0);
+    });
+
+    it("should return 1 for lines nested under GROUP", () => {
+      const lines: QuoteLine[] = [
+        { id: "group-1", type: "GROUP", label: "Day 1" },
+        { id: "line-1", type: "MANUAL", label: "Item", parentId: "group-1" },
+      ];
+      expect(getLineDepth(lines[1], lines)).toBe(1);
+    });
+
+    it("should return 0 if parent not found", () => {
+      const lines: QuoteLine[] = [
+        { id: "line-1", type: "MANUAL", label: "Item", parentId: "nonexistent" },
+      ];
+      expect(getLineDepth(lines[0], lines)).toBe(0);
+    });
   });
 });
+

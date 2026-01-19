@@ -33,5 +33,8 @@ export {
   validateNestingDepth,
   buildTree,
   flattenTree,
+  calculateGroupTotals,
+  calculateLineTotal,
+  getLineDepth,
   type QuoteLine,
 } from "./dnd-utils";

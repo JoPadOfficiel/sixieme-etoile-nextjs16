@@ -222,12 +222,30 @@ export function isDescendantOf(
 
 /**
  * Validate that nesting depth doesn't exceed max (1 level for GROUPs)
+ * 
+ * Rules:
+ * - Only GROUPs can have children
+ * - GROUPs cannot be nested under other GROUPs (max depth = 1)
+ * - Parent GROUP must be at root level (no parentId)
+ * 
+ * @param lines Flat array of all lines
+ * @param lineId ID of the line being moved
+ * @param newParentId ID of the proposed parent GROUP
+ * @returns true if nesting is valid, false otherwise
  */
 export function validateNestingDepth(
   lines: QuoteLine[],
   lineId: string,
   newParentId: string
 ): boolean {
+  // Find the line being moved
+  const movingLine = lines.find(l => getLineId(l) === lineId);
+  
+  // Prevent GROUP from being nested under another GROUP (H3 fix)
+  if (movingLine?.type === "GROUP") {
+    return false;
+  }
+  
   // Find the proposed parent
   const parent = lines.find(l => getLineId(l) === newParentId);
   
@@ -262,14 +280,15 @@ export function calculateGroupTotals(lines: QuoteLine[]): QuoteLine[] {
   groups.forEach(group => {
     const groupId = getLineId(group);
     // Find immediate children
-    const totalLines = result.filter(l => l.parentId === groupId);
-    const groupTotal = totalLines.reduce((sum, line) => {
-      // Use totalPrice or calculate from displayData if available
-      const price = (line.totalPrice as number) || 0;
+    const childLines = result.filter(l => l.parentId === groupId);
+    const groupTotal = childLines.reduce((sum, line) => {
+      // Use totalPrice if available, otherwise calculate from qty * unitPrice (M3 fix)
+      const price = (line.totalPrice as number) 
+        || ((line.quantity ?? 1) * (line.unitPrice ?? 0));
       return sum + price;
     }, 0);
     
-    // Update group total
+    // Update group total in both fields for consistency
     const index = result.findIndex(l => getLineId(l) === groupId);
     if (index !== -1) {
       result[index] = {
@@ -285,4 +304,38 @@ export function calculateGroupTotals(lines: QuoteLine[]): QuoteLine[] {
   });
   
   return result;
+}
+
+/**
+ * Calculate the total for a single line item.
+ * For GROUP items, sums children totals.
+ * For CALCULATED/MANUAL items, uses qty * unitPrice.
+ * 
+ * @param line The line to calculate total for
+ * @param allLines All lines (needed for GROUP total calculation)
+ * @returns The calculated total
+ */
+export function calculateLineTotal(line: QuoteLine, allLines: QuoteLine[]): number {
+  if (line.type === "GROUP") {
+    const lineId = getLineId(line);
+    const children = allLines.filter(l => l.parentId === lineId);
+    return children.reduce((sum, child) => {
+      return sum + calculateLineTotal(child, allLines);
+    }, 0);
+  }
+  return (line.quantity ?? 1) * (line.unitPrice ?? 0);
+}
+
+/**
+ * Get the depth of a line in the tree structure.
+ * 
+ * @param line The line to check
+ * @param allLines All lines in the list
+ * @returns The depth level (0 = root, 1 = nested under GROUP)
+ */
+export function getLineDepth(line: QuoteLine, allLines: QuoteLine[]): number {
+  if (!line.parentId) return 0;
+  const parent = allLines.find(l => getLineId(l) === line.parentId);
+  if (!parent) return 0;
+  return 1 + getLineDepth(parent, allLines);
 }
