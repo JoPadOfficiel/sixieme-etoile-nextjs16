@@ -119,7 +119,11 @@ graph TD
 | **27.4** | **Mission Card** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-274-hybrid-mission-rendering) |
 | **27.5** | **Backlog Side** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-275-unassigned-backlog-sidebar) |
 | **27.6** | **Driver Map** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-276-live-map---driver-locations) |
+| **27.7** | **Map Context** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-277-live-map---mission-context-layer) |
+| **27.8** | **Map Suggestions** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-278-map---smart-assignment-suggestions) |
 | **27.11** | **Inspector** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2711-inspector-panel---quick-actions) |
+| **27.12** | **Gantt Zoom** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2712-gantt---time--zoom-controls) |
+| **27.14** | **Export Sched.** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2714-export-schedule) |
 
 **PDF Team**
 | Story | Document | Link to Prompt |
