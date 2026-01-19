@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
+import { useStore } from "zustand";
 import { useQuoteLinesStore } from "../../stores/useQuoteLinesStore";
 import { SortableQuoteLinesList } from "./SortableQuoteLinesList";
 import type { QuoteLine } from "./dnd-utils";
@@ -33,8 +34,10 @@ export function YoloQuoteEditor({
 }: YoloQuoteEditorProps) {
 	const t = useTranslations("quotes.yolo");
 	const { lines, setLines, updateLine } = useQuoteLinesStore();
-	const { undo, redo, pastStates, futureStates, clear } =
-		useQuoteLinesStore.temporal();
+	// Fix: useStore(useQuoteLinesStore.temporal) to subscribe to temporal state changes reactively
+	const { undo, redo, pastStates, futureStates, clear } = useStore(
+		useQuoteLinesStore.temporal,
+	);
 
 	// Ref to track if we've initialized to prevent re-init loops
 	const initialized = useRef(false);
