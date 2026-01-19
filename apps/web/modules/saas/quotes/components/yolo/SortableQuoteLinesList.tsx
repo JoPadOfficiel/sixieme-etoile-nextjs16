@@ -56,10 +56,14 @@ interface SortableQuoteLinesListProps {
   onLineUpdate?: (id: string, data: Partial<QuoteLine>) => void;
   /** Callback when a line should be toggled (expand/collapse) */
   onToggleExpand?: (id: string) => void;
+  /** Callback when a line is detached from operational data */
+  onLineDetach?: (id: string) => void;
   /** Map of expanded group IDs */
   expandedGroups?: Set<string>;
   /** Whether the list is in read-only mode */
   readOnly?: boolean;
+  /** Currency code for price formatting */
+  currency?: string;
 }
 
 /**
@@ -75,8 +79,10 @@ export function SortableQuoteLinesList({
   onLinesChange,
   onLineUpdate,
   onToggleExpand,
+  onLineDetach,
   expandedGroups = new Set(),
   readOnly = false,
+  currency = "EUR",
 }: SortableQuoteLinesListProps) {
   const t = useTranslations("quotes.yolo");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -247,6 +253,24 @@ export function SortableQuoteLinesList({
     [lines, onLinesChange, onLineUpdate]
   );
 
+  // Handle line detach (Story 26.9: Operational Detach Logic)
+  const handleLineDetach = useCallback(
+    (id: string) => {
+      if (onLineDetach) {
+        onLineDetach(id);
+      } else {
+        // Default: update locally - set sourceData to undefined and type to MANUAL
+        const newLines = lines.map((line) =>
+          getLineId(line) === id
+            ? { ...line, sourceData: undefined, type: "MANUAL" as const }
+            : line
+        );
+        onLinesChange(newLines);
+      }
+    },
+    [lines, onLinesChange, onLineDetach]
+  );
+
   // Render a single line with sortable wrapper
   const renderLine = (
     line: QuoteLineWithChildren,
@@ -282,6 +306,7 @@ export function SortableQuoteLinesList({
                 isExpanded={isExpanded}
                 isDragging={isDragging}
                 disabled={readOnly}
+                currency={currency}
                 onDisplayDataChange={(field, value) => {
                   // Map displayData field to QuoteLine field
                   if (field === "label") {
@@ -291,6 +316,7 @@ export function SortableQuoteLinesList({
                   }
                 }}
                 onToggleExpand={() => onToggleExpand?.(id)}
+                onDetach={() => handleLineDetach(id)}
                 dragHandleProps={dragHandleProps}
               />
             </div>

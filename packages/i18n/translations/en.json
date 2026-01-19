@@ -3147,7 +3147,25 @@
 			},
 			"linkedToSource": "Linked to pricing engine",
 			"manualLine": "Manual line (no source data)",
-			"labelPlaceholder": "Description..."
+			"labelPlaceholder": "Description...",
+			"groupPlaceholder": "Group name...",
+			"detach": {
+				"title": "Detach from Route Logic?",
+				"description": "This action will disconnect this line from the operational route data.",
+				"warningTitle": "What will happen:",
+				"bullet1": "The line will be converted to MANUAL mode",
+				"bullet2": "The link to the operational route will be removed",
+				"bullet3": "The Mission Order will show \"See Notes\" for this line",
+				"changeDetails": "Change Details:",
+				"field": "Field",
+				"from": "From",
+				"to": "To",
+				"confirm": "Detach Line",
+				"labelWarningTitle": "Label Modified",
+				"labelWarning": "You've significantly modified the label. The operational data remains unchanged.",
+				"successTitle": "Line Detached",
+				"success": "Line detached from operational route"
+			}
 		}
 	},
 	"fleet": {
