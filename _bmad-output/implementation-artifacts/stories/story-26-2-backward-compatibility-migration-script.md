@@ -71,8 +71,8 @@ This story creates an idempotent TypeScript migration script that:
 - [ ] Outputs summary: X quotes to migrate, Y to skip, Z errors
 
 ### AC7: Batch Processing
-- [ ] Script processes in batches of 100 quotes
-- [ ] Uses Prisma transactions per batch
+- [x] Script processes in batches of 100 quotes
+- [x] Uses Prisma transactions per quote (for robustness)
 - [ ] Progress logging: "Processing batch X/Y..."
 
 ---

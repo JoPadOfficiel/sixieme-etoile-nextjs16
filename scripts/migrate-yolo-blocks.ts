@@ -357,10 +357,9 @@ async function migrateStayQuote(
 	const diff = Math.abs(finalPrice - calculatedTotal);
 
 	if (diff > FINANCIAL_TOLERANCE && calculatedTotal > 0) {
-		// Discrepancy detected - log but continue with finalPrice allocation
-		console.log(
-			`   ⚠️ Financial discrepancy: finalPrice=${formatEur(finalPrice)}, calculated=${formatEur(calculatedTotal)}`,
-		);
+		const msg = `Financial discrepancy: finalPrice=${formatEur(finalPrice)}, calculated=${formatEur(calculatedTotal)}`;
+		// AC4: Abort for that quote
+		throw new Error(msg);
 	}
 
 	// Create ROOT GROUP
@@ -773,7 +772,7 @@ async function main(): Promise<void> {
 	console.log(
 		"╠════════════════════════════════════════════════════════════════╣",
 	);
-	console.log(`║  Duration:                ${(duration + "s").padEnd(37)}║`);
+	console.log(`║  Duration:                ${`${duration}s`.padEnd(37)}║`);
 	console.log(
 		"╚════════════════════════════════════════════════════════════════╝\n",
 	);
