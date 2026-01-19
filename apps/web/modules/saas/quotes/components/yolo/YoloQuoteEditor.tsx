@@ -38,6 +38,8 @@ export function YoloQuoteEditor({
 
 	// Ref to track if we've initialized to prevent re-init loops
 	const initialized = useRef(false);
+	// Track previous initialLines length to detect "Loading -> Loaded" transition
+	const prevInitialLength = useRef(initialLines.length);
 
 	// Initialize store state
 	useEffect(() => {
@@ -45,7 +47,14 @@ export function YoloQuoteEditor({
 			useQuoteLinesStore.setState({ lines: initialLines });
 			clear(); // Clear history after init so we can't undo initialization
 			initialized.current = true;
+		} else if (prevInitialLength.current === 0 && initialLines.length > 0) {
+			// Late initialization: If we started with empty lines (loading) and now have data,
+			// update the store. This prevents overwriting user edits on normal re-renders,
+			// but ensures data appears when it finishes loading.
+			useQuoteLinesStore.setState({ lines: initialLines });
+			clear();
 		}
+		prevInitialLength.current = initialLines.length;
 	}, [initialLines, clear]);
 
 	// Sync back to parent (autosave hook)

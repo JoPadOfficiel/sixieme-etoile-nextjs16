@@ -240,6 +240,9 @@
 		"status": {
 			"active": "Actif",
 			"inactive": "Inactif"
+		},
+		"pagination": {
+			"next": "Suivant"
 		}
 	},
 	"contact": {
@@ -2321,7 +2324,6 @@
 				"actions": "Actions"
 			}
 		},
-
 		"margin": {
 			"profitable": "Rentable ({margin} de marge)",
 			"lowMargin": "Marge faible ({margin})",
@@ -3131,7 +3133,29 @@
 			},
 			"linkedToSource": "Lié au moteur de tarification",
 			"manualLine": "Ligne manuelle (sans données sources)",
-			"labelPlaceholder": "Description..."
+			"labelPlaceholder": "Description...",
+			"groupPlaceholder": "Nom du groupe...",
+			"actions": {
+				"undo": "Annuler",
+				"redo": "Rétablir"
+			},
+			"detach": {
+				"title": "Détacher de la logique de routage ?",
+				"description": "Cette action déconnectera cette ligne des données opérationnelles de routage.",
+				"warningTitle": "Ce qui va se passer :",
+				"bullet1": "La ligne sera convertie en mode MANUEL",
+				"bullet2": "Le lien vers la route opérationnelle sera supprimé",
+				"bullet3": "L'ordre de mission affichera \"Voir Notes\" pour cette ligne",
+				"changeDetails": "Détails des modifications :",
+				"field": "Champ",
+				"from": "De",
+				"to": "À",
+				"confirm": "Détacher la ligne",
+				"labelWarningTitle": "Libellé modifié",
+				"labelWarning": "Vous avez modifié le libellé de manière significative. Les données opérationnelles restent inchangées.",
+				"successTitle": "Ligne détachée",
+				"success": "Ligne détachée de la route opérationnelle"
+			}
 		}
 	},
 	"fleet": {

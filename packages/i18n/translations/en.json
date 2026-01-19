@@ -3149,6 +3149,10 @@
 			"manualLine": "Manual line (no source data)",
 			"labelPlaceholder": "Description...",
 			"groupPlaceholder": "Group name...",
+			"actions": {
+				"undo": "Undo",
+				"redo": "Redo"
+			},
 			"detach": {
 				"title": "Detach from Route Logic?",
 				"description": "This action will disconnect this line from the operational route data.",

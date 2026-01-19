@@ -304,7 +304,7 @@ development_status:
   26-11-pdf-generator-pure-display-mode: done
   26-12-pdf-generator-mission-order-operational-mode: done
   26-13-block-presets-templates-bonus: done
-  26-14-undo-redo-history-support: review
+  26-14-undo-redo-history-support: done
   epic-26-retrospective: optional
   epic-27: in-progress
   27-1-dispatch-shell-navigation: done
