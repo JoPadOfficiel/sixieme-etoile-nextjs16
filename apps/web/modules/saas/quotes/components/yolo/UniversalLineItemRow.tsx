@@ -110,7 +110,12 @@ export interface UniversalLineItemRowProps {
 	children?: React.ReactNode;
 }
 
-/** Format price for display */
+/**
+ * Formats a numeric value as a localized currency string.
+ * @param value - The numeric amount to format
+ * @param currency - ISO 4217 currency code (default: "EUR")
+ * @returns Formatted price string (e.g., "85,00 €")
+ */
 function formatPrice(value: number, currency = "EUR"): string {
 	return value.toLocaleString("fr-FR", {
 		style: "currency",
@@ -119,7 +124,11 @@ function formatPrice(value: number, currency = "EUR"): string {
 	});
 }
 
-/** Format number for display */
+/**
+ * Formats a number for display with French locale.
+ * @param value - The numeric value to format
+ * @returns Formatted number string with up to 2 decimal places
+ */
 function formatNumber(value: number): string {
 	return value.toLocaleString("fr-FR", {
 		minimumFractionDigits: 0,
@@ -127,12 +136,24 @@ function formatNumber(value: number): string {
 	});
 }
 
-/** Indentation size in pixels per depth level */
+/**
+ * Indentation size in pixels per depth level.
+ * Set to 24px to align with 8px design grid (3 × 8 = 24).
+ * This provides clear visual hierarchy for nested groups.
+ */
 const INDENT_SIZE_PX = 24;
 
+/**
+ * Removes trailing slash from label (used by slash commands).
+ * @param label - The label string to clean
+ * @returns Label without trailing slash, trimmed
+ */
+function cleanSlashFromLabel(label: string): string {
+	return label.replace(/\/$/, "").trim();
+}
+
 export function UniversalLineItemRow({
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	id: _id,
+	id,
 	type,
 	displayData,
 	sourceData,
@@ -271,8 +292,7 @@ export function UniversalLineItemRow({
 	const handleSlashSelect = useCallback(
 		(type: SlashMenuBlockType) => {
 			// Remove trailing slash
-			const currentLabel = displayData.label;
-			const newLabel = currentLabel.replace(/\/$/, "").trim();
+			const newLabel = cleanSlashFromLabel(displayData.label);
 
 			if (onDisplayDataChange) {
 				onDisplayDataChange("label", newLabel);
@@ -309,8 +329,7 @@ export function UniversalLineItemRow({
 	const handleTemplateSelect = useCallback(
 		(template: BlockTemplate) => {
 			// Remove trailing slash
-			const currentLabel = displayData.label;
-			const newLabel = currentLabel.replace(/\/$/, "").trim();
+			const newLabel = cleanSlashFromLabel(displayData.label);
 
 			if (onDisplayDataChange) {
 				onDisplayDataChange("label", newLabel);
@@ -351,6 +370,13 @@ export function UniversalLineItemRow({
 			});
 		} catch (error) {
 			console.error("Failed to save template", error);
+			toast({
+				title: t("quotes.yolo.template.errorTitle") || "Error",
+				description:
+					t("quotes.yolo.template.errorSaving") ||
+					"Failed to save template. Please try again.",
+				variant: "error",
+			});
 		}
 	};
 
@@ -414,12 +440,13 @@ export function UniversalLineItemRow({
 	// Render GROUP type (container/header)
 	if (type === "GROUP") {
 		return (
-			<div className="relative">
+			<div className="relative" data-testid={`quote-line-${id}`}>
 				<div
 					className={rowBackground}
 					style={{ paddingLeft: indentPadding + 8 }}
 					onMouseEnter={() => setIsHovered(true)}
 					onMouseLeave={() => setIsHovered(false)}
+					data-testid={`quote-line-row-${id}`}
 				>
 					{/* Drag handle */}
 					<div
@@ -501,6 +528,7 @@ export function UniversalLineItemRow({
 				style={{ paddingLeft: indentPadding + 8 }}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
+				data-testid={`quote-line-${id}`}
 			>
 				{/* Drag handle */}
 				<div
@@ -516,9 +544,15 @@ export function UniversalLineItemRow({
 						<TooltipTrigger asChild>
 							<div className="w-5">
 								{isLinked ? (
-									<LinkIcon className="size-4 text-green-600" />
+									<LinkIcon
+										className="size-4 text-green-600"
+										data-testid="link-icon"
+									/>
 								) : type === "MANUAL" ? (
-									<UnlinkIcon className="size-4 text-muted-foreground" />
+									<UnlinkIcon
+										className="size-4 text-muted-foreground"
+										data-testid="unlink-icon"
+									/>
 								) : null}
 							</div>
 						</TooltipTrigger>

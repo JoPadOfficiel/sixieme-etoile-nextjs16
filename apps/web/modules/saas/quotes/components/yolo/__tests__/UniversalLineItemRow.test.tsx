@@ -76,8 +76,9 @@ describe("UniversalLineItemRow", () => {
 			);
 
 			expect(screen.getByText("Paris → Orly Transfer")).toBeInTheDocument();
-			// LinkIcon usually has no text, so we might check for the tooltip trigger or class if needed
-			// But we can check if it DOES NOT render the UnlinkIcon logic (which is fallback)
+			// H3 fix: Verify link icon is present via data-testid
+			expect(screen.getByTestId("link-icon")).toBeInTheDocument();
+			expect(screen.getByTestId("quote-line-line-2")).toBeInTheDocument();
 		});
 
 		it("should render GROUP type with expand/collapse", () => {
