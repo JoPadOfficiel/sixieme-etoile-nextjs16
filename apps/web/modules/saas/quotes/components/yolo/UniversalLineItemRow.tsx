@@ -184,6 +184,9 @@ export function UniversalLineItemRow({
             return; // Don't apply change yet
           }
         }
+        // NOTE: AC2 (Sensitive Field Detach) logic ends here.
+        // Currently, 'pickupAt' etc. are not exposed in this component's UI, so this block is technically unreachable via user interaction.
+        // Kept for future-proofing when dates/addresses become editable inline.
 
         // Check for significant label changes (warning only, no detach)
         if (field === "label" && !labelWarningShownRef.current) {

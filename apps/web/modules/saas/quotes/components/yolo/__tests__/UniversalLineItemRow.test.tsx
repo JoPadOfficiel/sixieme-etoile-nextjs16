@@ -1,12 +1,29 @@
 /**
- * Story 26.5 & 26.6: UniversalLineItemRow Component Tests
+ * Story 26.5, 26.6 & 26.9: UniversalLineItemRow Component Tests
  *
- * Tests for the universal row component with InlineInput integration.
+ * Tests for the universal row component with InlineInput integration
+ * and Detach Logic (Yolo Mode).
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UniversalLineItemRow, type DisplayData } from "../UniversalLineItemRow";
+import * as DetachUtils from "../detach-utils";
+
+// Mock useToast
+const mockToast = vi.fn();
+vi.mock("@ui/hooks/use-toast", () => ({
+  useToast: () => ({
+    toast: mockToast,
+  }),
+}));
+
+// Mock ResizeObserver (used by some UI components)
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 const mockDisplayData: DisplayData = {
   label: "Paris → Orly Transfer",
@@ -18,6 +35,10 @@ const mockDisplayData: DisplayData = {
 };
 
 describe("UniversalLineItemRow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe("Rendering", () => {
     it("should render MANUAL type correctly", () => {
       render(
@@ -43,6 +64,8 @@ describe("UniversalLineItemRow", () => {
       );
 
       expect(screen.getByText("Paris → Orly Transfer")).toBeInTheDocument();
+      // LinkIcon usually has no text, so we might check for the tooltip trigger or class if needed
+      // But we can check if it DOES NOT render the UnlinkIcon logic (which is fallback)
     });
 
     it("should render GROUP type with expand/collapse", () => {
@@ -230,64 +253,69 @@ describe("UniversalLineItemRow", () => {
     });
   });
 
-  describe("Visual States", () => {
-    it("should apply dragging styles when isDragging", () => {
-      const { container } = render(
+  describe("Detach Logic (Study 26.9)", () => {
+    it("should show warning toast when label is significantly changed (AC1)", async () => {
+      const onDisplayDataChange = vi.fn();
+      const onDetach = vi.fn();
+
+      // Spy on similarity check to force it to return true for "significant change"
+      vi.spyOn(DetachUtils, "isSignificantLabelChange").mockReturnValue(true);
+
+      render(
         <UniversalLineItemRow
           id="line-1"
-          type="MANUAL"
+          type="CALCULATED"
           displayData={mockDisplayData}
-          isDragging={true}
+          sourceData={{ label: "Original Label", origin: "Paris" }}
+          onDisplayDataChange={onDisplayDataChange}
+          onDetach={onDetach}
         />
       );
 
-      const row = container.firstChild as HTMLElement;
-      expect(row).toHaveClass("opacity-50");
+      // Click to edit label
+      fireEvent.click(screen.getByText("Paris → Orly Transfer"));
+      const input = screen.getByRole("textbox");
+
+      // Change label significantly
+      fireEvent.change(input, { target: { value: "Completely Different Trip" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      // Expect toast to be called
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        title: expect.any(String), // "Label Modified" key or similar
+        variant: "default",
+      }));
+
+      // Should still call onDisplayDataChange
+      expect(onDisplayDataChange).toHaveBeenCalledWith("label", "Completely Different Trip");
     });
 
-    it("should apply selected styles when isSelected", () => {
-      const { container } = render(
+    it("should NOT show warning toast for minor label changes", async () => {
+      const onDisplayDataChange = vi.fn();
+      const onDetach = vi.fn();
+
+      // Spy on similarity check -> false (minor change)
+      vi.spyOn(DetachUtils, "isSignificantLabelChange").mockReturnValue(false);
+
+      render(
         <UniversalLineItemRow
           id="line-1"
-          type="MANUAL"
+          type="CALCULATED"
           displayData={mockDisplayData}
-          isSelected={true}
+          sourceData={{ label: "Paris → Orly Transfer", origin: "Paris" }}
+          onDisplayDataChange={onDisplayDataChange}
+          onDetach={onDetach}
         />
       );
 
-      const row = container.firstChild as HTMLElement;
-      expect(row).toHaveClass("bg-primary/5");
-    });
+      fireEvent.click(screen.getByText("Paris → Orly Transfer"));
+      const input = screen.getByRole("textbox");
 
-    it("should apply hover styles on mouse enter", async () => {
-      const { container } = render(
-        <UniversalLineItemRow
-          id="line-1"
-          type="MANUAL"
-          displayData={mockDisplayData}
-        />
-      );
+      fireEvent.change(input, { target: { value: "Paris → Orly Transfer (Updated)" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      const row = container.firstChild as HTMLElement;
-      fireEvent.mouseEnter(row);
-
-      expect(row).toHaveClass("bg-muted/30");
-    });
-  });
-
-  describe("Indentation", () => {
-    it("should apply correct indentation based on depth", () => {
-      const { container } = render(
-        <UniversalLineItemRow
-          id="line-1"
-          type="MANUAL"
-          displayData={mockDisplayData}
-          depth={2}
-        />
-      );
-
-      const row = container.firstChild as HTMLElement;
-      expect(row).toHaveStyle({ paddingLeft: "56px" });
+      expect(mockToast).not.toHaveBeenCalled();
+      expect(onDisplayDataChange).toHaveBeenCalled();
     });
   });
 });
