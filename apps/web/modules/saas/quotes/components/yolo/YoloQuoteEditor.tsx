@@ -99,6 +99,33 @@ export function YoloQuoteEditor({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [handleKeyDown]);
 
+	// Story 26.17 UX: Handle manual line addition from UI button
+	const handleManualAdd = useCallback(() => {
+		const newLine: QuoteLine = {
+			tempId: `manual-${Date.now()}`,
+			type: "MANUAL",
+			label: "Nouvelle ligne", // Placeholder
+			description: "",
+			quantity: 1,
+			unitPrice: 0,
+			totalPrice: 0,
+			vatRate: 10,
+			sortOrder: lines.length,
+			parentId: null,
+			displayData: {
+				label: "Nouvelle ligne",
+				quantity: 1,
+				unitPrice: 0,
+				vatRate: 10,
+				total: 0,
+			},
+		};
+		// Directly update store to trigger history tracking
+		useQuoteLinesStore.setState((state) => ({
+			lines: [...state.lines, newLine],
+		}));
+	}, [lines.length]);
+
 	return (
 		<div className="space-y-4">
 			{/* Optional Toolbar / Status Indicators */}
@@ -134,6 +161,7 @@ export function YoloQuoteEditor({
 				onLineUpdate={updateLine}
 				readOnly={readOnly}
 				currency={currency}
+				onLineAdd={handleManualAdd}
 			/>
 		</div>
 	);
