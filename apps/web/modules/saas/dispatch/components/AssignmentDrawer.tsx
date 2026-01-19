@@ -64,6 +64,8 @@ interface AssignmentDrawerProps {
 	onCandidateHoverEnd?: () => void;
 	/** Story 8.3: Expose selected candidate ID to parent */
 	onSelectedCandidateChange?: (candidateId: string | null) => void;
+	/** Story 27.9: Pre-filter candidates by driver ID (from drag & drop) */
+	preSelectedDriverId?: string | null;
 }
 
 export function AssignmentDrawer({
@@ -75,6 +77,7 @@ export function AssignmentDrawer({
 	onCandidateHoverStart,
 	onCandidateHoverEnd,
 	onSelectedCandidateChange,
+	preSelectedDriverId,
 }: AssignmentDrawerProps) {
 	const t = useTranslations("dispatch.assignment");
 	const { toast } = useToast();
@@ -133,6 +136,11 @@ export function AssignmentDrawer({
 
 		let result = [...candidates];
 
+		// Story 27.9: Apply pre-selected driver filter if present
+		if (preSelectedDriverId) {
+			result = result.filter((c) => c.driverId === preSelectedDriverId);
+		}
+
 		// Apply compliance filter
 		if (complianceFilter === "ok") {
 			result = result.filter((c) => c.compliance.status === "OK");
@@ -175,7 +183,13 @@ export function AssignmentDrawer({
 		});
 
 		return result;
-	}, [candidates, complianceFilter, fleetTypeFilter, search, sortBy]);
+	}, [candidates, complianceFilter, fleetTypeFilter, search, sortBy, preSelectedDriverId]);
+
+	// Story 27.9: Get driver name for empty state messaging
+	const preSelectedDriverName = useMemo(() => {
+		if (!preSelectedDriverId || !candidates) return null;
+		return candidates.find((c) => c.driverId === preSelectedDriverId)?.driverName ?? null;
+	}, [preSelectedDriverId, candidates]);
 
 	// Get selected candidate
 	const selectedCandidate = useMemo(() => {
@@ -350,6 +364,7 @@ export function AssignmentDrawer({
 						className="flex-1 max-h-[calc(100vh-18rem)]"
 						onHoverStart={onCandidateHoverStart}
 						onHoverEnd={onCandidateHoverEnd}
+						preSelectedDriverName={preSelectedDriverName}
 					/>
 
 					{/* Story 20.8: Second driver selection for double crew missions */}

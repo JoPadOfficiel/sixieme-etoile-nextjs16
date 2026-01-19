@@ -31,6 +31,8 @@ interface CandidatesListProps {
 	// Story 8.3: Hover callbacks for map preview
 	onHoverStart?: (candidateId: string) => void;
 	onHoverEnd?: () => void;
+	/** Story 27.9: Explicit empty state for a specific driver */
+	preSelectedDriverName?: string | null;
 }
 
 export function CandidatesList({
@@ -41,6 +43,7 @@ export function CandidatesList({
 	className,
 	onHoverStart,
 	onHoverEnd,
+	preSelectedDriverName,
 }: CandidatesListProps) {
 	// Story 8.3: Find best candidate for cost comparison
 	const bestCandidate = useMemo(() => getBestCandidate(candidates), [candidates]);
@@ -50,7 +53,12 @@ export function CandidatesList({
 	}
 
 	if (candidates.length === 0) {
-		return <CandidatesListEmpty className={className} />;
+		return (
+			<CandidatesListEmpty
+				className={className}
+				preSelectedDriverName={preSelectedDriverName}
+			/>
+		);
 	}
 
 	return (
@@ -107,20 +115,34 @@ function CandidatesListSkeleton({ className }: { className?: string }) {
 	);
 }
 
-function CandidatesListEmpty({ className }: { className?: string }) {
+function CandidatesListEmpty({ 
+	className,
+	preSelectedDriverName 
+}: { 
+	className?: string;
+	preSelectedDriverName?: string | null;
+}) {
 	const t = useTranslations("dispatch.assignment.empty");
 
 	return (
 		<div
 			className={cn(
-				"flex flex-col items-center justify-center py-12 text-center",
+				"flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl px-6",
 				className,
 			)}
 			data-testid="candidates-list-empty"
 		>
-			<Car className="size-12 text-muted-foreground/50 mb-4" />
-			<p className="text-lg font-medium text-muted-foreground">{t("title")}</p>
-			<p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
+			<Car className="size-12 text-muted-foreground/30 mb-4" />
+			<p className="text-lg font-medium text-muted-foreground">
+				{preSelectedDriverName 
+					? `Indisponible pour ${preSelectedDriverName}`
+					: t("title")}
+			</p>
+			<p className="text-sm text-muted-foreground mt-2 max-w-[250px]">
+				{preSelectedDriverName 
+					? "Ce conducteur n'est pas éligible ou n'a pas de véhicule compatible pour cette mission."
+					: t("description")}
+			</p>
 		</div>
 	);
 }

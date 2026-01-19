@@ -28,7 +28,8 @@ files_to_modify:
 **So that** scheduling is tactile, fast, and efficient.
 
 ## Description
-This story implements the core interaction of the Unified Dispatch Cockpit: assigning missions via Drag & Drop. The dispatcher should be able to pick a mission from the "Unassigned Backlog" sidebar and drop it onto a specific driver's timeline row in the Gantt chart. This action triggers an API call to assign the driver and updates the visual state immediately (Optimistic UI). If the API call fails, the change must be reverted.
+This story implements the core interaction of the Unified Dispatch Cockpit: assigning missions via Drag & Drop. 
+**UX Pivot:** The user requested that the Gantt chart display **Drivers** only. When a mission is dropped onto a driver, instead of immediately assigning a random vehicle, the **Assignment Drawer** should open, pre-filtered for that driver. This allows the dispatcher to select the specific vehicle/configuration for the mission before confirming.
 
 ## Acceptance Criteria
 
@@ -38,19 +39,18 @@ This story implements the core interaction of the Unified Dispatch Cockpit: assi
 **Then** the card becomes a draggable item and follows the cursor.
 **And** valid drop zones (Driver Rows) are highlighted.
 
-### AC2: Drop on Driver
+### AC2: Drop on Driver -> Open Drawer
 **Given** I am dragging a mission,
 **When** I drop it onto a Driver's Row in the Gantt chart,
-**Then** the mission is immediately removed from the Backlog.
-**And** the mission appears on the Driver's timeline at its scheduled time.
-**And** a `PATCH /missions/:id` request is sent with `driverId`.
+**Then** the **Assignment Drawer** opens automatically.
+**And** the drawer is **filtered** to show only the selected driver (and their available vehicles).
+**And** the mission is NOT yet assigned (no API call yet).
 
-### AC3: Optimistic Update & Revert
-**Given** I have dropped a mission on a driver,
-**When** the API request is pending,
-**Then** the UI shows the assignment as successful.
-**And** if the API fails (e.g. 500 Error), the mission is removed from the timeline and returns to the Backlog.
-**And** an error toast is displayed.
+### AC3: Confirm Assignment
+**Given** the Assignment Drawer is open with a pre-selected driver,
+**When** I select a vehicle/configuration and click "Confirm",
+**Then** a `PATCH /missions/:id` request is sent with the chosen vehicle/driver.
+**And** on success, the mission moves to the Driver's timeline.
 
 ### AC4: Visual Feedback
 **Given** a drag operation is in progress,
@@ -60,20 +60,20 @@ This story implements the core interaction of the Unified Dispatch Cockpit: assi
 ## Technical Implementation
 - **Libraries**: `@dnd-kit/core`, `@dnd-kit/modifiers`.
 - **Components**:
-    - `DispatchMain`: wrapper context for DnD.
-    - `UnassignedBacklog`: Draggable Source (Backlog Items).
-    - `GanttTimeline`: Droppable Target (Driver Rows).
-    - `DragOverlay`: Custom preview of the dragged mission.
-- **State Management**:
-    - Use `useMutation` from TanStack Query for the `PATCH` request.
-    - Implement `onMutate` for optimistic updates.
-    - Implement `onError` for rollback.
+    - `DispatchMain`: switched to fetch **Drivers** (not vehicles) for the Gantt rows.
+    - `DispatchPage`: handles `onDragEnd`. Instead of mutating, it sets `preSelectedDriverId` and opens `AssignmentDrawer`.
+    - `AssignmentDrawer`: accepts `preSelectedDriverId` and filters the candidate list.
+- **Flow**:
+    1. Drag Mission -> Drop on Driver ID.
+    2. Open Drawer(missionId, driverId).
+    3. User picks Vehicle from Drawer list (filtered by driver).
+    4. User clicks Confirm -> `useAssignMission` mutation.
 
 ## Test Cases
-1.  **TC1**: Drag a mission from Backlog and drop on "Driver A". Verify API call payload contains Driver A's ID.
-2.  **TC2**: Drag a mission and drop it inside the Backlog (cancel). Verify no API call.
-3.  **TC3**: Drop outside valid area. Verify item returns to original position.
-4.  **TC4**: Simulate API Failure. Verify item returns to Backlog after momentary appearance on Timeline.
+1.  **TC1**: Drag mission -> Drop on Driver "John Doe".
+2.  **TC2**: Verify Assignment Drawer opens.
+3.  **TC3**: Verify Drawer list shows ONLY "John Doe" (with potentially multiple vehicles/options).
+4.  **TC4**: Select vehicle -> Confirm -> Verify API payload has correct `missionId`, `driverId`, `vehicleId`.
 
 ## Dependencies
 - Story 27.3 (Gantt Core) must be ready to accept drops.
@@ -99,10 +99,11 @@ This story implements the core interaction of the Unified Dispatch Cockpit: assi
 - **Reviewer:** BMM-Workflow-Reviewer
 - **Date:** 2026-01-19
 - **Findings:**
-  - [High] `useAssignMission` lacks true optimistic updates (`onMutate` is missing). It currently relies on `invalidateQueries` which results in a UI delay, violating AC3. (FIXED: Implemented `onMutate` with cache snapshot and rollback)
-  - [High] `DispatchPage.tsx` uses `any` type for `activeDragMission` state initialization (`useState<any | null>`). (FIXED: Added `MissionListItem` type)
-  - [Medium] `console.log` statements left in `DispatchPage.tsx`. (FIXED: Removed)
-  - [Medium] `DraggableMissionRow` is not memoized, potentially causing performance issues during drag operations in large lists. (FIXED: Wrapped in `memo`)
-  - [Low] No unit tests implemented for `DraggableMissionRow` or the drag integration logic.
-  - [High] `InspectorPanel` causes console errors due to missing `SheetTitle` in loading/empty states (Accessibility violation). (FIXED: Added SR-only SheetTitles)
-  - [High] `GanttDriverSidebar` rows are not valid drop targets, causing "impossible" drag-and-drop feel when user aims for driver names. (FIXED: Added useDroppable to DriverRow)
+  - [Verified] Explicit empty state implemented in `CandidatesList` when a driver is pre-selected but unavailable. (FIXED)
+  - [Verified] Unit tests for `DraggableMissionRow` implemented and passing. (FIXED)
+  - [Verified] Critical `400 Bad Request` issue fixed by fetching Drivers in `DispatchMain` and using Drawer flow.
+  - [Verified] AC2 (Drop -> Drawer) implemented correctly.
+  - [Verified] console.log removed from `DispatchMain.tsx`. (FIXED)
+
+## Final Output
+Story completed successfully with all ACs met and verified. The UX pivot to Driver-first Gantt with Assignment Drawer significantly improves usability and data accuracy.

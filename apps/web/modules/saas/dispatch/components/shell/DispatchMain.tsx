@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { useQueryState, parseAsString } from "nuqs";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@shared/lib/api-client";
 import { startOfDay, endOfDay } from "date-fns";
 import { DispatchMapGoogle } from "../DispatchMapGoogle";
 import { GanttTimeline } from "../gantt";
@@ -27,67 +29,26 @@ export function DispatchMain({
   
   // MOCK DATA for Story 27.3 Integration
   // TODO: Replace with real data from backend when available (Story 27.X)
-  const drivers = useMemo<GanttDriver[]>(() => {
-    const today = new Date();
-    return [
-      { 
-        id: "d1", 
-        name: "Pierre Lefebvre", 
-        status: "ON_MISSION", 
-        missions: [
-          {
-            id: "m1",
-            title: "Transfert CDG -> Paris",
-            startAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 30),
-            endAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 0),
-            type: "CALCULATED",
-            status: "IN_PROGRESS",
-            clientName: "Hotel Ritz",
-          },
-          {
-            id: "m2",
-            title: "Mise à disposition",
-            startAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0),
-            endAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 18, 0),
-            type: "MANUAL",
-            status: "ASSIGNED",
-            clientName: "Tech Corp",
-          }
-        ]
-      },
-      { 
-        id: "d2", 
-        name: "Sophie Dubois", 
-        status: "AVAILABLE",
-        missions: []
-      },
-      { 
-        id: "d3", 
-        name: "Ahmed Benali", 
-        status: "UNAVAILABLE", 
-        missions: [] 
-      },
-      { 
-        id: "d4", 
-        name: "Marie Martin", 
-        status: "ON_MISSION", 
-        missions: [
-           {
-            id: "m3",
-            title: "Transfert Orly -> Versailles",
-            startAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 15),
-            endAt: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 45),
-            type: "CALCULATED",
-            status: "COMPLETED",
-            clientName: "Private Client",
-          }
-        ]
-      },
-      { id: "d5", name: "Jean Dupont", status: "AVAILABLE", missions: [] },
-      { id: "d6", name: "Lucie Bernard", status: "AVAILABLE", missions: [] },
-      { id: "d7", name: "Thomas Petit", status: "AVAILABLE", missions: [] },
-    ];
-  }, []);
+	// Story 27.9: Fetch drivers for Gantt chart rows
+	const { data: driversData } = useQuery({
+		queryKey: ["fleet-drivers"],
+		queryFn: async () => {
+			const res = await apiClient.vtc.drivers.$get({ query: { isActive: "true", limit: "100" } });
+			if (!res.ok) throw new Error("Failed to fetch drivers");
+			return res.json();
+		},
+	});
+
+	const drivers = useMemo<GanttDriver[]>(() => {
+		if (!driversData?.data) return [];
+		return driversData.data.map((d: { id: string; firstName: string; lastName: string; isActive: boolean }) => ({
+			id: d.id,
+			name: `${d.firstName} ${d.lastName}`,
+			status: d.isActive ? "AVAILABLE" : "UNAVAILABLE", 
+			// TODO: Status should come from RSE/Calendar in future
+			missions: [], // TODO: Fetch driver missions
+		}));
+	}, [driversData]);
 
   const today = new Date();
   const startTime = startOfDay(today);
@@ -102,7 +63,7 @@ export function DispatchMain({
                 startTime={startTime}
                 endTime={endTime}
                 // TODO: Wire up to real actions
-                onDriverClick={(id) => console.log("Driver clicked:", id)}
+                onDriverClick={() => onMissionSelect(null)} // Deselect mission if driver clicked for now
                 onMissionClick={(id) => onMissionSelect(id)}
                 selectedMissionId={mission?.id}
                 className="h-full shadow-sm"

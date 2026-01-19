@@ -12,11 +12,9 @@ import {
 } from "@dnd-kit/core";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
-import { useToast } from "@ui/hooks/use-toast";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useMissionDetail } from "../hooks/useMissions";
 import { useOperatingBases } from "../hooks/useOperatingBases";
-import { useAssignMission } from "../hooks/useAssignMission";
 import type { CandidateBase } from "../types/assignment";
 import type { MissionListItem } from "../types";
 import { AssignmentDrawer } from "./AssignmentDrawer";
@@ -88,6 +86,9 @@ export function DispatchPage() {
 		}));
 	}, [candidatesData, selectedCandidateId, hoveredCandidateId]);
 
+	// Story 27.9: Pre-selected driver for Assignment Drawer
+	const [preSelectedDriverId, setPreSelectedDriverId] = useState<string | null>(null);
+
 	// Handle mission selection
 	const handleSelectMission = useCallback(
 		(missionId: string | null) => {
@@ -107,6 +108,7 @@ export function DispatchPage() {
 		setIsAssignmentDrawerOpen(false);
 		setSelectedCandidateId(null);
 		setHoveredCandidateId(null);
+		setPreSelectedDriverId(null);
 	}, []);
 
 	// Handlers for candidate hover/select
@@ -127,14 +129,6 @@ export function DispatchPage() {
 
 	// DnD State
 	const [activeDragMission, setActiveDragMission] = useState<MissionListItem | null>(null);
-	const { toast } = useToast();
-
-	// Story 27.9: Assignment Mutation
-	const assignMissionMutation = useAssignMission({
-		onSuccess: () => toast({ title: "Mission assigned" }),
-		onError: () =>
-			toast({ title: "Assignment failed", variant: "error" }),
-	});
 
 	const sensors = useSensors(
 		useSensor(MouseSensor, {
@@ -161,11 +155,10 @@ export function DispatchPage() {
 			const missionId = String(active.id).replace("mission-", "");
 			const driverId = over.data.current.driverId;
 
-			assignMissionMutation.mutate({
-				missionId,
-				driverId,
-				vehicleId: "temp-vehicle-id", // Placeholder until we have vehicle selection logic
-			});
+			// Story 27.9: Open assignment drawer with pre-selected driver
+			setSelectedMissionId(missionId);
+			setPreSelectedDriverId(driverId);
+			setIsAssignmentDrawerOpen(true);
 		}
 	};
 
@@ -230,6 +223,7 @@ export function DispatchPage() {
 				onCandidateHoverStart={handleCandidateHoverStart}
 				onCandidateHoverEnd={handleCandidateHoverEnd}
 				onSelectedCandidateChange={handleSelectedCandidateChange}
+				preSelectedDriverId={preSelectedDriverId}
 			/>
 
 			<DragOverlay>
