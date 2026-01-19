@@ -2,7 +2,7 @@
 id: "27.9"
 epic: "27"
 title: "Dispatch Actions - Drag & Drop Assignment"
-status: "review"
+status: "done"
 priority: "high"
 complexity: "medium"
 assigned_agent: "Amelia"
@@ -104,3 +104,5 @@ This story implements the core interaction of the Unified Dispatch Cockpit: assi
   - [Medium] `console.log` statements left in `DispatchPage.tsx`. (FIXED: Removed)
   - [Medium] `DraggableMissionRow` is not memoized, potentially causing performance issues during drag operations in large lists. (FIXED: Wrapped in `memo`)
   - [Low] No unit tests implemented for `DraggableMissionRow` or the drag integration logic.
+  - [High] `InspectorPanel` causes console errors due to missing `SheetTitle` in loading/empty states (Accessibility violation). (FIXED: Added SR-only SheetTitles)
+  - [High] `GanttDriverSidebar` rows are not valid drop targets, causing "impossible" drag-and-drop feel when user aims for driver names. (FIXED: Added useDroppable to DriverRow)

@@ -86,6 +86,10 @@ export function InspectorPanel({ missionId, onClose, onOpenAssignment }: Inspect
         
         {isLoading ? (
           <div className="space-y-4 mt-6">
+            <SheetHeader className="sr-only">
+                <SheetTitle>{t("title")}</SheetTitle>
+                <SheetDescription>{t("loading")}</SheetDescription>
+            </SheetHeader>
             <Skeleton className="h-8 w-1/2" />
             <Skeleton className="h-4 w-1/3" />
             <Skeleton className="h-64 w-full" />
@@ -198,9 +202,15 @@ export function InspectorPanel({ missionId, onClose, onOpenAssignment }: Inspect
 
           </div>
         ) : (
-            <div className="text-center py-10 text-muted-foreground">
-                {t("missionNotFound")}
-            </div>
+            <>
+                <SheetHeader className="sr-only">
+                    <SheetTitle>{t("title")}</SheetTitle>
+                    <SheetDescription>{t("missionNotFound")}</SheetDescription>
+                </SheetHeader>
+                <div className="text-center py-10 text-muted-foreground">
+                    {t("missionNotFound")}
+                </div>
+            </>
         )}
       </SheetContent>
     </Sheet>

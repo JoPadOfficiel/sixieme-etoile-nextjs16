@@ -4118,6 +4118,7 @@
 			"cancelMission": "Cancel Mission",
 			"cancel": "Cancel",
 			"processing": "Processing...",
+			"loading": "Loading mission details...",
 			"missionNotFound": "Select a mission to view details",
 			"confirmUnassignTitle": "Confirm Unassign",
 			"confirmUnassignDescription": "Are you sure you want to unassign this mission? It will return to the backlog.",

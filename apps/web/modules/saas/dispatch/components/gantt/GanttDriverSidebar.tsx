@@ -10,6 +10,7 @@
 
 import { memo } from "react";
 import Image from "next/image";
+import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@ui/lib";
 import { useTranslations } from "next-intl";
 import type { GanttDriverSidebarProps, DriverStatus } from "./types";
@@ -47,6 +48,15 @@ const DriverRow = memo(function DriverRow({
 	onClick?: () => void;
 	statusLabel: string;
 }) {
+	// Story 27.9: Allow dropping on sidebar rows
+	const { setNodeRef, isOver } = useDroppable({
+		id: `driver-sidebar-${driver.id}`,
+		data: {
+			type: "DRIVER",
+			driverId: driver.id,
+		},
+	});
+
 	// Get initials from name
 	const initials = driver.name
 		.split(" ")
@@ -57,9 +67,11 @@ const DriverRow = memo(function DriverRow({
 
 	return (
 		<div
+			ref={setNodeRef}
 			className={cn(
 				"absolute left-0 right-0 flex items-center gap-3 px-3 border-b border-gray-200 dark:border-gray-700",
-				"hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+				"hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors",
+				isOver && "ring-2 ring-primary ring-inset z-10 bg-primary/10"
 			)}
 			style={{ ...style, height: ROW_HEIGHT }}
 			onClick={onClick}
