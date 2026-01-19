@@ -14,6 +14,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   DndContext,
   closestCenter,
@@ -32,15 +33,17 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import type { QuoteLine } from "../UniversalLineItemRow";
 import { UniversalLineItemRow } from "./UniversalLineItemRow";
 import { SortableQuoteLine } from "./SortableQuoteLine";
-import { getLineId, validateNestingDepth } from "./dnd-utils";
-
-/** Extended QuoteLine with children for tree structure */
-export interface QuoteLineWithChildren extends QuoteLine {
-  children?: QuoteLineWithChildren[];
-}
+import { 
+  getLineId, 
+  validateNestingDepth, 
+  buildTree, 
+  flattenTree, 
+  getDescendantIds,
+  type QuoteLine,
+  type QuoteLineWithChildren
+} from "./dnd-utils";
 
 interface SortableQuoteLinesListProps {
   /** Flat list of quote lines (with parentId for nesting) */
@@ -55,100 +58,6 @@ interface SortableQuoteLinesListProps {
   expandedGroups?: Set<string>;
   /** Whether the list is in read-only mode */
   readOnly?: boolean;
-  /** Currency code */
-  currency?: string;
-}
-
-/**
- * Build a tree structure from flat lines
- */
-function buildTree(lines: QuoteLine[]): QuoteLineWithChildren[] {
-  const lineMap = new Map<string, QuoteLineWithChildren>();
-  const roots: QuoteLineWithChildren[] = [];
-
-  // First pass: create map
-  for (const line of lines) {
-    const id = getLineId(line);
-    lineMap.set(id, { ...line, children: [] });
-  }
-
-  // Second pass: build tree
-  for (const line of lines) {
-    const id = getLineId(line);
-    const node = lineMap.get(id)!;
-
-    if (line.parentId && lineMap.has(line.parentId)) {
-      const parent = lineMap.get(line.parentId)!;
-      parent.children = parent.children || [];
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  // Sort by sortOrder at each level
-  const sortNodes = (nodes: QuoteLineWithChildren[]) => {
-    nodes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-    for (const node of nodes) {
-      if (node.children?.length) {
-        sortNodes(node.children);
-      }
-    }
-  };
-  sortNodes(roots);
-
-  return roots;
-}
-
-/**
- * Flatten tree back to sorted array
- */
-function flattenTree(
-  nodes: QuoteLineWithChildren[],
-  parentId: string | null = null,
-  startOrder = 0
-): QuoteLine[] {
-  const result: QuoteLine[] = [];
-  let order = startOrder;
-
-  for (const node of nodes) {
-    const { children, ...lineWithoutChildren } = node;
-    result.push({
-      ...lineWithoutChildren,
-      parentId,
-      sortOrder: order++,
-    });
-
-    if (children?.length) {
-      result.push(...flattenTree(children, getLineId(node), 0));
-    }
-  }
-
-  return result;
-}
-
-/**
- * Get all descendant IDs of a group
- */
-function getDescendantIds(
-  lines: QuoteLine[],
-  groupId: string
-): Set<string> {
-  const descendants = new Set<string>();
-  const queue = [groupId];
-
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
-    for (const line of lines) {
-      if (line.parentId === currentId) {
-        const id = getLineId(line);
-        descendants.add(id);
-        queue.push(id);
-      }
-    }
-  }
-
-  return descendants;
 }
 
 /**
@@ -167,6 +76,7 @@ export function SortableQuoteLinesList({
   expandedGroups = new Set(),
   readOnly = false,
 }: SortableQuoteLinesListProps) {
+  const t = useTranslations("quotes.yolo");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
 
@@ -406,11 +316,11 @@ export function SortableQuoteLinesList({
           <div className="flex items-center px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
             <div className="w-8" /> {/* Drag handle space */}
             <div className="w-8" /> {/* Icon space */}
-            <div className="flex-1">Description</div>
-            <div className="w-16 text-right">Qty</div>
-            <div className="w-24 text-right">Unit Price</div>
-            <div className="w-24 text-right">Total</div>
-            <div className="w-12 text-right">VAT</div>
+            <div className="flex-1">{t("headers.description")}</div>
+            <div className="w-16 text-right">{t("headers.qty")}</div>
+            <div className="w-24 text-right">{t("headers.unitPrice")}</div>
+            <div className="w-24 text-right">{t("headers.total")}</div>
+            <div className="w-12 text-right">{t("headers.vat")}</div>
           </div>
 
           {tree.map((line) => renderLine(line, 0))}
@@ -418,7 +328,7 @@ export function SortableQuoteLinesList({
           {/* Empty state */}
           {tree.length === 0 && (
             <div className="p-8 text-center text-muted-foreground">
-              No line items yet. Add a line to get started.
+              {t("emptyState")}
             </div>
           )}
         </div>

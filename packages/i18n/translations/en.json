@@ -3129,6 +3129,22 @@
 				"noSuitableCategory": "No suitable category",
 				"noSuitableCategoryDescription": "No vehicle category can accommodate {passengers} passengers"
 			}
+		},
+		"yolo": {
+			"headers": {
+				"description": "Description",
+				"qty": "Qty",
+				"unitPrice": "Unit Price",
+				"total": "Total",
+				"vat": "VAT"
+			},
+			"emptyState": "No line items yet. Add a line to get started.",
+			"dragHandle": "Drag to reorder",
+			"lineTypes": {
+				"calculated": "Calculated",
+				"manual": "Manual",
+				"group": "Group"
+			}
 		}
 	},
 	"fleet": {

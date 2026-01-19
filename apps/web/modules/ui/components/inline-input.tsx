@@ -64,13 +64,17 @@ export function InlineInput({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
+
+  const [prevValue, setPrevValue] = useState(value);
 
   // Sync edit value when external value changes (and not currently editing)
-  useEffect(() => {
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (!isEditing) {
       setEditValue(value);
     }
-  }, [value, isEditing]);
+  }
 
   // Auto-focus and select all when entering edit mode
   useEffect(() => {

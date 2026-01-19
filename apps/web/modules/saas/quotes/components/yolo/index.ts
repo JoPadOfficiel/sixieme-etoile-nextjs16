@@ -1,10 +1,10 @@
 /**
  * Story 26.7: Yolo Billing Module Exports
  * 
- * Barrel file for all "Yolo Mode" billing components.
+ * Barrel file for all "Yolo Mode" billing components and utilities.
  */
 
-// Core row component (Stories 26.5, 26.6)
+/** Row component for rendering individual quote/invoice lines */
 export { UniversalLineItemRow } from "./UniversalLineItemRow";
 export type { 
   LineItemType, 
@@ -13,12 +13,17 @@ export type {
   UniversalLineItemRowProps 
 } from "./UniversalLineItemRow";
 
-// Drag & Drop components (Story 26.7)
+/** Wrapper component providing sortable capabilities to a single row */
 export { SortableQuoteLine } from "./SortableQuoteLine";
-export { SortableQuoteLinesList } from "./SortableQuoteLinesList";
-export type { QuoteLineWithChildren } from "./SortableQuoteLinesList";
 
-// DnD utilities (Story 26.7)
+/** Main container component orchestrating drag & drop for quote lines */
+export { SortableQuoteLinesList } from "./SortableQuoteLinesList";
+export type { QuoteLineWithChildren } from "./dnd-utils";
+
+/** 
+ * Utility functions for DnD operations, 
+ * consolidated from SortableQuoteLinesList for better testability and reusability.
+ */
 export {
   getLineId,
   recalculateSortOrder,
@@ -26,4 +31,7 @@ export {
   getDescendantIds,
   isDescendantOf,
   validateNestingDepth,
+  buildTree,
+  flattenTree,
+  type QuoteLine,
 } from "./dnd-utils";

@@ -3113,6 +3113,22 @@
 				"noSuitableCategory": "Aucune catégorie adaptée",
 				"noSuitableCategoryDescription": "Aucune catégorie de véhicule ne peut accueillir {passengers} passagers"
 			}
+		},
+		"yolo": {
+			"headers": {
+				"description": "Description",
+				"qty": "Qté",
+				"unitPrice": "Prix Unit.",
+				"total": "Total",
+				"vat": "TVA"
+			},
+			"emptyState": "Aucune ligne pour le moment. Ajoutez une ligne pour commencer.",
+			"dragHandle": "Faites glisser pour réordonner",
+			"lineTypes": {
+				"calculated": "Calculé",
+				"manual": "Manuel",
+				"group": "Groupe"
+			}
 		}
 	},
 	"fleet": {

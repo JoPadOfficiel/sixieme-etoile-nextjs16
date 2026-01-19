@@ -1,17 +1,112 @@
+/** Line item type enum matching Prisma schema */
+export type LineItemType = "CALCULATED" | "MANUAL" | "GROUP";
+
 /**
- * Story 26.7: dnd-kit utilities for quote lines reordering
- * 
- * Provides helper functions for managing sortOrder and parentId
- * during drag & drop operations.
+ * Quote line representation used in the DnD list
  */
-
-import type { QuoteLine } from "../UniversalLineItemRow";
+export interface QuoteLine {
+  id?: string;
+  tempId?: string;
+  type: LineItemType;
+  label: string;
+  description?: string | null;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice?: number;
+  vatRate?: number;
+  parentId?: string | null;
+  sortOrder?: number;
+  sourceData?: Record<string, unknown>;
+  displayData?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 /**
- * Get the unique identifier for a line
+ * Extended QuoteLine with children for tree structure
+ */
+export interface QuoteLineWithChildren extends QuoteLine {
+  children?: QuoteLineWithChildren[];
+}
+
+/**
+ * Get the unique identifier for a line (priority to persisted id, fallback to tempId)
  */
 export function getLineId(line: QuoteLine): string {
   return line.id || line.tempId || "";
+}
+
+/**
+ * Build a tree structure from a flat list of lines
+ * @param lines Flat array of quote lines
+ * @returns Tree structure with children
+ */
+export function buildTree(lines: QuoteLine[]): QuoteLineWithChildren[] {
+  const lineMap = new Map<string, QuoteLineWithChildren>();
+  const roots: QuoteLineWithChildren[] = [];
+
+  // First pass: create map
+  for (const line of lines) {
+    const id = getLineId(line);
+    lineMap.set(id, { ...line, children: [] });
+  }
+
+  // Second pass: build tree
+  for (const line of lines) {
+    const id = getLineId(line);
+    const node = lineMap.get(id)!;
+
+    if (line.parentId && lineMap.has(line.parentId)) {
+      const parent = lineMap.get(line.parentId)!;
+      parent.children = parent.children || [];
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  // Sort by sortOrder at each level
+  const sortNodes = (nodes: QuoteLineWithChildren[]) => {
+    nodes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    for (const node of nodes) {
+      if (node.children?.length) {
+        sortNodes(node.children);
+      }
+    }
+  };
+  sortNodes(roots);
+
+  return roots;
+}
+
+/**
+ * Flatten a tree structure back to a sorted flat array with updated sortOrder and parentId
+ * @param nodes Tree structure nodes
+ * @param parentId Parent ID for the current level
+ * @param startOrder Starting sort order for this level
+ * @returns Flat array of lines
+ */
+export function flattenTree(
+  nodes: QuoteLineWithChildren[],
+  parentId: string | null = null,
+  startOrder = 0
+): QuoteLine[] {
+  const result: QuoteLine[] = [];
+  let order = startOrder;
+
+  for (const node of nodes) {
+    const { children, ...lineWithoutChildren } = node;
+    result.push({
+      ...lineWithoutChildren,
+      parentId,
+      sortOrder: order++,
+    } as QuoteLine);
+
+    if (children?.length) {
+      result.push(...flattenTree(children, getLineId(node), 0));
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -147,4 +242,47 @@ export function validateNestingDepth(
   }
   
   return true;
+}
+
+/**
+ * Story 26.6: Auto-calculate group totals
+ * 
+ * Calculates the total price for each GROUP item by summing the totals 
+ * of its immediate children.
+ * 
+ * @param lines Flat list of lines
+ * @returns Updated list with corrected group totals
+ */
+export function calculateGroupTotals(lines: QuoteLine[]): QuoteLine[] {
+  const result = [...lines];
+  
+  // Find all groups
+  const groups = result.filter(l => l.type === "GROUP");
+  
+  groups.forEach(group => {
+    const groupId = getLineId(group);
+    // Find immediate children
+    const totalLines = result.filter(l => l.parentId === groupId);
+    const groupTotal = totalLines.reduce((sum, line) => {
+      // Use totalPrice or calculate from displayData if available
+      const price = (line.totalPrice as number) || 0;
+      return sum + price;
+    }, 0);
+    
+    // Update group total
+    const index = result.findIndex(l => getLineId(l) === groupId);
+    if (index !== -1) {
+      result[index] = {
+        ...result[index],
+        totalPrice: groupTotal,
+        // Also update nested total if it's stored in displayData
+        displayData: {
+          ...(result[index].displayData as Record<string, unknown> || {}),
+          total: groupTotal
+        }
+      };
+    }
+  });
+  
+  return result;
 }

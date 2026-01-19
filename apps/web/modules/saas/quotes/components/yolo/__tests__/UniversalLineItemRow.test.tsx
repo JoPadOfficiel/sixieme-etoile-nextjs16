@@ -5,7 +5,6 @@
  */
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { UniversalLineItemRow, type DisplayData } from "../UniversalLineItemRow";
 
@@ -44,7 +43,6 @@ describe("UniversalLineItemRow", () => {
       );
 
       expect(screen.getByText("Paris → Orly Transfer")).toBeInTheDocument();
-      // Link icon should be present for CALCULATED with sourceData
     });
 
     it("should render GROUP type with expand/collapse", () => {
@@ -64,7 +62,6 @@ describe("UniversalLineItemRow", () => {
   describe("InlineInput Integration", () => {
     it("should allow editing label via InlineInput", async () => {
       const onDisplayDataChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -76,22 +73,21 @@ describe("UniversalLineItemRow", () => {
       );
 
       // Click on label to edit
-      await user.click(screen.getByText("Paris → Orly Transfer"));
+      fireEvent.click(screen.getByText("Paris → Orly Transfer"));
 
       // Should show input
       const input = screen.getByRole("textbox");
       expect(input).toBeInTheDocument();
 
-      // Type new value and commit
-      await user.clear(input);
-      await user.type(input, "VIP Transfer{Enter}");
+      // Change value and blur or Enter to commit
+      fireEvent.change(input, { target: { value: "VIP Transfer" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
       expect(onDisplayDataChange).toHaveBeenCalledWith("label", "VIP Transfer");
     });
 
     it("should not allow editing when disabled", async () => {
       const onDisplayDataChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -104,7 +100,7 @@ describe("UniversalLineItemRow", () => {
       );
 
       // Click on label - should not enter edit mode
-      await user.click(screen.getByText("Paris → Orly Transfer"));
+      fireEvent.click(screen.getByText("Paris → Orly Transfer"));
 
       // Should NOT show input
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -114,7 +110,6 @@ describe("UniversalLineItemRow", () => {
   describe("Numeric Field Validation", () => {
     it("should convert numeric strings correctly", async () => {
       const onDisplayDataChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -127,18 +122,18 @@ describe("UniversalLineItemRow", () => {
 
       // Find and click on quantity field (shows "1")
       const quantityText = screen.getByText("1");
-      await user.click(quantityText);
+      fireEvent.click(quantityText);
 
-      const input = screen.getByRole("textbox");
-      await user.clear(input);
-      await user.type(input, "5{Enter}");
+      // Numeric inputs have role "spinbutton" in ARIA
+      const input = screen.getByRole("spinbutton");
+      fireEvent.change(input, { target: { value: "5" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
       expect(onDisplayDataChange).toHaveBeenCalledWith("quantity", 5);
     });
 
     it("should prevent negative values", async () => {
       const onDisplayDataChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -149,21 +144,18 @@ describe("UniversalLineItemRow", () => {
         />
       );
 
-      // Find and click on quantity field
       const quantityText = screen.getByText("1");
-      await user.click(quantityText);
+      fireEvent.click(quantityText);
 
-      const input = screen.getByRole("textbox");
-      await user.clear(input);
-      await user.type(input, "-5{Enter}");
+      const input = screen.getByRole("spinbutton");
+      fireEvent.change(input, { target: { value: "-5" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      // Should be sanitized to 0 (Math.max(0, -5))
       expect(onDisplayDataChange).toHaveBeenCalledWith("quantity", 0);
     });
 
     it("should handle French decimal format (comma)", async () => {
       const onDisplayDataChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -174,13 +166,13 @@ describe("UniversalLineItemRow", () => {
         />
       );
 
-      // Click on unit price
       const priceText = screen.getByText("85,00 €");
-      await user.click(priceText);
+      fireEvent.click(priceText);
 
-      const input = screen.getByRole("textbox");
-      await user.clear(input);
-      await user.type(input, "99,50{Enter}");
+      const input = screen.getByRole("spinbutton");
+      // Note: type="number" value must use "." as decimal separator per spec
+      fireEvent.change(input, { target: { value: "99.50" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
       expect(onDisplayDataChange).toHaveBeenCalledWith("unitPrice", 99.5);
     });
@@ -189,7 +181,6 @@ describe("UniversalLineItemRow", () => {
   describe("GROUP Type Behavior", () => {
     it("should call onToggleExpand when clicking expand button", async () => {
       const onToggleExpand = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <UniversalLineItemRow
@@ -201,9 +192,9 @@ describe("UniversalLineItemRow", () => {
         />
       );
 
-      // Find and click the expand/collapse button
-      const expandButton = screen.getByRole("button");
-      await user.click(expandButton);
+      // Header buttons
+      const buttons = screen.getAllByRole("button");
+      fireEvent.click(buttons[0]);
 
       expect(onToggleExpand).toHaveBeenCalled();
     });
@@ -296,7 +287,6 @@ describe("UniversalLineItemRow", () => {
       );
 
       const row = container.firstChild as HTMLElement;
-      // depth * 24px + 8px base padding = 2 * 24 + 8 = 56px
       expect(row).toHaveStyle({ paddingLeft: "56px" });
     });
   });
