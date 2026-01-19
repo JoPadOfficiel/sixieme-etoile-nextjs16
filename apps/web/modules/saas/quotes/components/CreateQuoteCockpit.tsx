@@ -9,6 +9,7 @@ import { Label } from "@ui/components/label";
 import { Switch } from "@ui/components/switch";
 import { useToast } from "@ui/hooks/use-toast";
 import { Sparkles } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -132,9 +133,6 @@ export function CreateQuoteCockpit() {
 	}, []);
 
 	// Trigger pricing calculation when relevant fields change
-	// Using a ref to track previous price to avoid cascading renders
-	const previousPriceRef = useRef<number | null>(null);
-
 	// Store calculate in a ref to avoid dependency issues
 	const calculateRef = useRef(calculate);
 	calculateRef.current = calculate;
@@ -163,17 +161,8 @@ export function CreateQuoteCockpit() {
 		// Note: calculate is NOT a dependency - we use ref to avoid infinite loops
 	]);
 
-	// Auto-set final price when pricing result changes (only if not already set)
-	// Using ref to track and avoid cascading renders
-	useEffect(() => {
-		if (pricingResult && previousPriceRef.current !== pricingResult.price) {
-			previousPriceRef.current = pricingResult.price;
-			// Only auto-set if final price is still 0 (not manually edited)
-			if (formData.finalPrice === 0) {
-				setFormData((prev) => ({ ...prev, finalPrice: pricingResult.price }));
-			}
-		}
-	}, [pricingResult, formData.finalPrice]);
+	// Pricing result is now just a suggestion for the calculator, not the global final price
+	// Auto-sync removed to support shopping cart model
 
 	// Show error toast when pricing fails
 	useEffect(() => {
@@ -433,19 +422,6 @@ export function CreateQuoteCockpit() {
 		pricingResult?.tripAnalysis?.compliancePlan,
 	);
 
-	const handleSubmit = () => {
-		// Story 6.5: Prevent submission if there are blocking violations
-		if (hasViolations) {
-			toast({
-				title: t("quotes.compliance.cannotCreate"),
-				description: t("quotes.compliance.resolveViolations"),
-				variant: "error",
-			});
-			return;
-		}
-		createQuoteMutation.mutate();
-	};
-
 	/**
 	 * Story 26: Handle changes from YoloQuoteEditor
 	 */
@@ -453,17 +429,35 @@ export function CreateQuoteCockpit() {
 		setQuoteLines(lines);
 	}, []);
 
-	/**
-	 * Story 26: Add a new CALCULATED line from pricing
-	 */
 	const handleAddPricingLine = useCallback(() => {
 		if (pricingResultAsLine) {
+			// Story 26.16: Use manually edited price from form if available
+			const unitPrice =
+				formData.finalPrice > 0
+					? formData.finalPrice
+					: pricingResultAsLine.unitPrice;
+
 			setQuoteLines((prev) => [
 				...prev,
-				{ ...pricingResultAsLine, tempId: `pricing-${Date.now()}` },
+				{
+					...pricingResultAsLine,
+					tempId: `pricing-${Date.now()}`,
+					unitPrice: unitPrice,
+					totalPrice: unitPrice * (pricingResultAsLine.quantity || 1),
+					displayData: {
+						...pricingResultAsLine.displayData,
+						unitPrice: unitPrice,
+						total: unitPrice * (pricingResultAsLine.quantity || 1),
+					},
+				},
 			]);
+
+			toast({
+				title: t("quotes.yolo.lineAdded") || "Ligne ajoutée au devis",
+				description: `${pricingResultAsLine.label} - ${unitPrice}€`,
+			});
 		}
-	}, [pricingResultAsLine]);
+	}, [pricingResultAsLine, formData.finalPrice, t, toast]);
 
 	return (
 		<div className="space-y-6">
@@ -622,17 +616,14 @@ export function CreateQuoteCockpit() {
 							encodedPolyline={pricingResult?.tripAnalysis?.encodedPolyline}
 						/>
 					)}
-				</div>
-
-				{/* Right Column - Pricing & Options */}
-				<div className="lg:col-span-1">
 					<QuotePricingPanel
 						formData={formData}
 						pricingResult={pricingResult}
 						isCalculating={isCalculating}
-						isSubmitting={createQuoteMutation.isPending}
+						isSubmitting={false} // Panel is just for adding lines now
 						onFormChange={handleFormChange}
-						onSubmit={handleSubmit}
+						onSubmit={handleAddPricingLine} // Hijack submit to add line
+						submitLabel={t("quotes.yolo.addToQuote") || "Ajouter au devis"}
 						hasBlockingViolations={hasViolations}
 						addedFees={addedFees}
 						onAddFee={handleAddFee}
@@ -641,6 +632,50 @@ export function CreateQuoteCockpit() {
 					/>
 				</div>
 			</div>
+
+			{/* Story 26.16: Global Actions Bar (Shopping Cart Checkout) */}
+			<Card className="sticky bottom-4 z-10 border-t-4 border-t-primary bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60">
+				<CardContent className="flex items-center justify-between p-6">
+					<div className="flex flex-col">
+						<span className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
+							TOTAL DEVIS ({quoteLines.length} lignes)
+						</span>
+						<span className="font-bold font-mono text-3xl text-primary">
+							{new Intl.NumberFormat("fr-FR", {
+								style: "currency",
+								currency: "EUR",
+							}).format(yoloTotal)}
+						</span>
+					</div>
+					<div className="flex items-center gap-4">
+						<Button
+							variant="ghost"
+							onClick={() => setQuoteLines([])}
+							disabled={
+								quoteLines.length === 0 || createQuoteMutation.isPending
+							}
+							className="text-muted-foreground hover:text-destructive"
+						>
+							Tout effacer
+						</Button>
+						<Button
+							size="xl"
+							onClick={() => createQuoteMutation.mutate()}
+							disabled={
+								quoteLines.length === 0 || createQuoteMutation.isPending
+							}
+							className="px-8 shadow-primary/20 shadow-xl"
+						>
+							{createQuoteMutation.isPending ? (
+								<Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
+							) : (
+								<Sparkles className="mr-2 h-5 w-5" />
+							)}
+							{t("quotes.create.createQuote") || "Enregistrer le Devis"}
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
