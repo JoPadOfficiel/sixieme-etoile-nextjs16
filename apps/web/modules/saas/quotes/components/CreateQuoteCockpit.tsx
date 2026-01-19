@@ -5,11 +5,8 @@ import { apiClient } from "@shared/lib/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
-import { Label } from "@ui/components/label";
-import { Switch } from "@ui/components/switch";
 import { useToast } from "@ui/hooks/use-toast";
-import { Sparkles } from "lucide-react";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,7 +22,6 @@ import { CapacityWarningAlert } from "./CapacityWarningAlert";
 import { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 import { QuoteBasicInfoPanel } from "./QuoteBasicInfoPanel";
 import { QuotePricingPanel } from "./QuotePricingPanel";
-import { TripTransparencyPanel } from "./TripTransparencyPanel";
 // Story 26 Integration: Import YoloQuoteEditor
 import { YoloQuoteEditor } from "./yolo/YoloQuoteEditor";
 import type { QuoteLine } from "./yolo/dnd-utils";
@@ -64,7 +60,9 @@ export function CreateQuoteCockpit() {
 	const [addedFees, setAddedFees] = useState<AddedFee[]>([]);
 
 	// Story 26: Yolo Mode toggle
-	const [isYoloMode, setIsYoloMode] = useState<boolean>(false);
+	// Story 26.16: Yolo Mode is now the standard (Shopping Cart Mode)
+	// const [isYoloMode, setIsYoloMode] = useState<boolean>(true);
+	const isYoloMode = true;
 
 	// Story 26: Quote lines for Yolo Mode
 	const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
@@ -133,6 +131,8 @@ export function CreateQuoteCockpit() {
 	}, []);
 
 	// Trigger pricing calculation when relevant fields change
+	// Using a ref to track previous price to avoid cascading renders
+
 	// Store calculate in a ref to avoid dependency issues
 	const calculateRef = useRef(calculate);
 	calculateRef.current = calculate;
@@ -161,8 +161,10 @@ export function CreateQuoteCockpit() {
 		// Note: calculate is NOT a dependency - we use ref to avoid infinite loops
 	]);
 
-	// Pricing result is now just a suggestion for the calculator, not the global final price
-	// Auto-sync removed to support shopping cart model
+	// Auto-set final price when pricing result changes (only if not already set)
+	// Using ref to track and avoid cascading renders
+	// Story 26.16: Decoupled pricing. finalPrice is ONLY updated by the sum of lines (YoloTotal).
+	// We no longer auto-set finalPrice from the single trip calculation.
 
 	// Show error toast when pricing fails
 	useEffect(() => {
@@ -178,7 +180,11 @@ export function CreateQuoteCockpit() {
 	/**
 	 * Story 26: Convert pricing result to initial CALCULATED line for Yolo Mode
 	 */
-	const pricingResultAsLine = useMemo((): QuoteLine | null => {
+	/**
+	 * Story 26.16: Helper to convert current form state into a QuoteLine
+	 * Used when user clicks "Add to Quote"
+	 */
+	const getLineFromCurrentForm = useCallback((): QuoteLine | null => {
 		if (!pricingResult || !formData.pickupAddress) return null;
 
 		const tripLabel =
@@ -186,23 +192,28 @@ export function CreateQuoteCockpit() {
 				? `Mise à disposition - ${formData.durationHours}h`
 				: `${formData.pickupAddress} → ${formData.dropoffAddress || "..."}`;
 
+		// Story 26.16: Use formData.finalPrice (which is edited in the pricing panel)
+		// instead of just pricingResult.price, to capture manual overrides or adjustments *before* adding to cart
+		const linePrice =
+			formData.finalPrice > 0 ? formData.finalPrice : pricingResult.price;
+
 		return {
-			tempId: `pricing-${Date.now()}`,
+			tempId: `calc-${Date.now()}`,
 			type: "CALCULATED" as const,
 			label: tripLabel,
 			description: formData.tripType,
 			quantity: 1,
-			unitPrice: pricingResult.price,
-			totalPrice: pricingResult.price,
+			unitPrice: linePrice,
+			totalPrice: linePrice,
 			vatRate: 10, // Default VAT rate
 			parentId: null,
-			sortOrder: 0,
+			sortOrder: quoteLines.length, // Add at end
 			sourceData: {
 				origin: formData.pickupAddress,
 				destination: formData.dropoffAddress,
 				distance: pricingResult.tripAnalysis?.totalDistance,
 				duration: pricingResult.tripAnalysis?.totalDuration,
-				basePrice: pricingResult.price,
+				basePrice: linePrice,
 				internalCost: pricingResult.internalCost,
 				pickupAt: formData.pickupAt?.toISOString(),
 				pickupLatitude: formData.pickupLatitude,
@@ -215,21 +226,36 @@ export function CreateQuoteCockpit() {
 			displayData: {
 				label: tripLabel,
 				quantity: 1,
-				unitPrice: pricingResult.price,
+				unitPrice: linePrice,
 				vatRate: 10,
-				total: pricingResult.price,
+				total: linePrice,
 			},
 		};
-	}, [pricingResult, formData]);
+	}, [pricingResult, formData, quoteLines.length]);
+
+	/**
+	 * Story 26.16: Add current calculation to the Shopping Cart (Yolo Lines)
+	 */
+	const handleAddCalculationToCart = useCallback(() => {
+		const newLine = getLineFromCurrentForm();
+		if (!newLine) return;
+
+		setQuoteLines((prev) => [...prev, newLine]);
+
+		toast({
+			title: t("quotes.create.lineAdded"),
+			description: newLine.label,
+		});
+
+		// Optional: We could reset the form here, but keeping values allows for rapid "Clone & Edit"
+		// e.g. Same trip but different time.
+	}, [getLineFromCurrentForm, toast, t]);
 
 	/**
 	 * Story 26: Auto-populate Yolo lines when entering Yolo Mode with pricing data
 	 */
-	useEffect(() => {
-		if (isYoloMode && pricingResultAsLine && quoteLines.length === 0) {
-			setQuoteLines([pricingResultAsLine]);
-		}
-	}, [isYoloMode, pricingResultAsLine, quoteLines.length]);
+	// Story 26.16: Removed auto-populate useEffect. We now rely on explicit "Add" button.
+	// useEffect(() => { ... }, ...);
 
 	/**
 	 * Story 26: Calculate total from Yolo lines
@@ -257,12 +283,37 @@ export function CreateQuoteCockpit() {
 				);
 			}, 0);
 
+			// Story 26.16: In Cart Mode, the "Main Trip" (required by legacy API) is the first line of the cart.
+			// We use the first line's data to populate the required fields, ensuring the quote is valid even if the form is empty.
+			const primaryLine = quoteLines.length > 0 ? quoteLines[0] : null;
+			const mainSource = primaryLine?.sourceData;
+
+			// Fallback to form data if no lines (should not happen due to button disabled state) or explicit override
+			const vehicleCategoryId =
+				mainSource?.vehicleCategoryId || formData.vehicleCategoryId;
+			const pickupAddress = mainSource?.origin || formData.pickupAddress;
+			const pickupLatitude =
+				mainSource?.pickupLatitude || formData.pickupLatitude;
+			const pickupLongitude =
+				mainSource?.pickupLongitude || formData.pickupLongitude;
+			const dropoffAddress =
+				mainSource?.destination || formData.dropoffAddress || null;
+			const dropoffLatitude =
+				mainSource?.dropoffLatitude || formData.dropoffLatitude;
+			const dropoffLongitude =
+				mainSource?.dropoffLongitude || formData.dropoffLongitude;
+			const pickupAt = mainSource?.pickupAt
+				? new Date(mainSource.pickupAt).toISOString()
+				: formData.pickupAt!.toISOString();
+			const durationHours = mainSource?.duration
+				? Math.ceil(mainSource.duration / 60) // approx
+				: formData.durationHours;
+			const tripType = mainSource?.tripType || formData.tripType;
+
 			// Final price includes base price + added fees/promotions
 			// In Yolo Mode, use yoloTotal instead
 			const basePrice = isYoloMode ? yoloTotal : formData.finalPrice;
 			const computedFinalPrice = basePrice + addedFeesTotal;
-
-			// Standard quote creation for all supported trip types
 
 			// Standard quote creation for other trip types
 			const response = await apiClient.vtc.quotes.$post({
@@ -270,18 +321,18 @@ export function CreateQuoteCockpit() {
 					contactId: formData.contactId,
 					// Story 24.4: Include endCustomerId for partner agency sub-contacts
 					endCustomerId: formData.endCustomerId || null,
-					vehicleCategoryId: formData.vehicleCategoryId,
+					vehicleCategoryId: vehicleCategoryId,
 					pricingMode:
 						formData.pricingMode || pricingResult?.pricingMode || "DYNAMIC",
-					tripType: formData.tripType,
-					pickupAt: formData.pickupAt!.toISOString(),
-					pickupAddress: formData.pickupAddress,
-					pickupLatitude: formData.pickupLatitude,
-					pickupLongitude: formData.pickupLongitude,
+					tripType: tripType,
+					pickupAt: pickupAt,
+					pickupAddress: pickupAddress,
+					pickupLatitude: pickupLatitude,
+					pickupLongitude: pickupLongitude,
 					// Story 16.1: dropoffAddress is optional for DISPO and OFF_GRID
-					dropoffAddress: formData.dropoffAddress || null,
-					dropoffLatitude: formData.dropoffLatitude,
-					dropoffLongitude: formData.dropoffLongitude,
+					dropoffAddress: dropoffAddress,
+					dropoffLatitude: dropoffLatitude,
+					dropoffLongitude: dropoffLongitude,
 					// Story 16.1: Trip type specific fields
 					isRoundTrip: formData.isRoundTrip,
 					stops:
@@ -303,7 +354,7 @@ export function CreateQuoteCockpit() {
 									}))
 							: null,
 					returnDate: formData.returnDate?.toISOString() ?? null,
-					durationHours: formData.durationHours,
+					durationHours: durationHours,
 					maxKilometers: formData.maxKilometers,
 					passengerCount: formData.passengerCount,
 					luggageCount: formData.luggageCount,
@@ -422,42 +473,15 @@ export function CreateQuoteCockpit() {
 		pricingResult?.tripAnalysis?.compliancePlan,
 	);
 
+	// Story 26.16: Deprecated handleSubmit in favor of handleAddCalculationToCart
+	// Quote creation is now handled by the "Enregistrer le Devis" button in the footer.
+
 	/**
 	 * Story 26: Handle changes from YoloQuoteEditor
 	 */
 	const handleQuoteLinesChange = useCallback((lines: QuoteLine[]) => {
 		setQuoteLines(lines);
 	}, []);
-
-	const handleAddPricingLine = useCallback(() => {
-		if (pricingResultAsLine) {
-			// Story 26.16: Use manually edited price from form if available
-			const unitPrice =
-				formData.finalPrice > 0
-					? formData.finalPrice
-					: pricingResultAsLine.unitPrice;
-
-			setQuoteLines((prev) => [
-				...prev,
-				{
-					...pricingResultAsLine,
-					tempId: `pricing-${Date.now()}`,
-					unitPrice: unitPrice,
-					totalPrice: unitPrice * (pricingResultAsLine.quantity || 1),
-					displayData: {
-						...pricingResultAsLine.displayData,
-						unitPrice: unitPrice,
-						total: unitPrice * (pricingResultAsLine.quantity || 1),
-					},
-				},
-			]);
-
-			toast({
-				title: t("quotes.yolo.lineAdded") || "Ligne ajoutée au devis",
-				description: `${pricingResultAsLine.label} - ${unitPrice}€`,
-			});
-		}
-	}, [pricingResultAsLine, formData.finalPrice, t, toast]);
 
 	return (
 		<div className="space-y-6">
@@ -468,40 +492,6 @@ export function CreateQuoteCockpit() {
 					className="mb-2"
 				/>
 			)}
-
-			{/* Story 26: Yolo Mode Toggle */}
-			<Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-				<CardHeader className="pb-2">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<Sparkles className="h-5 w-5 text-primary" />
-							<CardTitle className="font-semibold text-base">
-								{t("quotes.yolo.title") || "Mode Flexible (Yolo)"}
-							</CardTitle>
-						</div>
-						<div className="flex items-center gap-2">
-							<Switch
-								id="yolo-mode"
-								checked={isYoloMode}
-								onCheckedChange={setIsYoloMode}
-							/>
-							<Label htmlFor="yolo-mode" className="cursor-pointer text-sm">
-								{isYoloMode
-									? t("quotes.yolo.enabled") || "Activé"
-									: t("quotes.yolo.disabled") || "Désactivé"}
-							</Label>
-						</div>
-					</div>
-				</CardHeader>
-				{isYoloMode && (
-					<CardContent className="pt-0">
-						<p className="text-muted-foreground text-sm">
-							{t("quotes.yolo.description") ||
-								"Créez un devis personnalisé avec des lignes flexibles. Ajoutez, modifiez ou groupez les éléments librement."}
-						</p>
-					</CardContent>
-				)}
-			</Card>
 
 			{/* 3-Column Layout */}
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -560,70 +550,78 @@ export function CreateQuoteCockpit() {
 					)}
 				</div>
 
-				{/* Center Column - Trip Transparency OR Yolo Editor */}
+				{/* Center Column - Yolo Editor (Shopping Cart) */}
 				<div className="lg:col-span-1">
-					{isYoloMode ? (
-						<Card>
-							<CardHeader className="pb-2">
-								<div className="flex items-center justify-between">
-									<CardTitle className="text-base">
-										{t("quotes.yolo.linesEditor") || "Lignes du Devis"}
-									</CardTitle>
-									{pricingResultAsLine && (
-										<Button
-											size="sm"
-											variant="outline"
-											onClick={handleAddPricingLine}
-											disabled={createQuoteMutation.isPending}
-										>
-											{t("quotes.yolo.addCalculatedLine") ||
-												"+ Ajouter depuis le calcul"}
-										</Button>
-									)}
+					<Card className="flex h-full flex-col bg-slate-50/50 dark:bg-slate-900/20">
+						<CardHeader className="rounded-t-lg border-b bg-background pb-2">
+							<div className="flex items-center justify-between">
+								<CardTitle className="flex items-center gap-2 text-base">
+									<Sparkles className="h-4 w-4 text-primary" />
+									{t("quotes.yolo.linesEditor") || "Panier du Devis"}
+								</CardTitle>
+								<div className="font-medium text-muted-foreground text-sm">
+									Total:{" "}
+									{new Intl.NumberFormat("fr-FR", {
+										style: "currency",
+										currency: "EUR",
+									}).format(yoloTotal)}
 								</div>
-							</CardHeader>
-							<CardContent>
-								<YoloQuoteEditor
-									initialLines={quoteLines}
-									readOnly={createQuoteMutation.isPending}
-									currency="EUR"
-									onChange={handleQuoteLinesChange}
-								/>
-							</CardContent>
-						</Card>
-					) : (
-						<TripTransparencyPanel
-							pricingResult={pricingResult}
-							isLoading={isCalculating}
-							routeCoordinates={{
-								pickup:
-									formData.pickupLatitude && formData.pickupLongitude
-										? {
-												lat: formData.pickupLatitude,
-												lng: formData.pickupLongitude,
-												address: formData.pickupAddress,
-											}
-										: undefined,
-								dropoff:
-									formData.dropoffLatitude && formData.dropoffLongitude
-										? {
-												lat: formData.dropoffLatitude,
-												lng: formData.dropoffLongitude,
-												address: formData.dropoffAddress,
-											}
-										: undefined,
-							}}
-							encodedPolyline={pricingResult?.tripAnalysis?.encodedPolyline}
-						/>
-					)}
+							</div>
+						</CardHeader>
+						<CardContent className="flex flex-1 flex-col pt-4">
+							<YoloQuoteEditor
+								initialLines={quoteLines}
+								readOnly={createQuoteMutation.isPending}
+								currency="EUR"
+								onChange={handleQuoteLinesChange}
+							/>
+
+							<div className="-mx-6 sticky bottom-0 z-10 mt-6 flex flex-col gap-3 border-t bg-background/95 px-6 py-4 pt-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] backdrop-blur">
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-muted-foreground text-sm">
+										Total Final
+									</span>
+									<span className="font-bold text-primary text-xl">
+										{new Intl.NumberFormat("fr-FR", {
+											style: "currency",
+											currency: "EUR",
+										}).format(yoloTotal)}
+									</span>
+								</div>
+								<Button
+									size="lg"
+									onClick={() => createQuoteMutation.mutate()}
+									disabled={
+										quoteLines.length === 0 ||
+										createQuoteMutation.isPending ||
+										hasViolations
+									}
+									className="w-full shadow-lg"
+								>
+									{createQuoteMutation.isPending ? (
+										<>
+											<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+											Création...
+										</>
+									) : (
+										"Enregistrer le Devis"
+									)}
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				{/* Right Column - Pricing & Options */}
+				<div className="lg:col-span-1">
 					<QuotePricingPanel
 						formData={formData}
 						pricingResult={pricingResult}
 						isCalculating={isCalculating}
-						isSubmitting={false} // Panel is just for adding lines now
+						isSubmitting={false}
 						onFormChange={handleFormChange}
-						onSubmit={handleAddPricingLine} // Hijack submit to add line
-						submitLabel={t("quotes.yolo.addToQuote") || "Ajouter au devis"}
+						onSubmit={handleAddCalculationToCart}
+						submitLabel={t("quotes.create.addToCart") || "Ajouter au Panier"}
 						hasBlockingViolations={hasViolations}
 						addedFees={addedFees}
 						onAddFee={handleAddFee}
@@ -632,50 +630,6 @@ export function CreateQuoteCockpit() {
 					/>
 				</div>
 			</div>
-
-			{/* Story 26.16: Global Actions Bar (Shopping Cart Checkout) */}
-			<Card className="sticky bottom-4 z-10 border-t-4 border-t-primary bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60">
-				<CardContent className="flex items-center justify-between p-6">
-					<div className="flex flex-col">
-						<span className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-							TOTAL DEVIS ({quoteLines.length} lignes)
-						</span>
-						<span className="font-bold font-mono text-3xl text-primary">
-							{new Intl.NumberFormat("fr-FR", {
-								style: "currency",
-								currency: "EUR",
-							}).format(yoloTotal)}
-						</span>
-					</div>
-					<div className="flex items-center gap-4">
-						<Button
-							variant="ghost"
-							onClick={() => setQuoteLines([])}
-							disabled={
-								quoteLines.length === 0 || createQuoteMutation.isPending
-							}
-							className="text-muted-foreground hover:text-destructive"
-						>
-							Tout effacer
-						</Button>
-						<Button
-							size="xl"
-							onClick={() => createQuoteMutation.mutate()}
-							disabled={
-								quoteLines.length === 0 || createQuoteMutation.isPending
-							}
-							className="px-8 shadow-primary/20 shadow-xl"
-						>
-							{createQuoteMutation.isPending ? (
-								<Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
-							) : (
-								<Sparkles className="mr-2 h-5 w-5" />
-							)}
-							{t("quotes.create.createQuote") || "Enregistrer le Devis"}
-						</Button>
-					</div>
-				</CardContent>
-			</Card>
 		</div>
 	);
 }
