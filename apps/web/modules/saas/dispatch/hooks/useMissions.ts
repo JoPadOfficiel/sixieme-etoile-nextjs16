@@ -15,8 +15,10 @@ import { DISPATCH_QUERY_OPTIONS } from "./useDispatchRealtime";
  * useMissions Hook
  *
  * Story 8.1: Implement Dispatch Screen Layout
+ * Story 27.13: Real-Time Updates (Polling/Socket)
  *
  * Fetches missions (accepted quotes with future pickup dates) for the Dispatch screen.
+ * Configured with 10-second polling and window focus revalidation for multi-user sync.
  */
 
 interface UseMissionsOptions {

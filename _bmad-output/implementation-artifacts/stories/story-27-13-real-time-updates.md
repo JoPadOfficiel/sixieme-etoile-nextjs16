@@ -3,7 +3,7 @@
 ## Story Info
 - **Story ID**: 27-13
 - **Epic**: Epic 27 - Unified Dispatch (Cockpit)
-- **Status**: review
+- **Status**: done
 - **Created**: 2026-01-19
 - **Completed**: 2026-01-19
 - **Priority**: High
@@ -99,14 +99,15 @@ Le cockpit Dispatch est utilisé simultanément par plusieurs dispatchers. Sans 
 ### Files Created
 | File | Purpose |
 |------|---------|
-| `apps/web/modules/saas/dispatch/hooks/useDispatchRealtime.ts` | Hook centralisé pour la configuration polling |
+| `apps/web/modules/saas/dispatch/hooks/useDispatchRealtime.ts` | Configuration centralisée pour le polling |
+| `apps/web/modules/saas/dispatch/hooks/__tests__/useDispatchRealtime.test.ts` | Tests unitaires (13 tests) |
 
 ### Files Modified
 | File | Changes |
 |------|---------|
-| `apps/web/modules/saas/dispatch/hooks/useMissions.ts` | Import + spread DISPATCH_QUERY_OPTIONS |
+| `apps/web/modules/saas/dispatch/hooks/useMissions.ts` | Import + spread DISPATCH_QUERY_OPTIONS, JSDoc updated |
 | `apps/web/modules/saas/dispatch/hooks/useDriversForGantt.ts` | Import + spread DISPATCH_QUERY_OPTIONS |
-| `apps/web/modules/saas/dispatch/components/DispatchPage.tsx` | Import + spread DISPATCH_QUERY_OPTIONS to inline query |
+| `apps/web/modules/saas/dispatch/components/DispatchPage.tsx` | Import + spread DISPATCH_QUERY_OPTIONS, query key renamed |
 
 ### TanStack Query Configuration
 
@@ -199,10 +200,35 @@ export const DISPATCH_REALTIME_CONFIG = {
 
 ---
 
+## Senior Developer Review (AI)
+
+**Reviewer:** Antigravity  
+**Date:** 2026-01-19  
+**Outcome:** ✅ APPROVED (all issues fixed)
+
+### Issues Found & Fixed
+
+| ID | Severity | Issue | Fix Applied |
+|----|----------|-------|-------------|
+| C1 | 🔴 Critical | Missing unit tests for useDispatchRealtime | Created 13 unit tests |
+| M2 | 🟡 Medium | Inconsistent query keys for drivers | Renamed to `dispatch-drivers` with JSDoc explaining distinction |
+| M3 | 🟡 Medium | Unused `useDispatchRealtimeConfig` hook | Removed from codebase |
+| L1 | 🟢 Low | JSDoc not updated in useMissions.ts | Added Story 27.13 reference |
+| L2 | 🟢 Low | Missing explicit typing for DISPATCH_QUERY_OPTIONS | Added `DispatchQueryOptions` type |
+
+### Tests Added
+- `useDispatchRealtime.test.ts`: 13 tests validating configuration values and consistency
+
+### Notes
+- Pre-existing `any` type warnings in `DispatchPage.tsx` (lines 106-157) are out of scope for this story
+- Other hooks (useAssignmentCandidates, useMissionCompliance, etc.) intentionally NOT using aggressive polling as they fetch data that doesn't change frequently
+
+---
+
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-01-19 | BMad Orchestrator | Story created |
 | 2026-01-19 | Antigravity | Implementation complete, all tests passed, status → review |
-
+| 2026-01-19 | Antigravity | Code review: Fixed C1, M2, M3, L1, L2. Added 13 unit tests. Status → done |

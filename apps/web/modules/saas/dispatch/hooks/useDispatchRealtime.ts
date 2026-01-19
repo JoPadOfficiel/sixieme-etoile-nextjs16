@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useDispatchRealtime Hook
+ * useDispatchRealtime Configuration
  *
  * Story 27.13: Real-Time Updates (Polling/Socket)
  *
@@ -10,7 +10,10 @@
  * Phase 2 (future): Supabase Realtime or WebSocket integration.
  */
 
-import { keepPreviousData } from "@tanstack/react-query";
+import {
+	type QueryObserverOptions,
+	keepPreviousData,
+} from "@tanstack/react-query";
 
 /**
  * Configuration constants for Dispatch real-time polling.
@@ -53,6 +56,20 @@ export const DISPATCH_REALTIME_CONFIG = {
 } as const;
 
 /**
+ * Type for the dispatch query options subset.
+ * Explicitly typed for better IDE support and documentation.
+ */
+type DispatchQueryOptions = Pick<
+	QueryObserverOptions,
+	| "staleTime"
+	| "refetchInterval"
+	| "refetchOnWindowFocus"
+	| "retry"
+	| "retryDelay"
+	| "placeholderData"
+>;
+
+/**
  * Pre-configured query options for Dispatch data fetching.
  * Apply these to any useQuery call in the Dispatch module to ensure
  * consistent real-time behavior.
@@ -66,7 +83,7 @@ export const DISPATCH_REALTIME_CONFIG = {
  * });
  * ```
  */
-export const DISPATCH_QUERY_OPTIONS = {
+export const DISPATCH_QUERY_OPTIONS: DispatchQueryOptions = {
 	staleTime: DISPATCH_REALTIME_CONFIG.STALE_TIME_MS,
 	refetchInterval: DISPATCH_REALTIME_CONFIG.REFETCH_INTERVAL_MS,
 	refetchOnWindowFocus: DISPATCH_REALTIME_CONFIG.REFETCH_ON_WINDOW_FOCUS,
@@ -79,28 +96,5 @@ export const DISPATCH_QUERY_OPTIONS = {
 	 */
 	placeholderData: keepPreviousData,
 } as const;
-
-/**
- * Hook to get the current polling configuration.
- * Useful for debugging or dynamic configuration in the future.
- *
- * @returns The current real-time configuration
- */
-export function useDispatchRealtimeConfig() {
-	return {
-		config: DISPATCH_REALTIME_CONFIG,
-		queryOptions: DISPATCH_QUERY_OPTIONS,
-		/**
-		 * Indicates if real-time updates are active.
-		 * Always true for Phase 1 (polling-based).
-		 */
-		isActive: true,
-		/**
-		 * The current synchronization mode.
-		 * 'polling' for Phase 1, 'realtime' for future WebSocket.
-		 */
-		mode: "polling" as const,
-	};
-}
 
 export default DISPATCH_QUERY_OPTIONS;

@@ -69,10 +69,25 @@ export function DispatchPage() {
 		missionId: selectedMissionId,
 	});
 
-	// Fetch drivers for Gantt (Story 27.9) and Calendar Events (Story 27.10)
-	// Story 27.13: Real-time polling configuration (10s interval, window focus revalidation)
+	/**
+	 * Fetch drivers with calendar events and missions for Gantt and Compliance.
+	 *
+	 * Story 27.9, 27.10, 27.13
+	 *
+	 * NOTE: This query uses a DIFFERENT key than useDriversForGantt hook because:
+	 * - This query includes calendar events (includeEvents: true)
+	 * - This query includes missions per driver (includeMissions: true)
+	 * - useDriversForGantt is a simpler query without these inclusions
+	 *
+	 * Both share the same polling configuration via DISPATCH_QUERY_OPTIONS.
+	 */
+	const DISPATCH_DRIVERS_QUERY_KEY = [
+		"dispatch-drivers",
+		"with-events-missions",
+	] as const;
+
 	const { data: driversData } = useQuery({
-		queryKey: ["fleet-drivers", "with-events"],
+		queryKey: DISPATCH_DRIVERS_QUERY_KEY,
 		queryFn: async () => {
 			const res = await apiClient.vtc.drivers.$get({
 				query: {
