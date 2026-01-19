@@ -172,6 +172,8 @@ export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quote
 
 export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
 
+export const BlockTemplateScalarFieldEnumSchema = z.enum(['id','organizationId','label','data','createdAt','updatedAt']);
+
 export const DocumentTypeScalarFieldEnumSchema = z.enum(['id','code','name','description']);
 
 export const DocumentScalarFieldEnumSchema = z.enum(['id','organizationId','documentTypeId','quoteId','invoiceId','storagePath','url','filename','createdAt']);
@@ -1524,6 +1526,24 @@ export const InvoiceLineSchema = z.object({
 })
 
 export type InvoiceLine = z.infer<typeof InvoiceLineSchema>
+
+/////////////////////////////////////////
+// BLOCK TEMPLATE SCHEMA
+/////////////////////////////////////////
+
+/**
+ * BlockTemplate - Story 26.13: Reusable block presets
+ */
+export const BlockTemplateSchema = z.object({
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  label: z.string(),
+  data: JsonValueSchema,
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type BlockTemplate = z.infer<typeof BlockTemplateSchema>
 
 /////////////////////////////////////////
 // DOCUMENT TYPE SCHEMA

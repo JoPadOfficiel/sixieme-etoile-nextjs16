@@ -155,6 +155,7 @@ model Organization {
   endCustomers                EndCustomer[]
   activities                  Activity[]
   missions                    Mission[] // Story 26.1: Operational missions
+  blockTemplates              BlockTemplate[] // Story 26.13: Block Templates
 
   @@unique([slug])
   @@map("organization")
@@ -2071,6 +2072,25 @@ model InvoiceLine {
   @@index([invoiceId])
   @@index([parentId])
   @@map("invoice_line")
+}
+
+/// BlockTemplate - Story 26.13: Reusable block presets
+model BlockTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  label String // Name of the template in the UI
+
+  // Template data (mix of displayData and pricing fields)
+  // { displayData: { label: "Champagne", ... }, unitPrice: 50, vatRate: 20, quantity: 1 }
+  data Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("block_template")
 }
 
 /// DocumentType - Classify generated documents

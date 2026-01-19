@@ -303,7 +303,7 @@ development_status:
   26-10-real-time-profitability-computation: done
   26-11-pdf-generator-pure-display-mode: done
   26-12-pdf-generator-mission-order-operational-mode: done
-  26-13-block-presets-templates-bonus: backlog
+  26-13-block-presets-templates-bonus: review
   26-14-undo-redo-history-support: backlog
   epic-26-retrospective: optional
   epic-27: in-progress
