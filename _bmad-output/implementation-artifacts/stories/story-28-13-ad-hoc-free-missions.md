@@ -7,7 +7,7 @@
 | **Story ID**         | 28-13                                             |
 | **Epic**             | Epic 28 - Order Management & Intelligent Spawning |
 | **Title**            | Ad-Hoc Free Missions                              |
-| **Status**           | review                                            |
+| **Status**           | done                                              |
 | **Created**          | 2026-01-20                                        |
 | **Priority**         | Medium                                            |
 | **Estimated Points** | 5                                                 |

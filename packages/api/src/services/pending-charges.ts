@@ -100,6 +100,9 @@ export class PendingChargesService {
 			> | null;
 			if (!executionData) continue;
 
+			// Story 28.13 FIX: Skip internal missions (non-billable)
+			if (mission.isInternal) continue;
+
 			const missionLabel = this.getMissionLabel(mission);
 
 			// Check waiting time
