@@ -291,7 +291,7 @@ export function DispatchPage() {
 				// Get existing missions from the drivers list (which now uses real data)
 				const targetDriver = drivers.find((d) => d.id === driverId);
 				const existingMissions: MissionListItem[] =
-					targetDriver?.missions || [];
+					(targetDriver?.missions as any) || [];
 
 				const compliance = checkCompliance(
 					mission,
