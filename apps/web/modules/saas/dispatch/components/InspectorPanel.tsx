@@ -1,220 +1,239 @@
 "use client";
 
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@ui/components/alert-dialog";
+import { Badge } from "@ui/components/badge";
+import { Button } from "@ui/components/button";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@ui/components/sheet";
+import { Skeleton } from "@ui/components/skeleton";
+import { EditIcon, UserMinusIcon, XCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetDescription,
-} from "@ui/components/sheet";
-import { Button } from "@ui/components/button";
-import { Skeleton } from "@ui/components/skeleton";
-import { Badge } from "@ui/components/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@ui/components/alert-dialog";
-import { useMissionDetail } from "../hooks/useMissions";
 import { useMissionActions } from "../hooks/useMissionActions";
-import { EditIcon, XCircleIcon, UserMinusIcon } from "lucide-react";
-import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { useMissionDetail } from "../hooks/useMissions";
 
 // Sub-components
 import { TripTransparencyPanel } from "@saas/quotes/components/TripTransparencyPanel";
-import { MissionContactPanel } from "./MissionContactPanel";
-import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
-import { StaffingCostsSection } from "./StaffingCostsSection";
-import type { MissionDetail } from "../types";
 import type { PricingResult } from "@saas/quotes/types";
+import type { MissionDetail } from "../types";
+import { MissionContactPanel } from "./MissionContactPanel";
+import { StaffingCostsSection } from "./StaffingCostsSection";
+import { VehicleAssignmentPanel } from "./VehicleAssignmentPanel";
 
 interface InspectorPanelProps {
-  missionId: string | null;
-  onClose: () => void;
-  onOpenAssignment?: () => void;
+	missionId: string | null;
+	onClose: () => void;
+	onOpenAssignment?: () => void;
 }
 
-export function InspectorPanel({ missionId, onClose, onOpenAssignment }: InspectorPanelProps) {
-  const t = useTranslations("dispatch.inspector");
-  const router = useRouter();
-  const { activeOrganization } = useActiveOrganization();
-  const { data: mission, isLoading } = useMissionDetail({ missionId });
-  
-  const { unassign, cancel, isUnassigning, isCancelling } = useMissionActions({
-    onUnassignSuccess: () => {
-      onClose();
-    },
-    onCancelSuccess: () => {
-      onClose();
-    },
-  });
+export function InspectorPanel({
+	missionId,
+	onClose,
+	onOpenAssignment,
+}: InspectorPanelProps) {
+	const t = useTranslations("dispatch.inspector");
+	const router = useRouter();
+	const { activeOrganization } = useActiveOrganization();
+	const { data: mission, isLoading } = useMissionDetail({ missionId });
 
-  const handleEditRoute = () => {
-    if (mission && activeOrganization) {
-      router.push(`/app/${activeOrganization.slug}/quotes/${mission.id}/edit`);
-    }
-  };
+	const { unassign, cancel, isUnassigning, isCancelling } = useMissionActions({
+		onUnassignSuccess: () => {
+			onClose();
+		},
+		onCancelSuccess: () => {
+			onClose();
+		},
+	});
 
-  const handleUnassign = () => {
-    if (missionId) {
-      unassign(missionId);
-    }
-  };
+	const handleEditRoute = () => {
+		if (mission && activeOrganization) {
+			router.push(`/app/${activeOrganization.slug}/quotes/${mission.id}/edit`);
+		}
+	};
 
-  const handleCancel = () => {
-    if (missionId) {
-      cancel(missionId);
-    }
-  };
+	const handleUnassign = () => {
+		if (missionId) {
+			unassign(missionId);
+		}
+	};
 
-  const isOpen = !!missionId;
+	const handleCancel = () => {
+		if (missionId) {
+			cancel(missionId);
+		}
+	};
 
-  // Transform mission to pricing result for TripTransparencyPanel
-  const pricingResult = mission ? missionToPricingResult(mission) : null;
+	const isOpen = !!missionId;
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto sm:max-w-none">
-        
-        {isLoading ? (
-          <div className="space-y-4 mt-6">
-            <SheetHeader className="sr-only">
-                <SheetTitle>{t("title")}</SheetTitle>
-                <SheetDescription>{t("loading")}</SheetDescription>
-            </SheetHeader>
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        ) : mission ? (
-          <div className="space-y-6 pb-10">
-            <SheetHeader>
-               <div className="flex items-center justify-between">
-                 <SheetTitle>{t("title")}</SheetTitle>
-                 <Badge variant={mission.status === "ACCEPTED" ? "default" : "secondary"}>
-                    {mission.status}
-                 </Badge>
-               </div>
-               <SheetDescription>
-                  {missionId ? `#${missionId.substring(0, 8)}` : ""}
-               </SheetDescription>
-            </SheetHeader>
+	// Transform mission to pricing result for TripTransparencyPanel
+	const pricingResult = mission ? missionToPricingResult(mission) : null;
 
-            {/* Actions Bar */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onClick={handleEditRoute}>
-                <EditIcon className="size-3.5 mr-2" />
-                {t("editRoute")}
-              </Button>
-              
-              {mission.assignment?.driverId || mission.assignment?.vehicleId ? (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700">
-                      <UserMinusIcon className="size-3.5 mr-2" />
-                      {t("unassign")}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t("confirmUnassignTitle")}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t("confirmUnassignDescription")}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleUnassign} className="bg-orange-600 hover:bg-orange-700">
-                        {isUnassigning ? t("processing") : t("confirmUnassign")}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              ) : (
-                <div /> // Spacer
-              )}
-            </div>
+	return (
+		<Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+			<SheetContent className="w-[400px] overflow-y-auto sm:w-[540px] sm:max-w-none">
+				{isLoading ? (
+					<div className="mt-6 space-y-4">
+						<SheetHeader className="sr-only">
+							<SheetTitle>{t("title")}</SheetTitle>
+							<SheetDescription>{t("loading")}</SheetDescription>
+						</SheetHeader>
+						<Skeleton className="h-8 w-1/2" />
+						<Skeleton className="h-4 w-1/3" />
+						<Skeleton className="h-64 w-full" />
+						<Skeleton className="h-32 w-full" />
+					</div>
+				) : mission ? (
+					<div className="space-y-6 pb-10">
+						<SheetHeader>
+							<div className="flex items-center justify-between">
+								<SheetTitle>{t("title")}</SheetTitle>
+								<Badge
+									variant={
+										(mission as any).status === "ACCEPTED"
+											? "default"
+											: "secondary"
+									}
+								>
+									{(mission as any).status}
+								</Badge>
+							</div>
+							<SheetDescription>
+								{missionId ? `#${missionId.substring(0, 8)}` : ""}
+							</SheetDescription>
+						</SheetHeader>
 
-            {/* Mission Details Panels */}
-            
-            <TripTransparencyPanel
-                pricingResult={pricingResult}
-                isLoading={isLoading}
-            />
+						{/* Actions Bar */}
+						<div className="grid grid-cols-2 gap-2">
+							<Button variant="outline" size="sm" onClick={handleEditRoute}>
+								<EditIcon className="mr-2 size-3.5" />
+								{t("editRoute")}
+							</Button>
 
-            <MissionContactPanel
-                mission={mission}
-                isLoading={isLoading}
-            />
+							{mission.assignment?.driverId || mission.assignment?.vehicleId ? (
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+										>
+											<UserMinusIcon className="mr-2 size-3.5" />
+											{t("unassign")}
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>
+												{t("confirmUnassignTitle")}
+											</AlertDialogTitle>
+											<AlertDialogDescription>
+												{t("confirmUnassignDescription")}
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+											<AlertDialogAction
+												onClick={handleUnassign}
+												className="bg-orange-600 hover:bg-orange-700"
+											>
+												{isUnassigning ? t("processing") : t("confirmUnassign")}
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
+							) : (
+								<div /> // Spacer
+							)}
+						</div>
 
-            <VehicleAssignmentPanel
-                assignment={mission.assignment || null}
-                isSubcontracted={mission.isSubcontracted ?? false}
-                subcontractor={mission.subcontractor ?? null}
-                isLoading={isLoading}
-                onAssign={
-                    mission && !mission.isSubcontracted
-                        ? onOpenAssignment
-                        : undefined
-                }
-                quoteId={mission.quoteId}
-            />
+						{/* Mission Details Panels */}
 
-            <StaffingCostsSection
-                tripAnalysis={mission.tripAnalysis ?? null}
-                isLoading={isLoading}
-            />
+						<TripTransparencyPanel
+							pricingResult={pricingResult}
+							isLoading={isLoading}
+						/>
 
-            {/* Default Cancel Action at bottom */}
-            <div className="pt-6 border-t">
-               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                   <Button variant="destructive" className="w-full">
-                    <XCircleIcon className="size-4 mr-2" />
-                    {t("cancelMission")}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                   <AlertDialogHeader>
-                      <AlertDialogTitle>{t("confirmCancelTitle")}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t("confirmCancelDescription")}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleCancel} className="bg-destructive hover:bg-destructive/90">
-                         {isCancelling ? t("processing") : t("confirmCancel")}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+						<MissionContactPanel mission={mission} isLoading={isLoading} />
 
-          </div>
-        ) : (
-            <>
-                <SheetHeader className="sr-only">
-                    <SheetTitle>{t("title")}</SheetTitle>
-                    <SheetDescription>{t("missionNotFound")}</SheetDescription>
-                </SheetHeader>
-                <div className="text-center py-10 text-muted-foreground">
-                    {t("missionNotFound")}
-                </div>
-            </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
+						<VehicleAssignmentPanel
+							assignment={mission.assignment || null}
+							isSubcontracted={mission.isSubcontracted ?? false}
+							subcontractor={mission.subcontractor ?? null}
+							isLoading={isLoading}
+							onAssign={
+								mission && !mission.isSubcontracted
+									? onOpenAssignment
+									: undefined
+							}
+							quoteId={mission.quoteId}
+						/>
+
+						<StaffingCostsSection
+							tripAnalysis={mission.tripAnalysis ?? null}
+							isLoading={isLoading}
+						/>
+
+						{/* Default Cancel Action at bottom */}
+						<div className="border-t pt-6">
+							<AlertDialog>
+								<AlertDialogTrigger asChild>
+									<Button variant="destructive" className="w-full">
+										<XCircleIcon className="mr-2 size-4" />
+										{t("cancelMission")}
+									</Button>
+								</AlertDialogTrigger>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>
+											{t("confirmCancelTitle")}
+										</AlertDialogTitle>
+										<AlertDialogDescription>
+											{t("confirmCancelDescription")}
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+										<AlertDialogAction
+											onClick={handleCancel}
+											className="bg-destructive hover:bg-destructive/90"
+										>
+											{isCancelling ? t("processing") : t("confirmCancel")}
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
+						</div>
+					</div>
+				) : (
+					<>
+						<SheetHeader className="sr-only">
+							<SheetTitle>{t("title")}</SheetTitle>
+							<SheetDescription>{t("missionNotFound")}</SheetDescription>
+						</SheetHeader>
+						<div className="py-10 text-center text-muted-foreground">
+							{t("missionNotFound")}
+						</div>
+					</>
+				)}
+			</SheetContent>
+		</Sheet>
+	);
 }
 
 // Helper to convert mission to pricing result (Same as in DispatchPage)
