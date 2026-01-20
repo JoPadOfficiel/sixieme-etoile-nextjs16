@@ -226,42 +226,46 @@ function deserializeTemplateToCart(
 }
 ```
 
-## Implementation Notes
 
-### Phase 1: Schema & API
-1. Add Prisma migration for `isFullQuote` field
-2. Update API route validation schemas
-3. Add filter support to GET endpoint
+## Tasks
 
-### Phase 2: Utility Functions
-1. Create `cartTemplateUtils.ts` with serialize/deserialize
-2. Add comprehensive unit tests
+- [x] Phase 1: Schema & API
+  - [x] Add Prisma migration for `isFullQuote` field
+  - [x] Update API route validation schemas
+  - [x] Add filter support to GET endpoint
+- [x] Phase 2: Utility Functions
+  - [x] Create `cartTemplateUtils.ts` with serialize/deserialize
+  - [x] Add comprehensive unit tests
+- [x] Phase 3: UI Components
+  - [x] Implement `SaveQuoteTemplateDialog`
+  - [x] Implement `LoadQuoteTemplateDialog`
+  - [x] Integrate into `YoloQuoteEditor`
+- [x] Phase 4: Integration & Polish
+  - [x] Add i18n keys
+  - [x] Browser testing
+  - [x] Code review
+  - [x] Add API Integration Tests (AI Code Review Follow-up)
 
-### Phase 3: UI Components
-1. Implement `SaveQuoteTemplateDialog`
-2. Implement `LoadQuoteTemplateDialog`
-3. Integrate into `YoloQuoteEditor`
+## Dev Agent Record
 
-### Phase 4: Integration & Polish
-1. Add i18n keys
-2. Browser testing
-3. Code review
+### File List
 
-## Files to Modify/Create
+- `packages/database/prisma/schema.prisma`
+- `packages/api/src/routes/vtc/block-templates.ts`
+- `apps/web/modules/saas/quotes/hooks/useBlockTemplateActions.ts`
+- `apps/web/modules/saas/quotes/utils/cartTemplateUtils.ts`
+- `apps/web/modules/saas/quotes/components/yolo/SaveQuoteTemplateDialog.tsx`
+- `apps/web/modules/saas/quotes/components/yolo/LoadQuoteTemplateDialog.tsx`
+- `apps/web/modules/saas/quotes/components/yolo/YoloQuoteEditor.tsx`
+- `packages/i18n/translations/fr.json`
+- `apps/web/modules/saas/quotes/utils/__tests__/cartTemplateUtils.test.ts`
+- `packages/api/src/routes/vtc/__tests__/block-templates.test.ts`
 
-| File | Action | Description |
-|------|--------|-------------|
-| `packages/database/prisma/schema.prisma` | MODIFY | Add `isFullQuote` field |
-| `packages/api/src/routes/vtc/block-templates.ts` | MODIFY | Add schema field + filter |
-| `apps/web/modules/saas/quotes/hooks/useBlockTemplateActions.ts` | MODIFY | Add isFullQuote support |
-| `apps/web/modules/saas/quotes/utils/cartTemplateUtils.ts` | CREATE | Serialization utilities |
-| `apps/web/modules/saas/quotes/components/yolo/SaveQuoteTemplateDialog.tsx` | CREATE | Save dialog |
-| `apps/web/modules/saas/quotes/components/yolo/LoadQuoteTemplateDialog.tsx` | CREATE | Load dialog |
-| `apps/web/modules/saas/quotes/components/yolo/YoloQuoteEditor.tsx` | MODIFY | Add toolbar buttons |
-| `packages/i18n/translations/fr.json` | MODIFY | Add i18n keys |
-| `packages/i18n/translations/en.json` | MODIFY | Add i18n keys |
-| `apps/web/modules/saas/quotes/utils/__tests__/cartTemplateUtils.test.ts` | CREATE | Unit tests |
+### Change Log
+
+- **2026-01-20**: Implemented full quote template schema, API updates, utility functions with unit tests, and UI components (Save/Load dialogs). Added integration in YoloQuoteEditor.
+- **2026-01-20**: (AI Review) Added missing integration tests for the API and verified i18n keys.
 
 ---
 
-**Story Ready for Development** ✅
+**Story Done** ✅
