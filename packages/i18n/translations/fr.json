@@ -439,6 +439,7 @@
 			"noPlaceholders": "Aucun placeholder trouvé dans les lignes de facture.",
 			"allResolved": "Tous les placeholders ont déjà été résolus.",
 			"noMissionContext": "Aucune donnée de mission disponible pour cette facture.",
+			"noMissionLinked": "Aucune mission liée à cette facture",
 			"missionData": "Données de mission",
 			"original": "Original",
 			"finalize": "Finaliser",

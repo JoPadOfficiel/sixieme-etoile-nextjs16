@@ -13,7 +13,13 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, EyeIcon, Loader2Icon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, EyeIcon, InfoIcon, Loader2Icon, SaveIcon } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@ui/components/tooltip";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useInvoiceDetail } from "../hooks/useInvoiceDetail";
 import { useMissionContext } from "../hooks/useMissionContext";
@@ -245,16 +251,31 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
               </div>
               <div className="flex items-center gap-2">
                 {/* Story 28.10: Placeholder Preview/Finalize buttons */}
-                {missionContextData?.hasMission && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreviewOpen(true)}
-                  >
-                    <EyeIcon className="size-4 mr-1" />
-                    {t("invoices.placeholders.preview")}
-                  </Button>
-                )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPreviewOpen(true)}
+                          disabled={!missionContextData?.hasMission}
+                        >
+                          <EyeIcon className="size-4 mr-1" />
+                          {t("invoices.placeholders.preview")}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!missionContextData?.hasMission && (
+                      <TooltipContent>
+                        <p className="flex items-center gap-1">
+                          <InfoIcon className="size-3" />
+                          {t("invoices.placeholders.noMissionLinked")}
+                        </p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 <AddInvoiceFeeDialog
                   invoiceId={invoiceId}
                   disabled={updateMutation.isPending}

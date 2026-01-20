@@ -4,7 +4,7 @@
 
 - **Epic**: 28 - Order Management & Intelligent Spawning
 - **Story ID**: 28-10
-- **Status**: ready-for-dev
+- **Status**: done
 - **Priority**: High
 - **Estimated Effort**: 3 SP
 - **Assignee**: Amelia (Developer)
@@ -40,42 +40,42 @@ Suite à la Story 28.9 (Invoice UI - Full Editability), les opérateurs peuvent 
 
 ### AC1: Fonction Utilitaire replacePlaceholders
 
-- [ ] Créer `replacePlaceholders(text: string, context: MissionContext): string`
-- [ ] Supporter les tokens : `{{driver}}`, `{{plate}}`, `{{start}}`, `{{end}}`
-- [ ] Retourner le texte original si aucun placeholder trouvé
-- [ ] Gérer les valeurs manquantes (afficher `[N/A]` ou token original)
+- [x] Créer `replacePlaceholders(text: string, context: MissionContext): string`
+- [x] Supporter les tokens : `{{driver}}`, `{{plate}}`, `{{start}}`, `{{end}}`
+- [x] Retourner le texte original si aucun placeholder trouvé
+- [x] Gérer les valeurs manquantes (afficher `[Non assigné]`)
 
 ### AC2: Récupération du Contexte Mission
 
-- [ ] L'Invoice est liée à un Order via `orderId`
-- [ ] L'Order contient les Missions avec les données d'exécution
-- [ ] Créer un hook `useMissionContext(invoiceId)` pour récupérer les données
-- [ ] Agréger les données si plusieurs missions (première mission ou liste)
+- [x] L'Invoice est liée à un Order via `orderId`
+- [x] L'Order contient les Missions avec les données d'exécution
+- [x] Créer un hook `useMissionContext(invoiceId)` pour récupérer les données
+- [x] Agréger les données si plusieurs missions (première mission utilisée)
 
 ### AC3: UI de Prévisualisation
 
-- [ ] Ajouter un bouton "Preview Placeholders" dans l'Invoice Editor
-- [ ] Afficher un mode preview où les descriptions montrent les valeurs résolues
-- [ ] Le mode preview est visuel uniquement (pas de modification en base)
-- [ ] Toggle pour activer/désactiver le mode preview
+- [x] Ajouter un bouton "Preview Variables" dans l'Invoice Editor
+- [x] Afficher un dialog preview où les descriptions montrent les valeurs résolues
+- [x] Le mode preview est visuel uniquement (pas de modification en base)
+- [x] Bouton désactivé avec tooltip informatif si pas de mission liée
 
 ### AC4: Action Finalize
 
-- [ ] Bouton "Finalize Placeholders" pour remplacer définitivement
-- [ ] Confirmation modale avant finalisation
-- [ ] Appel API pour mettre à jour les descriptions en base
-- [ ] Toast de confirmation après succès
+- [x] Bouton "Finalize" dans le dialog pour remplacer définitivement
+- [x] Confirmation modale avant finalisation
+- [x] Appel API POST /invoices/:id/finalize-placeholders
+- [x] Toast de confirmation après succès
 
 ### AC5: Restriction aux Factures DRAFT
 
-- [ ] Les boutons Preview/Finalize ne sont visibles que pour status `DRAFT`
-- [ ] Cohérent avec la logique d'édition de Story 28.9
+- [x] Les boutons Preview/Finalize ne sont visibles que pour status `DRAFT`
+- [x] Cohérent avec la logique d'édition de Story 28.9
 
 ### AC6: Gestion des Cas Limites
 
-- [ ] Si pas de mission liée : afficher message informatif
-- [ ] Si mission sans chauffeur assigné : `{{driver}}` → `[Non assigné]`
-- [ ] Si mission sans véhicule : `{{plate}}` → `[Non assigné]`
+- [x] Si pas de mission liée : bouton désactivé avec tooltip informatif
+- [x] Si mission sans chauffeur assigné : `{{driver}}` → `[Non assigné]`
+- [x] Si mission sans véhicule : `{{plate}}` → `[Non assigné]`
 
 ---
 

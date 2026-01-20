@@ -1056,7 +1056,7 @@ export const invoicesRouter = new Hono()
 			const driverName = firstMission.driver
 				? `${firstMission.driver.firstName} ${firstMission.driver.lastName}`
 				: null;
-			const vehiclePlate = firstMission.vehicle?.licensePlate ?? null;
+			const vehiclePlate = firstMission.vehicle?.registrationNumber ?? null;
 			const startAt = firstMission.startAt;
 			const endAt = firstMission.endAt;
 

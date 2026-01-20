@@ -441,6 +441,7 @@
 			"noPlaceholders": "No placeholders found in invoice lines.",
 			"allResolved": "All placeholders have already been resolved.",
 			"noMissionContext": "No mission data available for this invoice.",
+			"noMissionLinked": "No mission linked to this invoice",
 			"missionData": "Mission Data",
 			"original": "Original",
 			"finalize": "Finalize",
