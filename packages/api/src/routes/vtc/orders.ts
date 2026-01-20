@@ -488,37 +488,44 @@ export const ordersRouter = new Hono()
 			}
 
 			// Story 28.8: Generate invoice when transitioning to INVOICED
-			if (targetStatus === "INVOICED" && currentStatus !== "INVOICED") {
+			// HIGH-2/3 FIX: InvoiceFactory now handles idempotence (returns existing invoice if present)
+			// The factory checks for existing invoices before creating new ones
+			if (targetStatus === "INVOICED") {
 				try {
 					const result = await InvoiceFactory.createInvoiceFromOrder(id, organizationId);
-					console.log(
-						`[ORDER_AUDIT] Order ${id}: Generated invoice ${result.invoice?.number} with ${result.linesCreated} lines on INVOICED`
-					);
+					
+					if (result.warning?.includes("already exists")) {
+						console.log(
+							`[ORDER_AUDIT] Order ${id}: Invoice already exists (${result.invoice?.number}) - idempotent return`
+						);
+					} else {
+						console.log(
+							`[ORDER_AUDIT] Order ${id}: Generated invoice ${result.invoice?.number} with ${result.linesCreated} lines on INVOICED`
+						);
+					}
 
-					// Refetch order to include newly created invoice
-					if (result.invoice) {
-						const refreshedOrder = await db.order.findFirst({
-							where: { id, organizationId },
-							include: {
-								contact: true,
-								quotes: true,
-								missions: {
-									orderBy: { startAt: "asc" },
-									include: {
-										vehicle: true,
-										driver: true,
-									},
-								},
-								invoices: {
-									orderBy: { issueDate: "desc" },
-									include: {
-										lines: { orderBy: { sortOrder: "asc" } },
-									},
+					// Refetch order to include invoice (new or existing)
+					const refreshedOrder = await db.order.findFirst({
+						where: { id, organizationId },
+						include: {
+							contact: true,
+							quotes: true,
+							missions: {
+								orderBy: { startAt: "asc" },
+								include: {
+									vehicle: true,
+									driver: true,
 								},
 							},
-						});
-						return c.json(refreshedOrder);
-					}
+							invoices: {
+								orderBy: { issueDate: "desc" },
+								include: {
+									lines: { orderBy: { sortOrder: "asc" } },
+								},
+							},
+						},
+					});
+					return c.json(refreshedOrder);
 				} catch (error) {
 					// Log error but don't fail the transition
 					// Invoice can be created manually if generation fails

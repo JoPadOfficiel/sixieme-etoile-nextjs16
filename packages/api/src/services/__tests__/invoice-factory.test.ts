@@ -66,7 +66,7 @@ describe("InvoiceFactory - Story 28.8", () => {
 		vi.clearAllMocks();
 	});
 
-	// Sample data for tests
+	// Sample data for tests - with QuoteLines for deep copy testing
 	const mockOrder = {
 		id: "order_123",
 		organizationId: "org_123",
@@ -95,14 +95,31 @@ describe("InvoiceFactory - Story 28.8", () => {
 				costBreakdown: { basePrice: 120, margin: 30 },
 				tripAnalysis: null,
 				vehicleCategory: { id: "cat_1", name: "Berline" },
+				// QuoteLines for deep copy (Story 26.1 format)
 				lines: [
 					{
-						id: "line_1",
-						description: "Transfer CDG",
-						quantity: 1,
+						id: "quoteline_1",
+						label: "Transfert CDG → Paris",
+						description: "Berline avec chauffeur",
+						quantity: { toString: () => "1" },
 						unitPrice: { toString: () => "150.00" },
+						totalPrice: { toString: () => "150.00" },
 						vatRate: { toString: () => "10" },
+						type: "CALCULATED",
 						sortOrder: 0,
+						displayData: { unitLabel: "trajet" },
+					},
+					{
+						id: "quoteline_2",
+						label: "Attente 30min",
+						description: null,
+						quantity: { toString: () => "1" },
+						unitPrice: { toString: () => "25.00" },
+						totalPrice: { toString: () => "25.00" },
+						vatRate: { toString: () => "20" },
+						type: "OPTIONAL_FEE",
+						sortOrder: 1,
+						displayData: null,
 					},
 				],
 				stayDays: [],
@@ -112,6 +129,7 @@ describe("InvoiceFactory - Story 28.8", () => {
 				stayEndDate: null,
 			},
 		],
+		invoices: [], // No existing invoice
 	};
 
 	const mockPartnerOrder = {
@@ -133,8 +151,14 @@ describe("InvoiceFactory - Story 28.8", () => {
 		quotes: [],
 	};
 
+	// Order with existing invoice (for idempotence test)
+	const mockOrderWithExistingInvoice = {
+		...mockOrder,
+		invoices: [{ id: "existing_inv_123" }],
+	};
+
 	describe("createInvoiceFromOrder", () => {
-		it("UT-28.8.1: creates invoice with correct line count", async () => {
+		it("UT-28.8.1: creates invoice with correct line count from QuoteLines", async () => {
 			// Arrange
 			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
 			vi.mocked(db.invoice.findFirst)
@@ -142,7 +166,10 @@ describe("InvoiceFactory - Story 28.8", () => {
 				.mockResolvedValue({
 					id: "inv_123",
 					number: "INV-2026-0001",
-					lines: [{ id: "invline_1", description: "Transport" }],
+					lines: [
+						{ id: "invline_1", description: "Transfert CDG → Paris" },
+						{ id: "invline_2", description: "Attente 30min" },
+					],
 				} as any);
 
 			// Act
@@ -153,7 +180,7 @@ describe("InvoiceFactory - Story 28.8", () => {
 
 			// Assert
 			expect(result.invoice).toBeDefined();
-			expect(result.linesCreated).toBeGreaterThan(0);
+			expect(result.linesCreated).toBe(2); // 2 QuoteLines = 2 InvoiceLines
 			expect(db.$transaction).toHaveBeenCalled();
 		});
 
@@ -306,6 +333,82 @@ describe("InvoiceFactory - Story 28.8", () => {
 			await expect(
 				InvoiceFactory.createInvoiceFromOrder("nonexistent", "org_123")
 			).rejects.toThrow("Order nonexistent not found");
+		});
+
+		it("UT-28.8.7: returns existing invoice when order already has one (idempotence)", async () => {
+			// Arrange: Order with existing invoice
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrderWithExistingInvoice as any);
+			vi.mocked(db.invoice.findFirst).mockResolvedValue({
+				id: "existing_inv_123",
+				number: "INV-2026-0042",
+				lines: [{ id: "line_1" }, { id: "line_2" }],
+			} as any);
+
+			// Act
+			const result = await InvoiceFactory.createInvoiceFromOrder(
+				"order_123",
+				"org_123"
+			);
+
+			// Assert: Should return existing invoice, not create new one
+			expect(result.invoice?.id).toBe("existing_inv_123");
+			expect(result.warning).toContain("already exists");
+			expect(db.$transaction).not.toHaveBeenCalled(); // No transaction = no new invoice
+		});
+
+		it("UT-28.8.8: deep copies QuoteLine data with correct VAT calculation", async () => {
+			// Arrange
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			
+			// Capture the transaction callback to verify payload
+			let capturedInvoiceLines: any[] = [];
+			vi.mocked(db.$transaction).mockImplementation(async (fn: any) => {
+				const txMock = {
+					invoice: {
+						create: vi.fn().mockResolvedValue({
+							id: "inv_new",
+							number: "INV-2026-0001",
+						}),
+					},
+					invoiceLine: {
+						createMany: vi.fn().mockImplementation(({ data }) => {
+							capturedInvoiceLines = data;
+							return Promise.resolve({ count: data.length });
+						}),
+					},
+				};
+				return fn(txMock);
+			});
+
+			vi.mocked(db.invoice.findFirst)
+				.mockResolvedValueOnce(null) // For generateInvoiceNumber
+				.mockResolvedValue({
+					id: "inv_new",
+					number: "INV-2026-0001",
+					lines: capturedInvoiceLines,
+				} as any);
+
+			// Act
+			await InvoiceFactory.createInvoiceFromOrder("order_123", "org_123");
+
+			// Assert: Verify deep-copied data
+			expect(capturedInvoiceLines).toHaveLength(2);
+			
+			// First line: Transport (150€, 10% VAT)
+			expect(capturedInvoiceLines[0].description).toContain("Transfert CDG");
+			expect(capturedInvoiceLines[0].unitPriceExclVat).toBe(150);
+			expect(capturedInvoiceLines[0].vatRate).toBe(10);
+			expect(capturedInvoiceLines[0].totalExclVat).toBe(150);
+			expect(capturedInvoiceLines[0].totalVat).toBe(15); // 150 * 10%
+			expect(capturedInvoiceLines[0].lineType).toBe("SERVICE");
+
+			// Second line: Optional fee (25€, 20% VAT)
+			expect(capturedInvoiceLines[1].description).toContain("Attente 30min");
+			expect(capturedInvoiceLines[1].unitPriceExclVat).toBe(25);
+			expect(capturedInvoiceLines[1].vatRate).toBe(20);
+			expect(capturedInvoiceLines[1].totalExclVat).toBe(25);
+			expect(capturedInvoiceLines[1].totalVat).toBe(5); // 25 * 20%
+			expect(capturedInvoiceLines[1].lineType).toBe("OPTIONAL_FEE");
 		});
 	});
 

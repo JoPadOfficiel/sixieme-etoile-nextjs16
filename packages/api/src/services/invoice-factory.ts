@@ -77,11 +77,34 @@ export class InvoiceFactory {
 					orderBy: { createdAt: "desc" },
 					take: 1, // Use most recent accepted quote
 				},
+				invoices: {
+					take: 1, // Check if invoice already exists
+				},
 			},
 		});
 
 		if (!order) {
 			throw new Error(`Order ${orderId} not found`);
+		}
+
+		// MEDIUM-4 FIX: Check if invoice already exists for this order
+		if (order.invoices && order.invoices.length > 0) {
+			const existingInvoice = await db.invoice.findFirst({
+				where: { id: order.invoices[0].id },
+				include: {
+					contact: true,
+					endCustomer: true,
+					lines: { orderBy: { sortOrder: "asc" } },
+				},
+			});
+			console.log(
+				`[INVOICE_FACTORY] Order ${orderId} already has invoice ${existingInvoice?.number} - returning existing`
+			);
+			return {
+				invoice: existingInvoice,
+				linesCreated: existingInvoice?.lines?.length ?? 0,
+				warning: "Invoice already exists for this order",
+			};
 		}
 
 		const quote = order.quotes[0];
@@ -101,8 +124,14 @@ export class InvoiceFactory {
 					? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
 					: null;
 
-			if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
-				// STAY trip type - deep copy from stayDays
+			// HIGH-1 FIX: Deep copy QuoteLines directly (AC2/AC3/AC4)
+			// Priority: Use QuoteLines if available, fallback to legacy buildInvoiceLines
+			if (quote.lines && quote.lines.length > 0) {
+				// Deep copy each QuoteLine to InvoiceLine
+				invoiceLines = this.deepCopyQuoteLinesToInvoiceLines(quote.lines, endCustomerName);
+				invoiceNotes = `Facture générée depuis devis - Order ${order.reference}`;
+			} else if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+				// STAY trip type - deep copy from stayDays (legacy path)
 				const stayDaysInput: StayDayInput[] = quote.stayDays.map((day) => ({
 					dayNumber: day.dayNumber,
 					date: day.date,
@@ -133,7 +162,7 @@ export class InvoiceFactory {
 					: "N/A";
 				invoiceNotes = `Séjour multi-jours (${totalDays} jours) du ${startDate} au ${endDate} - Order ${order.reference}`;
 			} else {
-				// Standard trip types - deep copy from quote
+				// Standard trip types - fallback to legacy buildInvoiceLines
 				const finalPrice = Number(quote.finalPrice);
 				const transportAmount = this.calculateTransportAmount(finalPrice, parsedRules);
 
@@ -255,19 +284,86 @@ export class InvoiceFactory {
 	}
 
 	/**
+	 * HIGH-1 FIX: Deep copy QuoteLines directly to InvoiceLines
+	 * This ensures AC2/AC3/AC4 compliance - complete isolation between Quote and Invoice
+	 */
+	private static deepCopyQuoteLinesToInvoiceLines(
+		quoteLines: Array<{
+			id: string;
+			label: string;
+			description: string | null;
+			quantity: { toString(): string } | number;
+			unitPrice: { toString(): string } | number;
+			totalPrice: { toString(): string } | number;
+			vatRate: { toString(): string } | number;
+			type: string;
+			sortOrder: number;
+			displayData?: unknown;
+		}>,
+		endCustomerName: string | null
+	): InvoiceLineInput[] {
+		const TRANSPORT_VAT_RATE = 10;
+		const DEFAULT_ANCILLARY_VAT_RATE = 20;
+
+		return quoteLines.map((line, index) => {
+			const quantity = typeof line.quantity === "number" ? line.quantity : Number(line.quantity.toString());
+			const unitPrice = typeof line.unitPrice === "number" ? line.unitPrice : Number(line.unitPrice.toString());
+			const totalPrice = typeof line.totalPrice === "number" ? line.totalPrice : Number(line.totalPrice.toString());
+			const vatRate = typeof line.vatRate === "number" ? line.vatRate : Number(line.vatRate.toString());
+
+			// Calculate VAT amounts
+			const totalExclVat = Math.round(totalPrice * 100) / 100;
+			const totalVat = Math.round((totalExclVat * vatRate / 100) * 100) / 100;
+
+			// Build description with end customer if applicable
+			let description = line.label;
+			if (line.description) {
+				description += ` - ${line.description}`;
+			}
+			if (endCustomerName && index === 0) {
+				description += ` (Client: ${endCustomerName})`;
+			}
+
+			// Map QuoteLine type to InvoiceLine type
+			let lineType: "SERVICE" | "OPTIONAL_FEE" | "PROMOTION_ADJUSTMENT" | "OTHER" = "SERVICE";
+			if (line.type === "OPTIONAL_FEE") {
+				lineType = "OPTIONAL_FEE";
+			} else if (line.type === "PROMOTION") {
+				lineType = "PROMOTION_ADJUSTMENT";
+			} else if (line.type === "MANUAL") {
+				lineType = "OTHER";
+			}
+
+			return {
+				lineType,
+				description,
+				quantity,
+				unitPriceExclVat: unitPrice,
+				vatRate,
+				totalExclVat,
+				totalVat,
+				sortOrder: line.sortOrder ?? index,
+			};
+		});
+	}
+
+	/**
 	 * Calculate transport amount from final price minus fees/promos
-	 * This extracts the base transport cost for the main invoice line
+	 * MEDIUM-5 FIX: Account for quantity in fee/promo calculations
 	 */
 	private static calculateTransportAmount(
 		finalPrice: number,
-		parsedRules: { optionalFees: { amount: number }[]; promotions: { discountAmount: number }[] }
+		parsedRules: { optionalFees: { amount: number; quantity?: number }[]; promotions: { discountAmount: number; quantity?: number }[] }
 	): number {
-		// Sum of optional fees
-		const totalFees = parsedRules.optionalFees.reduce((sum, fee) => sum + fee.amount, 0);
+		// Sum of optional fees (with quantity)
+		const totalFees = parsedRules.optionalFees.reduce(
+			(sum, fee) => sum + (fee.amount * (fee.quantity ?? 1)),
+			0
+		);
 
-		// Sum of promotions (discounts)
+		// Sum of promotions (with quantity)
 		const totalDiscounts = parsedRules.promotions.reduce(
-			(sum, promo) => sum + promo.discountAmount,
+			(sum, promo) => sum + (promo.discountAmount * (promo.quantity ?? 1)),
 			0
 		);
 

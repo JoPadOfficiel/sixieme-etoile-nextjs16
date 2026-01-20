@@ -1,7 +1,7 @@
 # Story 28.8: Invoice Generation - Detached Snapshot
 
 **Epic:** Epic 28 – Order Management & Intelligent Spawning  
-**Status:** review  
+**Status:** done  
 **Priority:** High  
 **Estimated Effort:** 3 Story Points  
 **Created:** 2026-01-20  
@@ -452,30 +452,32 @@ if (targetStatus === "INVOICED" && currentStatus !== "INVOICED") {
 - [x] Orders API triggers InvoiceFactory on INVOICED transition
 - [x] Unit tests verify bidirectional isolation (Quote ↔ Invoice)
 - [x] Database verification confirms data duplication
-- [ ] Code review completed
+- [x] Code review completed
 
 ---
 
 ## Test Results (2026-01-20)
 
-### Vitest Unit Tests ✅ (11/11 passed)
+### Vitest Unit Tests ✅ (13/13 passed)
 
 ```
- ✓ UT-28.8.1: creates invoice with correct line count
+ ✓ UT-28.8.1: creates invoice with correct line count from QuoteLines
  ✓ UT-28.8.2: deep copy - QuoteLine price change doesn't affect Invoice
  ✓ UT-28.8.3: deep copy - InvoiceLine price change doesn't affect Quote
  ✓ UT-28.8.4: invoice totals calculated correctly
  ✓ UT-28.8.5: commission calculated for partner contacts
  ✓ UT-28.8.6: order without quote creates empty invoice with warning
  ✓ throws error when order not found
+ ✓ UT-28.8.7: returns existing invoice when order already has one (idempotence)
+ ✓ UT-28.8.8: deep copies QuoteLine data with correct VAT calculation
  ✓ generates sequential invoice numbers
  ✓ increments invoice number when previous exists
  ✓ uses 30 days default for private clients
  ✓ uses partner payment terms when available
 
 Test Files  1 passed (1)
-     Tests  11 passed (11)
-  Duration  336ms
+     Tests  13 passed (13)
+  Duration  284ms
 ```
 
 ### Files Modified
@@ -483,6 +485,24 @@ Test Files  1 passed (1)
 1. `packages/api/src/services/invoice-factory.ts` - **NEW** - InvoiceFactory service
 2. `packages/api/src/routes/vtc/orders.ts` - **UPDATED** - Integration on INVOICED transition
 3. `packages/api/src/services/__tests__/invoice-factory.test.ts` - **NEW** - Unit tests
+
+---
+
+## Code Review Fixes (2026-01-20)
+
+### Issues Fixed
+
+| ID       | Severity | Issue                                             | Fix                                                         |
+| -------- | -------- | ------------------------------------------------- | ----------------------------------------------------------- |
+| HIGH-1   | 🔴       | QuoteLines not deep-copied (only finalPrice used) | Added `deepCopyQuoteLinesToInvoiceLines()` method           |
+| HIGH-2/3 | 🔴       | Transition not atomic/idempotent                  | InvoiceFactory checks existing invoice first                |
+| MEDIUM-4 | 🟡       | No check for existing invoice                     | Added `order.invoices` check before creation                |
+| MEDIUM-5 | 🟡       | Quantity ignored in fee/promo calc                | Added `quantity` multiplier in `calculateTransportAmount()` |
+
+### New Tests Added
+
+- `UT-28.8.7`: Idempotence - returns existing invoice
+- `UT-28.8.8`: Deep copy payload verification with VAT calculation
 
 ---
 
