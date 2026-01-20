@@ -16,7 +16,7 @@ import { TooltipProvider } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { useTranslations } from "next-intl";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { GanttDriverRow } from "./GanttDriverRow";
 import { GanttDriverSidebar } from "./GanttDriverSidebar";
 import { GanttEmptyState } from "./GanttEmptyState";
@@ -69,8 +69,8 @@ export const GanttTimeline = memo(function GanttTimeline({
 		zoomPercent,
 	} = useGanttZoom({ initialZoom: initialPixelsPerHour });
 
-	// Track the selected date for navigation
-	const selectedDateRef = useRef<Date>(startTime);
+	// State for selected date (updated when user navigates)
+	const [selectedDate, setSelectedDate] = useState<Date>(startTime);
 
 	// Time scale configuration - now uses dynamic pixelsPerHour from zoom state
 	const { config } = useGanttTimeScale({
@@ -93,14 +93,17 @@ export const GanttTimeline = memo(function GanttTimeline({
 	});
 
 	// Calculate current center time for scroll preservation during zoom
+	// Uses prevPixelsPerHourRef to get the correct position before zoom change
 	const getCurrentCenterTime = useCallback(() => {
 		if (!contentRef.current) return new Date();
 		const scrollLeft = contentRef.current.scrollLeft;
 		const containerWidth = contentRef.current.clientWidth;
 		const centerX = scrollLeft + containerWidth / 2;
-		const minutesFromStart = (centerX / pixelsPerHour) * 60;
+		// Use the previous pixelsPerHour value to calculate correct time position
+		const prevPPH = prevPixelsPerHourRef.current;
+		const minutesFromStart = (centerX / prevPPH) * 60;
 		return new Date(startTime.getTime() + minutesFromStart * 60 * 1000);
-	}, [contentRef, pixelsPerHour, startTime]);
+	}, [contentRef, startTime]);
 
 	// Scroll to a specific time (used after zoom changes)
 	const scrollToTime = useCallback(
@@ -161,13 +164,13 @@ export const GanttTimeline = memo(function GanttTimeline({
 		const containerWidth = contentRef.current?.clientWidth || 0;
 		const scrollPosition = Math.max(0, nowX - containerWidth / 2);
 		scrollTo(scrollPosition);
-		selectedDateRef.current = new Date();
+		setSelectedDate(new Date());
 	}, [scrollToNow, scrollTo, contentRef]);
 
-	// Handle date navigation (Story 27.12)
-	const handleNavigateToDate = useCallback(
+	// Update selected date when navigating
+	const handleNavigateToDateWithState = useCallback(
 		(date: Date) => {
-			selectedDateRef.current = date;
+			setSelectedDate(date);
 			const dayStart = startOfDay(date);
 			// If the selected date is within our range, scroll to it
 			if (dayStart >= startTime && dayStart <= endTime) {
@@ -176,18 +179,6 @@ export const GanttTimeline = memo(function GanttTimeline({
 		},
 		[startTime, endTime, scrollToTime],
 	);
-
-	// Handle zoom with scroll preservation
-	const handleZoomIn = useCallback(() => {
-		zoomIn();
-	}, [zoomIn]);
-
-	const handleZoomOut = useCallback(() => {
-		zoomOut();
-	}, [zoomOut]);
-
-	// Current selected date for the date picker
-	const selectedDate = useMemo(() => selectedDateRef.current, []);
 
 	// Empty state
 	if (drivers.length === 0) {
@@ -218,10 +209,10 @@ export const GanttTimeline = memo(function GanttTimeline({
 						pixelsPerHour={pixelsPerHour}
 						canZoomIn={canZoomIn}
 						canZoomOut={canZoomOut}
-						onZoomIn={handleZoomIn}
-						onZoomOut={handleZoomOut}
+						onZoomIn={zoomIn}
+						onZoomOut={zoomOut}
 						onJumpToNow={handleJumpToNow}
-						onNavigateToDate={handleNavigateToDate}
+						onNavigateToDate={handleNavigateToDateWithState}
 						selectedDate={selectedDate}
 						zoomLabel={zoomLabel}
 						zoomPercent={zoomPercent}

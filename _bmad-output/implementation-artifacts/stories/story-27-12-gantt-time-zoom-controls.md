@@ -4,7 +4,7 @@
 - **Epic**: 27 - Unified Dispatch (Cockpit)
 - **Story ID**: 27.12
 - **Priority**: Medium
-- **Status**: review
+- **Status**: done
 - **Created**: 2026-01-20
 - **Completed**: 2026-01-20
 - **Branch**: `feature/27-12-gantt-zoom`

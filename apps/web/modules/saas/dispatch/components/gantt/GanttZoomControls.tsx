@@ -22,11 +22,12 @@ import {
 	TooltipTrigger,
 } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { type Locale, format } from "date-fns";
+import { enUS, fr } from "date-fns/locale";
 import { Calendar, Clock, ZoomIn, ZoomOut } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { memo } from "react";
+import { useLocale } from "next-intl";
+import { memo, useMemo } from "react";
 
 interface GanttZoomControlsProps {
 	/** Current pixels per hour value */
@@ -53,6 +54,12 @@ interface GanttZoomControlsProps {
 	className?: string;
 }
 
+/** Map of locale codes to date-fns locale objects */
+const localeMap: Record<string, Locale> = {
+	fr: fr,
+	en: enUS,
+};
+
 export const GanttZoomControls = memo(function GanttZoomControls({
 	pixelsPerHour,
 	canZoomIn,
@@ -67,6 +74,12 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 	className,
 }: GanttZoomControlsProps) {
 	const t = useTranslations("dispatch.gantt");
+	const localeCode = useLocale();
+
+	// Get the appropriate date-fns locale, defaulting to French
+	const dateFnsLocale = useMemo(() => {
+		return localeMap[localeCode] || fr;
+	}, [localeCode]);
 
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
@@ -156,7 +169,7 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 							<PopoverTrigger asChild>
 								<Button variant="outline" size="sm" className="h-8">
 									<Calendar className="mr-1 h-4 w-4" />
-									{format(selectedDate, "dd MMM", { locale: fr })}
+									{format(selectedDate, "dd MMM", { locale: dateFnsLocale })}
 								</Button>
 							</PopoverTrigger>
 						</TooltipTrigger>
@@ -170,7 +183,7 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 							selected={selectedDate}
 							onSelect={(date) => date && onNavigateToDate(date)}
 							initialFocus
-							locale={fr}
+							locale={dateFnsLocale}
 						/>
 					</PopoverContent>
 				</Popover>
