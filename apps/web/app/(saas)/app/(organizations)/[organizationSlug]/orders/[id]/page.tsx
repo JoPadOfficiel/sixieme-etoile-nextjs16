@@ -3,6 +3,7 @@ import { db } from "@repo/database";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+
 interface OrderDetailPageProps {
 	params: Promise<{
 		organizationSlug: string;
@@ -29,7 +30,8 @@ async function getOrder(id: string, organizationSlug: string) {
 		return null;
 	}
 
-	const order = await db.order.findFirst({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const order = await (db as any).order.findFirst({
 		where: {
 			id,
 			organizationId: organization.id,
@@ -38,7 +40,7 @@ async function getOrder(id: string, organizationSlug: string) {
 			contact: {
 				select: {
 					id: true,
-					name: true,
+					displayName: true,
 					email: true,
 				},
 			},

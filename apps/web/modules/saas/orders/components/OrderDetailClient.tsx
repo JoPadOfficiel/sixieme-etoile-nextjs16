@@ -24,7 +24,7 @@ import { useTranslations } from "next-intl";
 
 interface OrderContact {
 	id: string;
-	name: string;
+	displayName: string;
 	email: string | null;
 }
 
@@ -134,7 +134,7 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
 					<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground ml-11">
 						<div className="flex items-center gap-1.5">
 							<UserIcon className="h-4 w-4" />
-							<span>{order.contact.name}</span>
+							<span>{order.contact.displayName}</span>
 						</div>
 						<div className="flex items-center gap-1.5">
 							<CalendarIcon className="h-4 w-4" />

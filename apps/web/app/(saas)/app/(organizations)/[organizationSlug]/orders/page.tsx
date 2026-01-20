@@ -2,6 +2,7 @@ import { OrdersListClient } from "@saas/orders/components/OrdersListClient";
 import { db } from "@repo/database";
 import { getTranslations } from "next-intl/server";
 
+
 interface OrdersListPageProps {
 	params: Promise<{
 		organizationSlug: string;
@@ -26,7 +27,8 @@ async function getOrders(organizationSlug: string) {
 		return [];
 	}
 
-	const orders = await db.order.findMany({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const orders = await (db as any).order.findMany({
 		where: { organizationId: organization.id },
 		orderBy: { createdAt: "desc" },
 		take: 50,
@@ -34,12 +36,13 @@ async function getOrders(organizationSlug: string) {
 			contact: {
 				select: {
 					id: true,
-					name: true,
+					displayName: true,
 				},
 			},
 		},
 	});
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return orders.map((order) => ({
 		id: order.id,
 		reference: order.reference,

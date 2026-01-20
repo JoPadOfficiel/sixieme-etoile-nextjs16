@@ -23,7 +23,7 @@ interface OrderListItem {
 	createdAt: string;
 	contact: {
 		id: string;
-		name: string;
+		displayName: string;
 	};
 }
 
@@ -97,7 +97,7 @@ export function OrdersListClient({ orders }: OrdersListClientProps) {
 							</CardHeader>
 							<CardContent>
 								<div className="flex items-center justify-between text-sm text-muted-foreground">
-									<span>{order.contact.name}</span>
+									<span>{order.contact.displayName}</span>
 									<span>
 										{format(new Date(order.createdAt), "d MMM yyyy", { locale: fr })}
 									</span>
