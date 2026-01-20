@@ -87,70 +87,58 @@ graph TD
 
 ---
 
-## 🚀 EXECUTION DASHBOARD (CLICK & COPY)
+## 🚀 EXECUTION DASHBOARD (BACKLOG FOCUS)
 
-### 🛑 PHASE 1: CRITICAL INFRASTRUCTURE
-*Run this on your **BEST** Agent (Antigravity/Windsurf) before anything else.*
+### 🛑 PHASE 1: REMAINING INFRASTRUCTURE (Epic 26/27)
+*Critical items remaining before full rollout.*
 
 | Order | Story | Agent | Link to Prompt |
 | :--- | :--- | :--- | :--- |
-| **1** | **26.1 Schema** | 🧠 Big | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-261-database-schema-update-for-hybrid-blocks) |
-| **2** | **26.3 Zod** | 🧠 Big | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-263-hybrid-block-validation-layer-zod) |
-| **3** | **27.2 Sync** | 🧠 Big | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-272-mission-synchronization-service) |
+| **1** | **26.9 Operational Detach** | 🧠 Big | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-269-operational-detach-logic) |
+| **2** | **27.7 Map Context** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-277-live-map---mission-context-layer) |
+| **3** | **27.10 Conflict Logic** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2710-conflict-detection) |
 
 ---
 
-### ⚡️ PHASE 2: UI SWARM (Massive Parallel)
-*Once Phase 1 is done, assign each line to a separate "Google Jules" or Agent.*
-
-**Billing Team (Epic 26)**
-| Story | Component | Link to Prompt |
-| :--- | :--- | :--- |
-| **26.5** | **Universal Row** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-265-ui-universal-block-row-component) |
-| **26.6** | **Click-to-Edit** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-266-ui-click-to-edit-inline-forms) |
-| **26.8** | **Slash Menu** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-268-ui-slash-commands-menu) |
-| **26.10** | **Profitability** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2610-real-time-profitability-computation) |
-
-**Dispatch Team (Epic 27)**
-| Story | Component | Link to Prompt |
-| :--- | :--- | :--- |
-| **27.1** | **Shell Layout** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-271-dispatch-shell--navigation) |
-| **27.3** | **Gantt Core** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-273-gantt-core-timeline-rendering) |
-| **27.4** | **Mission Card** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-274-hybrid-mission-rendering) |
-| **27.5** | **Backlog Side** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-275-unassigned-backlog-sidebar) |
-| **27.6** | **Driver Map** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-276-live-map---driver-locations) |
-| **27.7** | **Map Context** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-277-live-map---mission-context-layer) |
-| **27.8** | **Map Suggestions** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-278-map---smart-assignment-suggestions) |
-| **27.11** | **Inspector** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2711-inspector-panel---quick-actions) |
-| **27.12** | **Gantt Zoom** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2712-gantt---time--zoom-controls) |
-| **27.14** | **Export Sched.** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2714-export-schedule) |
-
-**PDF Team**
-| Story | Document | Link to Prompt |
-| :--- | :--- | :--- |
-| **26.11** | **Comm. PDF** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2611-pdf-generator-display-mode) |
-| **26.12** | **Mission PDF** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2612-pdf-generator-mission-order) |
-
----
-
-### 🔗 PHASE 3: INTEGRATION (Logic & State)
-*Requires Phase 2 components to be ready.*
-
-| Story | Feature | Agent | Link to Prompt |
-| :--- | :--- | :--- | :--- |
-| **26.4** | **API CRUD** | 🧠 Big | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-264-backend-api-crud-for-nested-lines) |
-| **26.7** | **Drag & Drop** | ⚡️ Small | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-267-ui-drag--drop-reordering) |
-| **26.9** | **Detach Logic** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-269-operational-detach-logic) |
-| **27.9** | **Assign D&D** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-279-dispatch-actions---drag--drop-assignment) |
-| **27.10** | **Conflicts** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2710-conflict-detection) |
-| **27.13** | **Real-time** | 🧠 Medium | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2713-real-time-updates) |
-
----
-
-### 🎨 PHASE 4: POLISH & MIGRATION
+### 🎨 PHASE 2: UI POLISH & ENHANCEMENTS (Backlog)
+*Items to refine the experience.*
 
 | Story | Feature | Link to Prompt |
 | :--- | :--- | :--- |
-| **26.2** | **Migration** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-262-backward-compatibility-migration-script) |
-| **26.13** | **Templates** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2613-block-presets-templates) |
-| **26.14** | **Undo/Redo** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2614-undo-redo-history-support) |
+| **26.19** | **Quote Cart UX** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2619-enhanced-quote-cart-interactions) |
+| **26.20** | **Glassmorphism** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2620-visual-polish-glassmorphism) |
+| **26.21** | **Cart Templates** | [👉 GO TO PROMPT](EPIC-26-PROMPTS.md#story-2621-template-saving-for-multi-item-quotes) |
+| **27.8** | **Map Suggestions** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-278-map---smart-assignment-suggestions) |
+| **27.12** | **Gantt Zoom** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2712-gantt---time--zoom-controls) |
+| **27.14** | **Export Sched.** | [👉 GO TO PROMPT](EPIC-27-PROMPTS.md#story-2714-export-schedule) |
+
+---
+
+### 📦 PHASE 3: EPIC 28 - ORDER MANAGEMENT (NEW!)
+*Launch only after Phase 1 is stable.*
+
+**Part A: Infrastructure**
+| Story | Feature | Link to Prompt |
+| :--- | :--- | :--- |
+| **28.1** | **Order Schema** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-281-order-entity--prisma-schema) |
+| **28.2** | **Order API** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-282-order-state-machine--api) |
+| **28.3** | **Dossier UI** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-283-dossier-view-ui---skeleton--tabs) |
+
+**Part B: Intelligent Spawning**
+| Story | Feature | Link to Prompt |
+| :--- | :--- | :--- |
+| **28.4** | **Spawn Engine** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-284-spawning-engine---trigger-logic) |
+| **28.5** | **Group Spawn** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-285-group-spawning-logic-multi-day) |
+| **28.6** | **Opt. Dispatch** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-286-optional-dispatch--force-enable) |
+| **28.7** | **Manual Items** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-287-manual-item-handling-ui) |
+| **28.13** | **Free Missions** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2813-ad-hoc-free-missions) |
+
+**Part C: Flexible Invoicing**
+| Story | Feature | Link to Prompt |
+| :--- | :--- | :--- |
+| **28.8** | **Detach Invoice** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-288-invoice-generation---detached-snapshot) |
+| **28.9** | **Invoice Editor** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-289-invoice-ui---full-editability) |
+| **28.10** | **Feedback Loop** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2810-execution-feedback-loop-placeholders) |
+| **28.11** | **Partial Bill** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2811-partial-invoicing) |
+| **28.12** | **Pending Upsell** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2812-post-mission-pending-charges) |
+

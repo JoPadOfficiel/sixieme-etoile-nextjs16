@@ -1041,3 +1041,216 @@ AGENT RECOMMANDÉ : Google Jules.
 
 CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
 ```
+
+---
+
+## Story 26.19: Enhanced Quote Cart Interactions
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 26 - Flexible "Yolo Mode" Billing
+- Sélectionne la story spécifique : Story 26.19 - Enhanced Quote Cart Interactions
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 26.19
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/26-19-cart-ux
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Améliore l'UX du Panier (Quote Editor).
+   - Ajoute des états de sélection (Checkbox par ligne).
+   - Actions en masse (Supprimer sélection, Dupliquer sélection).
+   - Feedback visuel amélioré lors du Drag & Drop (Ghost image propre).
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste les actions de sélection du store (selectAll, deselectAll).
+   - Navigateur MCP : Valide que la sélection multiple fonctionne.
+   - Couverture : Vérifie la suppression en masse.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "26-19-enhanced-quote-cart-interactions: backlog" à "26-19-enhanced-quote-cart-interactions: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 26.19 :
+Amélioration de l'ergonomie.
+
+DÉTAILS TECHNIQUES REQUIS :
+- Store Zustand pour gérer `selectedLineIds`.
+- UI Toolbar flottante si selection > 0.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 26.20: Visual Polish (Glassmorphism)
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 26 - Flexible "Yolo Mode" Billing
+- Sélectionne la story spécifique : Story 26.20 - Visual Polish Glassmorphism
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 26.20
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/26-20-ui-polish
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Applique les effets de Glassmorphism (Backdrop blur) sur les panneaux flottants.
+   - Ajoute des micro-animations (Framer Motion) sur l'apparition des lignes.
+   - Harmonise les paddings et les ombres.
+
+3. Stratégie de Test Obligatoire :
+   - Navigateur MCP : Validation visuelle.
+   - Couverture : Vérifie le Dark Mode.
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "26-20-visual-polish-glassmorphism: backlog" à "26-20-visual-polish-glassmorphism: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 26.20 :
+Rendre l'interface "Wow".
+
+DÉTAILS TECHNIQUES REQUIS :
+- Tailwind `backdrop-blur`.
+- `AnimatePresence` pour les listes.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
+
+---
+
+## Story 26.21: Template Saving for Multi-Item Quotes
+
+```text
+Tu agis en tant que BMad Orchestrator. Tu dois suivre strictement la méthode BMAD dans cet ordre immuable :
+*(@_bmad-output ) → *(/create-story) → *(/dev-story)
+
+NE JAMAIS changer cet ordre ou sauter une étape.
+
+---
+
+ETAPE 1 : ANALYSE (*@_bmad-output )
+Action :
+- Lis le PRD et les épiques disponibles.
+- Sélectionne l'épique concernée : Epic 26 - Flexible "Yolo Mode" Billing
+- Sélectionne la story spécifique : Story 26.21 - Template Saving for Multi-Item Quotes
+Sortie : Résumé de l'objectif métier, de la valeur ajoutée et des contraintes clés.
+
+ETAPE 2 : SPECIFICATION (*/create-story)
+Agent : Bob (Scrum Master)
+Entrée : Extraits pertinents du PRD + épique sélectionnée + story 26.21
+Action : Génère une Story BMAD complète et actionnable.
+Contenu requis : Description, Critères d'acceptation (AC), Cas de tests, Contraintes/Dépendances.
+Sortie : La fiche Story complète (Doit être affichée intégralement).
+
+ETAPE 3 : DEVELOPPEMENT ET VALIDATION (*/dev-story)
+Agent : Amelia (Developer)
+Action : Implémentation et Tests.
+
+1. Gestion Git :
+   - Crée la branche : feature/26-21-save-cart-template
+   - Propose le plan de développement.
+
+2. Implémentation (Instructions Spéciales) :
+   - Ajoute un bouton "Sauvegarder ce devis comme Modèle".
+   - Permet de nommer le modèle.
+   - Sauvegarde toute la hiérarchie (Groupes + Lignes) dans la table `BlockTemplate` (en JSON ou structure liée).
+   - Ajoute l'option "Charger un modèle complet" qui remplace ou ajoute au panier actuel.
+
+3. Stratégie de Test Obligatoire :
+   - Vitest : Teste la logique de sauvegarde (Cart -> Template).
+   - Navigateur MCP : Sauvegarde un modèle complexe, vide le panier, recharge le modèle.
+   - Couverture : Vérifie la restauration des IDs (nouveaux IDs générés à l'import).
+
+4. Sortie Finale :
+   - Mise à jour du fichier de la Story.
+   - Liste des fichiers modifiés.
+   - Résumé des tests exécutés.
+   - Commande Git de push et infos pour la PR.
+   - METTRE EN REVIEW la story (status: review)
+
+5. MISE À JOUR OBLIGATOIRE :
+   - Mets à jour le fichier /Users/jopad/Downloads/sixieme-etoile-nextjs16/_bmad-output/implementation-artifacts/sprint-status.yaml
+   - Change le statut de "26-21-template-saving-for-multi-item-quotes: backlog" à "26-21-template-saving-for-multi-item-quotes: review"
+
+---
+
+CONTEXTE SPÉCIFIQUE STORY 26.21 :
+Gain de temps pour les devis récurrents complexes (Tournée type).
+
+DÉTAILS TECHNIQUES REQUIS :
+- Réutilisation de l'entité `BlockTemplate` (Story 26.13) mais avec un flag `isFullQuote`.
+
+AGENT RECOMMANDÉ : Google Jules.
+
+---
+
+CONFIRME la lecture de ce protocole et lance l'ETAPE 1.
+```
