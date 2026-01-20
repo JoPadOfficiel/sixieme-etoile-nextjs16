@@ -1,6 +1,6 @@
 # Story 27.7 : Live Map - Mission Context Layer
 
-**Status:** review
+**Status:** done
 **Epic:** Epic 27 - Unified Dispatch (Cockpit)
 
 ## Description
@@ -115,3 +115,18 @@ pnpm dev
 # Vérifier que le tracé réel de l'autoroute s'affiche (pas une ligne droite)
 # Vérifier que la carte zoome pour afficher tout le trajet
 ```
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-01-20
+**Reviewer:** Antigravity
+
+### Findings
+- **High Severity**: Missing unit tests for `polyline.ts` -> **FIXED** (Created `polyline.test.ts`).
+- **Medium Severity**: `tripAnalysis` typed as `unknown` -> **FIXED** (Updated `MissionDetail` type definition).
+
+### Outcome
+- All critical and high/medium severity issues resolved.
+- Unit tests added and passing.
+- Typing improved significantly.
+- **Result:** APPROVED

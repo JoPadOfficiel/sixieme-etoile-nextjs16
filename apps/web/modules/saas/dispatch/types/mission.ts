@@ -123,7 +123,7 @@ export interface MissionDetail extends MissionListItem {
 	pricingMode: "FIXED_GRID" | "DYNAMIC";
 	tripType: "TRANSFER" | "EXCURSION" | "DISPO" | "OFF_GRID" | "STAY";
 	notes: string | null;
-	tripAnalysis: unknown;
+	tripAnalysis: { encodedPolyline?: string; [key: string]: unknown };
 	appliedRules: unknown;
 }
 
@@ -137,7 +137,11 @@ export type VehicleRegulatoryCategory = "LIGHT" | "HEAVY";
 export type ComplianceDecision = "APPROVED" | "BLOCKED" | "WARNING";
 
 export interface ComplianceViolation {
-	type: "DRIVING_TIME_EXCEEDED" | "AMPLITUDE_EXCEEDED" | "BREAK_REQUIRED" | "SPEED_LIMIT_EXCEEDED";
+	type:
+		| "DRIVING_TIME_EXCEEDED"
+		| "AMPLITUDE_EXCEEDED"
+		| "BREAK_REQUIRED"
+		| "SPEED_LIMIT_EXCEEDED";
 	message: string;
 	actual: number;
 	limit: number;

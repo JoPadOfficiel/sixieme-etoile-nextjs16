@@ -320,7 +320,7 @@ development_status:
   27-4-gantt-mission-rendering-hybrid: done
   27-5-unassigned-backlog-sidebar-logic: done
   27-6-live-map-driver-locations-layer: done
-  27-7-live-map-mission-context-layer: review
+  27-7-live-map-mission-context-layer: done
   27-8-map-smart-assignment-suggestions: backlog
   27-9-dispatch-actions-drag-drop-assignment: done
   27-10-conflict-detection-rse-calendar: done
