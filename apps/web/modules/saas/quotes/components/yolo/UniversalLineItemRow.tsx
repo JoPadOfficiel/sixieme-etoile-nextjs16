@@ -8,6 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@ui/components/dropdown-menu";
 import { InlineInput } from "@ui/components/inline-input";
+import { Switch } from "@ui/components/switch";
 import {
 	Tooltip,
 	TooltipContent,
@@ -113,6 +114,10 @@ export interface UniversalLineItemRowProps {
 	onSelectionChange?: (id: string, shiftKey: boolean) => void;
 	/** Story 26.19: Whether to show selection checkbox */
 	showSelection?: boolean;
+	/** Story 28.6: Whether this line should spawn a mission on order confirmation */
+	dispatchable?: boolean;
+	/** Story 28.6: Callback when dispatchable toggle changes */
+	onDispatchableChange?: (id: string, value: boolean) => void;
 }
 
 /**
@@ -176,6 +181,8 @@ export function UniversalLineItemRow({
 	children,
 	onSelectionChange,
 	showSelection = false,
+	dispatchable = true,
+	onDispatchableChange,
 }: UniversalLineItemRowProps) {
 	const t = useTranslations();
 	const { toast } = useToast();
@@ -676,6 +683,30 @@ export function UniversalLineItemRow({
 				<div className="w-24 text-right font-medium text-sm">
 					{formatPrice(displayData.total, currency)}
 				</div>
+
+				{/* Story 28.6: Dispatch toggle - only for CALCULATED lines */}
+				{type === "CALCULATED" && onDispatchableChange && (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className="flex items-center">
+									<Switch
+										checked={dispatchable}
+										onCheckedChange={(checked) => onDispatchableChange(id, checked)}
+										disabled={disabled}
+										className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-muted"
+										aria-label={t("quotes.yolo.dispatchToggle") || "Dispatch mission"}
+									/>
+								</div>
+							</TooltipTrigger>
+							<TooltipContent side="top">
+								{dispatchable
+									? t("quotes.yolo.dispatchEnabled") || "Mission will be created on confirmation"
+									: t("quotes.yolo.dispatchDisabled") || "No mission will be created"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)}
 
 				{/* Actions Menu */}
 				<div className="opacity-0 transition-opacity group-hover:opacity-100">

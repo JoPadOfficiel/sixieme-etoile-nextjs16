@@ -126,4 +126,97 @@ describe("SpawnService", () => {
 		expect(date2.toISOString()).toContain("2026-06-02");
 		expect(date3.toISOString()).toContain("2026-06-03");
 	});
+
+	// Story 28.6: Test dispatchable flag
+	it("should skip lines with dispatchable: false", async () => {
+		const mockOrder = {
+			id: "order-3",
+			organizationId: "org-1",
+			quotes: [
+				{
+					id: "quote-3",
+					status: "ACCEPTED",
+					organizationId: "org-1",
+					pickupAt: new Date("2026-06-01T09:00:00Z"),
+					lines: [
+						{
+							id: "line-dispatchable",
+							type: "CALCULATED",
+							parentId: null,
+							quantity: 1,
+							label: "Transfer with dispatch",
+							dispatchable: true,
+							children: [],
+						},
+						{
+							id: "line-not-dispatchable",
+							type: "CALCULATED",
+							parentId: null,
+							quantity: 1,
+							label: "Fee - no dispatch",
+							dispatchable: false,
+							children: [],
+						},
+					],
+				},
+			],
+		};
+
+		(db.order.findUnique as any).mockResolvedValue(mockOrder);
+		(db.mission.create as any).mockImplementation((args) =>
+			Promise.resolve({ id: "mission-" + Math.random(), ...args.data }),
+		);
+
+		const missions = await service.execute("order-3");
+
+		// Only 1 mission should be created (the dispatchable one)
+		expect(missions).toHaveLength(1);
+		expect(db.mission.create).toHaveBeenCalledTimes(1);
+
+		// Verify it's the correct line
+		expect(db.mission.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					quoteLineId: "line-dispatchable",
+				}),
+			}),
+		);
+	});
+
+	it("should default dispatchable to true when not specified", async () => {
+		const mockOrder = {
+			id: "order-4",
+			organizationId: "org-1",
+			quotes: [
+				{
+					id: "quote-4",
+					status: "ACCEPTED",
+					organizationId: "org-1",
+					pickupAt: new Date("2026-06-01T09:00:00Z"),
+					lines: [
+						{
+							id: "line-no-flag",
+							type: "CALCULATED",
+							parentId: null,
+							quantity: 1,
+							label: "Transfer without explicit dispatchable",
+							// dispatchable not set - should default to true
+							children: [],
+						},
+					],
+				},
+			],
+		};
+
+		(db.order.findUnique as any).mockResolvedValue(mockOrder);
+		(db.mission.create as any).mockImplementation((args) =>
+			Promise.resolve({ id: "mission-" + Math.random(), ...args.data }),
+		);
+
+		const missions = await service.execute("order-4");
+
+		// Mission should be created (default dispatchable = true)
+		expect(missions).toHaveLength(1);
+		expect(db.mission.create).toHaveBeenCalledTimes(1);
+	});
 });

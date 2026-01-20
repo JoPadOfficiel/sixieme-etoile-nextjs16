@@ -164,7 +164,7 @@ export const PromotionScalarFieldEnumSchema = z.enum(['id','organizationId','cod
 
 export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizationId','vehicleId','fromZoneId','toZoneId','fromAddress','fromLatitude','fromLongitude','toAddress','toLatitude','toLongitude','estimatedDistanceKm','estimatedDurationMins','windowStart','windowEnd','pricingStrategy','sourceMissionId','isActive','notes','createdAt','updatedAt']);
 
-export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','label','description','sourceData','displayData','quantity','unitPrice','totalPrice','vatRate','parentId','sortOrder','createdAt','updatedAt']);
+export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','label','description','sourceData','displayData','quantity','unitPrice','totalPrice','vatRate','parentId','sortOrder','dispatchable','createdAt','updatedAt']);
 
 export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','createdAt','updatedAt','orderId']);
 
@@ -1390,6 +1390,7 @@ export const QuoteLineSchema = z.object({
   vatRate: z.instanceof(Prisma.Decimal, { message: "Field 'vatRate' must be a Decimal. Location: ['Models', 'QuoteLine']"}),
   parentId: z.string().nullable(),
   sortOrder: z.number().int(),
+  dispatchable: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

@@ -410,6 +410,9 @@ export function SortableQuoteLinesList({
 								isSelected={selectedLineIds.has(id)}
 								onSelectionChange={handleSelectionChange}
 								showSelection={selectedLineIds.size > 0}
+								// Story 28.6: Dispatch toggle
+								dispatchable={line.dispatchable ?? true}
+								onDispatchableChange={(lineId, value) => handleLineUpdate(lineId, { dispatchable: value })}
 							/>
 						</div>
 					)}

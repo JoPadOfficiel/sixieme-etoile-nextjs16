@@ -1806,6 +1806,9 @@ model QuoteLine {
   // Ordering
   sortOrder Int @default(0)
 
+  // Story 28.6: Control mission spawning per line
+  dispatchable Boolean @default(true)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

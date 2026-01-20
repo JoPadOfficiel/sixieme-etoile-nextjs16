@@ -55,6 +55,7 @@ export class SpawnService {
 									{ type: "GROUP" },
 								],
 								parentId: null, // Only top-level lines (not nested children)
+								dispatchable: true, // Story 28.6: Only spawn if dispatchable
 							},
 							orderBy: { sortOrder: "asc" },
 							include: {

@@ -18,6 +18,7 @@ export interface QuoteLine {
   sortOrder?: number;
   sourceData?: Record<string, unknown>;
   displayData?: Record<string, unknown>;
+  dispatchable?: boolean; // Story 28.6: Control mission spawning
   [key: string]: unknown;
 }
 
