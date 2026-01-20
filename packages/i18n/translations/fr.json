@@ -2462,6 +2462,31 @@
 			"successDescription": "La mission a été créée avec succès et liée à la ligne de devis.",
 			"error": "Erreur",
 			"errorDescription": "Impossible de créer la mission. Veuillez réessayer."
+		},
+		"invoice": {
+			"generateTitle": "Générer une facture",
+			"generateDescription": "Créez une facture partielle ou complète pour le dossier {reference}.",
+			"orderTotal": "Total du dossier",
+			"remainingBalance": "Solde restant",
+			"existingInvoices": "{count, plural, =1 {1 facture existante} other {# factures existantes}}",
+			"noBalance": "Ce dossier n'a plus de solde à facturer.",
+			"modeFullBalance": "Solde complet",
+			"modeDeposit": "Acompte %",
+			"modeManual": "Sélection",
+			"fullBalanceDescription": "Générer une facture pour le solde complet restant sur ce dossier.",
+			"invoiceAmount": "Montant de la facture",
+			"depositLabel": "Pourcentage d'acompte",
+			"depositOf": "Acompte de {percent}% du total",
+			"exceedsBalance": "Le montant dépasse le solde restant",
+			"manualDescription": "Sélectionnez les lignes à inclure dans cette facture.",
+			"noLines": "Aucune ligne disponible pour la sélection.",
+			"linesSelected": "{count, plural, =0 {aucune ligne sélectionnée} =1 {1 ligne sélectionnée} other {# lignes sélectionnées}}",
+			"generating": "Génération...",
+			"generate": "Générer la facture",
+			"successTitle": "Facture créée",
+			"successDescription": "La facture a été générée avec succès.",
+			"errorTitle": "Erreur",
+			"errorDescription": "Impossible de générer la facture. Veuillez réessayer."
 		}
 	},
 	"quotes": {

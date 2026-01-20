@@ -12,17 +12,20 @@
  * - Modifications to Invoice do NOT affect Quote
  */
 
-import { db } from "@repo/database";
 import type { Prisma } from "@prisma/client";
+import { db } from "@repo/database";
 import {
+	calculateCommission,
+	getCommissionPercent,
+} from "./commission-service";
+import {
+	type InvoiceLineInput,
+	type StayDayInput,
 	buildInvoiceLines,
 	buildStayInvoiceLines,
 	calculateInvoiceTotals,
 	parseAppliedRules,
-	type InvoiceLineInput,
-	type StayDayInput,
 } from "./invoice-line-builder";
-import { calculateCommission, getCommissionPercent } from "./commission-service";
 
 // ============================================================================
 // Types
@@ -32,6 +35,28 @@ export interface InvoiceFactoryResult {
 	invoice: Awaited<ReturnType<typeof db.invoice.findFirst>>;
 	linesCreated: number;
 	warning?: string;
+}
+
+// ============================================================================
+// Story 28.11: Partial Invoice Types
+// ============================================================================
+
+export type PartialInvoiceMode =
+	| "FULL_BALANCE"
+	| "DEPOSIT_PERCENT"
+	| "MANUAL_SELECTION";
+
+export interface PartialInvoiceOptions {
+	mode: PartialInvoiceMode;
+	depositPercent?: number; // For DEPOSIT_PERCENT mode (1-100)
+	selectedLineIds?: string[]; // For MANUAL_SELECTION mode
+}
+
+export interface OrderBalance {
+	totalAmount: number; // Total order amount from quotes (TTC)
+	invoicedAmount: number; // Sum of all existing invoices (TTC)
+	remainingBalance: number; // totalAmount - invoicedAmount
+	invoiceCount: number; // Number of existing invoices
 }
 
 // ============================================================================
@@ -54,7 +79,7 @@ export class InvoiceFactory {
 	 */
 	static async createInvoiceFromOrder(
 		orderId: string,
-		organizationId: string
+		organizationId: string,
 	): Promise<InvoiceFactoryResult> {
 		// 1. Fetch Order with Quote(s) and Contact
 		const order = await db.order.findFirst({
@@ -98,7 +123,7 @@ export class InvoiceFactory {
 				},
 			});
 			console.log(
-				`[INVOICE_FACTORY] Order ${orderId} already has invoice ${existingInvoice?.number} - returning existing`
+				`[INVOICE_FACTORY] Order ${orderId} already has invoice ${existingInvoice?.number} - returning existing`,
 			);
 			return {
 				invoice: existingInvoice,
@@ -128,9 +153,16 @@ export class InvoiceFactory {
 			// Priority: Use QuoteLines if available, fallback to legacy buildInvoiceLines
 			if (quote.lines && quote.lines.length > 0) {
 				// Deep copy each QuoteLine to InvoiceLine
-				invoiceLines = this.deepCopyQuoteLinesToInvoiceLines(quote.lines, endCustomerName);
+				invoiceLines = this.deepCopyQuoteLinesToInvoiceLines(
+					quote.lines,
+					endCustomerName,
+				);
 				invoiceNotes = `Facture générée depuis devis - Order ${order.reference}`;
-			} else if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+			} else if (
+				quote.tripType === "STAY" &&
+				quote.stayDays &&
+				quote.stayDays.length > 0
+			) {
 				// STAY trip type - deep copy from stayDays (legacy path)
 				const stayDaysInput: StayDayInput[] = quote.stayDays.map((day) => ({
 					dayNumber: day.dayNumber,
@@ -151,7 +183,11 @@ export class InvoiceFactory {
 					})),
 				}));
 
-				invoiceLines = buildStayInvoiceLines(stayDaysInput, parsedRules, endCustomerName);
+				invoiceLines = buildStayInvoiceLines(
+					stayDaysInput,
+					parsedRules,
+					endCustomerName,
+				);
 
 				const totalDays = quote.stayDays.length;
 				const startDate = quote.stayStartDate
@@ -164,7 +200,10 @@ export class InvoiceFactory {
 			} else {
 				// Standard trip types - fallback to legacy buildInvoiceLines
 				const finalPrice = Number(quote.finalPrice);
-				const transportAmount = this.calculateTransportAmount(finalPrice, parsedRules);
+				const transportAmount = this.calculateTransportAmount(
+					finalPrice,
+					parsedRules,
+				);
 
 				invoiceLines = buildInvoiceLines(
 					transportAmount,
@@ -181,7 +220,7 @@ export class InvoiceFactory {
 						vehicleCategory: quote.vehicleCategory?.name || "Standard",
 						tripType: quote.tripType,
 						endCustomerName,
-					}
+					},
 				);
 				invoiceNotes = `Transport: ${quote.pickupAddress} → ${quote.dropoffAddress ?? "N/A"} - Order ${order.reference}`;
 			}
@@ -206,7 +245,10 @@ export class InvoiceFactory {
 
 		// 6. Set due date based on payment terms
 		const issueDate = new Date();
-		const dueDate = this.calculateDueDate(issueDate, order.contact.partnerContract);
+		const dueDate = this.calculateDueDate(
+			issueDate,
+			order.contact.partnerContract,
+		);
 
 		// 7. Build cost breakdown (deep copy from quote)
 		const costBreakdown = quote
@@ -216,8 +258,8 @@ export class InvoiceFactory {
 						tripAnalysis: quote.tripAnalysis,
 						tripType: quote.tripType,
 						stayDays: quote.stayDays?.length ?? 0,
-				  }
-				: quote.costBreakdown ?? undefined
+					}
+				: (quote.costBreakdown ?? undefined)
 			: undefined;
 
 		// 8. Create Invoice with lines in transaction (atomic operation)
@@ -273,7 +315,7 @@ export class InvoiceFactory {
 		});
 
 		console.log(
-			`[INVOICE_FACTORY] Created invoice ${invoiceNumber} for Order ${order.reference} with ${invoiceLines.length} lines`
+			`[INVOICE_FACTORY] Created invoice ${invoiceNumber} for Order ${order.reference} with ${invoiceLines.length} lines`,
 		);
 
 		return {
@@ -300,20 +342,32 @@ export class InvoiceFactory {
 			sortOrder: number;
 			displayData?: unknown;
 		}>,
-		endCustomerName: string | null
+		endCustomerName: string | null,
 	): InvoiceLineInput[] {
 		const TRANSPORT_VAT_RATE = 10;
 		const DEFAULT_ANCILLARY_VAT_RATE = 20;
 
 		return quoteLines.map((line, index) => {
-			const quantity = typeof line.quantity === "number" ? line.quantity : Number(line.quantity.toString());
-			const unitPrice = typeof line.unitPrice === "number" ? line.unitPrice : Number(line.unitPrice.toString());
-			const totalPrice = typeof line.totalPrice === "number" ? line.totalPrice : Number(line.totalPrice.toString());
-			const vatRate = typeof line.vatRate === "number" ? line.vatRate : Number(line.vatRate.toString());
+			const quantity =
+				typeof line.quantity === "number"
+					? line.quantity
+					: Number(line.quantity.toString());
+			const unitPrice =
+				typeof line.unitPrice === "number"
+					? line.unitPrice
+					: Number(line.unitPrice.toString());
+			const totalPrice =
+				typeof line.totalPrice === "number"
+					? line.totalPrice
+					: Number(line.totalPrice.toString());
+			const vatRate =
+				typeof line.vatRate === "number"
+					? line.vatRate
+					: Number(line.vatRate.toString());
 
 			// Calculate VAT amounts
 			const totalExclVat = Math.round(totalPrice * 100) / 100;
-			const totalVat = Math.round((totalExclVat * vatRate / 100) * 100) / 100;
+			const totalVat = Math.round(((totalExclVat * vatRate) / 100) * 100) / 100;
 
 			// Build description with end customer if applicable
 			let description = line.label;
@@ -325,7 +379,11 @@ export class InvoiceFactory {
 			}
 
 			// Map QuoteLine type to InvoiceLine type
-			let lineType: "SERVICE" | "OPTIONAL_FEE" | "PROMOTION_ADJUSTMENT" | "OTHER" = "SERVICE";
+			let lineType:
+				| "SERVICE"
+				| "OPTIONAL_FEE"
+				| "PROMOTION_ADJUSTMENT"
+				| "OTHER" = "SERVICE";
 			if (line.type === "OPTIONAL_FEE") {
 				lineType = "OPTIONAL_FEE";
 			} else if (line.type === "PROMOTION") {
@@ -353,18 +411,21 @@ export class InvoiceFactory {
 	 */
 	private static calculateTransportAmount(
 		finalPrice: number,
-		parsedRules: { optionalFees: { amount: number; quantity?: number }[]; promotions: { discountAmount: number; quantity?: number }[] }
+		parsedRules: {
+			optionalFees: { amount: number; quantity?: number }[];
+			promotions: { discountAmount: number; quantity?: number }[];
+		},
 	): number {
 		// Sum of optional fees (with quantity)
 		const totalFees = parsedRules.optionalFees.reduce(
-			(sum, fee) => sum + (fee.amount * (fee.quantity ?? 1)),
-			0
+			(sum, fee) => sum + fee.amount * (fee.quantity ?? 1),
+			0,
 		);
 
 		// Sum of promotions (with quantity)
 		const totalDiscounts = parsedRules.promotions.reduce(
-			(sum, promo) => sum + (promo.discountAmount * (promo.quantity ?? 1)),
-			0
+			(sum, promo) => sum + promo.discountAmount * (promo.quantity ?? 1),
+			0,
 		);
 
 		// Transport = Final - Fees + Discounts (discounts were subtracted from final)
@@ -374,7 +435,9 @@ export class InvoiceFactory {
 	/**
 	 * Generate unique invoice number in format INV-YYYY-NNNN
 	 */
-	private static async generateInvoiceNumber(organizationId: string): Promise<string> {
+	private static async generateInvoiceNumber(
+		organizationId: string,
+	): Promise<string> {
 		const year = new Date().getFullYear();
 		const prefix = `INV-${year}-`;
 
@@ -389,7 +452,7 @@ export class InvoiceFactory {
 		let sequence = 1;
 		if (lastInvoice) {
 			const match = lastInvoice.number.match(/INV-\d{4}-(\d+)/);
-			if (match) sequence = parseInt(match[1], 10) + 1;
+			if (match) sequence = Number.parseInt(match[1], 10) + 1;
 		}
 
 		return `${prefix}${sequence.toString().padStart(4, "0")}`;
@@ -400,7 +463,7 @@ export class InvoiceFactory {
 	 */
 	private static calculateDueDate(
 		issueDate: Date,
-		partnerContract: { paymentTerms: string } | null
+		partnerContract: { paymentTerms: string } | null,
 	): Date {
 		const dueDate = new Date(issueDate);
 
@@ -429,5 +492,319 @@ export class InvoiceFactory {
 		}
 
 		return dueDate;
+	}
+
+	// ============================================================================
+	// Story 28.11: Partial Invoice Methods
+	// ============================================================================
+
+	/**
+	 * Calculate the current balance for an Order
+	 * Returns total, invoiced, and remaining amounts
+	 */
+	static async calculateOrderBalance(
+		orderId: string,
+		organizationId: string,
+	): Promise<OrderBalance> {
+		const order = await db.order.findFirst({
+			where: { id: orderId, organizationId },
+			include: {
+				quotes: {
+					where: { status: "ACCEPTED" },
+					select: {
+						finalPrice: true,
+						lines: { select: { totalPrice: true } },
+					},
+				},
+				invoices: {
+					select: { totalInclVat: true },
+				},
+			},
+		});
+
+		if (!order) {
+			throw new Error(`Order ${orderId} not found`);
+		}
+
+		// Calculate total from accepted quotes
+		// Use quote lines if available, otherwise use finalPrice
+		let totalAmount = 0;
+		for (const quote of order.quotes) {
+			if (quote.lines && quote.lines.length > 0) {
+				// Sum quote lines (TTC calculation: totalPrice + VAT)
+				const linesTotal = quote.lines.reduce((sum, line) => {
+					const linePrice = Number(line.totalPrice);
+					// Assuming 10% VAT for transport as default
+					return sum + linePrice * 1.1;
+				}, 0);
+				totalAmount += linesTotal;
+			} else {
+				// Fallback to finalPrice (already TTC)
+				totalAmount += Number(quote.finalPrice);
+			}
+		}
+
+		// Calculate amount already invoiced
+		const invoicedAmount = order.invoices.reduce(
+			(sum, inv) => sum + Number(inv.totalInclVat),
+			0,
+		);
+
+		// Round to 2 decimals for precision
+		const roundedTotal = Math.round(totalAmount * 100) / 100;
+		const roundedInvoiced = Math.round(invoicedAmount * 100) / 100;
+		const remainingBalance =
+			Math.round((roundedTotal - roundedInvoiced) * 100) / 100;
+
+		return {
+			totalAmount: roundedTotal,
+			invoicedAmount: roundedInvoiced,
+			remainingBalance: Math.max(0, remainingBalance),
+			invoiceCount: order.invoices.length,
+		};
+	}
+
+	/**
+	 * Create a partial invoice from an Order
+	 * Supports three modes: FULL_BALANCE, DEPOSIT_PERCENT, MANUAL_SELECTION
+	 */
+	static async createPartialInvoice(
+		orderId: string,
+		organizationId: string,
+		options: PartialInvoiceOptions,
+	): Promise<InvoiceFactoryResult> {
+		// 1. Calculate current balance
+		const balance = await InvoiceFactory.calculateOrderBalance(
+			orderId,
+			organizationId,
+		);
+
+		// 2. Fetch order with contact and quotes
+		const order = await db.order.findFirst({
+			where: { id: orderId, organizationId },
+			include: {
+				contact: {
+					include: { partnerContract: true },
+				},
+				quotes: {
+					where: { status: "ACCEPTED" },
+					include: {
+						lines: { orderBy: { sortOrder: "asc" } },
+						endCustomer: true,
+					},
+					orderBy: { createdAt: "desc" },
+					take: 1,
+				},
+			},
+		});
+
+		if (!order) {
+			throw new Error(`Order ${orderId} not found`);
+		}
+
+		const quote = order.quotes[0];
+		let invoiceLines: InvoiceLineInput[] = [];
+		let invoiceAmount = 0;
+		let invoiceDescription = "";
+		const endCustomerName = quote?.endCustomer
+			? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
+			: null;
+
+		// 3. Calculate amount and lines based on mode
+		switch (options.mode) {
+			case "FULL_BALANCE": {
+				invoiceAmount = balance.remainingBalance;
+				invoiceDescription = `Solde facture - Order ${order.reference}`;
+
+				// Deep copy all quote lines
+				if (quote?.lines && quote.lines.length > 0) {
+					invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
+						quote.lines,
+						endCustomerName,
+					);
+				} else {
+					// Create single line for balance
+					const amountHT = Math.round((invoiceAmount / 1.1) * 100) / 100;
+					invoiceLines = [
+						{
+							lineType: "SERVICE" as const,
+							description: invoiceDescription,
+							quantity: 1,
+							unitPriceExclVat: amountHT,
+							vatRate: 10,
+							totalExclVat: amountHT,
+							totalVat: Math.round((invoiceAmount - amountHT) * 100) / 100,
+							sortOrder: 0,
+						},
+					];
+				}
+				break;
+			}
+
+			case "DEPOSIT_PERCENT": {
+				const percent = Math.min(
+					100,
+					Math.max(1, options.depositPercent ?? 30),
+				);
+				invoiceAmount =
+					Math.round(((balance.totalAmount * percent) / 100) * 100) / 100;
+				invoiceDescription = `Acompte ${percent}% - Order ${order.reference}`;
+
+				// Validate amount doesn't exceed balance
+				if (invoiceAmount > balance.remainingBalance) {
+					throw new Error(
+						`Deposit amount (${invoiceAmount}€) exceeds remaining balance (${balance.remainingBalance}€)`,
+					);
+				}
+
+				// Create single deposit line
+				const amountHT = Math.round((invoiceAmount / 1.1) * 100) / 100;
+				const vatAmount = Math.round((invoiceAmount - amountHT) * 100) / 100;
+
+				invoiceLines = [
+					{
+						lineType: "SERVICE" as const,
+						description: `Acompte ${percent}%`,
+						quantity: 1,
+						unitPriceExclVat: amountHT,
+						vatRate: 10,
+						totalExclVat: amountHT,
+						totalVat: vatAmount,
+						sortOrder: 0,
+					},
+				];
+				break;
+			}
+
+			case "MANUAL_SELECTION": {
+				if (!options.selectedLineIds || options.selectedLineIds.length === 0) {
+					throw new Error("No lines selected for manual invoice");
+				}
+
+				if (!quote?.lines) {
+					throw new Error("Order has no quote lines to select from");
+				}
+
+				// Filter selected lines
+				const selectedLines = quote.lines.filter((line) =>
+					options.selectedLineIds!.includes(line.id),
+				);
+
+				if (selectedLines.length === 0) {
+					throw new Error("No matching lines found for selected IDs");
+				}
+
+				// Deep copy selected lines
+				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
+					selectedLines,
+					endCustomerName,
+				);
+
+				// Calculate total amount
+				invoiceAmount = invoiceLines.reduce(
+					(sum, line) => sum + line.totalExclVat + line.totalVat,
+					0,
+				);
+
+				// Validate amount doesn't exceed balance
+				if (invoiceAmount > balance.remainingBalance) {
+					throw new Error(
+						`Selected lines amount (${invoiceAmount}€) exceeds remaining balance (${balance.remainingBalance}€)`,
+					);
+				}
+
+				invoiceDescription = `Facture partielle (${selectedLines.length} lignes) - Order ${order.reference}`;
+				break;
+			}
+		}
+
+		// 4. Calculate totals
+		const totalExclVat = invoiceLines.reduce(
+			(sum, line) => sum + line.totalExclVat,
+			0,
+		);
+		const totalVat = invoiceLines.reduce((sum, line) => sum + line.totalVat, 0);
+		const totalInclVat = Math.round((totalExclVat + totalVat) * 100) / 100;
+
+		// 5. Generate invoice number
+		const invoiceNumber =
+			await InvoiceFactory.generateInvoiceNumber(organizationId);
+
+		// 6. Calculate commission
+		let commissionAmount: number | null = null;
+		const commissionPercent = getCommissionPercent(order.contact);
+		if (commissionPercent > 0) {
+			const result = calculateCommission({
+				totalExclVat,
+				commissionPercent,
+			});
+			commissionAmount = result.commissionAmount;
+		}
+
+		// 7. Set dates
+		const issueDate = new Date();
+		const dueDate = InvoiceFactory.calculateDueDate(
+			issueDate,
+			order.contact.partnerContract,
+		);
+
+		// 8. Create invoice in transaction
+		const invoice = await db.$transaction(async (tx) => {
+			const newInvoice = await tx.invoice.create({
+				data: {
+					organizationId,
+					contactId: order.contactId,
+					orderId: order.id,
+					quoteId: quote?.id,
+					number: invoiceNumber,
+					status: "DRAFT",
+					issueDate,
+					dueDate,
+					totalExclVat: Math.round(totalExclVat * 100) / 100,
+					totalVat: Math.round(totalVat * 100) / 100,
+					totalInclVat,
+					commissionAmount,
+					notes: invoiceDescription,
+					endCustomerId: quote?.endCustomerId,
+				},
+			});
+
+			if (invoiceLines.length > 0) {
+				await tx.invoiceLine.createMany({
+					data: invoiceLines.map((line) => ({
+						invoiceId: newInvoice.id,
+						description: line.description,
+						quantity: line.quantity,
+						unitPriceExclVat: line.unitPriceExclVat,
+						vatRate: line.vatRate,
+						totalExclVat: line.totalExclVat,
+						totalVat: line.totalVat,
+						lineType: line.lineType,
+						sortOrder: line.sortOrder,
+					})),
+				});
+			}
+
+			return newInvoice;
+		});
+
+		console.log(
+			`[INVOICE_FACTORY] Created partial invoice ${invoiceNumber} (${options.mode}) for Order ${order.reference}: ${totalInclVat}€`,
+		);
+
+		// 9. Return complete invoice
+		const completeInvoice = await db.invoice.findFirst({
+			where: { id: invoice.id },
+			include: {
+				contact: true,
+				endCustomer: true,
+				lines: { orderBy: { sortOrder: "asc" } },
+			},
+		});
+
+		return {
+			invoice: completeInvoice,
+			linesCreated: invoiceLines.length,
+		};
 	}
 }

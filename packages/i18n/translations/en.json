@@ -2475,6 +2475,31 @@
 			"successDescription": "The mission has been created and linked to the quote line.",
 			"error": "Error",
 			"errorDescription": "Failed to create mission. Please try again."
+		},
+		"invoice": {
+			"generateTitle": "Generate Invoice",
+			"generateDescription": "Create a partial or full invoice for order {reference}.",
+			"orderTotal": "Order Total",
+			"remainingBalance": "Remaining Balance",
+			"existingInvoices": "{count, plural, =1 {1 existing invoice} other {# existing invoices}}",
+			"noBalance": "This order has no remaining balance to invoice.",
+			"modeFullBalance": "Full Balance",
+			"modeDeposit": "Deposit %",
+			"modeManual": "Selection",
+			"fullBalanceDescription": "Generate an invoice for the full remaining balance on this order.",
+			"invoiceAmount": "Invoice amount",
+			"depositLabel": "Deposit percentage",
+			"depositOf": "{percent}% deposit of total",
+			"exceedsBalance": "Amount exceeds remaining balance",
+			"manualDescription": "Select the lines to include in this invoice.",
+			"noLines": "No lines available for selection.",
+			"linesSelected": "{count, plural, =0 {no lines selected} =1 {1 line selected} other {# lines selected}}",
+			"generating": "Generating...",
+			"generate": "Generate Invoice",
+			"successTitle": "Invoice Created",
+			"successDescription": "The invoice has been generated successfully.",
+			"errorTitle": "Error",
+			"errorDescription": "Failed to generate invoice. Please try again."
 		}
 	},
 	"quotes": {

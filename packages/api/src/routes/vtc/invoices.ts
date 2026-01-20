@@ -6,8 +6,8 @@
  * Story 7.4: Uses centralized commission service for partner commission calculation.
  */
 
-import { db } from "@repo/database";
 import type { Prisma } from "@prisma/client";
+import { db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -20,19 +20,22 @@ import {
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import {
-	parseAppliedRules,
+	calculateCommission,
+	getCommissionPercent,
+} from "../../services/commission-service";
+// Story 28.11: Import InvoiceFactory for partial invoice support
+import {
+	InvoiceFactory,
+	type PartialInvoiceMode,
+} from "../../services/invoice-factory";
+import {
+	type StayDayInput,
 	buildInvoiceLines,
 	buildStayInvoiceLines,
 	calculateInvoiceTotals,
 	calculateTransportAmount,
-	TRANSPORT_VAT_RATE,
-	type StayDayInput,
-	type StayServiceInput,
+	parseAppliedRules,
 } from "../../services/invoice-line-builder";
-import {
-	calculateCommission,
-	getCommissionPercent,
-} from "../../services/commission-service";
 
 // ============================================================================
 // Validation Schemas
@@ -40,25 +43,44 @@ import {
 
 const createInvoiceSchema = z.object({
 	contactId: z.string().min(1).describe("Contact ID for the invoice"),
-	quoteId: z.string().optional().nullable().describe("Source quote ID (optional)"),
+	quoteId: z
+		.string()
+		.optional()
+		.nullable()
+		.describe("Source quote ID (optional)"),
 	issueDate: z.string().datetime().describe("Invoice issue date"),
 	dueDate: z.string().datetime().describe("Payment due date"),
 	totalExclVat: z.number().nonnegative().describe("Total excluding VAT in EUR"),
 	totalVat: z.number().nonnegative().describe("Total VAT amount in EUR"),
 	totalInclVat: z.number().nonnegative().describe("Total including VAT in EUR"),
-	commissionAmount: z.number().optional().nullable().describe("Commission amount for partner invoices"),
+	commissionAmount: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Commission amount for partner invoices"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
-	endCustomerId: z.string().optional().nullable().describe("End Customer ID for the invoice"),
-	lines: z.array(z.object({
-		description: z.string().min(1),
-		quantity: z.number().positive().default(1),
-		unitPriceExclVat: z.number().nonnegative(),
-		vatRate: z.number().nonnegative().default(20),
-		totalExclVat: z.number().nonnegative(),
-		totalVat: z.number().nonnegative(),
-		lineType: z.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"]).default("SERVICE"),
-		sortOrder: z.number().int().nonnegative().default(0),
-	})).optional().describe("Invoice line items"),
+	endCustomerId: z
+		.string()
+		.optional()
+		.nullable()
+		.describe("End Customer ID for the invoice"),
+	lines: z
+		.array(
+			z.object({
+				description: z.string().min(1),
+				quantity: z.number().positive().default(1),
+				unitPriceExclVat: z.number().nonnegative(),
+				vatRate: z.number().nonnegative().default(20),
+				totalExclVat: z.number().nonnegative(),
+				totalVat: z.number().nonnegative(),
+				lineType: z
+					.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"])
+					.default("SERVICE"),
+				sortOrder: z.number().int().nonnegative().default(0),
+			}),
+		)
+		.optional()
+		.describe("Invoice line items"),
 });
 
 const updateInvoiceSchema = z.object({
@@ -72,9 +94,20 @@ const listInvoicesSchema = z.object({
 	limit: z.coerce.number().int().positive().max(100).default(20),
 	status: z.enum(["DRAFT", "ISSUED", "PAID", "CANCELLED"]).optional(),
 	contactId: z.string().optional().describe("Filter by contact ID"),
-	search: z.string().optional().describe("Search in invoice number, contact name"),
-	dateFrom: z.string().datetime().optional().describe("Filter invoices issued from this date"),
-	dateTo: z.string().datetime().optional().describe("Filter invoices issued until this date"),
+	search: z
+		.string()
+		.optional()
+		.describe("Search in invoice number, contact name"),
+	dateFrom: z
+		.string()
+		.datetime()
+		.optional()
+		.describe("Filter invoices issued from this date"),
+	dateTo: z
+		.string()
+		.datetime()
+		.optional()
+		.describe("Filter invoices issued until this date"),
 });
 
 // ============================================================================
@@ -101,7 +134,7 @@ async function generateInvoiceNumber(organizationId: string): Promise<string> {
 	let nextNumber = 1;
 	if (lastInvoice) {
 		const lastNumberStr = lastInvoice.number.replace(prefix, "");
-		const lastNumber = parseInt(lastNumberStr, 10);
+		const lastNumber = Number.parseInt(lastNumberStr, 10);
 		if (!isNaN(lastNumber)) {
 			nextNumber = lastNumber + 1;
 		}
@@ -124,12 +157,14 @@ export const invoicesRouter = new Hono()
 		validator("query", listInvoicesSchema),
 		describeRoute({
 			summary: "List invoices",
-			description: "Get a paginated list of invoices for the current organization",
+			description:
+				"Get a paginated list of invoices for the current organization",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, status, contactId, search, dateFrom, dateTo } = c.req.valid("query");
+			const { page, limit, status, contactId, search, dateFrom, dateTo } =
+				c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -143,8 +178,12 @@ export const invoicesRouter = new Hono()
 			if (search) {
 				baseWhere.OR = [
 					{ number: { contains: search, mode: "insensitive" } },
-					{ contact: { displayName: { contains: search, mode: "insensitive" } } },
-					{ contact: { companyName: { contains: search, mode: "insensitive" } } },
+					{
+						contact: { displayName: { contains: search, mode: "insensitive" } },
+					},
+					{
+						contact: { companyName: { contains: search, mode: "insensitive" } },
+					},
 				];
 			}
 
@@ -240,7 +279,8 @@ export const invoicesRouter = new Hono()
 		validator("json", createInvoiceSchema),
 		describeRoute({
 			summary: "Create invoice",
-			description: "Create a new invoice. Can be standalone or linked to a quote.",
+			description:
+				"Create a new invoice. Can be standalone or linked to a quote.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -373,7 +413,8 @@ export const invoicesRouter = new Hono()
 		"/from-quote/:quoteId",
 		describeRoute({
 			summary: "Create invoice from quote",
-			description: "Convert an accepted quote to an invoice with deep-copy semantics. Story 22.8: Supports STAY trip type with detailed line items per day and service.",
+			description:
+				"Convert an accepted quote to an invoice with deep-copy semantics. Story 22.8: Supports STAY trip type with detailed line items per day and service.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -430,16 +471,21 @@ export const invoicesRouter = new Hono()
 			// Story 7.3: Parse appliedRules to extract optional fees and promotions
 			const parsedRules = parseAppliedRules(quote.appliedRules);
 
-            // Story 25.4: Inject end customer name for Agency invoices
-            const endCustomerName = quote.contact.type === "AGENCY" && quote.endCustomer
-                ? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
-                : null;
+			// Story 25.4: Inject end customer name for Agency invoices
+			const endCustomerName =
+				quote.contact.type === "AGENCY" && quote.endCustomer
+					? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
+					: null;
 
 			// Story 22.8: Build invoice lines based on trip type
 			let invoiceLines;
 			let invoiceNotes: string;
 
-			if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+			if (
+				quote.tripType === "STAY" &&
+				quote.stayDays &&
+				quote.stayDays.length > 0
+			) {
 				// STAY trip type: Build detailed lines per day and service
 				// Convert Prisma Decimal types to numbers for invoice line builder
 				const stayDaysInput: StayDayInput[] = quote.stayDays.map((day) => ({
@@ -453,25 +499,41 @@ export const invoicesRouter = new Hono()
 					driverOvernightCost: Number(day.driverOvernightCost),
 					services: day.services.map((service) => ({
 						serviceOrder: service.serviceOrder,
-						serviceType: service.serviceType as "TRANSFER" | "DISPO" | "EXCURSION",
+						serviceType: service.serviceType as
+							| "TRANSFER"
+							| "DISPO"
+							| "EXCURSION",
 						pickupAddress: service.pickupAddress,
 						dropoffAddress: service.dropoffAddress,
-						durationHours: service.durationHours ? Number(service.durationHours) : null,
+						durationHours: service.durationHours
+							? Number(service.durationHours)
+							: null,
 						serviceCost: Number(service.serviceCost),
 					})),
 				}));
 
-				invoiceLines = buildStayInvoiceLines(stayDaysInput, parsedRules, endCustomerName);
+				invoiceLines = buildStayInvoiceLines(
+					stayDaysInput,
+					parsedRules,
+					endCustomerName,
+				);
 
 				// Build notes for STAY invoice
 				const totalDays = quote.stayDays.length;
-				const startDate = quote.stayStartDate ? new Date(quote.stayStartDate).toLocaleDateString("fr-FR") : "N/A";
-				const endDate = quote.stayEndDate ? new Date(quote.stayEndDate).toLocaleDateString("fr-FR") : "N/A";
+				const startDate = quote.stayStartDate
+					? new Date(quote.stayStartDate).toLocaleDateString("fr-FR")
+					: "N/A";
+				const endDate = quote.stayEndDate
+					? new Date(quote.stayEndDate).toLocaleDateString("fr-FR")
+					: "N/A";
 				invoiceNotes = `Séjour multi-jours (${totalDays} jours) du ${startDate} au ${endDate}`;
 			} else {
 				// Standard trip types: Use existing logic
 				const finalPrice = Number(quote.finalPrice);
-				const transportAmount = calculateTransportAmount(finalPrice, parsedRules);
+				const transportAmount = calculateTransportAmount(
+					finalPrice,
+					parsedRules,
+				);
 
 				// Build trip context for detailed descriptions
 				const tripContext = {
@@ -513,7 +575,7 @@ export const invoicesRouter = new Hono()
 
 			// Set due date based on payment terms
 			const issueDate = new Date();
-			let dueDate = new Date(issueDate);
+			const dueDate = new Date(issueDate);
 			if (quote.contact.partnerContract) {
 				const paymentTerms = quote.contact.partnerContract.paymentTerms;
 				switch (paymentTerms) {
@@ -538,14 +600,15 @@ export const invoicesRouter = new Hono()
 			}
 
 			// Story 22.8: Build cost breakdown with tripAnalysis for STAY quotes
-			const costBreakdown = quote.tripType === "STAY" 
-				? {
-					...((quote.costBreakdown as object) ?? {}),
-					tripAnalysis: quote.tripAnalysis,
-					tripType: quote.tripType,
-					stayDays: quote.stayDays?.length ?? 0,
-				}
-				: quote.costBreakdown ?? undefined;
+			const costBreakdown =
+				quote.tripType === "STAY"
+					? {
+							...((quote.costBreakdown as object) ?? {}),
+							tripAnalysis: quote.tripAnalysis,
+							tripType: quote.tripType,
+							stayDays: quote.stayDays?.length ?? 0,
+						}
+					: (quote.costBreakdown ?? undefined);
 
 			// Create invoice with all lines in a transaction
 			const invoice = await db.$transaction(async (tx) => {
@@ -613,7 +676,8 @@ export const invoicesRouter = new Hono()
 		validator("json", updateInvoiceSchema),
 		describeRoute({
 			summary: "Update invoice",
-			description: "Update invoice status or notes. Amounts are immutable after creation.",
+			description:
+				"Update invoice status or notes. Amounts are immutable after creation.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -711,16 +775,22 @@ export const invoicesRouter = new Hono()
 	// Add line to invoice (only DRAFT)
 	.post(
 		"/:id/lines",
-		validator("json", z.object({
-			description: z.string().min(1),
-			quantity: z.number().positive().default(1),
-			unitPriceExclVat: z.number(),
-			vatRate: z.number().min(0).max(100).default(20),
-			lineType: z.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"]).default("OPTIONAL_FEE"),
-		})),
+		validator(
+			"json",
+			z.object({
+				description: z.string().min(1),
+				quantity: z.number().positive().default(1),
+				unitPriceExclVat: z.number(),
+				vatRate: z.number().min(0).max(100).default(20),
+				lineType: z
+					.enum(["SERVICE", "OPTIONAL_FEE", "PROMOTION_ADJUSTMENT", "OTHER"])
+					.default("OPTIONAL_FEE"),
+			}),
+		),
 		describeRoute({
 			summary: "Add line to invoice",
-			description: "Add a new line to a DRAFT invoice. Recalculates totals automatically.",
+			description:
+				"Add a new line to a DRAFT invoice. Recalculates totals automatically.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -738,15 +808,22 @@ export const invoicesRouter = new Hono()
 			}
 
 			if (invoice.status !== "DRAFT") {
-				throw new HTTPException(400, { message: "Can only add lines to DRAFT invoices" });
+				throw new HTTPException(400, {
+					message: "Can only add lines to DRAFT invoices",
+				});
 			}
 
 			// Calculate line totals
-			const totalExclVat = Math.round(data.quantity * data.unitPriceExclVat * 100) / 100;
-			const totalVat = Math.round(totalExclVat * (data.vatRate / 100) * 100) / 100;
+			const totalExclVat =
+				Math.round(data.quantity * data.unitPriceExclVat * 100) / 100;
+			const totalVat =
+				Math.round(totalExclVat * (data.vatRate / 100) * 100) / 100;
 
 			// Get max sort order
-			const maxSortOrder = invoice.lines.reduce((max, line) => Math.max(max, line.sortOrder), 0);
+			const maxSortOrder = invoice.lines.reduce(
+				(max, line) => Math.max(max, line.sortOrder),
+				0,
+			);
 
 			// Create line and update invoice totals in transaction
 			const result = await db.$transaction(async (tx) => {
@@ -765,10 +842,19 @@ export const invoicesRouter = new Hono()
 				});
 
 				// Recalculate invoice totals
-				const allLines = await tx.invoiceLine.findMany({ where: { invoiceId } });
-				const newTotalExclVat = allLines.reduce((sum, l) => sum + Number(l.totalExclVat), 0);
-				const newTotalVat = allLines.reduce((sum, l) => sum + Number(l.totalVat), 0);
-				const newTotalInclVat = Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
+				const allLines = await tx.invoiceLine.findMany({
+					where: { invoiceId },
+				});
+				const newTotalExclVat = allLines.reduce(
+					(sum, l) => sum + Number(l.totalExclVat),
+					0,
+				);
+				const newTotalVat = allLines.reduce(
+					(sum, l) => sum + Number(l.totalVat),
+					0,
+				);
+				const newTotalInclVat =
+					Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
 
 				await tx.invoice.update({
 					where: { id: invoiceId },
@@ -785,7 +871,11 @@ export const invoicesRouter = new Hono()
 			// Return updated invoice
 			const updatedInvoice = await db.invoice.findFirst({
 				where: { id: invoiceId },
-				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+				include: {
+					contact: true,
+					quote: true,
+					lines: { orderBy: { sortOrder: "asc" } },
+				},
 			});
 
 			return c.json(updatedInvoice, 201);
@@ -797,7 +887,8 @@ export const invoicesRouter = new Hono()
 		"/:id/lines/:lineId",
 		describeRoute({
 			summary: "Delete line from invoice",
-			description: "Remove a line from a DRAFT invoice. Recalculates totals automatically.",
+			description:
+				"Remove a line from a DRAFT invoice. Recalculates totals automatically.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -814,7 +905,9 @@ export const invoicesRouter = new Hono()
 			}
 
 			if (invoice.status !== "DRAFT") {
-				throw new HTTPException(400, { message: "Can only delete lines from DRAFT invoices" });
+				throw new HTTPException(400, {
+					message: "Can only delete lines from DRAFT invoices",
+				});
 			}
 
 			// Verify line belongs to this invoice
@@ -829,7 +922,11 @@ export const invoicesRouter = new Hono()
 			// Return updated invoice
 			const updatedInvoice = await db.invoice.findFirst({
 				where: { id: invoiceId },
-				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+				include: {
+					contact: true,
+					quote: true,
+					lines: { orderBy: { sortOrder: "asc" } },
+				},
 			});
 
 			return c.json(updatedInvoice);
@@ -840,15 +937,19 @@ export const invoicesRouter = new Hono()
 	// Story 28.9: Full editability - description, unitPriceExclVat, vatRate, quantity
 	.patch(
 		"/:id/lines/:lineId",
-		validator("json", z.object({
-			description: z.string().min(1).optional(),
-			quantity: z.number().positive().optional(),
-			unitPriceExclVat: z.number().min(0).optional(),
-			vatRate: z.number().min(0).max(100).optional(),
-		})),
+		validator(
+			"json",
+			z.object({
+				description: z.string().min(1).optional(),
+				quantity: z.number().positive().optional(),
+				unitPriceExclVat: z.number().min(0).optional(),
+				vatRate: z.number().min(0).max(100).optional(),
+			}),
+		),
 		describeRoute({
 			summary: "Update line in invoice",
-			description: "Update a line in a DRAFT invoice (description, quantity, unitPriceExclVat, vatRate). Recalculates totals automatically. Story 28.9: Full editability.",
+			description:
+				"Update a line in a DRAFT invoice (description, quantity, unitPriceExclVat, vatRate). Recalculates totals automatically. Story 28.9: Full editability.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -866,7 +967,9 @@ export const invoicesRouter = new Hono()
 			}
 
 			if (invoice.status !== "DRAFT") {
-				throw new HTTPException(400, { message: "Can only update lines in DRAFT invoices" });
+				throw new HTTPException(400, {
+					message: "Can only update lines in DRAFT invoices",
+				});
 			}
 
 			// Verify line belongs to this invoice
@@ -882,13 +985,15 @@ export const invoicesRouter = new Hono()
 			await db.$transaction(async (tx) => {
 				// Use new values if provided, otherwise keep existing
 				const newQuantity = data.quantity ?? Number(line.quantity);
-				const newUnitPrice = data.unitPriceExclVat ?? Number(line.unitPriceExclVat);
+				const newUnitPrice =
+					data.unitPriceExclVat ?? Number(line.unitPriceExclVat);
 				const newVatRate = data.vatRate ?? Number(line.vatRate);
 				const newDescription = data.description ?? line.description;
 
 				// Recalculate line totals
 				const totalExclVat = Math.round(newQuantity * newUnitPrice * 100) / 100;
-				const totalVat = Math.round(totalExclVat * (newVatRate / 100) * 100) / 100;
+				const totalVat =
+					Math.round(totalExclVat * (newVatRate / 100) * 100) / 100;
 
 				await tx.invoiceLine.update({
 					where: { id: lineId },
@@ -903,10 +1008,19 @@ export const invoicesRouter = new Hono()
 				});
 
 				// Recalculate invoice totals
-				const remainingLines = await tx.invoiceLine.findMany({ where: { invoiceId } });
-				const newTotalExclVat = remainingLines.reduce((sum, l) => sum + Number(l.totalExclVat), 0);
-				const newTotalVat = remainingLines.reduce((sum, l) => sum + Number(l.totalVat), 0);
-				const newTotalInclVat = Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
+				const remainingLines = await tx.invoiceLine.findMany({
+					where: { invoiceId },
+				});
+				const newTotalExclVat = remainingLines.reduce(
+					(sum, l) => sum + Number(l.totalExclVat),
+					0,
+				);
+				const newTotalVat = remainingLines.reduce(
+					(sum, l) => sum + Number(l.totalVat),
+					0,
+				);
+				const newTotalInclVat =
+					Math.round((newTotalExclVat + newTotalVat) * 100) / 100;
 
 				await tx.invoice.update({
 					where: { id: invoiceId },
@@ -921,7 +1035,11 @@ export const invoicesRouter = new Hono()
 			// Return updated invoice
 			const updatedInvoice = await db.invoice.findFirst({
 				where: { id: invoiceId },
-				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+				include: {
+					contact: true,
+					quote: true,
+					lines: { orderBy: { sortOrder: "asc" } },
+				},
 			});
 
 			return c.json(updatedInvoice);
@@ -940,7 +1058,8 @@ export const invoicesRouter = new Hono()
 		"/:id/mission-context",
 		describeRoute({
 			summary: "Get mission context for invoice",
-			description: "Retrieve mission data linked to the invoice through Order for placeholder replacement. Story 28.10.",
+			description:
+				"Retrieve mission data linked to the invoice through Order for placeholder replacement. Story 28.10.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -1008,7 +1127,8 @@ export const invoicesRouter = new Hono()
 		"/:id/finalize-placeholders",
 		describeRoute({
 			summary: "Finalize placeholders in invoice",
-			description: "Permanently replace all placeholders in invoice line descriptions with actual mission data. Story 28.10.",
+			description:
+				"Permanently replace all placeholders in invoice line descriptions with actual mission data. Story 28.10.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -1016,7 +1136,12 @@ export const invoicesRouter = new Hono()
 			const invoiceId = c.req.param("id");
 
 			// Placeholder tokens
-			const placeholderTokens = ["{{driver}}", "{{plate}}", "{{start}}", "{{end}}"];
+			const placeholderTokens = [
+				"{{driver}}",
+				"{{plate}}",
+				"{{start}}",
+				"{{end}}",
+			];
 
 			// Find invoice with order, missions, and lines
 			const invoice = await db.invoice.findFirst({
@@ -1042,13 +1167,17 @@ export const invoicesRouter = new Hono()
 			}
 
 			if (invoice.status !== "DRAFT") {
-				throw new HTTPException(400, { message: "Can only finalize placeholders in DRAFT invoices" });
+				throw new HTTPException(400, {
+					message: "Can only finalize placeholders in DRAFT invoices",
+				});
 			}
 
 			const missions = invoice.order?.missions ?? [];
 
 			if (missions.length === 0) {
-				throw new HTTPException(400, { message: "No mission linked to this invoice" });
+				throw new HTTPException(400, {
+					message: "No mission linked to this invoice",
+				});
 			}
 
 			// Build context from first mission
@@ -1096,7 +1225,9 @@ export const invoicesRouter = new Hono()
 			let updatedCount = 0;
 			await db.$transaction(async (tx) => {
 				for (const line of invoice.lines) {
-					const hasPlaceholder = placeholderTokens.some((token) => line.description.includes(token));
+					const hasPlaceholder = placeholderTokens.some((token) =>
+						line.description.includes(token),
+					);
 					if (hasPlaceholder) {
 						const newDescription = replacePlaceholdersInText(line.description);
 						await tx.invoiceLine.update({
@@ -1111,7 +1242,11 @@ export const invoicesRouter = new Hono()
 			// Return updated invoice
 			const updatedInvoice = await db.invoice.findFirst({
 				where: { id: invoiceId },
-				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+				include: {
+					contact: true,
+					quote: true,
+					lines: { orderBy: { sortOrder: "asc" } },
+				},
 			});
 
 			return c.json({
@@ -1119,5 +1254,103 @@ export const invoicesRouter = new Hono()
 				updatedLinesCount: updatedCount,
 				invoice: updatedInvoice,
 			});
+		},
+	)
+
+	// ============================================================================
+	// Story 28.11: Partial Invoice Endpoints
+	// ============================================================================
+
+	// Get order balance for partial invoicing
+	.get(
+		"/order/:orderId/balance",
+		describeRoute({
+			summary: "Get order balance",
+			description:
+				"Get the balance summary for an order including total, invoiced, and remaining amounts",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const orderId = c.req.param("orderId");
+
+			try {
+				const balance = await InvoiceFactory.calculateOrderBalance(
+					orderId,
+					organizationId,
+				);
+				return c.json(balance);
+			} catch (error) {
+				throw new HTTPException(404, {
+					message: error instanceof Error ? error.message : "Order not found",
+				});
+			}
+		},
+	)
+
+	// Create partial invoice from order
+	.post(
+		"/partial",
+		validator(
+			"json",
+			z.object({
+				orderId: z
+					.string()
+					.min(1)
+					.describe("Order ID to create partial invoice from"),
+				mode: z
+					.enum(["FULL_BALANCE", "DEPOSIT_PERCENT", "MANUAL_SELECTION"])
+					.describe("Partial invoice mode"),
+				depositPercent: z
+					.number()
+					.min(1)
+					.max(100)
+					.optional()
+					.describe("Deposit percentage (for DEPOSIT_PERCENT mode)"),
+				selectedLineIds: z
+					.array(z.string())
+					.optional()
+					.describe("Quote line IDs to include (for MANUAL_SELECTION mode)"),
+			}),
+		),
+		describeRoute({
+			summary: "Create partial invoice",
+			description:
+				"Create a partial invoice from an order. Supports three modes: FULL_BALANCE (remaining balance), DEPOSIT_PERCENT (percentage deposit), MANUAL_SELECTION (specific lines)",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { orderId, mode, depositPercent, selectedLineIds } =
+				c.req.valid("json");
+
+			try {
+				const result = await InvoiceFactory.createPartialInvoice(
+					orderId,
+					organizationId,
+					{
+						mode: mode as PartialInvoiceMode,
+						depositPercent,
+						selectedLineIds,
+					},
+				);
+
+				return c.json(
+					{
+						success: true,
+						invoice: result.invoice,
+						linesCreated: result.linesCreated,
+						warning: result.warning,
+					},
+					201,
+				);
+			} catch (error) {
+				throw new HTTPException(400, {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to create partial invoice",
+				});
+			}
 		},
 	);

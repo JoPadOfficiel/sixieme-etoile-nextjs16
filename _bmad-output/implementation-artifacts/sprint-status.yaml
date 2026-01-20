@@ -340,7 +340,7 @@ development_status:
   28-8-invoice-generation-detached-snapshot: done
   28-9-invoice-ui-full-editability: done
   28-10-execution-feedback-loop-placeholders: done
-  28-11-partial-invoicing: backlog
+  28-11-partial-invoicing: review
   28-12-post-mission-pending-charges: backlog
   28-13-ad-hoc-free-missions: backlog
   epic-28-retrospective: optional
