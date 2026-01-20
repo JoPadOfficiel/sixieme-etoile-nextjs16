@@ -60,6 +60,12 @@ export function DispatchMain({
                 bases={bases}
                 isLoading={isLoadingBases}
                 drivers={DRIVER_POSITIONS_MOCK}
+                // Story 27.7: Pass encoded polyline for real route display
+                encodedPolyline={
+                  mission?.tripAnalysis && typeof mission.tripAnalysis === 'object'
+                    ? (mission.tripAnalysis as { encodedPolyline?: string }).encodedPolyline
+                    : undefined
+                }
              />
           </div>
         )}

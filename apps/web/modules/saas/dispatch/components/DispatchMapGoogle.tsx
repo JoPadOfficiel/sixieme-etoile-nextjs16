@@ -13,16 +13,18 @@ import type { OperatingBase } from "../hooks/useOperatingBases";
 import type { CandidateBase, CandidateSegments } from "../types/assignment";
 import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
 import type { DriverPosition } from "../mocks/driverPositions";
+import { decodePolyline } from "@saas/shared/utils/polyline";
 
 /**
  * DispatchMapGoogle Component
  *
  * Story 8.1: Implement Dispatch Screen Layout
  * Story 8.3: Multi-Base Optimisation & Visualisation
+ * Story 27.7: Live Map Mission Context Layer
  *
  * Interactive Google Maps component showing:
  * - Mission pickup/dropoff markers
- * - Route polyline between pickup and dropoff
+ * - Route polyline between pickup and dropoff (real route when available)
  * - Operating bases as markers
  * - Candidate bases with distinct styling
  * - Approach/Return route segments when candidate is selected
@@ -51,6 +53,8 @@ interface DispatchMapGoogleProps {
 	onCandidateHoverStart?: (vehicleId: string) => void;
 	onCandidateHoverEnd?: () => void;
 	drivers?: DriverPosition[];
+	// Story 27.7: Encoded polyline for real route display
+	encodedPolyline?: string | null;
 }
 
 // Marker colors
@@ -85,6 +89,7 @@ export function DispatchMapGoogle({
 	onCandidateHoverStart,
 	onCandidateHoverEnd,
 	drivers = [],
+	encodedPolyline,
 }: DispatchMapGoogleProps) {
 	const t = useTranslations("dispatch.map");
 	const tCommon = useTranslations("common.map");
@@ -250,17 +255,47 @@ export function DispatchMapGoogle({
 			bounds.extend(dropoffPos);
 		}
 
-		// Add route polyline (pickup to dropoff)
+		// Story 27.7: Add route polyline (real route if available, fallback to straight line)
 		if (
 			mission.pickupLatitude &&
 			mission.pickupLongitude &&
 			mission.dropoffLatitude &&
 			mission.dropoffLongitude
 		) {
-			const routePath = [
-				{ lat: mission.pickupLatitude, lng: mission.pickupLongitude },
-				{ lat: mission.dropoffLatitude, lng: mission.dropoffLongitude },
-			];
+			let routePath: Array<{ lat: number; lng: number }>;
+
+			// Try to use encoded polyline for real route display
+			if (encodedPolyline) {
+				try {
+					const decodedPath = decodePolyline(encodedPolyline);
+					if (decodedPath.length > 0) {
+						routePath = decodedPath;
+						// Extend bounds to include all polyline points for proper fitBounds
+						decodedPath.forEach((point) => bounds.extend(point));
+						console.log("[DispatchMapGoogle] Using encoded polyline with", decodedPath.length, "points");
+					} else {
+						// Fallback to straight line if decode returns empty
+						routePath = [
+							{ lat: mission.pickupLatitude, lng: mission.pickupLongitude },
+							{ lat: mission.dropoffLatitude, lng: mission.dropoffLongitude },
+						];
+					}
+				} catch (error) {
+					// Fallback to straight line on decode error
+					console.warn("[DispatchMapGoogle] Failed to decode polyline, using straight line:", error);
+					routePath = [
+						{ lat: mission.pickupLatitude, lng: mission.pickupLongitude },
+						{ lat: mission.dropoffLatitude, lng: mission.dropoffLongitude },
+					];
+				}
+			} else {
+				// No encoded polyline (MANUAL mission) - use straight line
+				routePath = [
+					{ lat: mission.pickupLatitude, lng: mission.pickupLongitude },
+					{ lat: mission.dropoffLatitude, lng: mission.dropoffLongitude },
+				];
+			}
+
 			const routePolyline = new google.maps.Polyline({
 				map,
 				path: routePath,
@@ -427,6 +462,7 @@ export function DispatchMapGoogle({
 		onCandidateHoverStart,
 		onCandidateHoverEnd,
 		drivers,
+		encodedPolyline,
 	]);
 
 	// Loading state
