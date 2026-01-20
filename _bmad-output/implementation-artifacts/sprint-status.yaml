@@ -321,7 +321,7 @@ development_status:
   27-5-unassigned-backlog-sidebar-logic: done
   27-6-live-map-driver-locations-layer: done
   27-7-live-map-mission-context-layer: done
-  27-8-map-smart-assignment-suggestions: backlog
+  27-8-map-smart-assignment-suggestions: review
   27-9-dispatch-actions-drag-drop-assignment: done
   27-10-conflict-detection-rse-calendar: done
   27-11-inspector-panel-quick-actions: done

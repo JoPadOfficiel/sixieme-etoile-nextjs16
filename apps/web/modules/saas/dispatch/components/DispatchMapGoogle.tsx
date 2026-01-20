@@ -14,6 +14,12 @@ import type { CandidateBase, CandidateSegments } from "../types/assignment";
 import { useGoogleMaps } from "@saas/shared/providers/GoogleMapsProvider";
 import type { DriverPosition } from "../mocks/driverPositions";
 import { decodePolyline } from "@saas/shared/utils/polyline";
+import {
+	findNearestDrivers,
+	getSuggestionForDriver,
+	formatDistance,
+	type SuggestedDriver,
+} from "../utils/geo";
 
 /**
  * DispatchMapGoogle Component
@@ -70,6 +76,9 @@ const COLORS = {
 	hoveredBase: "#ec4899", // pink-500
 	driverActive: "#10B981", // emerald-500
 	driverInactive: "#9CA3AF", // gray-400
+	// Story 27.8: Suggested driver colors
+	driverSuggested: "#F59E0B", // amber-500 - Gold for suggestions
+	driverSuggestedGlow: "#FCD34D", // amber-300 - Lighter for glow effect
 };
 
 export function DispatchMapGoogle({
@@ -159,6 +168,24 @@ export function DispatchMapGoogle({
 		return candidateBases.find((b) => b.vehicleId === activeId) ?? null;
 	}, [candidateBases, hoveredCandidateId, selectedCandidateId]);
 
+	// Story 27.8: Calculate nearest driver suggestions
+	const suggestedDrivers: SuggestedDriver[] = useMemo(() => {
+		// Only calculate if we have a mission with pickup coordinates
+		if (!mission?.pickupLatitude || !mission?.pickupLongitude) {
+			return [];
+		}
+		// Only calculate if we have drivers
+		if (drivers.length === 0) {
+			return [];
+		}
+		return findNearestDrivers(
+			mission.pickupLatitude,
+			mission.pickupLongitude,
+			drivers,
+			3 // Top 3 suggestions
+		);
+	}, [mission, drivers]);
+
 	// Update markers and polylines when mission or candidates change
 	useEffect(() => {
 		const map = mapInstanceRef.current;
@@ -174,27 +201,77 @@ export function DispatchMapGoogle({
 		
 		const bounds = new google.maps.LatLngBounds();
 
-		// Add Driver Markers (Story 27.6)
+		// Add Driver Markers (Story 27.6 + Story 27.8 Suggestions)
 		drivers.forEach((driver) => {
 			if (!driver.lat || !driver.lng) return;
 			const pos = { lat: driver.lat, lng: driver.lng };
 			const isActive = driver.status === "ACTIVE";
-			const color = isActive ? COLORS.driverActive : COLORS.driverInactive;
-			const statusLabel = isActive ? "active" : "inactive";
+			
+			// Story 27.8: Check if this driver is a suggested candidate
+			const suggestion = getSuggestionForDriver(driver.id, suggestedDrivers);
+			const isSuggested = suggestion !== null;
+			
+			// Determine color and style based on suggestion status
+			let color: string;
+			let scale: number;
+			let strokeWeight: number;
+			let zIndex: number;
+			let title: string;
+			
+			if (isSuggested) {
+				// Suggested driver - gold/amber with larger marker
+				color = COLORS.driverSuggested;
+				scale = 10; // Larger than normal
+				strokeWeight = 3; // Thicker border for glow effect
+				zIndex = 70 + (4 - suggestion.rank); // Higher z-index for top suggestions
+				title = `${driver.name} (${formatDistance(suggestion.distanceKm)}) - Suggestion #${suggestion.rank}`;
+			} else if (isActive) {
+				// Active but not suggested
+				color = COLORS.driverActive;
+				scale = 7;
+				strokeWeight = 2;
+				zIndex = 60;
+				title = `${driver.name} (${t("driverStatus.active")})`;
+			} else {
+				// Inactive driver
+				color = COLORS.driverInactive;
+				scale = 7;
+				strokeWeight = 2;
+				zIndex = 55;
+				title = `${driver.name} (${t("driverStatus.inactive")})`;
+			}
+			
+			// Create glow effect marker for suggested drivers (behind main marker)
+			if (isSuggested) {
+				const glowMarker = new google.maps.Marker({
+					map,
+					position: pos,
+					icon: {
+						path: google.maps.SymbolPath.CIRCLE,
+						scale: 14, // Larger for glow effect
+						fillColor: COLORS.driverSuggestedGlow,
+						fillOpacity: 0.4,
+						strokeColor: COLORS.driverSuggestedGlow,
+						strokeWeight: 0,
+					},
+					zIndex: zIndex - 1, // Behind main marker
+				});
+				markersRef.current.set(`driver-glow-${driver.id}`, glowMarker);
+			}
 			
 			const marker = new google.maps.Marker({
 				map,
 				position: pos,
-				title: `${driver.name} (${t(`driverStatus.${statusLabel}`)})`,
+				title,
 				icon: {
 					path: google.maps.SymbolPath.CIRCLE,
-					scale: 7,
+					scale,
 					fillColor: color,
 					fillOpacity: 1,
-					strokeColor: "#ffffff",
-					strokeWeight: 2,
+					strokeColor: isSuggested ? COLORS.driverSuggestedGlow : "#ffffff",
+					strokeWeight,
 				},
-				zIndex: 60,
+				zIndex,
 			});
 			
 			markersRef.current.set(`driver-${driver.id}`, marker);
@@ -463,6 +540,7 @@ export function DispatchMapGoogle({
 		onCandidateHoverEnd,
 		drivers,
 		encodedPolyline,
+		suggestedDrivers,
 	]);
 
 	// Loading state
@@ -536,6 +614,16 @@ export function DispatchMapGoogle({
 						<div className="flex items-center gap-2">
 							<span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.candidateBase }} />
 							<span>{t("candidateBases")}</span>
+						</div>
+					)}
+					{/* Story 27.8: Suggested drivers legend */}
+					{suggestedDrivers.length > 0 && (
+						<div className="flex items-center gap-2">
+							<span 
+								className="w-3 h-3 rounded-full ring-2 ring-amber-300/50" 
+								style={{ backgroundColor: COLORS.driverSuggested }} 
+							/>
+							<span>{t("suggestedDrivers")}</span>
 						</div>
 					)}
 				</div>
