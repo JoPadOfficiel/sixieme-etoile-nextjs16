@@ -2383,6 +2383,54 @@
 			"retry": "Retry"
 		}
 	},
+	"orders": {
+		"list": {
+			"title": "Orders",
+			"heading": "Orders",
+			"description": "Manage your order dossiers",
+			"newOrder": "New order",
+			"empty": "No orders",
+			"emptyDescription": "Orders will appear here once created."
+		},
+		"detail": {
+			"title": "Order",
+			"notFound": "Order not found",
+			"notFoundDescription": "The requested order does not exist or you do not have access to it.",
+			"backToList": "Back to orders",
+			"createdAt": "Created on {date}",
+			"notes": "Notes",
+			"kpi": {
+				"quotes": "Quotes",
+				"quotesLabel": "{count, plural, =0 {no quotes} one {associated quote} other {associated quotes}}",
+				"missions": "Missions",
+				"missionsLabel": "{count, plural, =0 {no missions} one {scheduled mission} other {scheduled missions}}",
+				"invoices": "Invoices",
+				"invoicesLabel": "{count, plural, =0 {no invoices} one {issued invoice} other {issued invoices}}"
+			}
+		},
+		"tabs": {
+			"commercial": "Commercial",
+			"commercialTitle": "Commercial Information",
+			"commercialHeading": "Quotes and commercial details",
+			"commercialPlaceholder": "Quote lines and commercial details will appear here. This section will be enhanced in future versions.",
+			"operations": "Operations",
+			"operationsTitle": "Operational Tracking",
+			"operationsHeading": "Missions and operational status",
+			"operationsPlaceholder": "Generated missions and their execution status will appear here. This section will be enhanced in future versions.",
+			"financial": "Financial",
+			"financialTitle": "Financial Tracking",
+			"financialHeading": "Invoices and payments",
+			"financialPlaceholder": "Invoices and payment tracking will appear here. This section will be enhanced in future versions."
+		},
+		"status": {
+			"draft": "Draft",
+			"quoted": "Quoted",
+			"confirmed": "Confirmed",
+			"invoiced": "Invoiced",
+			"paid": "Paid",
+			"cancelled": "Cancelled"
+		}
+	},
 	"quotes": {
 		"title": "Quotes",
 		"description": "Manage your quotes and pricing.",

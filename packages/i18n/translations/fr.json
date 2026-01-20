@@ -2369,6 +2369,54 @@
 			"retry": "Réessayer"
 		}
 	},
+	"orders": {
+		"list": {
+			"title": "Dossiers",
+			"heading": "Dossiers",
+			"description": "Gérez vos dossiers de commande",
+			"newOrder": "Nouveau dossier",
+			"empty": "Aucun dossier",
+			"emptyDescription": "Les dossiers apparaîtront ici une fois créés."
+		},
+		"detail": {
+			"title": "Dossier",
+			"notFound": "Dossier non trouvé",
+			"notFoundDescription": "Le dossier demandé n'existe pas ou vous n'avez pas les droits pour y accéder.",
+			"backToList": "Retour aux dossiers",
+			"createdAt": "Créé le {date}",
+			"notes": "Notes",
+			"kpi": {
+				"quotes": "Devis",
+				"quotesLabel": "{count, plural, =0 {aucun devis} one {devis associé} other {devis associés}}",
+				"missions": "Missions",
+				"missionsLabel": "{count, plural, =0 {aucune mission} one {mission planifiée} other {missions planifiées}}",
+				"invoices": "Factures",
+				"invoicesLabel": "{count, plural, =0 {aucune facture} one {facture émise} other {factures émises}}"
+			}
+		},
+		"tabs": {
+			"commercial": "Commercial",
+			"commercialTitle": "Informations Commerciales",
+			"commercialHeading": "Devis et détails commerciaux",
+			"commercialPlaceholder": "Les lignes de devis et les détails commerciaux apparaîtront ici. Cette section sera enrichie dans les prochaines versions.",
+			"operations": "Opérations",
+			"operationsTitle": "Suivi Opérationnel",
+			"operationsHeading": "Missions et statuts opérationnels",
+			"operationsPlaceholder": "Les missions générées et leur statut d'exécution apparaîtront ici. Cette section sera enrichie dans les prochaines versions.",
+			"financial": "Financier",
+			"financialTitle": "Suivi Financier",
+			"financialHeading": "Factures et paiements",
+			"financialPlaceholder": "Les factures et le suivi des paiements apparaîtront ici. Cette section sera enrichie dans les prochaines versions."
+		},
+		"status": {
+			"draft": "Brouillon",
+			"quoted": "Devisé",
+			"confirmed": "Confirmé",
+			"invoiced": "Facturé",
+			"paid": "Payé",
+			"cancelled": "Annulé"
+		}
+	},
 	"quotes": {
 		"title": "Devis",
 		"description": "Gérez vos devis et tarifications.",

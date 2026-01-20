@@ -7,7 +7,7 @@
 | **Story ID**     | 28.3                                              |
 | **Epic**         | Epic 28 - Order Management & Intelligent Spawning |
 | **Title**        | Dossier View UI - Skeleton & Tabs                 |
-| **Status**       | review                                            |
+| **Status**       | done                                              |
 | **Created**      | 2026-01-20                                        |
 | **Priority**     | High                                              |
 | **Story Points** | 3                                                 |
@@ -402,3 +402,44 @@ git push -u origin feature/28-3-dossier-ui
 - **Target**: `main`
 - **Title**: `feat(orders): Story 28.3 - Dossier View UI - Skeleton & Tabs`
 - **Description**: Implements the central Order (Dossier) detail page with header, KPI cards, and tabbed navigation for Commercial, Operations, and Financial sections.
+
+---
+
+## Senior Developer Review (AI) - 2026-01-20
+
+### Review Outcome: ✅ APPROVED (after fixes)
+
+### Issues Found & Fixed
+
+| #   | Severity | Issue                                                                        | Fix Applied                                               |
+| --- | -------- | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | HIGH     | Page was Client Component with React Query fetch instead of Server Component | Refactored to Server Component + Client Component pattern |
+| 2   | HIGH     | OrdersResponse type mismatch with API (pagination structure)                 | Refactored to Server Component with direct Prisma fetch   |
+| 3   | MEDIUM   | Back button navigated to /quotes instead of /orders                          | Fixed navigation to /orders                               |
+| 4   | MEDIUM   | Session not synced showed false "not found" error                            | Handled by Server Component (no session dependency)       |
+| 5   | MEDIUM   | Over-fetching full relations for KPI counts                                  | Using `_count` instead of full relations                  |
+| 6   | LOW      | Hardcoded French strings (no i18n)                                           | Added next-intl translations (fr/en)                      |
+
+### Files Modified
+
+| File                                                                              | Changes                            |
+| --------------------------------------------------------------------------------- | ---------------------------------- |
+| `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/orders/[id]/page.tsx` | Server Component with Prisma fetch |
+| `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/orders/page.tsx`      | Server Component with Prisma fetch |
+| `apps/web/modules/saas/orders/components/OrderDetailClient.tsx`                   | New client component with i18n     |
+| `apps/web/modules/saas/orders/components/OrdersListClient.tsx`                    | New client component with i18n     |
+| `apps/web/modules/saas/orders/components/index.ts`                                | Exports                            |
+| `apps/web/modules/saas/orders/index.ts`                                           | Module export                      |
+| `packages/i18n/translations/fr.json`                                              | Added orders translations          |
+| `packages/i18n/translations/en.json`                                              | Added orders translations          |
+
+### Verification
+
+All issues have been addressed. The implementation now follows the project's established patterns:
+
+- Server Components for initial data fetch (like quotes/[id]/page.tsx)
+- Client Components for interactive UI (tabs, navigation)
+- Proper i18n with next-intl
+- Optimized queries using `_count` for KPIs
+
+_Reviewer: Cascade AI on 2026-01-20_
