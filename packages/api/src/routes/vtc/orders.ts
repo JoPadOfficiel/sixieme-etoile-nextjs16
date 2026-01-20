@@ -1,17 +1,15 @@
-import { db } from "@repo/database";
 import type { OrderStatus } from "@prisma/client";
+import { db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import {
-	withTenantCreate,
-	withTenantFilter,
-} from "../../lib/tenant-prisma";
+import { withTenantCreate, withTenantFilter } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
-import { SpawnService } from "../../services/spawn-service";
 import { InvoiceFactory } from "../../services/invoice-factory";
+import { PendingChargesService } from "../../services/pending-charges";
+import { SpawnService } from "../../services/spawn-service";
 
 // ============================================================================
 // Story 28.2: Order State Machine & API
@@ -41,10 +39,12 @@ function canTransition(from: OrderStatus, to: OrderStatus): boolean {
 function logOrderTransition(
 	orderId: string,
 	from: OrderStatus,
-	to: OrderStatus
+	to: OrderStatus,
 ): void {
 	const timestamp = new Date().toISOString();
-	console.log(`[ORDER_AUDIT] Order ${orderId}: ${from} → ${to} at ${timestamp}`);
+	console.log(
+		`[ORDER_AUDIT] Order ${orderId}: ${from} → ${to} at ${timestamp}`,
+	);
 }
 
 /**
@@ -54,7 +54,7 @@ function logOrderTransition(
  */
 async function generateOrderReference(
 	organizationId: string,
-	retryCount = 0
+	retryCount = 0,
 ): Promise<string> {
 	const MAX_RETRIES = 3;
 	const year = new Date().getFullYear();
@@ -149,7 +149,8 @@ export const ordersRouter = new Hono()
 		describeRoute({
 			tags: ["Orders"],
 			summary: "Create a new Order",
-			description: "Creates a new Order (Dossier) with DRAFT status and auto-generated reference",
+			description:
+				"Creates a new Order (Dossier) with DRAFT status and auto-generated reference",
 		}),
 		validator("json", createOrderSchema),
 		async (c) => {
@@ -172,12 +173,15 @@ export const ordersRouter = new Hono()
 
 			// Create order
 			const order = await db.order.create({
-				data: withTenantCreate({
-					reference,
-					contactId: data.contactId,
-					notes: data.notes,
-					status: "DRAFT",
-				}, organizationId),
+				data: withTenantCreate(
+					{
+						reference,
+						contactId: data.contactId,
+						notes: data.notes,
+						status: "DRAFT",
+					},
+					organizationId,
+				),
 				include: {
 					contact: true,
 					quotes: true,
@@ -186,10 +190,14 @@ export const ordersRouter = new Hono()
 				},
 			});
 
-			logOrderTransition(order.id, "DRAFT" as OrderStatus, "DRAFT" as OrderStatus);
+			logOrderTransition(
+				order.id,
+				"DRAFT" as OrderStatus,
+				"DRAFT" as OrderStatus,
+			);
 
 			return c.json(order, 201);
-		}
+		},
 	)
 
 	// -------------------------------------------------------------------------
@@ -205,16 +213,20 @@ export const ordersRouter = new Hono()
 		validator("query", listOrdersQuerySchema),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, status, contactId, reference } = c.req.valid("query");
+			const { page, limit, status, contactId, reference } =
+				c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
 			// Build where clause
-			const where = withTenantFilter({
-				...(status && { status }),
-				...(contactId && { contactId }),
-				...(reference && { reference: { contains: reference } }),
-			}, organizationId);
+			const where = withTenantFilter(
+				{
+					...(status && { status }),
+					...(contactId && { contactId }),
+					...(reference && { reference: { contains: reference } }),
+				},
+				organizationId,
+			);
 
 			// Get total count and orders in parallel
 			const [total, orders] = await Promise.all([
@@ -253,7 +265,7 @@ export const ordersRouter = new Hono()
 					totalPages: Math.ceil(total / limit),
 				},
 			});
-		}
+		},
 	)
 
 	// -------------------------------------------------------------------------
@@ -264,7 +276,8 @@ export const ordersRouter = new Hono()
 		describeRoute({
 			tags: ["Orders"],
 			summary: "Get Order by ID",
-			description: "Returns Order with all related quotes, missions, and invoices",
+			description:
+				"Returns Order with all related quotes, missions, and invoices",
 		}),
 		validator("param", orderIdParamSchema),
 		async (c) => {
@@ -314,7 +327,7 @@ export const ordersRouter = new Hono()
 			}
 
 			return c.json(order);
-		}
+		},
 	)
 
 	// -------------------------------------------------------------------------
@@ -325,7 +338,8 @@ export const ordersRouter = new Hono()
 		describeRoute({
 			tags: ["Orders"],
 			summary: "Update Order",
-			description: "Updates Order fields (notes, contactId). Use /status endpoint for status changes.",
+			description:
+				"Updates Order fields (notes, contactId). Use /status endpoint for status changes.",
 		}),
 		validator("param", orderIdParamSchema),
 		validator("json", updateOrderSchema),
@@ -374,7 +388,7 @@ export const ordersRouter = new Hono()
 			});
 
 			return c.json(order);
-		}
+		},
 	)
 
 	// -------------------------------------------------------------------------
@@ -385,7 +399,8 @@ export const ordersRouter = new Hono()
 		describeRoute({
 			tags: ["Orders"],
 			summary: "Transition Order status",
-			description: "Transitions Order to a new status following the state machine rules",
+			description:
+				"Transitions Order to a new status following the state machine rules",
 		}),
 		validator("param", orderIdParamSchema),
 		validator("json", transitionStatusSchema),
@@ -432,7 +447,7 @@ export const ordersRouter = new Hono()
 							missions: true,
 							invoices: true,
 						},
-					})
+					}),
 				);
 			}
 
@@ -456,7 +471,7 @@ export const ordersRouter = new Hono()
 				try {
 					const missions = await SpawnService.execute(id, organizationId);
 					console.log(
-						`[ORDER_AUDIT] Order ${id}: Spawned ${missions.length} missions on CONFIRMED`
+						`[ORDER_AUDIT] Order ${id}: Spawned ${missions.length} missions on CONFIRMED`,
 					);
 
 					// Refetch order to include newly created missions
@@ -482,7 +497,7 @@ export const ordersRouter = new Hono()
 					// Log error but don't fail the transition
 					// Missions can be created manually if spawning fails
 					console.error(
-						`[SPAWN_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`
+						`[SPAWN_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
 				}
 			}
@@ -492,15 +507,18 @@ export const ordersRouter = new Hono()
 			// The factory checks for existing invoices before creating new ones
 			if (targetStatus === "INVOICED") {
 				try {
-					const result = await InvoiceFactory.createInvoiceFromOrder(id, organizationId);
-					
+					const result = await InvoiceFactory.createInvoiceFromOrder(
+						id,
+						organizationId,
+					);
+
 					if (result.warning?.includes("already exists")) {
 						console.log(
-							`[ORDER_AUDIT] Order ${id}: Invoice already exists (${result.invoice?.number}) - idempotent return`
+							`[ORDER_AUDIT] Order ${id}: Invoice already exists (${result.invoice?.number}) - idempotent return`,
 						);
 					} else {
 						console.log(
-							`[ORDER_AUDIT] Order ${id}: Generated invoice ${result.invoice?.number} with ${result.linesCreated} lines on INVOICED`
+							`[ORDER_AUDIT] Order ${id}: Generated invoice ${result.invoice?.number} with ${result.linesCreated} lines on INVOICED`,
 						);
 					}
 
@@ -530,13 +548,13 @@ export const ordersRouter = new Hono()
 					// Log error but don't fail the transition
 					// Invoice can be created manually if generation fails
 					console.error(
-						`[INVOICE_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`
+						`[INVOICE_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
 				}
 			}
 
 			return c.json(updatedOrder);
-		}
+		},
 	)
 
 	// -------------------------------------------------------------------------
@@ -547,7 +565,8 @@ export const ordersRouter = new Hono()
 		describeRoute({
 			tags: ["Orders"],
 			summary: "Delete Order",
-			description: "Deletes an Order. Only DRAFT or CANCELLED orders can be deleted.",
+			description:
+				"Deletes an Order. Only DRAFT or CANCELLED orders can be deleted.",
 		}),
 		validator("param", orderIdParamSchema),
 		async (c) => {
@@ -582,7 +601,11 @@ export const ordersRouter = new Hono()
 			}
 
 			// Check for linked entities
-			if (order._count.quotes > 0 || order._count.missions > 0 || order._count.invoices > 0) {
+			if (
+				order._count.quotes > 0 ||
+				order._count.missions > 0 ||
+				order._count.invoices > 0
+			) {
 				throw new HTTPException(400, {
 					message: `Cannot delete Order with linked quotes (${order._count.quotes}), missions (${order._count.missions}), or invoices (${order._count.invoices}). Unlink them first.`,
 				});
@@ -591,8 +614,146 @@ export const ordersRouter = new Hono()
 			// Delete order with tenant scope for defense-in-depth
 			await db.order.delete({ where: { id, organizationId } });
 
-			return c.json({ success: true, message: `Order ${order.reference} deleted` });
-		}
+			return c.json({
+				success: true,
+				message: `Order ${order.reference} deleted`,
+			});
+		},
+	)
+
+	// -------------------------------------------------------------------------
+	// Story 28.12: GET /orders/:id/pending-charges - Detect pending charges
+	// -------------------------------------------------------------------------
+	.get(
+		"/:id/pending-charges",
+		describeRoute({
+			tags: ["Orders"],
+			summary: "Detect pending charges",
+			description:
+				"Compares Mission.executionData with invoiced lines to detect unbilled charges",
+		}),
+		validator("param", orderIdParamSchema),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { id } = c.req.valid("param");
+
+			try {
+				const result = await PendingChargesService.detectPendingCharges(
+					id,
+					organizationId,
+				);
+				return c.json(result);
+			} catch (error) {
+				if (error instanceof Error && error.message.includes("not found")) {
+					throw new HTTPException(404, { message: error.message });
+				}
+				throw error;
+			}
+		},
+	)
+
+	// -------------------------------------------------------------------------
+	// Story 28.12: POST /orders/:id/pending-charges/add - Add charge to invoice
+	// -------------------------------------------------------------------------
+	.post(
+		"/:id/pending-charges/add",
+		describeRoute({
+			tags: ["Orders"],
+			summary: "Add pending charge to invoice",
+			description:
+				"Creates a new InvoiceLine from a pending charge and updates invoice totals",
+		}),
+		validator("param", orderIdParamSchema),
+		validator(
+			"json",
+			z.object({
+				charge: z.object({
+					id: z.string(),
+					orderId: z.string(),
+					missionId: z.string(),
+					missionLabel: z.string(),
+					type: z.enum([
+						"WAITING_TIME",
+						"EXTRA_KM",
+						"PARKING",
+						"ADDITIONAL_TOLLS",
+						"OTHER",
+					]),
+					description: z.string(),
+					amount: z.number(),
+					vatRate: z.number(),
+					invoiced: z.boolean(),
+				}),
+				invoiceId: z.string().min(1),
+			}),
+		),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { charge, invoiceId } = c.req.valid("json");
+
+			try {
+				const line = await PendingChargesService.addChargeToInvoice(
+					charge,
+					invoiceId,
+					organizationId,
+				);
+
+				return c.json({
+					success: true,
+					line,
+					message: `Added "${charge.description}" to invoice`,
+				});
+			} catch (error) {
+				if (error instanceof Error && error.message.includes("not found")) {
+					throw new HTTPException(404, { message: error.message });
+				}
+				throw error;
+			}
+		},
+	)
+
+	// -------------------------------------------------------------------------
+	// Story 28.12: POST /orders/:id/pending-charges/add-all - Add all charges
+	// -------------------------------------------------------------------------
+	.post(
+		"/:id/pending-charges/add-all",
+		describeRoute({
+			tags: ["Orders"],
+			summary: "Add all pending charges to invoice",
+			description:
+				"Adds all detected pending charges to an invoice in one operation",
+		}),
+		validator("param", orderIdParamSchema),
+		validator(
+			"json",
+			z.object({
+				invoiceId: z.string().min(1),
+			}),
+		),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { id: orderId } = c.req.valid("param");
+			const { invoiceId } = c.req.valid("json");
+
+			try {
+				const result = await PendingChargesService.addAllChargesToInvoice(
+					orderId,
+					invoiceId,
+					organizationId,
+				);
+
+				return c.json({
+					success: true,
+					...result,
+					message: `Added ${result.linesCreated} charges totaling €${result.totalAmount.toFixed(2)}`,
+				});
+			} catch (error) {
+				if (error instanceof Error && error.message.includes("not found")) {
+					throw new HTTPException(404, { message: error.message });
+				}
+				throw error;
+			}
+		},
 	);
 
 export type OrdersRouter = typeof ordersRouter;

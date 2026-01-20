@@ -2487,6 +2487,13 @@
 			"successDescription": "La facture a été générée avec succès.",
 			"errorTitle": "Erreur",
 			"errorDescription": "Impossible de générer la facture. Veuillez réessayer."
+		},
+		"pendingCharges": {
+			"title": "Frais post-mission détectés",
+			"description": "Des frais réels (attente, km, péages) non facturés ont été détectés pour un total de {total}.",
+			"addToInvoice": "Ajouter à la facture",
+			"addAllToInvoice": "Tout ajouter à la facture",
+			"noInvoiceSelected": "Sélectionnez une facture pour ajouter des frais supplémentaires."
 		}
 	},
 	"quotes": {

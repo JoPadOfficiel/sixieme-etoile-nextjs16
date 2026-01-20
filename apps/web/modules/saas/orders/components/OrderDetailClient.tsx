@@ -36,6 +36,7 @@ import {
 	useSearchParams,
 } from "next/navigation";
 import { useState } from "react";
+import { PendingChargesAlert } from "./PendingChargesAlert";
 import { SpawnMissionModal } from "./SpawnMissionModal";
 
 // ============================================================================
@@ -403,8 +404,18 @@ function FinancialTabContent({
 		})),
 	);
 
+	// Get the first/active invoice for adding pending charges
+	const activeInvoiceId = invoices[0]?.id;
+
 	return (
 		<div className="space-y-4">
+			{/* Story 28.12: Pending Charges Alert */}
+			<PendingChargesAlert
+				orderId={orderId}
+				invoiceId={activeInvoiceId}
+				onChargeAdded={handleInvoiceCreated}
+			/>
+
 			{/* Balance Summary Card */}
 			<div className="grid gap-4 md:grid-cols-3">
 				<Card>

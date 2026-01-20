@@ -2500,6 +2500,13 @@
 			"successDescription": "The invoice has been generated successfully.",
 			"errorTitle": "Error",
 			"errorDescription": "Failed to generate invoice. Please try again."
+		},
+		"pendingCharges": {
+			"title": "Post-Mission Charges Detected",
+			"description": "Unbilled actual expenses (waiting time, km, tolls) detected for a total of {total}.",
+			"addToInvoice": "Add to Invoice",
+			"addAllToInvoice": "Add All to Invoice",
+			"noInvoiceSelected": "Select an invoice to add extra charges."
 		}
 	},
 	"quotes": {
