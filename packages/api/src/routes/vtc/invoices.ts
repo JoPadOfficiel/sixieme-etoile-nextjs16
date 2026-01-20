@@ -843,7 +843,7 @@ export const invoicesRouter = new Hono()
 		validator("json", z.object({
 			description: z.string().min(1).optional(),
 			quantity: z.number().positive().optional(),
-			unitPriceExclVat: z.number().optional(),
+			unitPriceExclVat: z.number().min(0).optional(),
 			vatRate: z.number().min(0).max(100).optional(),
 		})),
 		describeRoute({

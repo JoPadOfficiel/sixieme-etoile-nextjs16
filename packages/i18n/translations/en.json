@@ -417,6 +417,7 @@
 			"lineAdded": "Line added to invoice",
 			"lineDeleted": "Line deleted from invoice",
 			"lineUpdated": "Line updated successfully",
+			"linesAutoSave": "Lines are saved automatically when you edit them.",
 			"deleteLine": "Delete",
 			"deleteLineConfirm": "Are you sure you want to delete this line?",
 			"feesTab": "Fees",

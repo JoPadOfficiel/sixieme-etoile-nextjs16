@@ -4,7 +4,7 @@
 
 - **Epic**: 28 - Order Management & Intelligent Spawning
 - **Story ID**: 28-9
-- **Status**: review
+- **Status**: done
 - **Priority**: High
 - **Estimated Effort**: 3 SP
 - **Assignee**: Amelia (Developer)
@@ -185,11 +185,11 @@ Suite à la Story 28.8 (Invoice Generation - Detached Snapshot), les factures so
 
 ## Definition of Done
 
-- [ ] Tous les AC validés
-- [ ] Tests navigateur MCP passés
-- [ ] Code review effectuée
-- [ ] Pas de régression sur les fonctionnalités existantes
-- [ ] Documentation mise à jour si nécessaire
+- [x] Tous les AC validés
+- [x] Tests navigateur MCP passés
+- [x] Code review effectuée
+- [x] Pas de régression sur les fonctionnalités existantes
+- [x] Documentation mise à jour si nécessaire
 
 ---
 
@@ -219,10 +219,30 @@ Suite à la Story 28.8 (Invoice Generation - Detached Snapshot), les factures so
 
 - [x] AC1: Édition de la Description (Input text avec blur/Enter)
 - [x] AC2: Édition du Prix Unitaire (Input number avec validation)
-- [x] AC3: Édition du Taux TVA (Input number 0-100)
-- [x] AC4: Recalcul Automatique des Totaux (côté serveur)
+- [x] AC3: Édition du Taux TVA (Select avec options prédéfinies 0/5.5/10/20%)
+- [x] AC4: Recalcul Automatique des Totaux (côté client + serveur)
 - [x] AC5: Persistance des Modifications (API PATCH)
 - [x] AC6: Restriction aux Factures DRAFT (vérification backend)
+
+### 2026-01-20 - Code Review Completed
+
+**Senior Developer Review (AI) - JoPad**
+
+**Issues Found & Fixed:**
+
+1. ✅ HIGH #1: Added client-side recalculation + totals display in edit mode
+2. ✅ HIGH #2: Replaced VAT Input with Select (predefined options: 0%, 5.5%, 10%, 20%)
+3. ✅ HIGH #3: Added clarification text for auto-save behavior
+4. ✅ MEDIUM #4: Added min(0) validation for unitPriceExclVat in API
+5. ✅ MEDIUM #5: Added key prop for input sync after mutation
+
+**Additional Files Modified:**
+
+- `apps/web/modules/saas/invoices/components/EditInvoicePage.tsx` - Added auto-save clarification
+- `packages/i18n/translations/en.json` - Added linesAutoSave translation
+- `packages/i18n/translations/fr.json` - Added lineUpdated + linesAutoSave translations
+
+**Review Outcome:** APPROVED ✅
 
 ---
 

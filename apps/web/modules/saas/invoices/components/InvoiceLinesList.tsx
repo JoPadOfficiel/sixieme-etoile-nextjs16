@@ -12,6 +12,13 @@ import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@ui/components/select";
 import { useToast } from "@ui/hooks/use-toast";
 import { Loader2Icon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -109,8 +116,22 @@ export function InvoiceLinesList({
     }
   };
 
+  // Story 28.9: Predefined VAT rates for France
+  const VAT_RATE_OPTIONS = [
+    { value: "0", label: "0%" },
+    { value: "5.5", label: "5.5%" },
+    { value: "10", label: "10%" },
+    { value: "20", label: "20%" },
+  ];
+
   // Calculate VAT breakdown by rate and category breakdown
-  const { vatBreakdown, categoryBreakdown } = calculateLineTotals(lines);
+  // Story 28.9: Also compute totals for edit mode display
+  const { vatBreakdown, categoryBreakdown, totalExclVat: computedTotalExclVat, totalVat: computedTotalVat, totalInclVat: computedTotalInclVat } = calculateLineTotals(lines);
+
+  // Use computed totals in edit mode, or passed props in view mode
+  const displayTotalExclVat = editable ? computedTotalExclVat : totalExclVat;
+  const displayTotalVat = editable ? computedTotalVat : totalVat;
+  const displayTotalInclVat = editable ? computedTotalInclVat : totalInclVat;
 
   // Check if we have multiple categories (for showing breakdown)
   const hasMultipleCategories = 
@@ -146,7 +167,7 @@ export function InvoiceLinesList({
                 </TableRow>
               ) : (
                 lines.map((line) => (
-                  <TableRow key={line.id}>
+                  <TableRow key={`${line.id}-${line.totalExclVat}-${line.vatRate}`}>
                     {/* Story 28.9: Editable Description */}
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -236,32 +257,30 @@ export function InvoiceLinesList({
                         formatPrice(line.unitPriceExclVat)
                       )}
                     </TableCell>
-                    {/* Story 28.9: Editable VAT Rate */}
+                    {/* Story 28.9: Editable VAT Rate with predefined options */}
                     <TableCell className="text-right">
                       {editable ? (
-                        <Input
-                          type="number"
-                          className="w-16 ml-auto h-8 text-right"
-                          defaultValue={parseFloat(line.vatRate).toFixed(0)}
-                          min="0"
-                          max="100"
-                          step="0.5"
-                          onBlur={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (!isNaN(val) && val >= 0 && val <= 100 && val !== parseFloat(line.vatRate)) {
+                        <Select
+                          defaultValue={parseFloat(line.vatRate).toString()}
+                          onValueChange={(value) => {
+                            const val = parseFloat(value);
+                            if (!isNaN(val) && val !== parseFloat(line.vatRate)) {
                               handleUpdateVatRate(line.id, val);
                             }
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const val = parseFloat((e.target as HTMLInputElement).value);
-                              if (!isNaN(val) && val >= 0 && val <= 100 && val !== parseFloat(line.vatRate)) {
-                                handleUpdateVatRate(line.id, val);
-                              }
-                            }
-                          }}
                           disabled={updateLineMutation.isPending}
-                        />
+                        >
+                          <SelectTrigger className="w-20 ml-auto h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VAT_RATE_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (
                         formatVatRate(line.vatRate)
                       )}
@@ -295,8 +314,8 @@ export function InvoiceLinesList({
         </CardContent>
       </Card>
 
-      {/* Totals Card - Only show if totals are provided */}
-      {(totalExclVat || totalVat || totalInclVat) && (
+      {/* Totals Card - Show in edit mode (computed) or view mode (props) */}
+      {(displayTotalExclVat !== undefined || displayTotalVat !== undefined || displayTotalInclVat !== undefined || editable) && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">{t("detail.totals")}</CardTitle>
@@ -356,20 +375,20 @@ export function InvoiceLinesList({
 
             <div className="border-t border-border" />
 
-            {/* Summary Totals */}
+            {/* Summary Totals - Story 28.9: Use computed totals in edit mode */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("detail.totalExclVat")}</span>
-                <span className="font-medium">{formatPrice(totalExclVat)}</span>
+                <span className="font-medium">{formatPrice(displayTotalExclVat)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("detail.totalVat")}</span>
-                <span className="font-medium">{formatPrice(totalVat)}</span>
+                <span className="font-medium">{formatPrice(displayTotalVat)}</span>
               </div>
               <div className="border-t border-border" />
               <div className="flex justify-between text-lg">
                 <span className="font-semibold">{t("detail.totalInclVat")}</span>
-                <span className="font-bold">{formatPrice(totalInclVat)}</span>
+                <span className="font-bold">{formatPrice(displayTotalInclVat)}</span>
               </div>
             </div>
           </CardContent>

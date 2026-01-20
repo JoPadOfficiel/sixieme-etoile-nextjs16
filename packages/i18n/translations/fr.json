@@ -414,6 +414,8 @@
 			"addLine": "Ajouter",
 			"lineAdded": "Ligne ajoutée à la facture",
 			"lineDeleted": "Ligne supprimée de la facture",
+			"lineUpdated": "Ligne mise à jour avec succès",
+			"linesAutoSave": "Les lignes sont sauvegardées automatiquement lors de la modification.",
 			"deleteLine": "Supprimer",
 			"deleteLineConfirm": "Êtes-vous sûr de vouloir supprimer cette ligne ?",
 			"feesTab": "Frais",

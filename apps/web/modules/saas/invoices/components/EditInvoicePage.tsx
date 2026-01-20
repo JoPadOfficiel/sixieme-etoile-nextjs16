@@ -226,9 +226,15 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-base">
-                {t("invoices.detail.lines")}
-              </CardTitle>
+              <div>
+                <CardTitle className="text-base">
+                  {t("invoices.detail.lines")}
+                </CardTitle>
+                {/* Story 28.9: Clarify auto-save behavior */}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("invoices.edit.linesAutoSave")}
+                </p>
+              </div>
               <AddInvoiceFeeDialog
                 invoiceId={invoiceId}
                 disabled={updateMutation.isPending}
