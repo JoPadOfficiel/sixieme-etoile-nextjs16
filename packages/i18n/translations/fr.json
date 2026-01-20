@@ -4114,7 +4114,16 @@
 		"gantt": {
 			"driversCount": "{count, plural, =0 {Aucun chauffeur} one {# chauffeur} other {# chauffeurs}}",
 			"jumpToNow": "Maintenant",
+			"jumpToNowTooltip": "Aller à l'heure actuelle",
 			"driversLabel": "Chauffeurs",
+			"zoomIn": "Zoom avant",
+			"zoomOut": "Zoom arrière",
+			"selectDate": "Sélectionner une date",
+			"zoomLevel": {
+				"hour": "Heure",
+				"day": "Jour",
+				"week": "Semaine"
+			},
 			"status": {
 				"available": "Disponible",
 				"onMission": "En mission",

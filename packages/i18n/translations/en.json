@@ -4132,7 +4132,16 @@
 		"gantt": {
 			"driversCount": "{count, plural, =0 {No drivers} one {# driver} other {# drivers}}",
 			"jumpToNow": "Now",
+			"jumpToNowTooltip": "Jump to current time",
 			"driversLabel": "Drivers",
+			"zoomIn": "Zoom in",
+			"zoomOut": "Zoom out",
+			"selectDate": "Select a date",
+			"zoomLevel": {
+				"hour": "Hour",
+				"day": "Day",
+				"week": "Week"
+			},
 			"status": {
 				"available": "Available",
 				"onMission": "On mission",

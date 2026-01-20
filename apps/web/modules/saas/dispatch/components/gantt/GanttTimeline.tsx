@@ -4,39 +4,46 @@
  * GanttTimeline Component
  *
  * Story 27.3: Gantt Core Timeline Rendering
+ * Story 27.12: Gantt Time & Zoom Controls
  *
  * Main Gantt timeline visualization component for the Dispatch Cockpit.
  * Displays drivers on the Y-axis and time on the X-axis with virtualization support.
+ * Includes zoom controls for temporal navigation.
  */
 
-import { memo, useRef, useCallback, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Clock } from "lucide-react";
-import { Button } from "@ui/components/button";
 import { TooltipProvider } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
+import { differenceInMinutes, startOfDay } from "date-fns";
 import { useTranslations } from "next-intl";
-import type { GanttTimelineProps } from "./types";
-import { useGanttTimeScale, useNowIndicator, useGanttScroll } from "./hooks";
-import { GanttHeader } from "./GanttHeader";
-import { GanttDriverSidebar } from "./GanttDriverSidebar";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { GanttDriverRow } from "./GanttDriverRow";
-import { GanttGrid } from "./GanttGrid";
-import { GanttNowIndicator } from "./GanttNowIndicator";
+import { GanttDriverSidebar } from "./GanttDriverSidebar";
 import { GanttEmptyState } from "./GanttEmptyState";
+import { GanttGrid } from "./GanttGrid";
+import { GanttHeader } from "./GanttHeader";
+import { GanttNowIndicator } from "./GanttNowIndicator";
+import { GanttZoomControls } from "./GanttZoomControls";
 import {
-	ROW_HEIGHT,
-	HEADER_HEIGHT,
-	SIDEBAR_WIDTH,
 	DEFAULT_PIXELS_PER_HOUR,
+	HEADER_HEIGHT,
 	OVERSCAN_COUNT,
+	ROW_HEIGHT,
+	SIDEBAR_WIDTH,
 } from "./constants";
+import {
+	useGanttScroll,
+	useGanttTimeScale,
+	useGanttZoom,
+	useNowIndicator,
+} from "./hooks";
+import type { GanttTimelineProps } from "./types";
 
 export const GanttTimeline = memo(function GanttTimeline({
 	drivers,
 	startTime,
 	endTime,
-	pixelsPerHour = DEFAULT_PIXELS_PER_HOUR,
+	pixelsPerHour: initialPixelsPerHour = DEFAULT_PIXELS_PER_HOUR,
 	onDriverClick,
 	onMissionClick,
 	selectedMissionId,
@@ -44,9 +51,28 @@ export const GanttTimeline = memo(function GanttTimeline({
 }: GanttTimelineProps) {
 	const t = useTranslations("dispatch.gantt");
 	const sidebarRef = useRef<HTMLDivElement>(null);
-	const { headerRef, contentRef, handleScroll: handleHorizontalScroll, scrollTo } = useGanttScroll();
+	const {
+		headerRef,
+		contentRef,
+		handleScroll: handleHorizontalScroll,
+		scrollTo,
+	} = useGanttScroll();
 
-	// Time scale configuration
+	// Zoom state management (Story 27.12)
+	const {
+		pixelsPerHour,
+		canZoomIn,
+		canZoomOut,
+		zoomIn,
+		zoomOut,
+		zoomLabel,
+		zoomPercent,
+	} = useGanttZoom({ initialZoom: initialPixelsPerHour });
+
+	// Track the selected date for navigation
+	const selectedDateRef = useRef<Date>(startTime);
+
+	// Time scale configuration - now uses dynamic pixelsPerHour from zoom state
 	const { config } = useGanttTimeScale({
 		startTime,
 		endTime,
@@ -54,7 +80,9 @@ export const GanttTimeline = memo(function GanttTimeline({
 	});
 
 	// Now indicator
-	const { nowPosition, isNowVisible, scrollToNow } = useNowIndicator({ config });
+	const { nowPosition, isNowVisible, scrollToNow } = useNowIndicator({
+		config,
+	});
 
 	// Virtualization for driver rows
 	const rowVirtualizer = useVirtualizer({
@@ -63,6 +91,43 @@ export const GanttTimeline = memo(function GanttTimeline({
 		estimateSize: () => ROW_HEIGHT,
 		overscan: OVERSCAN_COUNT,
 	});
+
+	// Calculate current center time for scroll preservation during zoom
+	const getCurrentCenterTime = useCallback(() => {
+		if (!contentRef.current) return new Date();
+		const scrollLeft = contentRef.current.scrollLeft;
+		const containerWidth = contentRef.current.clientWidth;
+		const centerX = scrollLeft + containerWidth / 2;
+		const minutesFromStart = (centerX / pixelsPerHour) * 60;
+		return new Date(startTime.getTime() + minutesFromStart * 60 * 1000);
+	}, [contentRef, pixelsPerHour, startTime]);
+
+	// Scroll to a specific time (used after zoom changes)
+	const scrollToTime = useCallback(
+		(time: Date) => {
+			if (!contentRef.current) return;
+			const containerWidth = contentRef.current.clientWidth;
+			const minutesFromStart = differenceInMinutes(time, startTime);
+			const targetX = (minutesFromStart / 60) * pixelsPerHour;
+			const scrollPosition = Math.max(0, targetX - containerWidth / 2);
+			scrollTo(scrollPosition);
+		},
+		[contentRef, pixelsPerHour, startTime, scrollTo],
+	);
+
+	// Preserve scroll position when zoom changes
+	const prevPixelsPerHourRef = useRef(pixelsPerHour);
+	useEffect(() => {
+		if (prevPixelsPerHourRef.current !== pixelsPerHour) {
+			// Zoom changed, preserve center position
+			const centerTime = getCurrentCenterTime();
+			// Use requestAnimationFrame to ensure the new dimensions are calculated
+			requestAnimationFrame(() => {
+				scrollToTime(centerTime);
+			});
+			prevPixelsPerHourRef.current = pixelsPerHour;
+		}
+	}, [pixelsPerHour, getCurrentCenterTime, scrollToTime]);
 
 	// Scroll to current time on mount
 	useEffect(() => {
@@ -73,18 +138,22 @@ export const GanttTimeline = memo(function GanttTimeline({
 			const scrollPosition = Math.max(0, nowX - containerWidth / 2);
 			scrollTo(scrollPosition);
 		}
-	}, [isNowVisible, scrollToNow, scrollTo, contentRef]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isNowVisible]); // Only run on mount or when visibility changes
 
-	// Synchronize vertical scroll between sidebar and content (M2 fix)
-	const handleVerticalScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-		const scrollTop = e.currentTarget.scrollTop;
-		if (sidebarRef.current && e.currentTarget !== sidebarRef.current) {
-			sidebarRef.current.scrollTop = scrollTop;
-		}
-		if (contentRef.current && e.currentTarget !== contentRef.current) {
-			contentRef.current.scrollTop = scrollTop;
-		}
-	}, [contentRef]);
+	// Synchronize vertical scroll between sidebar and content
+	const handleVerticalScroll = useCallback(
+		(e: React.UIEvent<HTMLDivElement>) => {
+			const scrollTop = e.currentTarget.scrollTop;
+			if (sidebarRef.current && e.currentTarget !== sidebarRef.current) {
+				sidebarRef.current.scrollTop = scrollTop;
+			}
+			if (contentRef.current && e.currentTarget !== contentRef.current) {
+				contentRef.current.scrollTop = scrollTop;
+			}
+		},
+		[contentRef],
+	);
 
 	// Handle jump to now button
 	const handleJumpToNow = useCallback(() => {
@@ -92,7 +161,33 @@ export const GanttTimeline = memo(function GanttTimeline({
 		const containerWidth = contentRef.current?.clientWidth || 0;
 		const scrollPosition = Math.max(0, nowX - containerWidth / 2);
 		scrollTo(scrollPosition);
+		selectedDateRef.current = new Date();
 	}, [scrollToNow, scrollTo, contentRef]);
+
+	// Handle date navigation (Story 27.12)
+	const handleNavigateToDate = useCallback(
+		(date: Date) => {
+			selectedDateRef.current = date;
+			const dayStart = startOfDay(date);
+			// If the selected date is within our range, scroll to it
+			if (dayStart >= startTime && dayStart <= endTime) {
+				scrollToTime(dayStart);
+			}
+		},
+		[startTime, endTime, scrollToTime],
+	);
+
+	// Handle zoom with scroll preservation
+	const handleZoomIn = useCallback(() => {
+		zoomIn();
+	}, [zoomIn]);
+
+	const handleZoomOut = useCallback(() => {
+		zoomOut();
+	}, [zoomOut]);
+
+	// Current selected date for the date picker
+	const selectedDate = useMemo(() => selectedDateRef.current, []);
 
 	// Empty state
 	if (drivers.length === 0) {
@@ -106,112 +201,112 @@ export const GanttTimeline = memo(function GanttTimeline({
 		<TooltipProvider>
 			<div
 				className={cn(
-					"flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden",
-					className
+					"flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+					className,
 				)}
 			>
-				{/* Toolbar */}
-			<div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-				<div className="flex items-center gap-2">
-					<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-						{t("driversCount", { count: drivers.length })}
-					</span>
-				</div>
+				{/* Toolbar with zoom controls */}
+				<div className="flex items-center justify-between border-gray-200 border-b bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
+					<div className="flex items-center gap-2">
+						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">
+							{t("driversCount", { count: drivers.length })}
+						</span>
+					</div>
 
-				<div className="flex items-center gap-2">
-					{/* Jump to Now button - shown when now line is not visible */}
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleJumpToNow}
-						className="h-8"
-					>
-						<Clock className="w-4 h-4 mr-1" />
-						{t("jumpToNow")}
-					</Button>
-				</div>
-			</div>
-
-			{/* Header with time labels */}
-			<div
-				ref={headerRef}
-				className="overflow-x-hidden flex"
-				style={{ height: HEADER_HEIGHT }}
-			>
-				<GanttHeader config={config} />
-			</div>
-
-			{/* Main content area */}
-			<div className="flex flex-1 overflow-hidden">
-				{/* Fixed driver sidebar */}
-				<div
-					ref={sidebarRef}
-					className="overflow-y-auto overflow-x-hidden"
-					style={{
-						width: SIDEBAR_WIDTH,
-					}}
-					onScroll={handleVerticalScroll}
-				>
-					<GanttDriverSidebar
-						drivers={drivers}
-						virtualItems={virtualItems}
-						onDriverClick={onDriverClick}
+					{/* Zoom Controls (Story 27.12) */}
+					<GanttZoomControls
+						pixelsPerHour={pixelsPerHour}
+						canZoomIn={canZoomIn}
+						canZoomOut={canZoomOut}
+						onZoomIn={handleZoomIn}
+						onZoomOut={handleZoomOut}
+						onJumpToNow={handleJumpToNow}
+						onNavigateToDate={handleNavigateToDate}
+						selectedDate={selectedDate}
+						zoomLabel={zoomLabel}
+						zoomPercent={zoomPercent}
 					/>
 				</div>
 
-				{/* Scrollable timeline content */}
+				{/* Header with time labels */}
 				<div
-					ref={contentRef}
-					className="flex-1 overflow-auto relative"
-					onScroll={(e) => {
-						handleHorizontalScroll(e);
-						handleVerticalScroll(e);
-					}}
+					ref={headerRef}
+					className="flex overflow-x-hidden"
+					style={{ height: HEADER_HEIGHT }}
 				>
+					<GanttHeader config={config} />
+				</div>
+
+				{/* Main content area */}
+				<div className="flex flex-1 overflow-hidden">
+					{/* Fixed driver sidebar */}
 					<div
-						className="relative"
+						ref={sidebarRef}
+						className="overflow-y-auto overflow-x-hidden"
 						style={{
-							width: config.totalWidth,
-							height: totalHeight,
+							width: SIDEBAR_WIDTH,
+						}}
+						onScroll={handleVerticalScroll}
+					>
+						<GanttDriverSidebar
+							drivers={drivers}
+							virtualItems={virtualItems}
+							onDriverClick={onDriverClick}
+						/>
+					</div>
+
+					{/* Scrollable timeline content */}
+					<div
+						ref={contentRef}
+						className="relative flex-1 overflow-auto"
+						onScroll={(e) => {
+							handleHorizontalScroll(e);
+							handleVerticalScroll(e);
 						}}
 					>
-						{/* Background grid */}
-						<GanttGrid
-							config={config}
-							rowCount={drivers.length}
-							rowHeight={ROW_HEIGHT}
-						/>
+						<div
+							className="relative"
+							style={{
+								width: config.totalWidth,
+								height: totalHeight,
+							}}
+						>
+							{/* Background grid */}
+							<GanttGrid
+								config={config}
+								rowCount={drivers.length}
+								rowHeight={ROW_HEIGHT}
+							/>
 
-						{/* Driver rows */}
-						{virtualItems.map((virtualItem) => {
-							const driver = drivers[virtualItem.index];
-							if (!driver) return null;
+							{/* Driver rows */}
+							{virtualItems.map((virtualItem) => {
+								const driver = drivers[virtualItem.index];
+								if (!driver) return null;
 
-							return (
-								<GanttDriverRow
-									key={driver.id}
-									driver={driver}
-									config={config}
-									rowIndex={virtualItem.index}
-									onClick={() => onDriverClick?.(driver.id)}
-									onMissionClick={onMissionClick}
-									selectedMissionId={selectedMissionId}
-								/>
-							);
-						})}
+								return (
+									<GanttDriverRow
+										key={driver.id}
+										driver={driver}
+										config={config}
+										rowIndex={virtualItem.index}
+										onClick={() => onDriverClick?.(driver.id)}
+										onMissionClick={onMissionClick}
+										selectedMissionId={selectedMissionId}
+									/>
+								);
+							})}
 
-						{/* Now indicator line */}
-						<GanttNowIndicator
-							config={config}
-							height={totalHeight}
-							nowPosition={nowPosition}
-							isNowVisible={isNowVisible}
-						/>
+							{/* Now indicator line */}
+							<GanttNowIndicator
+								config={config}
+								height={totalHeight}
+								nowPosition={nowPosition}
+								isNowVisible={isNowVisible}
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-
 		</TooltipProvider>
 	);
 });

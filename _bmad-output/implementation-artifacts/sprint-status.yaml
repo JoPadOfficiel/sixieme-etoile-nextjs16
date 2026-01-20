@@ -325,7 +325,7 @@ development_status:
   27-9-dispatch-actions-drag-drop-assignment: done
   27-10-conflict-detection-rse-calendar: done
   27-11-inspector-panel-quick-actions: done
-  27-12-gantt-time-zoom-controls: backlog
+  27-12-gantt-time-zoom-controls: review
   27-13-real-time-updates-polling-socket: done
   27-14-export-schedule: backlog
   epic-27-retrospective: optional
