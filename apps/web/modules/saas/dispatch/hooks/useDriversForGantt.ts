@@ -28,7 +28,7 @@ interface UseDriversForGanttReturn {
 export function useDriversForGantt({
 	enabled = true,
 }: UseDriversForGanttOptions = {}): UseDriversForGanttReturn {
-	const { data, isLoading, error, refetch } = useQuery({
+	const { data, isLoading, error, refetch } = useQuery<GanttDriver[]>({
 		queryKey: ["gantt-drivers"],
 		queryFn: async (): Promise<GanttDriver[]> => {
 			// Fetch active drivers
