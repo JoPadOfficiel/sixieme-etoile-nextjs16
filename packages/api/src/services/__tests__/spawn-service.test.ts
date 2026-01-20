@@ -3,6 +3,7 @@ import { SpawnService } from "../spawn-service";
 
 /**
  * Story 28.4: Spawning Engine - Trigger Logic
+ * Story 28.5: Group Spawning Logic (Multi-Day)
  * Unit tests for SpawnService
  *
  * Tests cover:
@@ -11,6 +12,8 @@ import { SpawnService } from "../spawn-service";
  * - QuoteLineType filtering (only CALCULATED)
  * - Partial recovery (skip lines with existing missions)
  * - Idempotence
+ * - GROUP with children (recursive spawning)
+ * - GROUP with date range (multi-day spawning)
  */
 
 // Mock the database module
@@ -340,6 +343,314 @@ describe("SpawnService", () => {
 			expect(types).toContain("TRANSFER");
 			expect(types).toContain("DISPO");
 			expect(types).not.toContain("EXCURSION");
+		});
+	});
+
+	// =========================================================================
+	// Story 28.5: GROUP Spawning Logic (Multi-Day)
+	// =========================================================================
+
+	describe("GROUP spawning (Story 28.5)", () => {
+		it("should spawn missions for GROUP with CALCULATED children", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "group-1",
+								type: "GROUP",
+								label: "Wedding Package",
+								sourceData: null,
+								children: [
+									{ id: "child-1", type: "CALCULATED", label: "Day 1 Transfer", sourceData: {} },
+									{ id: "child-2", type: "CALCULATED", label: "Day 2 Transfer", sourceData: {} },
+								],
+							},
+						],
+					},
+				],
+			};
+
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "child-1" },
+				{ id: "mission-2", quoteLineId: "child-2" },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([]) // No existing missions
+				.mockResolvedValueOnce(createdMissions as any);
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({ mission: { createMany: vi.fn() } } as any);
+				}
+				return undefined;
+			});
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].quoteLineId).toBe("child-1");
+			expect(result[1].quoteLineId).toBe("child-2");
+		});
+
+		it("should spawn missions for GROUP with date range (Wedding Pack 3 Days)", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "DISPO",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						pickupAddress: "Paris Center",
+						vehicleCategory: { name: "VAN_PREMIUM" },
+						lines: [
+							{
+								id: "group-wedding",
+								type: "GROUP",
+								label: "Wedding Pack 3 Days",
+								sourceData: {
+									startDate: "2026-06-01",
+									endDate: "2026-06-03",
+									packageName: "Wedding VIP",
+								},
+								children: [], // No children - use date range
+							},
+						],
+					},
+				],
+			};
+
+			// 3 missions created (one per day)
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "group-wedding", sourceData: { dayIndex: 1 } },
+				{ id: "mission-2", quoteLineId: "group-wedding", sourceData: { dayIndex: 2 } },
+				{ id: "mission-3", quoteLineId: "group-wedding", sourceData: { dayIndex: 3 } },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(createdMissions as any);
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({ mission: { createMany: vi.fn() } } as any);
+				}
+				return undefined;
+			});
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toHaveLength(3);
+			// All missions linked to the same GROUP line
+			expect(result.every((m) => m.quoteLineId === "group-wedding")).toBe(true);
+		});
+
+		it("should skip GROUP with MANUAL children only", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "group-1",
+								type: "GROUP",
+								label: "Manual Items Group",
+								sourceData: null,
+								children: [
+									{ id: "manual-1", type: "MANUAL", label: "Extra fee", sourceData: {} },
+									{ id: "manual-2", type: "MANUAL", label: "Tip", sourceData: {} },
+								],
+							},
+						],
+					},
+				],
+			};
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany).mockResolvedValue([]);
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			// No missions created (MANUAL children don't spawn)
+			expect(result).toEqual([]);
+			expect(db.$transaction).not.toHaveBeenCalled();
+		});
+
+		it("should handle mixed CALCULATED and GROUP lines", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{ id: "calc-1", type: "CALCULATED", label: "Airport Transfer", sourceData: {} },
+							{
+								id: "group-1",
+								type: "GROUP",
+								label: "Wedding Pack 3 Days",
+								sourceData: {
+									startDate: "2026-06-01",
+									endDate: "2026-06-03",
+								},
+								children: [],
+							},
+						],
+					},
+				],
+			};
+
+			// 1 from CALCULATED + 3 from GROUP = 4 missions
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "calc-1" },
+				{ id: "mission-2", quoteLineId: "group-1" },
+				{ id: "mission-3", quoteLineId: "group-1" },
+				{ id: "mission-4", quoteLineId: "group-1" },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(createdMissions as any);
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({ mission: { createMany: vi.fn() } } as any);
+				}
+				return undefined;
+			});
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toHaveLength(4);
+		});
+
+		it("should skip GROUP line if missions already exist (idempotence)", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "DISPO",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "VAN" },
+						lines: [
+							{
+								id: "group-1",
+								type: "GROUP",
+								label: "Wedding Pack",
+								sourceData: { startDate: "2026-06-01", endDate: "2026-06-02" },
+								children: [],
+							},
+						],
+					},
+				],
+			};
+
+			// GROUP line already has missions
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany).mockResolvedValue([
+				{ quoteLineId: "group-1" },
+			] as any);
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toEqual([]);
+			expect(db.$transaction).not.toHaveBeenCalled();
+		});
+
+		it("should handle single-day GROUP (startDate === endDate)", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "DISPO",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "group-single",
+								type: "GROUP",
+								label: "Single Day Event",
+								sourceData: {
+									startDate: "2026-06-01",
+									endDate: "2026-06-01", // Same day
+								},
+								children: [],
+							},
+						],
+					},
+				],
+			};
+
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "group-single", sourceData: { dayIndex: 1, totalDays: 1 } },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(createdMissions as any);
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({ mission: { createMany: vi.fn() } } as any);
+				}
+				return undefined;
+			});
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toHaveLength(1);
+		});
+
+		it("should skip GROUP with no children and no date range", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-06-01T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "group-empty",
+								type: "GROUP",
+								label: "Empty Group",
+								sourceData: {}, // No startDate/endDate
+								children: [],
+							},
+						],
+					},
+				],
+			};
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany).mockResolvedValue([]);
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			expect(result).toEqual([]);
+			expect(db.$transaction).not.toHaveBeenCalled();
 		});
 	});
 });

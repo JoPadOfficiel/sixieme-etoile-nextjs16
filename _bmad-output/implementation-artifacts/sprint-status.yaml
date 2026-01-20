@@ -334,7 +334,7 @@ development_status:
   28-2-order-state-machine-api: done
   28-3-dossier-view-ui-skeleton-tabs: done
   28-4-spawning-engine-trigger-logic: done
-  28-5-group-spawning-logic-multi-day: backlog
+  28-5-group-spawning-logic-multi-day: review
   28-6-optional-dispatch-force-enable: backlog
   28-7-manual-item-handling: backlog
   28-8-invoice-generation-detached-snapshot: backlog
