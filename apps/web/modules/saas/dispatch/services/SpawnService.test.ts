@@ -1,8 +1,9 @@
+import { QuoteLineType } from "@prisma/client";
 import { db } from "@repo/database";
-import { QuoteLineType } from "@repo/database";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SpawnService } from "./SpawnService";
 
+// Mock database
 // Mock database
 vi.mock("@repo/database", () => ({
 	db: {
@@ -12,13 +13,7 @@ vi.mock("@repo/database", () => ({
 		mission: {
 			create: vi.fn(),
 		},
-	},
-	QuoteLineType: {
-		GROUP: "GROUP",
-		CALCULATED: "CALCULATED",
-	},
-	MissionStatus: {
-		PENDING: "PENDING",
+		$transaction: vi.fn((callback) => callback(db)),
 	},
 }));
 
