@@ -127,7 +127,7 @@ export class InvoiceFactory {
 				`[INVOICE_FACTORY] Order ${orderId} already has invoice ${existingInvoice?.number} - returning existing`,
 			);
 			return {
-				invoice: existingInvoice,
+				invoice: existingInvoice as any,
 				linesCreated: existingInvoice?.lines?.length ?? 0,
 				warning: "Invoice already exists for this order",
 			};
