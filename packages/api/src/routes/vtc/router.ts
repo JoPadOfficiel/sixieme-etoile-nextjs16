@@ -49,6 +49,8 @@ import { timeBucketsRouter } from "./time-buckets";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
+// Story 28.2: Order Management API
+import { ordersRouter } from "./orders";
 
 /**
  * VTC ERP Router
@@ -107,6 +109,8 @@ export const vtcRouter = new Hono()
 	.route("/", contactEndCustomersRouter)
 	// Story 25.6: Bulk Payment / Lettrage
 	.route("/", invoicesBulkPaymentRouter)
-	.route("/", organizationDetailsRouter);
+	.route("/", organizationDetailsRouter)
+	// Story 28.2: Order Management API
+	.route("/", ordersRouter);
 
 export type VtcRouter = typeof vtcRouter;
