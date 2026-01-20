@@ -329,6 +329,7 @@ export function QuoteBasicInfoPanel({
 					<VehicleCategorySelector
 						value={formData.vehicleCategoryId}
 						onChange={handleVehicleCategoryChange}
+						categories={allCategories}
 						disabled={disabled}
 						required
 					/>

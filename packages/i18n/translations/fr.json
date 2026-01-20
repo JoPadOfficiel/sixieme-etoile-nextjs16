@@ -2549,6 +2549,7 @@
 			"passengers": "Passagers",
 			"luggage": "Bagages",
 			"suggestedPrice": "Prix Suggéré",
+			"addToCart": "Ajouter au Panier",
 			"useSuggested": "Utiliser",
 			"finalPrice": "Prix final",
 			"basePrice": "Prix de base",
@@ -3117,6 +3118,7 @@
 			}
 		},
 		"yolo": {
+			"linesEditor": "Panier",
 			"headers": {
 				"description": "Description",
 				"qty": "Qté",
@@ -3136,6 +3138,8 @@
 			"labelPlaceholder": "Description...",
 			"groupPlaceholder": "Nom du groupe...",
 			"actions": {
+				"addManualLine": "Ajouter ligne manuelle",
+				"addGroup": "Créer un groupe",
 				"undo": "Annuler",
 				"redo": "Rétablir"
 			},
@@ -3155,14 +3159,7 @@
 				"labelWarning": "Vous avez modifié le libellé de manière significative. Les données opérationnelles restent inchangées.",
 				"successTitle": "Ligne détachée",
 				"success": "Ligne détachée de la route opérationnelle"
-			},
-			"title": "Mode Flexible (Yolo)",
-			"enabled": "Activé",
-			"disabled": "Désactivé",
-			"description": "Créez un devis personnalisé avec des lignes flexibles. Ajoutez, modifiez ou groupez les éléments librement.",
-			"linesEditor": "Lignes du Devis",
-			"addCalculatedLine": "+ Ajouter depuis le calcul",
-			"addManualLine": "Ajouter une ligne manuelle"
+			}
 		}
 	},
 	"fleet": {

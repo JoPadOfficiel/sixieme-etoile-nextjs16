@@ -219,6 +219,10 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
   - Primary epic: **Epic 25 – Documents, Payments & Deep Linking Enhancements**
   - Secondary epics: **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch**, **Epic 2 – CRM**
 
+- **FR Group 17 (FR150–FR158) – Multi-Item Quote Cart & Revolutionary UX**
+  - Primary epic: **Epic 26 – Flexible "Yolo Mode" Billing**
+  - Secondary epics: **Epic 6 – Quotes & Operator Cockpit**, **Epic 7 – Invoicing & Documents**
+
 ---
 
 ## Epic 1: VTC ERP Foundation & Data Model Setup
@@ -7353,6 +7357,100 @@ So that I don't lose work during complex editing.
 **Acceptance Criteria:**
 - `useTemporalStore` (Zustand) tracks the state of the line items array.
 - `Cmd+Z` reverts the last change (text edit, reorder, or delete).
+
+### Story 26.15: Remove Legacy Modes (Stay & Off-Grid)
+
+As a **developer**,
+I want **to remove obsolete Stay and Off-Grid modes**,
+So that **the codebase is simplified and unified under the new Yolo/Shopping Cart model.**
+
+**Related FRs:** FR150.
+
+**Acceptance Criteria:**
+- User CANNOT select "Stay" or "Off-Grid" in trip type selector.
+- Obsolete components (`StayDayCard`, `StayServiceForm`) are removed.
+- `useStayPricingCalculation` logic is removed from Cockpit.
+
+### Story 26.16: Multi-Trip Calculation Flow (Shopping Cart)
+
+As a **Quote Creator**,
+I want **to add multiple calculated trips to a single quote**,
+So that **I can build complex itineraries (Transfer + return + disposal) in one session.**
+
+**Related FRs:** FR150, FR151, FR152.
+
+**Acceptance Criteria:**
+- "Add to Quote" button pushes the current configuration to the Cart line items.
+- Quote total updates in real-time as items are added.
+- Form inputs can be reset or reused for the next item.
+- Supports mixing transfers and disposals in the same quote.
+
+### Story 26.17: UX Improvements
+
+As an **operator**,
+I want **a smooth and intuitive interface for the quote cart**,
+So that **I can manage complex quotes without confusion.**
+
+**Related FRs:** FR155, FR156.
+
+**Acceptance Criteria:**
+- Cart items are displayed with clear summaries (Route, Vehicle, Price).
+- Visual feedback (toast/animation) when adding items.
+- Layout optimized for 3-column or Drawer view.
+
+### Story 26.18: Align Invoice Generation
+
+As a **finance user**,
+I want **invoices generated from multi-item quotes to respect the cart structure**,
+So that **the final document matches what was sold.**
+
+**Related FRs:** FR148 (implicit), FR158.
+
+**Acceptance Criteria:**
+- Invoice generation reads `QuoteLines` array.
+- VAT breakdown respects individual line item settings.
+- PDF generation handles multiple pages if lines exceed space.
+
+### Story 26.19: Enhanced Quote Cart Interactions (Edit & Duplicate)
+
+As an **operator**,
+I want **to edit, duplicate, or remove items in the cart**,
+So that **I can refine the quote without starting over.**
+
+**Related FRs:** FR153, FR154.
+
+**Acceptance Criteria:**
+- Clicking an item in the cart repopulates the configuration form ("Edit Mode").
+- "Update Item" saves changes back to the cart.
+- "Duplicate" action creates a copy of the selected item.
+- "Remove" action deletes the item and updates the total.
+
+### Story 26.20: Visual Polish & Glassmorphism
+
+As a **user**,
+I want **a premium "Glassmorphism" aesthetic for the quote cart**,
+So that **the experience feels revolutionary and high-end.**
+
+**Related FRs:** FR155.
+
+**Acceptance Criteria:**
+- Cart panels use glass/blur effects (`backdrop-blur`).
+- Animated transitions for adding/removing items (framermotion).
+- Price changes trigger number rolling animations.
+- Modern typography and spacing usage.
+
+### Story 26.21: Template Saving for Multi-Item Quotes
+
+As an **operator**,
+I want **to save a complex quote structure as a Template**,
+So that **I can re-use it for recurring similar requests (e.g. "Fashion Week Package").**
+
+**Related FRs:** FR157.
+
+**Acceptance Criteria:**
+- "Save as Template" button on the Quote Cart.
+- Template stores all line items and their configurations (excluding specific dates if needed).
+- "Load Template" allows creating a new quote from a saved structure.
 
 ---
 

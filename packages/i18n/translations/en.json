@@ -2507,6 +2507,9 @@
 		"create": {
 			"title": "Create Quote",
 			"description": "Create a new quote for a client.",
+			"validation": {
+				"error": "Please check the form for errors."
+			},
 			"backToQuotes": "Back to Quotes",
 			"sections": {
 				"client": "Client",
@@ -2563,6 +2566,7 @@
 			"passengers": "Passengers",
 			"luggage": "Luggage",
 			"suggestedPrice": "Suggested Price",
+			"addToCart": "Add to Cart",
 			"useSuggested": "Use",
 			"finalPrice": "Final Price",
 			"basePrice": "Base Price",
@@ -2651,6 +2655,7 @@
 				"priceRequired": "Please enter a final price",
 				"notesRequiredOffGrid": "Notes are required for off-grid trips"
 			},
+			"totalQuote": "Total Quote",
 			"tripTransparency": {
 				"title": "Trip Transparency",
 				"empty": {
@@ -3131,6 +3136,7 @@
 			}
 		},
 		"yolo": {
+			"linesEditor": "Shopping Cart",
 			"headers": {
 				"description": "Description",
 				"qty": "Qty",
@@ -3150,6 +3156,8 @@
 			"labelPlaceholder": "Description...",
 			"groupPlaceholder": "Group name...",
 			"actions": {
+				"addManualLine": "Add Manual Line",
+				"addGroup": "Add Group",
 				"undo": "Undo",
 				"redo": "Redo"
 			},

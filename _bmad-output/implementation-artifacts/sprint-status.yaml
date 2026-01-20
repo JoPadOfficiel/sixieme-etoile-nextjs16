@@ -1,4 +1,4 @@
-# generated: 2026-01-18T15:35:00+01:00
+# generated: 2026-01-20T04:26:13+01:00
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-18T15:35:00+01:00
+generated: 2026-01-20T04:26:13+01:00
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -290,7 +290,7 @@ development_status:
   25-5-deep-linking-navigation-crm-ux-improvements: done
   25-6-multi-invoice-payment-tracking-lettrage: done
   epic-25-retrospective: optional
-  epic-26: done
+  epic-26: in-progress
   26-1-database-schema-update-for-hybrid-blocks: done
   26-2-backward-compatibility-migration-script: done
   26-3-hybrid-block-validation-layer-zod: done
@@ -308,7 +308,11 @@ development_status:
   26-15-remove-legacy-modes: done
   26-16-multi-trip-flow: done
   26-17-ux-improvements: done
-  epic-26-retrospective: done
+  26-18-align-invoice-generation: done
+  26-19-enhanced-quote-cart-interactions: backlog
+  26-20-visual-polish-glassmorphism: backlog
+  26-21-template-saving-for-multi-item-quotes: backlog
+  epic-26-retrospective: optional
   epic-27: in-progress
   27-1-dispatch-shell-navigation: done
   27-2-backend-mission-sync-service: done

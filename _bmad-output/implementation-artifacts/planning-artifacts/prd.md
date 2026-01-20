@@ -325,6 +325,18 @@ Functional requirements are grouped by capability area and numbered sequentially
 - **FR87:** The system shall implement a hierarchical pricing algorithm that evaluates each trip request in strict priority order: (1) intra-central-zone flat rate, (2) defined inter-zone forfait, (3) same-ring dynamic with zone multiplier, (4) fallback horokilometric calculation.
 - **FR88:** The system shall support configurable thresholds for the automatic transfer-to-MAD switch, including minimum waiting time, maximum return distance, and zone density classification.
 
+### FR Group 17 - Multi-Item Quote Cart & Revolutionary UX
+
+- **FR150:** The quote creation process must support a "Shopping Cart" model where multiple independent line items (transfers, disposals, excursions) can be added to a single quote session before saving.
+- **FR151:** The system must allow users to "Add to Quote" the current configuration without leaving the screen, pushing the item to a visible, persistent cart list.
+- **FR152:** The system must display a real-time "Total Quote Price" that sums all items in the cart, updating instantly as items are added, removed, or modified.
+- **FR153:** Users must be able to edit an existing calculated item in the cart, which should repopulate the configuration form with the item's original data.
+- **FR154:** The system must support "Duplicate" and "Remove" actions for all cart items.
+- **FR155:** The user interface must utilize "Glassmorphism" and modern animation principles (smooth transitions, flying elements) to provide a premium "Revolutionary" feel.
+- **FR156:** The cart state must be persisted locally so that data is not lost on page reload or accidental navigation.
+- **FR157:** The system must allow saving "Templates" of multi-item configurations for rapid reuse.
+- **FR158:** Each line item within the multi-item quote must remain individually dispatchable (linking to a distinct Mission).
+
 ### FR Group 14   Mission Sheets, PDF Compliance, Payments & Deep Linking
 
 - **FR131:** The system shall support generating a PDF Mission Sheet for drivers/dispatchers, auto-filled with operational data (Service, Passenger, Vehicle, Notes) but with specific execution fields (Km/Time Departure/Arrival, Expenses) left editable/empty for manual entry.
