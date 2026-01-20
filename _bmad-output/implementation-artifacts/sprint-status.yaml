@@ -331,7 +331,7 @@ development_status:
   epic-27-retrospective: optional
   epic-28: in-progress
   28-1-order-entity-prisma-schema: done
-  28-2-order-state-machine-api: review
+  28-2-order-state-machine-api: done
   28-3-dossier-view-ui-skeleton-tabs: backlog
   28-4-spawning-engine-trigger-logic: backlog
   28-5-group-spawning-logic-multi-day: backlog
