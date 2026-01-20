@@ -47,10 +47,14 @@ function logOrderTransition(
 
 /**
  * Generate unique order reference in format ORD-YYYY-NNN
+ * Uses retry logic to handle race conditions when multiple orders are created concurrently.
+ * The unique constraint on `reference` in the database is the ultimate safeguard.
  */
 async function generateOrderReference(
-	organizationId: string
+	organizationId: string,
+	retryCount = 0
 ): Promise<string> {
+	const MAX_RETRIES = 3;
 	const year = new Date().getFullYear();
 	const prefix = `ORD-${year}-`;
 
@@ -69,14 +73,30 @@ async function generateOrderReference(
 		if (match) sequence = Number.parseInt(match[1], 10) + 1;
 	}
 
-	return `${prefix}${sequence.toString().padStart(3, "0")}`;
+	// Add retry offset to handle concurrent requests
+	sequence += retryCount;
+
+	const reference = `${prefix}${sequence.toString().padStart(3, "0")}`;
+
+	// Verify reference doesn't already exist (race condition check)
+	if (retryCount < MAX_RETRIES) {
+		const existing = await db.order.findFirst({
+			where: { organizationId, reference },
+		});
+		if (existing) {
+			// Reference already taken, retry with next sequence
+			return generateOrderReference(organizationId, retryCount + 1);
+		}
+	}
+
+	return reference;
 }
 
 // ============================================================================
 // Zod Schemas
 // ============================================================================
 
-const orderStatusEnum = z.enum([
+export const orderStatusEnum = z.enum([
 	"DRAFT",
 	"QUOTED",
 	"CONFIRMED",
@@ -85,21 +105,21 @@ const orderStatusEnum = z.enum([
 	"CANCELLED",
 ]);
 
-const createOrderSchema = z.object({
+export const createOrderSchema = z.object({
 	contactId: z.string().min(1).describe("Contact ID for the order"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 });
 
-const updateOrderSchema = z.object({
+export const updateOrderSchema = z.object({
 	contactId: z.string().min(1).optional().describe("Contact ID"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 });
 
-const transitionStatusSchema = z.object({
+export const transitionStatusSchema = z.object({
 	status: orderStatusEnum.describe("Target status for the order"),
 });
 
-const listOrdersQuerySchema = z.object({
+export const listOrdersQuerySchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().positive().max(100).default(20),
 	status: orderStatusEnum.optional(),
@@ -107,7 +127,7 @@ const listOrdersQuerySchema = z.object({
 	reference: z.string().optional(),
 });
 
-const orderIdParamSchema = z.object({
+export const orderIdParamSchema = z.object({
 	id: z.string().min(1).describe("Order ID"),
 });
 
@@ -136,7 +156,7 @@ export const ordersRouter = new Hono()
 
 			// Verify contact exists and belongs to organization
 			const contact = await db.contact.findFirst({
-				where: withTenantFilter(organizationId, { id: data.contactId }),
+				where: withTenantFilter({ id: data.contactId }, organizationId),
 			});
 
 			if (!contact) {
@@ -150,12 +170,12 @@ export const ordersRouter = new Hono()
 
 			// Create order
 			const order = await db.order.create({
-				data: withTenantCreate(organizationId, {
+				data: withTenantCreate({
 					reference,
 					contactId: data.contactId,
 					notes: data.notes,
 					status: "DRAFT",
-				}),
+				}, organizationId),
 				include: {
 					contact: true,
 					quotes: true,
@@ -188,11 +208,11 @@ export const ordersRouter = new Hono()
 			const skip = (page - 1) * limit;
 
 			// Build where clause
-			const where = withTenantFilter(organizationId, {
+			const where = withTenantFilter({
 				...(status && { status }),
 				...(contactId && { contactId }),
 				...(reference && { reference: { contains: reference } }),
-			});
+			}, organizationId);
 
 			// Get total count and orders in parallel
 			const [total, orders] = await Promise.all([
@@ -250,7 +270,7 @@ export const ordersRouter = new Hono()
 			const { id } = c.req.valid("param");
 
 			const order = await db.order.findFirst({
-				where: withTenantFilter(organizationId, { id }),
+				where: withTenantFilter({ id }, organizationId),
 				include: {
 					contact: true,
 					quotes: {
@@ -309,7 +329,7 @@ export const ordersRouter = new Hono()
 
 			// Verify order exists
 			const existingOrder = await db.order.findFirst({
-				where: withTenantFilter(organizationId, { id }),
+				where: withTenantFilter({ id }, organizationId),
 			});
 
 			if (!existingOrder) {
@@ -321,7 +341,7 @@ export const ordersRouter = new Hono()
 			// If contactId is being updated, verify it exists
 			if (data.contactId) {
 				const contact = await db.contact.findFirst({
-					where: withTenantFilter(organizationId, { id: data.contactId }),
+					where: withTenantFilter({ id: data.contactId }, organizationId),
 				});
 
 				if (!contact) {
@@ -331,9 +351,9 @@ export const ordersRouter = new Hono()
 				}
 			}
 
-			// Update order
+			// Update order with tenant scope for defense-in-depth
 			const order = await db.order.update({
-				where: { id },
+				where: { id, organizationId },
 				data: {
 					...(data.contactId && { contactId: data.contactId }),
 					...(data.notes !== undefined && { notes: data.notes }),
@@ -369,7 +389,7 @@ export const ordersRouter = new Hono()
 
 			// Get current order
 			const order = await db.order.findFirst({
-				where: withTenantFilter(organizationId, { id }),
+				where: withTenantFilter({ id }, organizationId),
 			});
 
 			if (!order) {
@@ -394,11 +414,11 @@ export const ordersRouter = new Hono()
 				});
 			}
 
-			// If same status (idempotent), just return current order
+			// If same status (idempotent), just return current order with tenant scope
 			if (currentStatus === targetStatus) {
 				return c.json(
 					await db.order.findFirst({
-						where: { id },
+						where: { id, organizationId },
 						include: {
 							contact: true,
 							quotes: true,
@@ -409,9 +429,9 @@ export const ordersRouter = new Hono()
 				);
 			}
 
-			// Perform transition
+			// Perform transition with tenant scope for defense-in-depth
 			const updatedOrder = await db.order.update({
-				where: { id },
+				where: { id, organizationId },
 				data: { status: targetStatus },
 				include: {
 					contact: true,
@@ -445,7 +465,7 @@ export const ordersRouter = new Hono()
 
 			// Get current order
 			const order = await db.order.findFirst({
-				where: withTenantFilter(organizationId, { id }),
+				where: withTenantFilter({ id }, organizationId),
 				include: {
 					_count: {
 						select: {
@@ -477,8 +497,8 @@ export const ordersRouter = new Hono()
 				});
 			}
 
-			// Delete order
-			await db.order.delete({ where: { id } });
+			// Delete order with tenant scope for defense-in-depth
+			await db.order.delete({ where: { id, organizationId } });
 
 			return c.json({ success: true, message: `Order ${order.reference} deleted` });
 		}
