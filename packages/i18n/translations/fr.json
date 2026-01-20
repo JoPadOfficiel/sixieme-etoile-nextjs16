@@ -2415,6 +2415,32 @@
 			"invoiced": "Facturé",
 			"paid": "Payé",
 			"cancelled": "Annulé"
+		},
+		"commercial": {
+			"label": "Libellé",
+			"type": "Type",
+			"price": "Prix",
+			"mission": "Mission",
+			"actions": "Actions",
+			"linked": "Liée",
+			"unlinked": "Non liée",
+			"createMission": "Créer mission"
+		},
+		"spawnMission": {
+			"title": "Créer une mission",
+			"description": "Créez une mission à partir de cette ligne de devis. Complétez les informations manquantes.",
+			"lineType": "Type",
+			"date": "Date",
+			"time": "Heure",
+			"vehicleCategory": "Catégorie de véhicule",
+			"selectCategory": "Sélectionner une catégorie",
+			"notes": "Notes",
+			"notesPlaceholder": "Notes optionnelles pour la mission...",
+			"createMission": "Créer la mission",
+			"success": "Mission créée",
+			"successDescription": "La mission a été créée avec succès et liée à la ligne de devis.",
+			"error": "Erreur",
+			"errorDescription": "Impossible de créer la mission. Veuillez réessayer."
 		}
 	},
 	"quotes": {

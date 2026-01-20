@@ -3,6 +3,18 @@ import type { Mission, Prisma, TripType, QuoteLineType } from "@prisma/client";
 import { eachDayOfInterval, startOfDay } from "date-fns";
 
 /**
+ * Story 28.7: Manual Spawn Parameters
+ */
+export interface SpawnManualParams {
+	quoteLineId: string;
+	orderId: string;
+	organizationId: string;
+	startAt: Date;
+	vehicleCategoryId: string;
+	notes?: string;
+}
+
+/**
  * Story 28.4: Spawning Engine - Trigger Logic
  * Story 28.5: Group Spawning Logic (Multi-Day)
  *
@@ -205,6 +217,121 @@ export class SpawnService {
 	 */
 	static getSpawnableTripTypes(): TripType[] {
 		return [...SPAWNABLE_TRIP_TYPES];
+	}
+
+	// =========================================================================
+	// Story 28.7: Manual Mission Spawning
+	// =========================================================================
+
+	/**
+	 * Manually spawn a mission from a quote line that wasn't auto-spawned
+	 * Used for MANUAL lines or lines with dispatchable=false that need operational handling
+	 *
+	 * @param params - Manual spawn parameters
+	 * @returns Created mission
+	 * @throws Error if line already has a mission or doesn't belong to order
+	 */
+	static async spawnManual(params: SpawnManualParams): Promise<Mission> {
+		const { quoteLineId, orderId, organizationId, startAt, vehicleCategoryId, notes } = params;
+
+		// 1. Fetch the quote line with its quote and verify ownership
+		const quoteLine = await db.quoteLine.findFirst({
+			where: {
+				id: quoteLineId,
+				quote: {
+					organizationId, // Tenant scope
+				},
+			},
+			include: {
+				quote: {
+					include: {
+						vehicleCategory: true,
+					},
+				},
+				missions: {
+					select: { id: true },
+				},
+			},
+		});
+
+		if (!quoteLine) {
+			throw new Error(`QuoteLine ${quoteLineId} not found or access denied`);
+		}
+
+		// 2. Verify the quote belongs to the order
+		if (quoteLine.quote.orderId !== orderId) {
+			throw new Error(`QuoteLine ${quoteLineId} does not belong to Order ${orderId}`);
+		}
+
+		// 3. Check if mission already exists for this line
+		if (quoteLine.missions.length > 0) {
+			throw new Error(`QuoteLine ${quoteLineId} already has a mission (${quoteLine.missions[0].id})`);
+		}
+
+		// 4. Fetch vehicle category for sourceData
+		const vehicleCategory = await db.vehicleCategory.findUnique({
+			where: { id: vehicleCategoryId },
+			select: { id: true, name: true },
+		});
+
+		if (!vehicleCategory) {
+			throw new Error(`VehicleCategory ${vehicleCategoryId} not found`);
+		}
+
+		// 5. Create the mission
+		const mission = await db.mission.create({
+			data: {
+				organizationId,
+				quoteId: quoteLine.quoteId,
+				quoteLineId,
+				orderId,
+				status: "PENDING",
+				startAt,
+				endAt: null,
+				notes: notes ?? null,
+				sourceData: {
+					// Location data from quote
+					pickupAddress: quoteLine.quote.pickupAddress,
+					pickupLatitude: quoteLine.quote.pickupLatitude
+						? Number(quoteLine.quote.pickupLatitude)
+						: null,
+					pickupLongitude: quoteLine.quote.pickupLongitude
+						? Number(quoteLine.quote.pickupLongitude)
+						: null,
+					dropoffAddress: quoteLine.quote.dropoffAddress,
+					dropoffLatitude: quoteLine.quote.dropoffLatitude
+						? Number(quoteLine.quote.dropoffLatitude)
+						: null,
+					dropoffLongitude: quoteLine.quote.dropoffLongitude
+						? Number(quoteLine.quote.dropoffLongitude)
+						: null,
+					// Passenger info
+					passengerCount: quoteLine.quote.passengerCount,
+					luggageCount: quoteLine.quote.luggageCount,
+					// Vehicle info (from params, not quote)
+					vehicleCategoryId: vehicleCategory.id,
+					vehicleCategoryName: vehicleCategory.name,
+					// Line info
+					lineLabel: quoteLine.label,
+					lineDescription: quoteLine.description,
+					lineType: quoteLine.type,
+					lineTotalPrice: quoteLine.totalPrice ? Number(quoteLine.totalPrice) : null,
+					// Trip info
+					tripType: quoteLine.quote.tripType,
+					pricingMode: quoteLine.quote.pricingMode,
+					isRoundTrip: quoteLine.quote.isRoundTrip,
+					// Manual spawn marker
+					manuallySpawned: true,
+					spawnedAt: new Date().toISOString(),
+				},
+			},
+		});
+
+		console.log(
+			`[SPAWN-MANUAL] Mission ${mission.id}: Created from QuoteLine ${quoteLineId} (Order: ${orderId})`
+		);
+
+		return mission;
 	}
 
 	// =========================================================================

@@ -2052,4 +2052,62 @@ export const chainingRouter = new Hono()
 				message: "Chain removed successfully",
 			});
 		},
+	)
+
+	// =========================================================================
+	// Story 28.7: Manual Mission Spawning
+	// =========================================================================
+
+	.post(
+		"/spawn-manual",
+		validator(
+			"json",
+			z.object({
+				quoteLineId: z.string().min(1),
+				orderId: z.string().min(1),
+				startAt: z.string().datetime(),
+				vehicleCategoryId: z.string().min(1),
+				notes: z.string().optional(),
+			}),
+		),
+		describeRoute({
+			summary: "Manually spawn a mission from a quote line",
+			description:
+				"Create a mission from a quote line that wasn't automatically spawned (MANUAL lines or dispatchable=false)",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { quoteLineId, orderId, startAt, vehicleCategoryId, notes } =
+				c.req.valid("json");
+
+			// Import SpawnService dynamically to avoid circular dependencies
+			const { SpawnService } = await import("../../services/spawn-service");
+
+			try {
+				const mission = await SpawnService.spawnManual({
+					quoteLineId,
+					orderId,
+					organizationId,
+					startAt: new Date(startAt),
+					vehicleCategoryId,
+					notes,
+				});
+
+				return c.json({
+					success: true,
+					mission: {
+						id: mission.id,
+						status: mission.status,
+						startAt: mission.startAt.toISOString(),
+						quoteLineId: mission.quoteLineId,
+						orderId: mission.orderId,
+					},
+				});
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Failed to spawn mission";
+				throw new HTTPException(400, { message });
+			}
+		},
 	);

@@ -2429,6 +2429,32 @@
 			"invoiced": "Invoiced",
 			"paid": "Paid",
 			"cancelled": "Cancelled"
+		},
+		"commercial": {
+			"label": "Label",
+			"type": "Type",
+			"price": "Price",
+			"mission": "Mission",
+			"actions": "Actions",
+			"linked": "Linked",
+			"unlinked": "Unlinked",
+			"createMission": "Create mission"
+		},
+		"spawnMission": {
+			"title": "Create Mission",
+			"description": "Create a mission from this quote line. Complete the missing information.",
+			"lineType": "Type",
+			"date": "Date",
+			"time": "Time",
+			"vehicleCategory": "Vehicle Category",
+			"selectCategory": "Select a category",
+			"notes": "Notes",
+			"notesPlaceholder": "Optional notes for the mission...",
+			"createMission": "Create Mission",
+			"success": "Mission Created",
+			"successDescription": "The mission has been created and linked to the quote line.",
+			"error": "Error",
+			"errorDescription": "Failed to create mission. Please try again."
 		}
 	},
 	"quotes": {
