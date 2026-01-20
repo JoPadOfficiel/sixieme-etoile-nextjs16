@@ -96,6 +96,9 @@ This document decomposes the VTC ERP PRD into **24 functional epics**, aligned w
 - **Epic 25 – Documents, Payments & Deep Linking Enhancements**
   Implement PDF mission sheets with editable fields, compliant invoice/quote layouts, document personalization settings, B2C invoicing address support, enhanced deep linking navigation, and multi-invoice payment tracking.
 
+- **Epic 28 – Order Management & Intelligent Spawning (Dossier de Commande)**
+  Implement the "Dossier" lifecycle to manage multi-mission orders, intelligent spawning from quotes, flexible execution-aware invoicing, and ad-hoc exceptions.
+
 ---
 
 ## Functional Requirements Inventory (Summary)
@@ -7645,3 +7648,188 @@ So that we have a backup.
 - "Export PDF" button.
 - Generates a linear list or simplified Gantt image for the current view.
 - Includes Driver Names and assigned Missions.
+
+---
+
+## Epic 28: Order Management & Intelligent Spawning (Dossier de Commande)
+
+**Goal:** Implement the "Dossier" lifecycle to manage multi-mission orders, intelligent spawning from quotes, and flexible execution-aware invoicing.
+**FRs Covered:** FR160-FR173.
+
+### Story 28.1: Order Entity & Prisma Schema
+
+As a **developer**,
+I want to establish the Order (Dossier) data model and its workflow states,
+So that we can link Quotes and Invoices under a single parent entity.
+
+**Related FRs:** FR160, FR161.
+
+**Acceptance Criteria:**
+- Create `Order` model in Prisma with relations to `Quote`, `Invoice`, `Mission`.
+- Define `OrderStatus` enum: `DRAFT`, `QUOTED`, `CONFIRMED`, `INVOICED`, `PAID`, `CANCELLED`.
+- Migration script to create tables.
+- Seed data for testing.
+- Ensure `QuoteLine` and `Mission` relate correctly to `Order` (optional direct link or via Quote).
+
+### Story 28.2: Order State Machine & API
+
+As a **developer**,
+I want an API to manage Order transitions,
+So that the frontend can move an order from Draft to Confirmed.
+
+**Related FRs:** FR161.
+
+**Acceptance Criteria:**
+- API `POST /api/orders` to create a dossier from a Quote (or empty).
+- API `PATCH /api/orders/:id/status` with validation logic.
+- Ensure state transitions are technically valid (e.g. can't confirm without a customer).
+- Audit logging for status changes.
+
+### Story 28.3: Dossier View UI - Skeleton & Tabs
+
+As an **operator**,
+I want a unified "Dossier" view with tabs for Commercial, Operational, and Financial data,
+So that I can see the whole picture.
+
+**Related FRs:** FR162.
+
+**Acceptance Criteria:**
+- New page `/app/orders/:id`.
+- Header: Order ID, Status Badge, Client Name, Aggregate Total.
+- Tabs Navigation: Commercial, Operations, Financial.
+- Empty states for each tab.
+
+### Story 28.4: Spawning Engine - Trigger Logic
+
+As a **system**,
+I want to automatically spawn missions when an Order is CONFIRMED,
+So that the dispatch team creates tasks without manual entry.
+
+**Related FRs:** FR163, FR164.
+
+**Acceptance Criteria:**
+- Backend event listener on `CONFIRMED` transition.
+- Iterate through `QuoteLine` items.
+- Logic: If type is `TRANSFER` or `DISPOSAL`, create 1 `Mission`.
+- Mission inherits: Date, Addresses, Passenger Count, Vehicle Category.
+- Mission status: `PENDING` (Backlog).
+
+### Story 28.5: Group Spawning Logic (Multi-Day)
+
+As a **system**,
+I want to spawn multiple missions if the Quote Line is a GROUP (e.g. Wedding Pack),
+So that each day/segment becomes a dispatchable item.
+
+**Related FRs:** FR165.
+
+**Acceptance Criteria:**
+- Identify `QuoteLine` of specific group types.
+- If Group contains sub-lines (children), spawn missions for children.
+- If Group is a time-block (e.g. 3 days), generate N missions (1 per day) based on logic.
+- Ensure proper linking (QuoteLineId on Mission).
+
+### Story 28.6: Optional Dispatch & Force Enable
+
+As an **operator**,
+I want to decide which quote lines become missions,
+So that I don't clutter dispatch with "Champagne" lines, but CAN dispatch "Luggage Van".
+
+**Related FRs:** FR166, FR167.
+
+**Acceptance Criteria:**
+- Schema: Add `dispatchable` boolean to `QuoteLine`.
+- Spawning Engine checks `dispatchable` flag.
+- UI Action: "Create Mission" on a non-dispatchable line in the Dossier view to override.
+
+### Story 28.7: Manual Item Handling
+
+As an **operator**,
+I want to manually convert a free-text line into a mission,
+So that unique requests are handled.
+
+**Related FRs:** FR167.
+
+**Acceptance Criteria:**
+- In "Commercial" tab, for `MANUAL` lines: Show "Spawn Mission" button.
+- Opens modal to define Mission details (Time, Vehicle Category) if missing.
+- Creates linked Mission.
+
+### Story 28.8: Invoice Generation - Detached Snapshot
+
+As a **system**,
+I want generated invoices to be a copy of the quote data but independent,
+So that editing the invoice doesn't break the quote history.
+
+**Related FRs:** FR168.
+
+**Acceptance Criteria:**
+- "Generate Invoice" action duplicates `QuoteLine` data to `InvoiceLine`.
+- `InvoiceLine` must have its own `description`, `quantity`, `price` fields.
+- Ensure `Invoice` is structurally independent of `Quote`.
+
+### Story 28.9: Invoice UI - Full Editability
+
+As a **finance officer**,
+I want to edit every field on the invoice draft,
+So that I can fix typos or adjust prices before sending.
+
+**Related FRs:** FR169.
+
+**Acceptance Criteria:**
+- Invoice Editor allows inline editing of Description, Qty, Unit Price, VAT.
+- "Save Draft" updates the `Invoice` entity.
+- Recalculate totals on the fly (Client-side and Server-side validation).
+
+### Story 28.10: Execution Feedback Loop (Placeholders)
+
+As an **operator**,
+I want to use placeholders like `{{driver}}` in my invoice lines,
+So that the final invoice automatically shows who did the job.
+
+**Related FRs:** FR170.
+
+**Acceptance Criteria:**
+- Support placeholders: `{{mission.driverName}}`, `{{mission.vehiclePlate}}`, `{{mission.startAt}}`.
+- "Render/Preview" button replaces placeholders with actual Mission data.
+- "Finalize" permanently substitutes text.
+
+### Story 28.11: Partial Invoicing
+
+As an **operator**,
+I want to invoice only specific lines or a percentage (Deposit),
+So that I can bill progressively.
+
+**Related FRs:** FR171.
+
+**Acceptance Criteria:**
+- "Create Invoice" modal selection: "Full", "Deposit %", "Select Lines".
+- If "Deposit", create a single line invoice definition.
+- If "Select Lines", allow picking which `QuoteLines` to include.
+
+### Story 28.12: Post-Mission Pending Charges
+
+As an **operator**,
+I want to see waiting time added by drivers as "Pending Charges",
+So I can decide to bill them.
+
+**Related FRs:** FR172.
+
+**Acceptance Criteria:**
+- Dispatch side: Driver/Dispatcher adds "Extra Fee" (Wait time) to Mission.
+- Dossier View: Shows "Pending Ops Charges" notification.
+- Action: "Add to Invoice" or "Dismiss".
+
+### Story 28.13: Ad-Hoc Free Missions
+
+As a **dispatcher**,
+I want to create a mission linked to a dossier but with 0 cost,
+So that I can track "Wash Car" or "Courtesy Ride" tasks.
+
+**Related FRs:** FR173.
+
+**Acceptance Criteria:**
+- "Add Mission" in Dossier View (Operational tab).
+- Option "Non-Billable" / "Internal".
+- Does not create a QuoteLine (or creates a 0€ hidden one).
+- Appears in Dispatch.
+

@@ -329,3 +329,18 @@ development_status:
   27-13-real-time-updates-polling-socket: done
   27-14-export-schedule: backlog
   epic-27-retrospective: optional
+  epic-28: backlog
+  28-1-order-entity-prisma-schema: backlog
+  28-2-order-state-machine-api: backlog
+  28-3-dossier-view-ui-skeleton-tabs: backlog
+  28-4-spawning-engine-trigger-logic: backlog
+  28-5-group-spawning-logic-multi-day: backlog
+  28-6-optional-dispatch-force-enable: backlog
+  28-7-manual-item-handling: backlog
+  28-8-invoice-generation-detached-snapshot: backlog
+  28-9-invoice-ui-full-editability: backlog
+  28-10-execution-feedback-loop-placeholders: backlog
+  28-11-partial-invoicing: backlog
+  28-12-post-mission-pending-charges: backlog
+  28-13-ad-hoc-free-missions: backlog
+  epic-28-retrospective: optional
