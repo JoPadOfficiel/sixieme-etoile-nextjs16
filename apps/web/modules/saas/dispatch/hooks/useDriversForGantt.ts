@@ -67,7 +67,7 @@ export function useDriversForGantt({
 		},
 		enabled,
 		// Story 27.13: Real-time polling configuration (10s interval, window focus revalidation)
-		...DISPATCH_QUERY_OPTIONS,
+		...(DISPATCH_QUERY_OPTIONS as any),
 	});
 
 	return {
