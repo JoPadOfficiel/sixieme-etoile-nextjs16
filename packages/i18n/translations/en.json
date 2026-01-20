@@ -3167,6 +3167,13 @@
 				"deselect": "Deselect",
 				"cancel": "Cancel"
 			},
+			"selection": {
+				"selected": "selected"
+			},
+			"delete": {
+				"confirmTitle": "Confirm Deletion",
+				"confirmMessage": "Are you sure you want to delete {count, plural, one {# line} other {# lines}}?"
+			},
 			"detach": {
 				"title": "Detach from Route Logic?",
 				"description": "This action will disconnect this line from the operational route data.",

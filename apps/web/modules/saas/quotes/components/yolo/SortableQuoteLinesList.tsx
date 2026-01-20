@@ -438,7 +438,7 @@ export function SortableQuoteLinesList({
 			>
 				{/* Story 26.20: Glassmorphism container */}
 				<div className="rounded-xl border border-white/20 bg-white/80 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/80">
-					{/* Header row with subtle glassmorphism */}white/10b
+					{/* Header row with subtle glassmorphism */}
 					<div className="flex items-center rounded-t-xl border-white/10 border-b bg-gradient-to-r from-muted/40 to-muted/20 px-4 py-3 font-medium text-muted-foreground text-xs dark:border-slate-700/30">
 						<div className="flex w-8 items-center justify-center">
 							{/* Story 26.19: Select All Checkbox */}

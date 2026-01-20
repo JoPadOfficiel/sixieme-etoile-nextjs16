@@ -165,6 +165,7 @@ className="backdrop-blur-md bg-white/80 dark:bg-slate-900/80
 |------|--------|--------|
 | 2026-01-20 | Antigravity | Story created and implementation started |
 | 2026-01-20 | Antigravity | Implementation complete - glassmorphism effects, Framer Motion animations, Dark Mode verified |
+| 2026-01-20 | JoPad | Fixed synthax error in SortableQuoteLinesList and added missing i18n keys for SelectionToolbar |
 
 ---
 
@@ -176,3 +177,5 @@ className="backdrop-blur-md bg-white/80 dark:bg-slate-900/80
 | `apps/web/modules/saas/quotes/components/yolo/SelectionToolbar.tsx` | Enhanced floating toolbar with premium glassmorphism, rounded-2xl, backdrop-blur-xl |
 | `apps/web/modules/saas/quotes/components/yolo/UniversalLineItemRow.tsx` | Improved row transitions, harmonized paddings (px-3 py-2), enhanced hover/selection states |
 | `apps/web/package.json` | Added framer-motion dependency |
+| `packages/i18n/translations/en.json` | Added missing i18n keys for yolo actions and selection toolbar |
+| `packages/i18n/translations/fr.json` | Added missing i18n keys for yolo actions and selection toolbar |

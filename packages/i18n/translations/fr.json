@@ -3149,6 +3149,13 @@
 				"deselect": "Désélectionner",
 				"cancel": "Annuler"
 			},
+			"selection": {
+				"selected": "sélectionné(s)"
+			},
+			"delete": {
+				"confirmTitle": "Confirmer la suppression",
+				"confirmMessage": "Êtes-vous sûr de vouloir supprimer {count, plural, one {# ligne} other {# lignes}} ?"
+			},
 			"detach": {
 				"title": "Détacher de la logique de routage ?",
 				"description": "Cette action déconnectera cette ligne des données opérationnelles de routage.",
