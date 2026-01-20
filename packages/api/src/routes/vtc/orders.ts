@@ -11,6 +11,7 @@ import {
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import { SpawnService } from "../../services/spawn-service";
+import { InvoiceFactory } from "../../services/invoice-factory";
 
 // ============================================================================
 // Story 28.2: Order State Machine & API
@@ -482,6 +483,47 @@ export const ordersRouter = new Hono()
 					// Missions can be created manually if spawning fails
 					console.error(
 						`[SPAWN_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`
+					);
+				}
+			}
+
+			// Story 28.8: Generate invoice when transitioning to INVOICED
+			if (targetStatus === "INVOICED" && currentStatus !== "INVOICED") {
+				try {
+					const result = await InvoiceFactory.createInvoiceFromOrder(id, organizationId);
+					console.log(
+						`[ORDER_AUDIT] Order ${id}: Generated invoice ${result.invoice?.number} with ${result.linesCreated} lines on INVOICED`
+					);
+
+					// Refetch order to include newly created invoice
+					if (result.invoice) {
+						const refreshedOrder = await db.order.findFirst({
+							where: { id, organizationId },
+							include: {
+								contact: true,
+								quotes: true,
+								missions: {
+									orderBy: { startAt: "asc" },
+									include: {
+										vehicle: true,
+										driver: true,
+									},
+								},
+								invoices: {
+									orderBy: { issueDate: "desc" },
+									include: {
+										lines: { orderBy: { sortOrder: "asc" } },
+									},
+								},
+							},
+						});
+						return c.json(refreshedOrder);
+					}
+				} catch (error) {
+					// Log error but don't fail the transition
+					// Invoice can be created manually if generation fails
+					console.error(
+						`[INVOICE_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`
 					);
 				}
 			}
