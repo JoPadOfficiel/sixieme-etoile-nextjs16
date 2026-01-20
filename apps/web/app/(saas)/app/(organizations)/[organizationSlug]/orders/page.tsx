@@ -1,7 +1,6 @@
-import { OrdersListClient } from "@saas/orders/components/OrdersListClient";
 import { db } from "@repo/database";
+import { OrdersListClient } from "@saas/orders/components/OrdersListClient";
 import { getTranslations } from "next-intl/server";
-
 
 interface OrdersListPageProps {
 	params: Promise<{
@@ -43,7 +42,7 @@ async function getOrders(organizationSlug: string) {
 	});
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return orders.map((order) => ({
+	return orders.map((order: any) => ({
 		id: order.id,
 		reference: order.reference,
 		status: order.status,
