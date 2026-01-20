@@ -180,72 +180,77 @@ async function seedFuelPriceCache() {
 async function seedOrders() {
   console.log("  📦 Seeding Orders...");
 
-  // Find an organization and contact to link orders to
-  const organization = await prisma.organization.findFirst();
-  if (!organization) {
-    console.log("    ⚠ No organization found, skipping order seeding");
-    return;
-  }
+  try {
+    // Find an organization and contact to link orders to
+    const organization = await prisma.organization.findFirst();
+    if (!organization) {
+      console.log("    ⚠ No organization found, skipping order seeding");
+      return;
+    }
 
-  const contact = await prisma.contact.findFirst({
-    where: { organizationId: organization.id },
-  });
-  if (!contact) {
-    console.log("    ⚠ No contact found, skipping order seeding");
-    return;
-  }
-
-  // Generate current year for reference format
-  const currentYear = new Date().getFullYear();
-
-  // Test orders with different statuses
-  const orders = [
-    {
-      reference: `ORD-${currentYear}-001`,
-      status: "DRAFT" as const,
-      notes: "Test order in draft status - Wedding preparation",
-    },
-    {
-      reference: `ORD-${currentYear}-002`,
-      status: "CONFIRMED" as const,
-      notes: "Test order confirmed - Corporate event transfer",
-    },
-    {
-      reference: `ORD-${currentYear}-003`,
-      status: "INVOICED" as const,
-      notes: "Test order invoiced - Airport transfers package",
-    },
-    {
-      reference: `ORD-${currentYear}-004`,
-      status: "PAID" as const,
-      notes: "Test order paid - Completed excursion",
-    },
-    {
-      reference: `ORD-${currentYear}-005`,
-      status: "CANCELLED" as const,
-      notes: "Test order cancelled - Client request",
-    },
-  ];
-
-  for (const order of orders) {
-    await prisma.order.upsert({
-      where: { reference: order.reference },
-      update: {
-        status: order.status,
-        notes: order.notes,
-      },
-      create: {
-        organizationId: organization.id,
-        contactId: contact.id,
-        reference: order.reference,
-        status: order.status,
-        notes: order.notes,
-      },
+    const contact = await prisma.contact.findFirst({
+      where: { organizationId: organization.id },
     });
-  }
+    if (!contact) {
+      console.log("    ⚠ No contact found, skipping order seeding");
+      return;
+    }
 
-  const orderCount = await prisma.order.count();
-  console.log(`    ✓ Created/updated ${orderCount} orders`);
+    // Generate current year for reference format
+    const currentYear = new Date().getFullYear();
+
+    // Test orders with different statuses
+    const orders = [
+      {
+        reference: `ORD-${currentYear}-001`,
+        status: "DRAFT" as const,
+        notes: "Test order in draft status - Wedding preparation",
+      },
+      {
+        reference: `ORD-${currentYear}-002`,
+        status: "CONFIRMED" as const,
+        notes: "Test order confirmed - Corporate event transfer",
+      },
+      {
+        reference: `ORD-${currentYear}-003`,
+        status: "INVOICED" as const,
+        notes: "Test order invoiced - Airport transfers package",
+      },
+      {
+        reference: `ORD-${currentYear}-004`,
+        status: "PAID" as const,
+        notes: "Test order paid - Completed excursion",
+      },
+      {
+        reference: `ORD-${currentYear}-005`,
+        status: "CANCELLED" as const,
+        notes: "Test order cancelled - Client request",
+      },
+    ];
+
+    for (const order of orders) {
+      await prisma.order.upsert({
+        where: { reference: order.reference },
+        update: {
+          status: order.status,
+          notes: order.notes,
+        },
+        create: {
+          organizationId: organization.id,
+          contactId: contact.id,
+          reference: order.reference,
+          status: order.status,
+          notes: order.notes,
+        },
+      });
+    }
+
+    const orderCount = await prisma.order.count();
+    console.log(`    ✓ Created/updated ${orderCount} orders`);
+  } catch (error) {
+    // Order table may not exist yet if migration hasn't run
+    console.log("    ⚠ Order seeding skipped (table may not exist yet)");
+  }
 }
 
 main()

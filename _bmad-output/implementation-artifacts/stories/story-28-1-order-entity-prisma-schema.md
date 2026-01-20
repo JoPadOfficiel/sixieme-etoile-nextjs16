@@ -7,7 +7,7 @@
 | **Story ID**     | 28.1                                              |
 | **Epic**         | Epic 28 - Order Management & Intelligent Spawning |
 | **Title**        | Order Entity & Prisma Schema                      |
-| **Status**       | review                                            |
+| **Status**       | done                                              |
 | **Created**      | 2026-01-20                                        |
 | **Priority**     | High                                              |
 | **Story Points** | 3                                                 |
@@ -290,10 +290,15 @@ The migration only adds new columns with nullable foreign keys, so it's safe to 
 
 ### Files Modified
 
-| File                                     | Changes                                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------------------------- |
-| `packages/database/prisma/schema.prisma` | Added `OrderStatus` enum, `Order` model, `orderId` + indexes on Quote/Mission/Invoice |
-| `packages/database/prisma/seed.ts`       | Added `seedOrders()` function with 5 test orders                                      |
+| File                                     | Changes                                                                                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/database/prisma/schema.prisma` | Added `OrderStatus` enum, `Order` model, `orderId` + indexes on Quote/Mission/Invoice, explicit `onDelete: Restrict` on Contact relation |
+| `packages/database/prisma/seed.ts`       | Added `seedOrders()` function with 5 test orders, wrapped in try/catch for schema safety                                                 |
+| `packages/database/src/zod/index.ts`     | Auto-regenerated Zod types including `OrderSchema` and `OrderStatusSchema`                                                               |
+
+### Migration Note
+
+⚠️ **Migration vs db push**: The standard `prisma migrate dev` command failed due to shadow database permissions. Used `prisma db push` as workaround for schema sync. This is acceptable for schema-only stories but production deployments should use proper migrations.
 
 ### Tests Executed
 

@@ -98,6 +98,8 @@ export const PurchaseScalarFieldEnumSchema = z.enum(['id','organizationId','user
 
 export const ContactScalarFieldEnumSchema = z.enum(['id','organizationId','type','displayName','firstName','lastName','email','phone','companyName','vatNumber','siret','billingAddress','isPartner','defaultClientType','difficultyScore','notes','createdAt','updatedAt','subcontractorProfileId']);
 
+export const OrderScalarFieldEnumSchema = z.enum(['id','organizationId','reference','contactId','status','notes','createdAt','updatedAt']);
+
 export const EndCustomerScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','firstName','lastName','email','phone','difficultyScore','notes','createdAt','updatedAt']);
 
 export const PartnerContractScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','billingAddress','paymentTerms','commissionPercent','notes','createdAt','updatedAt']);
@@ -164,11 +166,11 @@ export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizati
 
 export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','label','description','sourceData','displayData','quantity','unitPrice','totalPrice','vatRate','parentId','sortOrder','createdAt','updatedAt']);
 
-export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','createdAt','updatedAt']);
+export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','createdAt','updatedAt','orderId']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId','orderId']);
 
-export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId']);
+export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId','orderId']);
 
 export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
 
@@ -329,6 +331,10 @@ export type QuoteLineTypeType = `${z.infer<typeof QuoteLineTypeSchema>}`
 export const MissionStatusSchema = z.enum(['PENDING','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED']);
 
 export type MissionStatusType = `${z.infer<typeof MissionStatusSchema>}`
+
+export const OrderStatusSchema = z.enum(['DRAFT','QUOTED','CONFIRMED','INVOICED','PAID','CANCELLED']);
+
+export type OrderStatusType = `${z.infer<typeof OrderStatusSchema>}`
 
 export const OriginDestinationTypeSchema = z.enum(['ZONES','ADDRESS']);
 
@@ -531,6 +537,27 @@ export const ContactSchema = z.object({
 })
 
 export type Contact = z.infer<typeof ContactSchema>
+
+/////////////////////////////////////////
+// ORDER SCHEMA
+/////////////////////////////////////////
+
+/**
+ * Order - Story 28.1: Central "Dossier de Commande" entity
+ * Groups quotes, missions, and invoices under a single parent
+ */
+export const OrderSchema = z.object({
+  status: OrderStatusSchema,
+  id: z.string().cuid(),
+  organizationId: z.string(),
+  reference: z.string(),
+  contactId: z.string(),
+  notes: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+})
+
+export type Order = z.infer<typeof OrderSchema>
 
 /////////////////////////////////////////
 // END CUSTOMER SCHEMA
@@ -1392,6 +1419,7 @@ export const MissionSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  orderId: z.string().nullable(),
 })
 
 export type Mission = z.infer<typeof MissionSchema>
@@ -1463,6 +1491,7 @@ export const QuoteSchema = z.object({
   updatedAt: z.coerce.date(),
   vehicleId: z.string().nullable(),
   driverId: z.string().nullable(),
+  orderId: z.string().nullable(),
 })
 
 export type Quote = z.infer<typeof QuoteSchema>
@@ -1494,6 +1523,7 @@ export const InvoiceSchema = z.object({
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   endCustomerId: z.string().nullable(),
+  orderId: z.string().nullable(),
 })
 
 export type Invoice = z.infer<typeof InvoiceSchema>
