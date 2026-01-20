@@ -98,7 +98,7 @@ export function DispatchPage() {
 				},
 			});
 			if (!res.ok) throw new Error("Failed to fetch drivers");
-			return res.json();
+			return res.json() as Promise<any>;
 		},
 		...DISPATCH_QUERY_OPTIONS,
 	});
