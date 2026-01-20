@@ -13,11 +13,13 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, CalendarIcon, Loader2Icon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, EyeIcon, Loader2Icon, SaveIcon } from "lucide-react";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { useInvoiceDetail } from "../hooks/useInvoiceDetail";
+import { useMissionContext } from "../hooks/useMissionContext";
 import { InvoiceLinesList } from "./InvoiceLinesList";
 import { AddInvoiceFeeDialog } from "./AddInvoiceFeeDialog";
+import { PlaceholderPreviewDialog } from "./PlaceholderPreviewDialog";
 
 interface EditInvoicePageProps {
   invoiceId: string;
@@ -48,6 +50,12 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
 
   // Form state - initialized lazily when invoice data arrives
   const [formData, setFormData] = useState<EditFormData | null>(null);
+
+  // Story 28.10: Placeholder preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Story 28.10: Fetch mission context for placeholders
+  const { data: missionContextData } = useMissionContext({ invoiceId });
 
   // Initialize form on first invoice load
   if (invoice && !formData) {
@@ -235,10 +243,23 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
                   {t("invoices.edit.linesAutoSave")}
                 </p>
               </div>
-              <AddInvoiceFeeDialog
-                invoiceId={invoiceId}
-                disabled={updateMutation.isPending}
-              />
+              <div className="flex items-center gap-2">
+                {/* Story 28.10: Placeholder Preview/Finalize buttons */}
+                {missionContextData?.hasMission && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewOpen(true)}
+                  >
+                    <EyeIcon className="size-4 mr-1" />
+                    {t("invoices.placeholders.preview")}
+                  </Button>
+                )}
+                <AddInvoiceFeeDialog
+                  invoiceId={invoiceId}
+                  disabled={updateMutation.isPending}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <InvoiceLinesList lines={invoice.lines} invoiceId={invoiceId} editable />
@@ -246,6 +267,15 @@ export function EditInvoicePage({ invoiceId }: EditInvoicePageProps) {
           </Card>
         </div>
       </div>
+
+      {/* Story 28.10: Placeholder Preview Dialog */}
+      <PlaceholderPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        invoiceId={invoiceId}
+        lines={invoice.lines}
+        missionContext={missionContextData?.context ?? null}
+      />
     </div>
   );
 }

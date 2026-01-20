@@ -181,6 +181,7 @@
 		"title": "Changelog"
 	},
 	"common": {
+		"close": "Close",
 		"optional": "Optional",
 		"remove": "Remove",
 		"moveUp": "Move up",
@@ -432,6 +433,23 @@
 			"promoDescriptionPlaceholder": "Promotion description...",
 			"customPromo": "Custom",
 			"promotionPrefix": "Promotion:"
+		},
+		"placeholders": {
+			"preview": "Preview Variables",
+			"previewTitle": "Placeholder Preview",
+			"previewDescription": "Preview how placeholders will be replaced with actual mission data.",
+			"noPlaceholders": "No placeholders found in invoice lines.",
+			"allResolved": "All placeholders have already been resolved.",
+			"noMissionContext": "No mission data available for this invoice.",
+			"missionData": "Mission Data",
+			"original": "Original",
+			"finalize": "Finalize",
+			"finalizeSuccess": "Placeholders finalized",
+			"finalizeSuccessDescription": "{count} line(s) updated with mission data.",
+			"finalizeError": "Failed to finalize placeholders",
+			"confirmTitle": "Finalize Placeholders?",
+			"confirmDescription": "This will permanently replace {count} placeholder(s) with actual mission data. This action cannot be undone.",
+			"confirmAction": "Finalize"
 		},
 		"pagination": {
 			"showing": "Showing {from} to {to} of {total} invoices",

@@ -926,4 +926,198 @@ export const invoicesRouter = new Hono()
 
 			return c.json(updatedInvoice);
 		},
+	)
+
+	// ============================================================================
+	// Story 28.10: Mission Context & Placeholder Finalization
+	// ============================================================================
+
+	/**
+	 * GET /invoices/:id/mission-context
+	 * Retrieve mission context for placeholder replacement
+	 */
+	.get(
+		"/:id/mission-context",
+		describeRoute({
+			summary: "Get mission context for invoice",
+			description: "Retrieve mission data linked to the invoice through Order for placeholder replacement. Story 28.10.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const invoiceId = c.req.param("id");
+
+			// Find invoice with order and missions
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(invoiceId, organizationId),
+				include: {
+					order: {
+						include: {
+							missions: {
+								include: {
+									driver: true,
+									vehicle: true,
+								},
+								orderBy: { startAt: "asc" },
+							},
+						},
+					},
+				},
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, { message: "Invoice not found" });
+			}
+
+			// Check if invoice has an order with missions
+			const missions = invoice.order?.missions ?? [];
+
+			if (missions.length === 0) {
+				return c.json({
+					hasMission: false,
+					context: null,
+					missionCount: 0,
+				});
+			}
+
+			// Use first mission for context (most common case)
+			const firstMission = missions[0];
+
+			const context = {
+				driverName: firstMission.driver
+					? `${firstMission.driver.firstName} ${firstMission.driver.lastName}`
+					: null,
+				vehiclePlate: firstMission.vehicle?.registrationNumber ?? null,
+				startAt: firstMission.startAt?.toISOString() ?? null,
+				endAt: firstMission.endAt?.toISOString() ?? null,
+			};
+
+			return c.json({
+				hasMission: true,
+				context,
+				missionCount: missions.length,
+			});
+		},
+	)
+
+	/**
+	 * POST /invoices/:id/finalize-placeholders
+	 * Permanently replace placeholders in invoice line descriptions
+	 */
+	.post(
+		"/:id/finalize-placeholders",
+		describeRoute({
+			summary: "Finalize placeholders in invoice",
+			description: "Permanently replace all placeholders in invoice line descriptions with actual mission data. Story 28.10.",
+			tags: ["VTC - Invoices"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const invoiceId = c.req.param("id");
+
+			// Placeholder tokens
+			const placeholderTokens = ["{{driver}}", "{{plate}}", "{{start}}", "{{end}}"];
+
+			// Find invoice with order, missions, and lines
+			const invoice = await db.invoice.findFirst({
+				where: withTenantId(invoiceId, organizationId),
+				include: {
+					order: {
+						include: {
+							missions: {
+								include: {
+									driver: true,
+									vehicle: true,
+								},
+								orderBy: { startAt: "asc" },
+							},
+						},
+					},
+					lines: true,
+				},
+			});
+
+			if (!invoice) {
+				throw new HTTPException(404, { message: "Invoice not found" });
+			}
+
+			if (invoice.status !== "DRAFT") {
+				throw new HTTPException(400, { message: "Can only finalize placeholders in DRAFT invoices" });
+			}
+
+			const missions = invoice.order?.missions ?? [];
+
+			if (missions.length === 0) {
+				throw new HTTPException(400, { message: "No mission linked to this invoice" });
+			}
+
+			// Build context from first mission
+			const firstMission = missions[0];
+			const driverName = firstMission.driver
+				? `${firstMission.driver.firstName} ${firstMission.driver.lastName}`
+				: null;
+			const vehiclePlate = firstMission.vehicle?.licensePlate ?? null;
+			const startAt = firstMission.startAt;
+			const endAt = firstMission.endAt;
+
+			// Format date helper
+			const formatDate = (date: Date | null): string => {
+				if (!date) return "[Non assigné]";
+				return date.toLocaleString("fr-FR", {
+					day: "2-digit",
+					month: "2-digit",
+					year: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+				});
+			};
+
+			// Replace placeholders in text
+			const replacePlaceholdersInText = (text: string): string => {
+				if (!text) return text;
+				const unassigned = "[Non assigné]";
+				const replacements: Record<string, string> = {
+					"{{driver}}": driverName || unassigned,
+					"{{plate}}": vehiclePlate || unassigned,
+					"{{start}}": formatDate(startAt),
+					"{{end}}": formatDate(endAt),
+				};
+
+				let result = text;
+				for (const [token, value] of Object.entries(replacements)) {
+					const escapedToken = token.replace(/[{}]/g, "\\$&");
+					const regex = new RegExp(escapedToken, "g");
+					result = result.replace(regex, value);
+				}
+				return result;
+			};
+
+			// Update all lines with replaced descriptions
+			let updatedCount = 0;
+			await db.$transaction(async (tx) => {
+				for (const line of invoice.lines) {
+					const hasPlaceholder = placeholderTokens.some((token) => line.description.includes(token));
+					if (hasPlaceholder) {
+						const newDescription = replacePlaceholdersInText(line.description);
+						await tx.invoiceLine.update({
+							where: { id: line.id },
+							data: { description: newDescription },
+						});
+						updatedCount++;
+					}
+				}
+			});
+
+			// Return updated invoice
+			const updatedInvoice = await db.invoice.findFirst({
+				where: { id: invoiceId },
+				include: { contact: true, quote: true, lines: { orderBy: { sortOrder: "asc" } } },
+			});
+
+			return c.json({
+				success: true,
+				updatedLinesCount: updatedCount,
+				invoice: updatedInvoice,
+			});
+		},
 	);

@@ -181,6 +181,7 @@
 		"title": "Journal des modifications"
 	},
 	"common": {
+		"close": "Fermer",
 		"optional": "Optionnel",
 		"remove": "Supprimer",
 		"moveUp": "Monter",
@@ -430,6 +431,23 @@
 			"promoDescriptionPlaceholder": "Description de la promotion...",
 			"customPromo": "Personnalisée",
 			"promotionPrefix": "Promotion:"
+		},
+		"placeholders": {
+			"preview": "Prévisualiser les variables",
+			"previewTitle": "Prévisualisation des placeholders",
+			"previewDescription": "Prévisualisez comment les placeholders seront remplacés par les données de mission.",
+			"noPlaceholders": "Aucun placeholder trouvé dans les lignes de facture.",
+			"allResolved": "Tous les placeholders ont déjà été résolus.",
+			"noMissionContext": "Aucune donnée de mission disponible pour cette facture.",
+			"missionData": "Données de mission",
+			"original": "Original",
+			"finalize": "Finaliser",
+			"finalizeSuccess": "Placeholders finalisés",
+			"finalizeSuccessDescription": "{count} ligne(s) mise(s) à jour avec les données de mission.",
+			"finalizeError": "Échec de la finalisation des placeholders",
+			"confirmTitle": "Finaliser les placeholders ?",
+			"confirmDescription": "Cela remplacera définitivement {count} placeholder(s) par les données de mission réelles. Cette action est irréversible.",
+			"confirmAction": "Finaliser"
 		},
 		"pagination": {
 			"showing": "Affichage de {from} à {to} sur {total} factures",
