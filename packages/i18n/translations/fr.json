@@ -2474,7 +2474,8 @@
 			"convertToInvoice": "Convertir en facture",
 			"convertSuccess": "Facture créée avec succès",
 			"convertError": "Échec de la création de la facture",
-			"cancel": "Annuler le devis"
+			"cancel": "Annuler le devis",
+			"saveAsTemplate": "Sauvegarder comme modèle"
 		},
 		"pagination": {
 			"showing": "Affichage de {from} à {to} sur {total} devis",
@@ -3141,7 +3142,12 @@
 				"addManualLine": "Ajouter ligne manuelle",
 				"addGroup": "Créer un groupe",
 				"undo": "Annuler",
-				"redo": "Rétablir"
+				"redo": "Rétablir",
+				"selectAll": "Tout sélectionner",
+				"delete": "Supprimer",
+				"duplicate": "Dupliquer",
+				"deselect": "Désélectionner",
+				"cancel": "Annuler"
 			},
 			"detach": {
 				"title": "Détacher de la logique de routage ?",

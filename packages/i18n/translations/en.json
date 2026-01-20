@@ -2488,7 +2488,8 @@
 			"convertToInvoice": "Convert to Invoice",
 			"convertSuccess": "Invoice created successfully",
 			"convertError": "Failed to create invoice",
-			"cancel": "Cancel Quote"
+			"cancel": "Cancel Quote",
+			"saveAsTemplate": "Save as Template"
 		},
 		"pagination": {
 			"showing": "Showing {from} to {to} of {total} quotes",
@@ -3159,7 +3160,12 @@
 				"addManualLine": "Add Manual Line",
 				"addGroup": "Add Group",
 				"undo": "Undo",
-				"redo": "Redo"
+				"redo": "Redo",
+				"selectAll": "Select all",
+				"delete": "Delete",
+				"duplicate": "Duplicate",
+				"deselect": "Deselect",
+				"cancel": "Cancel"
 			},
 			"detach": {
 				"title": "Detach from Route Logic?",

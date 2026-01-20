@@ -1,5 +1,6 @@
 "use client";
 
+import { Checkbox } from "@ui/components/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -15,7 +16,6 @@ import {
 } from "@ui/components/tooltip";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
-import { Checkbox } from "@ui/components/checkbox";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
@@ -435,13 +435,17 @@ export function UniversalLineItemRow({
 	// Indentation based on depth
 	const indentPadding = depth * INDENT_SIZE_PX;
 
-	// Row background based on state
+	// Story 26.20: Row background with enhanced visual polish
 	const rowBackground = cn(
-		"group flex items-center gap-2 px-2 py-1.5 border-b border-border/50 transition-colors relative",
-		isDragging && "opacity-50 bg-muted",
-		isSelected && "bg-primary/5 border-primary/20",
-		isHovered && !isDragging && "bg-muted/30",
-		type === "GROUP" && "bg-muted/20 font-medium",
+		"group relative flex items-center gap-2 px-3 py-2 border-b transition-all duration-200 ease-out",
+		// Base border styling
+		"border-border/30 dark:border-slate-700/30",
+		// State-based styling
+		isDragging && "opacity-50 bg-muted/50 scale-[0.98]",
+		isSelected && "bg-primary/8 border-primary/30 shadow-sm",
+		isHovered && !isDragging && "bg-muted/40 dark:bg-slate-800/40",
+		type === "GROUP" &&
+			"bg-gradient-to-r from-muted/30 to-transparent font-medium",
 	);
 
 	// Story 26.19: Handle checkbox click with shift key detection

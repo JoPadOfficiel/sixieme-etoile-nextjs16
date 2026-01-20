@@ -1,5 +1,6 @@
 /**
  * Story 26.7: SortableQuoteLinesList Component
+ * Story 26.20: Visual Polish - Glassmorphism & Micro-animations
  *
  * Main container component that provides DndContext and SortableContext
  * for drag & drop reordering of quote lines.
@@ -9,6 +10,8 @@
  * - Re-parenting: drop a line inside a GROUP to nest it
  * - Groups can be dragged with all their children
  * - Accessible keyboard navigation
+ * - Glassmorphism effects on panels (Story 26.20)
+ * - Framer Motion animations on line entry/exit (Story 26.20)
  */
 
 "use client";
@@ -33,9 +36,11 @@ import {
 } from "@dnd-kit/sortable";
 import { Button } from "@ui/components/button";
 import { Checkbox } from "@ui/components/checkbox";
+import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import React, { useCallback, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuoteLinesStore } from "../../stores/useQuoteLinesStore";
 import { SortableQuoteLine } from "./SortableQuoteLine";
 import { UniversalLineItemRow } from "./UniversalLineItemRow";
@@ -50,6 +55,20 @@ import {
 	getLineId,
 	validateNestingDepth,
 } from "./dnd-utils";
+
+/**
+ * Story 26.20: Animation variants for line items
+ */
+const lineAnimationVariants = {
+	initial: { opacity: 0, y: -8, scale: 0.98 },
+	animate: { opacity: 1, y: 0, scale: 1 },
+	exit: { opacity: 0, y: 8, scale: 0.98 },
+};
+
+const lineTransition = {
+	duration: 0.2,
+	ease: "easeOut" as const,
+};
 
 interface SortableQuoteLinesListProps {
 	/** Flat list of quote lines (with parentId for nesting) */
@@ -323,7 +342,7 @@ export function SortableQuoteLinesList({
 		[lastSelectedId, selectRange, toggleLineSelection],
 	);
 
-	// Render a single line with sortable wrapper
+	// Render a single line with sortable wrapper and animations (Story 26.20)
 	const renderLine = (
 		line: QuoteLineWithChildren,
 		depth: number,
@@ -336,13 +355,23 @@ export function SortableQuoteLinesList({
 				: true;
 
 		return (
-			<React.Fragment key={id}>
+			<motion.div
+				key={id}
+				layout
+				variants={lineAnimationVariants}
+				initial="initial"
+				animate="animate"
+				exit="exit"
+				transition={lineTransition}
+			>
 				<SortableQuoteLine id={id} isOver={overId === id}>
 					{({ dragHandleProps, isDragging, setNodeRef, style, isOver }) => (
 						<div
 							ref={setNodeRef}
 							style={style}
-							className={isOver ? "ring-2 ring-primary ring-offset-1" : ""}
+							className={
+								isOver ? "rounded-lg ring-2 ring-primary ring-offset-1" : ""
+							}
 						>
 							<UniversalLineItemRow
 								id={id}
@@ -386,9 +415,12 @@ export function SortableQuoteLinesList({
 					)}
 				</SortableQuoteLine>
 
-				{isExpanded &&
-					line.children?.map((child) => renderLine(child, depth + 1))}
-			</React.Fragment>
+				{isExpanded && (
+					<AnimatePresence mode="popLayout">
+						{line.children?.map((child) => renderLine(child, depth + 1))}
+					</AnimatePresence>
+				)}
+			</motion.div>
 		);
 	};
 
@@ -404,9 +436,10 @@ export function SortableQuoteLinesList({
 				items={sortableIds}
 				strategy={verticalListSortingStrategy}
 			>
-				<div className="rounded-md border bg-background">
-					{/* Header row */}
-					<div className="flex items-center border-b bg-muted/30 px-4 py-2 font-medium text-muted-foreground text-xs">
+				{/* Story 26.20: Glassmorphism container */}
+				<div className="rounded-xl border border-white/20 bg-white/80 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/80">
+					{/* Header row with subtle glassmorphism */}white/10b
+					<div className="flex items-center rounded-t-xl border-white/10 border-b bg-gradient-to-r from-muted/40 to-muted/20 px-4 py-3 font-medium text-muted-foreground text-xs dark:border-slate-700/30">
 						<div className="flex w-8 items-center justify-center">
 							{/* Story 26.19: Select All Checkbox */}
 							{!readOnly && (
@@ -427,14 +460,19 @@ export function SortableQuoteLinesList({
 						<div className="w-24 text-right">{t("headers.total")}</div>
 						<div className="w-12 text-right">{t("headers.vat")}</div>
 					</div>
-
-					{tree.map((line) => renderLine(line, 0))}
-
-					{/* Empty state */}
+					{/* Story 26.20: Animated list with AnimatePresence */}
+					<AnimatePresence mode="popLayout">
+						{tree.map((line) => renderLine(line, 0))}
+					</AnimatePresence>
+					{/* Empty state with subtle animation */}
 					{tree.length === 0 && (
-						<div className="p-8 text-center text-muted-foreground">
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							className="p-8 text-center text-muted-foreground"
+						>
 							{t("emptyState")}
-						</div>
+						</motion.div>
 					)}
 				</div>
 			</SortableContext>
@@ -451,9 +489,14 @@ export function SortableQuoteLinesList({
 					{t("actions.addManualLine") || "Ajouter une ligne manuelle"}
 				</Button>
 			)}
+			{/* Story 26.20: DragOverlay with glassmorphism effect */}
 			<DragOverlay>
 				{activeLine ? (
-					<div className="rounded border bg-background opacity-90 shadow-lg">
+					<motion.div
+						initial={{ scale: 1.02, opacity: 0.9 }}
+						animate={{ scale: 1.05, opacity: 0.95 }}
+						className="rounded-xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur-lg dark:border-slate-600/50 dark:bg-slate-800/90"
+					>
 						<UniversalLineItemRow
 							id={getLineId(activeLine)}
 							type={activeLine.type}
@@ -474,7 +517,7 @@ export function SortableQuoteLinesList({
 							isDragging
 							disabled
 						/>
-					</div>
+					</motion.div>
 				) : null}
 			</DragOverlay>
 		</DndContext>

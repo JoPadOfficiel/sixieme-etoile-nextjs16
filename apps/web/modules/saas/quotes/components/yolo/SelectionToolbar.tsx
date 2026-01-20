@@ -49,12 +49,18 @@ export function SelectionToolbar({
 
 	return (
 		<>
+			{/* Story 26.20: Enhanced glassmorphism floating toolbar */}
 			<div
 				className={cn(
 					"-translate-x-1/2 fixed bottom-6 left-1/2 z-50",
-					"flex items-center gap-3 rounded-full border bg-background/95 px-4 py-2 shadow-lg backdrop-blur-sm",
-					"dark:bg-background/90",
-					"slide-in-from-bottom-4 fade-in animate-in duration-300",
+					"flex items-center gap-3 rounded-2xl px-5 py-3",
+					// Glassmorphism effects
+					"border border-white/30 bg-white/85 shadow-2xl backdrop-blur-xl",
+					"dark:border-slate-600/40 dark:bg-slate-900/85",
+					// Subtle gradient overlay
+					"bg-gradient-to-r from-white/90 to-white/70 dark:from-slate-900/90 dark:to-slate-800/80",
+					// Entry animation
+					"fade-in slide-in-from-bottom-4 animate-in duration-300",
 					className,
 				)}
 			>
