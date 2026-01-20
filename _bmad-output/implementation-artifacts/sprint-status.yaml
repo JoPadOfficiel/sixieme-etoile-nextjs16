@@ -338,7 +338,7 @@ development_status:
   28-6-optional-dispatch-force-enable: done
   28-7-manual-item-handling: done
   28-8-invoice-generation-detached-snapshot: done
-  28-9-invoice-ui-full-editability: backlog
+  28-9-invoice-ui-full-editability: review
   28-10-execution-feedback-loop-placeholders: backlog
   28-11-partial-invoicing: backlog
   28-12-post-mission-pending-charges: backlog

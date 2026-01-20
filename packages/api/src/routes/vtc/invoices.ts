@@ -837,14 +837,18 @@ export const invoicesRouter = new Hono()
 	)
 
 	// Update line from invoice (only DRAFT)
+	// Story 28.9: Full editability - description, unitPriceExclVat, vatRate, quantity
 	.patch(
 		"/:id/lines/:lineId",
 		validator("json", z.object({
-			quantity: z.number().positive(),
+			description: z.string().min(1).optional(),
+			quantity: z.number().positive().optional(),
+			unitPriceExclVat: z.number().optional(),
+			vatRate: z.number().min(0).max(100).optional(),
 		})),
 		describeRoute({
 			summary: "Update line in invoice",
-			description: "Update a line in a DRAFT invoice (currently only quantity). Recalculates totals automatically.",
+			description: "Update a line in a DRAFT invoice (description, quantity, unitPriceExclVat, vatRate). Recalculates totals automatically. Story 28.9: Full editability.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
@@ -876,15 +880,23 @@ export const invoicesRouter = new Hono()
 
 			// Update line and recalculate totals in transaction
 			await db.$transaction(async (tx) => {
-				const unitPrice = Number(line.unitPriceExclVat);
-				const vatRate = Number(line.vatRate);
-				const totalExclVat = Math.round(data.quantity * unitPrice * 100) / 100;
-				const totalVat = Math.round(totalExclVat * (vatRate / 100) * 100) / 100;
+				// Use new values if provided, otherwise keep existing
+				const newQuantity = data.quantity ?? Number(line.quantity);
+				const newUnitPrice = data.unitPriceExclVat ?? Number(line.unitPriceExclVat);
+				const newVatRate = data.vatRate ?? Number(line.vatRate);
+				const newDescription = data.description ?? line.description;
+
+				// Recalculate line totals
+				const totalExclVat = Math.round(newQuantity * newUnitPrice * 100) / 100;
+				const totalVat = Math.round(totalExclVat * (newVatRate / 100) * 100) / 100;
 
 				await tx.invoiceLine.update({
 					where: { id: lineId },
 					data: {
-						quantity: data.quantity,
+						description: newDescription,
+						quantity: newQuantity,
+						unitPriceExclVat: newUnitPrice,
+						vatRate: newVatRate,
 						totalExclVat,
 						totalVat,
 					},

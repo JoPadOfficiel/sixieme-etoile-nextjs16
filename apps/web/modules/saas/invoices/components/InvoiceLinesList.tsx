@@ -70,6 +70,45 @@ export function InvoiceLinesList({
     }
   };
 
+  /**
+   * Story 28.9: Full editability - update description
+   */
+  const handleUpdateDescription = async (lineId: string, description: string) => {
+    if (!invoiceId || !description.trim()) return;
+    try {
+      await updateLineMutation.mutateAsync({ lineId, description: description.trim() });
+      toast({ title: t("edit.lineUpdated") });
+    } catch {
+      toast({ title: t("edit.error"), variant: "error" });
+    }
+  };
+
+  /**
+   * Story 28.9: Full editability - update unit price
+   */
+  const handleUpdateUnitPrice = async (lineId: string, unitPriceExclVat: number) => {
+    if (!invoiceId) return;
+    try {
+      await updateLineMutation.mutateAsync({ lineId, unitPriceExclVat });
+      toast({ title: t("edit.lineUpdated") });
+    } catch {
+      toast({ title: t("edit.error"), variant: "error" });
+    }
+  };
+
+  /**
+   * Story 28.9: Full editability - update VAT rate
+   */
+  const handleUpdateVatRate = async (lineId: string, vatRate: number) => {
+    if (!invoiceId || vatRate < 0 || vatRate > 100) return;
+    try {
+      await updateLineMutation.mutateAsync({ lineId, vatRate });
+      toast({ title: t("edit.lineUpdated") });
+    } catch {
+      toast({ title: t("edit.error"), variant: "error" });
+    }
+  };
+
   // Calculate VAT breakdown by rate and category breakdown
   const { vatBreakdown, categoryBreakdown } = calculateLineTotals(lines);
 
@@ -108,14 +147,39 @@ export function InvoiceLinesList({
               ) : (
                 lines.map((line) => (
                   <TableRow key={line.id}>
+                    {/* Story 28.9: Editable Description */}
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        <span className="font-medium">{line.description}</span>
+                        {editable ? (
+                          <Input
+                            type="text"
+                            className="h-8 font-medium"
+                            defaultValue={line.description}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val && val !== line.description) {
+                                handleUpdateDescription(line.id, val);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val && val !== line.description) {
+                                  handleUpdateDescription(line.id, val);
+                                }
+                              }
+                            }}
+                            disabled={updateLineMutation.isPending}
+                          />
+                        ) : (
+                          <span className="font-medium">{line.description}</span>
+                        )}
                         <Badge variant="outline" className="w-fit text-xs">
                           {getLineTypeLabel(line.lineType)}
                         </Badge>
                       </div>
                     </TableCell>
+                    {/* Quantity */}
                     <TableCell className="text-right">
                       {editable ? (
                         <Input
@@ -144,12 +208,65 @@ export function InvoiceLinesList({
                         parseFloat(line.quantity).toFixed(2)
                       )}
                     </TableCell>
+                    {/* Story 28.9: Editable Unit Price */}
                     <TableCell className="text-right">
-                      {formatPrice(line.unitPriceExclVat)}
+                      {editable ? (
+                        <Input
+                          type="number"
+                          className="w-24 ml-auto h-8 text-right"
+                          defaultValue={parseFloat(line.unitPriceExclVat).toFixed(2)}
+                          step="0.01"
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val) && val !== parseFloat(line.unitPriceExclVat)) {
+                              handleUpdateUnitPrice(line.id, val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseFloat((e.target as HTMLInputElement).value);
+                              if (!isNaN(val) && val !== parseFloat(line.unitPriceExclVat)) {
+                                handleUpdateUnitPrice(line.id, val);
+                              }
+                            }
+                          }}
+                          disabled={updateLineMutation.isPending}
+                        />
+                      ) : (
+                        formatPrice(line.unitPriceExclVat)
+                      )}
                     </TableCell>
+                    {/* Story 28.9: Editable VAT Rate */}
                     <TableCell className="text-right">
-                      {formatVatRate(line.vatRate)}
+                      {editable ? (
+                        <Input
+                          type="number"
+                          className="w-16 ml-auto h-8 text-right"
+                          defaultValue={parseFloat(line.vatRate).toFixed(0)}
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val) && val >= 0 && val <= 100 && val !== parseFloat(line.vatRate)) {
+                              handleUpdateVatRate(line.id, val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseFloat((e.target as HTMLInputElement).value);
+                              if (!isNaN(val) && val >= 0 && val <= 100 && val !== parseFloat(line.vatRate)) {
+                                handleUpdateVatRate(line.id, val);
+                              }
+                            }
+                          }}
+                          disabled={updateLineMutation.isPending}
+                        />
+                      ) : (
+                        formatVatRate(line.vatRate)
+                      )}
                     </TableCell>
+                    {/* Total (read-only, auto-calculated) */}
                     <TableCell className="text-right font-medium">
                       {formatPrice(line.totalExclVat)}
                     </TableCell>

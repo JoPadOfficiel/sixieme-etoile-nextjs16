@@ -68,14 +68,25 @@ export function useDeleteInvoiceLine(invoiceId: string) {
   });
 }
 
+/**
+ * Story 28.9: Full editability - update any field of an invoice line
+ */
+interface UpdateLineData {
+  lineId: string;
+  description?: string;
+  quantity?: number;
+  unitPriceExclVat?: number;
+  vatRate?: number;
+}
+
 export function useUpdateInvoiceLine(invoiceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ lineId, quantity }: { lineId: string; quantity: number }) => {
+    mutationFn: async ({ lineId, ...data }: UpdateLineData) => {
       const response = await apiClient.vtc.invoices[":id"].lines[":lineId"].$patch({
         param: { id: invoiceId, lineId },
-        json: { quantity },
+        json: data,
       });
 
       if (!response.ok) {
