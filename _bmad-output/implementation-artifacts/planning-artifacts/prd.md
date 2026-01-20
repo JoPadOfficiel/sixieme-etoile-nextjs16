@@ -1004,18 +1004,41 @@ Requirements for the new Universal Line Item architecture ("Hybrid Blocks").
 - **FR148:** The Quote/Invoice Builders shall provide a "Notion-like" experience, allowing distinct service blocks (e.g., "Day 1", "Day 2", "Options") to be created, reordered via drag-and-drop, and nested within Groups.
 - **FR149:** The system shall calculate Profitability (`(DisplayTotal - SourceCost) / DisplayTotal`) for every line item in real-time, even when the price is manually overridden.
 
-### FR Group 18 - Order Management & Dossier de Commande
+### FR Group 18 - Order Management & Dossier de Commande (Targeting 90% Use Case Coverage)
 
-Requirements for the new "Folder-based" architecture (Dossier de Commande) and multi-mission generation.
+Requirements for the new "Folder-based" architecture (Dossier de Commande) and multi-mission generation to handle simple transfers, complex convoys, and miscellaneous services.
 
-- **FR160:** The system shall introduce the concept of an **Order** (Dossier), serving as the parent entity for a commercial request. An Order can contain multiple `QuoteLine` items, each representing a distinct service (transfer, disposal, etc.).
-- **FR161:** The Order entity shall support a **Workflow** with the following statuses: `DRAFT` (Construction), `QUOTED` (Proposal Sent), `CONFIRMED` (Order Validated), `INVOICED` (Finalized), `PAID` (Closed), and `CANCELLED`.
-- **FR162:** The system shall implement a **Mission Spawner** service that triggers upon Order Confirmation (`QUOTED` -> `CONFIRMED`). This service shall iterate through all `QuoteLine` items in the Order and generate one independent `Mission` entity for each actionable line item.
-- **FR163:** The Mission Spawner must handle **Grouped Lines** intelligently: For lines grouped under a "package" (e.g., "Wedding Weekend"), the system shall generate individual missions for each child line (e.g., "Transfer A", "Transfer B") while maintaining a link to the parent Order for billing.
-- **FR164:** The system shall enforce **Validation Rules** before Order Confirmation: All necessary operational data (Pickup Date/Time, Address) must be present for each line item that is to be spawned into a mission.
-- **FR165:** The system shall support **"Fully Editable" Invoicing**: When generating an invoice from an Order, the operator must be granted full edit capability on the generated document (Description, Quantity, Price, VAT) without affecting the original Order or Missions. The invoice becomes a detached "Snapshot" of the financial agreement at that moment.
-- **FR166:** The Order Management UI must provide a **"Dossier View"** that consolidates all linked entities: The Commercial Quote, the list of spawned Operational Missions (with their dispatch status), and any generated Invoices.
-- **FR167:** The system shall allow **Partial Facturation**: An operator must be able to generate an invoice for a subset of missions within an Order (e.g., "Invoice Day 1" only), or a deposit invoice.
-- **FR168:** The system shall ensure **Traceability**: Each spawned Mission must retain a reference to its source `QuoteLine` and parent `Order`, allowing navigation from Dispatch back to the commercial Dossier.
-- **FR169:** The system shall allow specific **Custom Fields** insertion on the Invoice per line item (e.g., "Passenger Name", "Flight Number") mapped from the Mission execution data, editable by the operator during the invoice drafting phase.
-- **FR170:** The system shall implement **"Upsell Management"**: If a Mission is modified during execution (e.g., Waiting Time added by driver), this change must be flagged in the Dossier so the operator can decide whether to add it to the final Invoice as an extra line item.
+#### 18.1 - Order Structure & Workflow
+- **FR160:** The system shall introduce the concept of an **Order** (Dossier), serving as the parent entity for a commercial request. An Order behaves as a container for multiple `QuoteLine` items.
+- **FR161:** The Order Workflow shall decouple commercial validation from operational execution: `DRAFT` (Construction) -> `QUOTED` (Proposal) -> `CONFIRMED` (Operational Trigger) -> `INVOICED` (Financial Closure).
+- **FR162:** The Order UI must provide a **"Dossier View"** that consolidates three layers:
+    1.  **Commercial Layer**: The Quote (Price, Terms).
+    2.  **Operational Layer**: The generated Missions (Status, Driver, Vehicle).
+    3.  **Financial Layer**: The Invoices and Payments.
+
+#### 18.2 - Intelligent Mission Spawning (The "Router")
+- **FR163:** Upon Order Confirmation, the system must trigger a **Spawning Engine** that evaluates each `QuoteLine` to decide *if* and *how* to create a Mission.
+- **FR164:** **Standard Spawning**: For standard types (Transfer, Disposal), 1 QuoteLine = 1 Mission. The Mission inherits the QuoteLine's date, addresses, and vehicle category.
+- **FR165:** **Complex/Multi-Day Spawning**: For `GROUP` lines (e.g., "Wedding Pack 3 Days"), the Spawner must be able to generate **N Missions** based on the group's child lines (e.g., 1 Mission per day).
+- **FR166:** **Optional Dispatch**: The system must support a `dispatchable` flag on `QuoteLine` items.
+    - If `true` (e.g., Van, Sedan): A Mission is created in the Dispatch Backlog.
+    - If `false` (e.g., "Porter Service", "Champagne"): No Mission is typically created, OR a "Service Task" is created but not assigned to a driver.
+    - **Crucial**: The operator must be able to **force-enable** dispatch for manual items (e.g., manually added "Luggage Van" line needs to become a real Mission for a driver).
+- **FR167:** **Manual Items Handling**: For `MANUAL` type lines added to a Quote (e.g., "Extra Luggage Van"):
+    - By default, they do not spawn a mission.
+    - The operator must have a "Convert to Mission" action in the Dossier View to turn a manual line into a dispatchable entity if it requires a driver.
+
+#### 18.3 - Invoicing Flexibility (Fully Editable)
+- **FR168:** The Invoicing Engine must treat the generated Invoice as a **detached snapshot**.
+- **FR169:** Operators must be able to **edit everything** on the draft invoice line items, regardless of the source Mission data:
+    - Change Label (e.g., add "Mr Smith - VIP").
+    - Change Quantity/Price (e.g., add last-minute waiting hours).
+    - Change VAT Rate.
+- **FR170:** **Execution Feedback Loop**: While the Invoice is decoupled, the system should allow "pulling" execution data into the invoice description via placeholders (e.g., `{{mission.driverName}}`, `{{mission.vehiclePlate}}`) for automated customization where needed.
+
+#### 18.4 - Handling the "Other 20%" (Exceptions)
+- **FR171:** **Partial/Deposit Billing**: The system must allow creating an invoice for *part* of an Order (e.g., "Deposit 30%" or "Only Missions 1 & 2").
+- **FR172:** **Post-Mission Upsell**: If a driver adds an expense or waiting time during the Mission, this must appear as a "Pending Charge" in the Dossier. The operator can then choose to:
+    - Add it to the final Invoice.
+    - Ignore it (commercial gesture).
+- **FR173:** **Ad-Hoc Missions**: The system must allow creating a "Free Mission" in the Dispatch (e.g., "Go wash the car") that is linked to the Dossier for history but has `price = 0` on the commercial side.
