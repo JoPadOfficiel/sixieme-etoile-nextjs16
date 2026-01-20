@@ -15,6 +15,7 @@ import {
 } from "@ui/components/tooltip";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
+import { Checkbox } from "@ui/components/checkbox";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
@@ -87,7 +88,7 @@ export interface UniversalLineItemRowProps {
 	isExpanded?: boolean;
 	/** Whether the row is being dragged */
 	isDragging?: boolean;
-	/** Whether the row is selected */
+	/** Whether the row is selected (Story 26.19) */
 	isSelected?: boolean;
 	/** Whether editing is disabled */
 	disabled?: boolean;
@@ -108,6 +109,10 @@ export interface UniversalLineItemRowProps {
 	dragHandleProps?: Record<string, unknown>;
 	/** Children rows (for GROUP type) */
 	children?: React.ReactNode;
+	/** Story 26.19: Callback when selection checkbox is toggled */
+	onSelectionChange?: (id: string, shiftKey: boolean) => void;
+	/** Story 26.19: Whether to show selection checkbox */
+	showSelection?: boolean;
 }
 
 /**
@@ -169,6 +174,8 @@ export function UniversalLineItemRow({
 	onInsert,
 	dragHandleProps,
 	children,
+	onSelectionChange,
+	showSelection = false,
 }: UniversalLineItemRowProps) {
 	const t = useTranslations();
 	const { toast } = useToast();
@@ -437,6 +444,13 @@ export function UniversalLineItemRow({
 		type === "GROUP" && "bg-muted/20 font-medium",
 	);
 
+	// Story 26.19: Handle checkbox click with shift key detection
+	const handleCheckboxClick = (e: React.MouseEvent) => {
+		if (onSelectionChange) {
+			onSelectionChange(id, e.shiftKey);
+		}
+	};
+
 	// Render GROUP type (container/header)
 	if (type === "GROUP") {
 		return (
@@ -448,6 +462,25 @@ export function UniversalLineItemRow({
 					onMouseLeave={() => setIsHovered(false)}
 					data-testid={`quote-line-row-${id}`}
 				>
+					{/* Story 26.19: Selection checkbox */}
+					{(showSelection || isSelected || isHovered) && onSelectionChange && (
+						<div
+							className="flex items-center justify-center"
+							onClick={handleCheckboxClick}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									handleCheckboxClick(e as unknown as React.MouseEvent);
+								}
+							}}
+						>
+							<Checkbox
+								checked={isSelected}
+								className="h-4 w-4"
+								aria-label={`Select ${displayData.label}`}
+							/>
+						</div>
+					)}
+
 					{/* Drag handle */}
 					<div
 						{...dragHandleProps}
@@ -530,6 +563,25 @@ export function UniversalLineItemRow({
 				onMouseLeave={() => setIsHovered(false)}
 				data-testid={`quote-line-${id}`}
 			>
+				{/* Story 26.19: Selection checkbox */}
+				{(showSelection || isSelected || isHovered) && onSelectionChange && (
+					<div
+						className="flex items-center justify-center"
+						onClick={handleCheckboxClick}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								handleCheckboxClick(e as unknown as React.MouseEvent);
+							}
+						}}
+					>
+						<Checkbox
+							checked={isSelected}
+							className="h-4 w-4"
+							aria-label={`Select ${displayData.label}`}
+						/>
+					</div>
+				)}
+
 				{/* Drag handle */}
 				<div
 					{...dragHandleProps}

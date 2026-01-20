@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "zustand";
 import { useQuoteLinesStore } from "../../stores/useQuoteLinesStore";
+import { SelectionToolbar } from "./SelectionToolbar";
 import { SortableQuoteLinesList } from "./SortableQuoteLinesList";
 import type { QuoteLine } from "./dnd-utils";
 
@@ -35,7 +36,17 @@ export function YoloQuoteEditor({
 	onChange,
 }: YoloQuoteEditorProps) {
 	const t = useTranslations("quotes.yolo");
-	const { lines, setLines, updateLine } = useQuoteLinesStore();
+	const {
+		lines,
+		setLines,
+		updateLine,
+		// Story 26.19: Selection state and actions
+		selectedLineIds,
+		selectAll,
+		deselectAll,
+		deleteSelected,
+		duplicateSelected,
+	} = useQuoteLinesStore();
 	// Fix: useStore(useQuoteLinesStore.temporal) to subscribe to temporal state changes reactively
 	const { undo, redo, pastStates, futureStates, clear } = useStore(
 		useQuoteLinesStore.temporal,
@@ -69,7 +80,7 @@ export function YoloQuoteEditor({
 		}
 	}, [lines, onChange]);
 
-	// Keyboard Shortcuts (Undo/Redo)
+	// Keyboard Shortcuts (Undo/Redo + Story 26.19: Selection shortcuts)
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent) => {
 			if (readOnly) return;
@@ -91,8 +102,33 @@ export function YoloQuoteEditor({
 				e.preventDefault();
 				redo();
 			}
+			// Story 26.19: Cmd/Ctrl+A to select all
+			else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+				e.preventDefault();
+				selectAll();
+			}
+			// Story 26.19: Escape to deselect all
+			else if (e.key === "Escape") {
+				deselectAll();
+			}
+			// Story 26.19: Delete/Backspace to delete selected
+			else if (
+				(e.key === "Delete" || e.key === "Backspace") &&
+				selectedLineIds.size > 0
+			) {
+				// Only trigger if not in an input field
+				const target = e.target as HTMLElement;
+				if (
+					target.tagName !== "INPUT" &&
+					target.tagName !== "TEXTAREA" &&
+					!target.isContentEditable
+				) {
+					e.preventDefault();
+					deleteSelected();
+				}
+			}
 		},
-		[readOnly, undo, redo],
+		[readOnly, undo, redo, selectAll, deselectAll, deleteSelected, selectedLineIds],
 	);
 
 	// Add global listener
@@ -162,7 +198,12 @@ export function YoloQuoteEditor({
 			{/* Optional Toolbar / Status Indicators */}
 			<div className="flex items-center justify-between px-1">
 				<div className="text-muted-foreground text-sm">
-					{/* Could show selection count or total here */}
+					{/* Story 26.19: Show selection count */}
+					{selectedLineIds.size > 0 && (
+						<span>
+							{selectedLineIds.size} ligne{selectedLineIds.size > 1 ? "s" : ""} sélectionnée{selectedLineIds.size > 1 ? "s" : ""}
+						</span>
+					)}
 				</div>
 				<div className="flex space-x-2">
 					<button
@@ -217,6 +258,16 @@ export function YoloQuoteEditor({
 						{t("actions.addGroup") || "Ajouter groupe"}
 					</Button>
 				</div>
+			)}
+
+			{/* Story 26.19: Selection Toolbar */}
+			{!readOnly && (
+				<SelectionToolbar
+					selectedCount={selectedLineIds.size}
+					onDelete={deleteSelected}
+					onDuplicate={duplicateSelected}
+					onDeselect={deselectAll}
+				/>
 			)}
 		</div>
 	);

@@ -35,6 +35,7 @@ import { Button } from "@ui/components/button";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import React, { useCallback, useMemo, useState } from "react";
+import { useQuoteLinesStore } from "../../stores/useQuoteLinesStore";
 import { SortableQuoteLine } from "./SortableQuoteLine";
 import { UniversalLineItemRow } from "./UniversalLineItemRow";
 import {
@@ -92,6 +93,14 @@ export function SortableQuoteLinesList({
 	const t = useTranslations("quotes.yolo");
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [overId, setOverId] = useState<string | null>(null);
+
+	// Story 26.19: Selection state from store
+	const {
+		selectedLineIds,
+		lastSelectedId,
+		toggleLineSelection,
+		selectRange,
+	} = useQuoteLinesStore();
 
 	// Configure sensors for mouse/touch and keyboard
 	const sensors = useSensors(
@@ -287,6 +296,18 @@ export function SortableQuoteLinesList({
 		[lines, onLinesChange, onLineDetach],
 	);
 
+	// Story 26.19: Handle selection change with shift-click support
+	const handleSelectionChange = useCallback(
+		(id: string, shiftKey: boolean) => {
+			if (shiftKey && lastSelectedId) {
+				selectRange(lastSelectedId, id);
+			} else {
+				toggleLineSelection(id);
+			}
+		},
+		[lastSelectedId, selectRange, toggleLineSelection],
+	);
+
 	// Render a single line with sortable wrapper
 	const renderLine = (
 		line: QuoteLineWithChildren,
@@ -341,6 +362,10 @@ export function SortableQuoteLinesList({
 								onToggleExpand={() => onToggleExpand?.(id)}
 								onDetach={() => handleLineDetach(id)}
 								dragHandleProps={dragHandleProps}
+								// Story 26.19: Selection props
+								isSelected={selectedLineIds.has(id)}
+								onSelectionChange={handleSelectionChange}
+								showSelection={selectedLineIds.size > 0}
 							/>
 						</div>
 					)}

@@ -71,3 +71,9 @@ export type {
  * Main editor with Undo/Redo history support
  */
 export { YoloQuoteEditor } from "./YoloQuoteEditor";
+
+/**
+ * Story 26.19: Selection Toolbar
+ * Floating toolbar for bulk actions on selected lines
+ */
+export { SelectionToolbar } from "./SelectionToolbar";
