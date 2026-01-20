@@ -17,6 +17,7 @@ import { cn } from "@ui/lib";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { useTranslations } from "next-intl";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { ExportScheduleButton } from "../ExportScheduleButton";
 import { GanttDriverRow } from "./GanttDriverRow";
 import { GanttDriverSidebar } from "./GanttDriverSidebar";
 import { GanttEmptyState } from "./GanttEmptyState";
@@ -202,6 +203,13 @@ export const GanttTimeline = memo(function GanttTimeline({
 						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">
 							{t("driversCount", { count: drivers.length })}
 						</span>
+						{/* Story 27.14: Export Schedule Button */}
+						<div className="ml-4 h-4 w-[1px] bg-gray-300 dark:bg-gray-600" />
+						<ExportScheduleButton
+							drivers={drivers}
+							selectedDate={selectedDate}
+							className="ml-2"
+						/>
 					</div>
 
 					{/* Zoom Controls (Story 27.12) */}
