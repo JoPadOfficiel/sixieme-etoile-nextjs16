@@ -13,7 +13,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { Button } from "@ui/components/button";
 import { PrinterIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { GanttDriver } from "./gantt/types";
 import {
 	SchedulePdfDocument,
@@ -32,6 +32,7 @@ export function ExportScheduleButton({
 	className,
 }: ExportScheduleButtonProps) {
 	const t = useTranslations("dispatch.export");
+	const locale = useLocale();
 	const { activeOrganization } = useActiveOrganization();
 
 	// Prepare translations object for the PDF (server-component compatible way)
@@ -62,6 +63,7 @@ export function ExportScheduleButton({
 					date={selectedDate}
 					organizationName={organizationName}
 					translations={pdfTranslations}
+					localeCode={locale}
 				/>
 			}
 			fileName={`planning-${selectedDate.toISOString().split("T")[0]}.pdf`}

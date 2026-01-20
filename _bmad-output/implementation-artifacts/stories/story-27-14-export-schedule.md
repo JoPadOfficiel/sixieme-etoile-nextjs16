@@ -46,6 +46,7 @@ Permet aux dispatchers d'imprimer ou d'archiver la liste des missions de la jour
 ### Action Items
 - [x] Rendre le nom de l'organisation dynamique dans `ExportScheduleButton.tsx` (Fixé via `useActiveOrganization`)
 - [x] Optimiser la génération PDF avec `dynamic` import (Fixé via `next/dynamic` dans `GanttTimeline`)
+- [x] Corriger la locale hardcodée (devient dynamique en/fr) dans `SchedulePdfDocument` et `ExportScheduleButton` [AI-Review]
 
 ## Tests Exécutés
 - [x] Compilation TypeScript (OK)

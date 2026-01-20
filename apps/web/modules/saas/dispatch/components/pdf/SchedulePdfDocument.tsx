@@ -10,7 +10,7 @@
 
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { enUS, fr } from "date-fns/locale";
 import type { GanttDriver, GanttMission } from "../gantt/types";
 
 // Translations type for PDF (passed as props since react-pdf is server-side)
@@ -35,6 +35,7 @@ export interface SchedulePdfDocumentProps {
 	date: Date;
 	organizationName: string;
 	translations: SchedulePdfTranslations;
+	localeCode: string;
 }
 
 // Styles for the PDF document
@@ -172,6 +173,7 @@ function formatTime(date: Date): string {
 
 /**
  * Truncate text to fit in column
+ * Note: Limits (45, 25) are optimized for Helvetica 10pt in A4 Landscape columns
  */
 function truncateText(text: string | undefined, maxLength: number): string {
 	if (!text) return "-";
@@ -289,9 +291,17 @@ export function SchedulePdfDocument({
 	date,
 	organizationName,
 	translations,
+	localeCode,
 }: SchedulePdfDocumentProps) {
-	const formattedDate = format(date, "EEEE d MMMM yyyy", { locale: fr });
-	const generatedAt = format(new Date(), "dd/MM/yyyy à HH:mm", { locale: fr });
+	// Map locale code to date-fns locale object
+	const dateLocale = localeCode === "en" ? enUS : fr;
+
+	const formattedDate = format(date, "EEEE d MMMM yyyy", {
+		locale: dateLocale,
+	});
+	const generatedAt = format(new Date(), "dd/MM/yyyy à HH:mm", {
+		locale: dateLocale,
+	});
 
 	// Filter drivers with missions for the selected date
 	const driversWithMissions = drivers.filter(
@@ -317,6 +327,8 @@ export function SchedulePdfDocument({
 				</View>
 
 				{/* Content */}
+				{/* Note: This empty state is primarily defensive. The parent component usually handles
+				    the empty state before rendering this button/component. */}
 				{displayDrivers.length === 0 ? (
 					<View style={styles.emptyState}>
 						<Text style={styles.emptyStateText}>{translations.noMissions}</Text>
