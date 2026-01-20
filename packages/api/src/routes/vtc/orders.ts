@@ -10,6 +10,7 @@ import {
 	withTenantFilter,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import { SpawnService } from "../../services/spawn-service";
 
 // ============================================================================
 // Story 28.2: Order State Machine & API
@@ -443,6 +444,42 @@ export const ordersRouter = new Hono()
 
 			// Log the transition
 			logOrderTransition(id, currentStatus, targetStatus as OrderStatus);
+
+			// Story 28.4: Spawn missions when transitioning to CONFIRMED
+			if (targetStatus === "CONFIRMED" && currentStatus !== "CONFIRMED") {
+				try {
+					const missions = await SpawnService.execute(id, organizationId);
+					console.log(
+						`[ORDER_AUDIT] Order ${id}: Spawned ${missions.length} missions on CONFIRMED`
+					);
+
+					// Refetch order to include newly created missions
+					if (missions.length > 0) {
+						const refreshedOrder = await db.order.findFirst({
+							where: { id, organizationId },
+							include: {
+								contact: true,
+								quotes: true,
+								missions: {
+									orderBy: { startAt: "asc" },
+									include: {
+										vehicle: true,
+										driver: true,
+									},
+								},
+								invoices: true,
+							},
+						});
+						return c.json(refreshedOrder);
+					}
+				} catch (error) {
+					// Log error but don't fail the transition
+					// Missions can be created manually if spawning fails
+					console.error(
+						`[SPAWN_ERROR] Order ${id}: ${error instanceof Error ? error.message : "Unknown error"}`
+					);
+				}
+			}
 
 			return c.json(updatedOrder);
 		}
