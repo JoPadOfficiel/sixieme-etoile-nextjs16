@@ -146,32 +146,27 @@ export function LoadQuoteTemplateDialog({
 										{fullQuoteTemplates.map((template) => (
 											<div
 												key={template.id}
-												role="button"
-												tabIndex={0}
 												className={cn(
-													"flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm transition-colors",
+													"group flex items-center justify-between rounded-md border text-sm transition-colors",
 													selectedTemplate?.id === template.id
 														? "border-primary/50 bg-accent text-accent-foreground"
 														: "border-transparent hover:bg-muted/50",
 												)}
-												onClick={() => handleSelectTemplate(template)}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														handleSelectTemplate(template);
-													}
-												}}
 											>
-												<div className="flex items-center gap-3 overflow-hidden">
+												<button
+													type="button"
+													className="flex flex-1 items-center gap-3 overflow-hidden p-3 text-left outline-none"
+													onClick={() => handleSelectTemplate(template)}
+												>
 													<FileText className="h-4 w-4 shrink-0 opacity-70" />
 													<span className="truncate font-medium">
 														{template.label}
 													</span>
-												</div>
+												</button>
 												<Button
 													variant="ghost"
 													size="icon"
-													className="h-6 w-6 shrink-0 opacity-0 hover:text-destructive group-hover:opacity-100"
+													className="mr-2 h-6 w-6 shrink-0 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
 													onClick={(e) => {
 														e.stopPropagation();
 														setDeleteId(template.id);
@@ -225,7 +220,7 @@ export function LoadQuoteTemplateDialog({
 										</div>
 									</div>
 
-									<hr className="my-4" />
+									<div className="my-4 h-px w-full bg-border" />
 
 									<div className="space-y-3">
 										<p className="font-medium text-sm">

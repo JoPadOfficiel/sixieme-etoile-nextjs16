@@ -176,11 +176,12 @@ export function deserializeTemplateToCart(
 // =============================================================================
 
 /**
- * Validate that template data has the expected structure.
- * Use this before deserializing to ensure data integrity.
+ * Type guard to validate that a stored template JSON object matches
+ * the expected FullQuoteTemplateData structure.
+ * Checks for version compatibility and essential line properties.
  *
- * @param data - Data to validate
- * @returns True if valid FullQuoteTemplateData
+ * @param data - The unknown data object from the database or API
+ * @returns True if the data is a valid full quote template, narrowing the type.
  */
 export function isValidFullQuoteTemplate(
 	data: unknown,

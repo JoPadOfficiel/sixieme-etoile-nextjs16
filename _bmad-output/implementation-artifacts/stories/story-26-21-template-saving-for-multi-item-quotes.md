@@ -2,7 +2,7 @@
 
 **Epic:** 26 - Flexible "Yolo Mode" Billing
 **Agent:** Bob (Scrum Master)
-**Status:** review
+**Status:** done
 **Priority:** High (Productivity Feature)
 **Branch:** `feature/26-21-save-cart-template`
 
