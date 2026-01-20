@@ -290,7 +290,7 @@ development_status:
   25-5-deep-linking-navigation-crm-ux-improvements: done
   25-6-multi-invoice-payment-tracking-lettrage: done
   epic-25-retrospective: optional
-  epic-26: in-progress
+  epic-26: done
   26-1-database-schema-update-for-hybrid-blocks: done
   26-2-backward-compatibility-migration-script: done
   26-3-hybrid-block-validation-layer-zod: done
@@ -313,7 +313,7 @@ development_status:
   26-20-visual-polish-glassmorphism: done
   26-21-template-saving-for-multi-item-quotes: done
   epic-26-retrospective: optional
-  epic-27: in-progress
+  epic-27: done
   27-1-dispatch-shell-navigation: done
   27-2-backend-mission-sync-service: done
   27-3-gantt-core-timeline-rendering: done
@@ -321,16 +321,16 @@ development_status:
   27-5-unassigned-backlog-sidebar-logic: done
   27-6-live-map-driver-locations-layer: done
   27-7-live-map-mission-context-layer: done
-  27-8-map-smart-assignment-suggestions: review
+  27-8-map-smart-assignment-suggestions: done
   27-9-dispatch-actions-drag-drop-assignment: done
   27-10-conflict-detection-rse-calendar: done
   27-11-inspector-panel-quick-actions: done
   27-12-gantt-time-zoom-controls: done
   27-13-real-time-updates-polling-socket: done
-  27-14-export-schedule: backlog
+  27-14-export-schedule: done
   epic-27-retrospective: optional
-  epic-28: backlog
-  28-1-order-entity-prisma-schema: backlog
+  epic-28: in-progress
+  28-1-order-entity-prisma-schema: review
   28-2-order-state-machine-api: backlog
   28-3-dossier-view-ui-skeleton-tabs: backlog
   28-4-spawning-engine-trigger-logic: backlog

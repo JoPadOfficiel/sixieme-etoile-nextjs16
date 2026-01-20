@@ -156,6 +156,7 @@ model Organization {
   activities                  Activity[]
   missions                    Mission[] // Story 26.1: Operational missions
   blockTemplates              BlockTemplate[] // Story 26.13: Block Templates
+  orders                      Order[] // Story 28.1: Order (Dossier) management
 
   @@unique([slug])
   @@map("organization")
@@ -426,6 +427,17 @@ enum MissionStatus {
   CANCELLED // Mission cancelled
 }
 
+/// Story 28.1: Order (Dossier) lifecycle status
+/// Tracks the lifecycle of an order from creation to payment
+enum OrderStatus {
+  DRAFT // Initial state, order being prepared
+  QUOTED // Quote(s) generated and sent
+  CONFIRMED // Customer confirmed, ready for execution
+  INVOICED // Invoice(s) generated
+  PAID // All invoices paid
+  CANCELLED // Order cancelled
+}
+
 model Purchase {
   id             String        @id @default(cuid())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -489,6 +501,7 @@ model Contact {
   // Relations
   quotes                 Quote[]
   invoices               Invoice[]
+  orders                 Order[] // Story 28.1: Orders linked to this contact
   partnerContract        PartnerContract?
   subcontractorProfile   SubcontractorProfile? @relation(fields: [subcontractorProfileId], references: [id])
   subcontractorProfileId String?
@@ -498,6 +511,42 @@ model Contact {
   @@index([email])
   @@index([isPartner])
   @@map("contact")
+}
+
+/// Order - Story 28.1: Central "Dossier de Commande" entity
+/// Groups quotes, missions, and invoices under a single parent
+model Order {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Unique reference (e.g., "ORD-2026-001")
+  reference String @unique
+
+  // Contact (customer)
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id])
+
+  // Status
+  status OrderStatus @default(DRAFT)
+
+  // Notes
+  notes String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  quotes   Quote[]
+  missions Mission[]
+  invoices Invoice[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([status])
+  @@index([reference])
+  @@map("order")
 }
 
 /// EndCustomer - Individual end-customers within agency partner profiles (Story 24.1)
@@ -1806,6 +1855,8 @@ model Mission {
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  order     Order?   @relation(fields: [orderId], references: [id])
+  orderId   String?
 
   @@index([organizationId])
   @@index([quoteId])
@@ -1814,6 +1865,7 @@ model Mission {
   @@index([vehicleId])
   @@index([status])
   @@index([startAt])
+  @@index([orderId]) // Story 28.1: Index for Order relation
   @@map("mission")
 }
 
@@ -1949,6 +2001,8 @@ model Quote {
   lines                  QuoteLine[]
   // Story 26.1: Operational missions linked to this quote
   missions               Mission[]
+  order                  Order?                  @relation(fields: [orderId], references: [id])
+  orderId                String?
 
   @@index([organizationId])
   @@index([contactId])
@@ -1962,6 +2016,7 @@ model Quote {
   @@index([subcontractorId])
   @@index([stayStartDate])
   @@index([endCustomerId])
+  @@index([orderId]) // Story 28.1: Index for Order relation
   @@map("quote")
 }
 
@@ -2018,6 +2073,8 @@ model Invoice {
   // Story 24.6: End-customer attribution for invoices
   endCustomerId String?
   endCustomer   EndCustomer? @relation(fields: [endCustomerId], references: [id])
+  order         Order?       @relation(fields: [orderId], references: [id])
+  orderId       String?
 
   @@unique([organizationId, number])
   @@index([organizationId])
@@ -2025,6 +2082,7 @@ model Invoice {
   @@index([endCustomerId])
   @@index([status])
   @@index([issueDate])
+  @@index([orderId]) // Story 28.1: Index for Order relation
   @@map("invoice")
 }
 
