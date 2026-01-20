@@ -66,11 +66,11 @@ export const vtcRouter = new Hono()
 	.route("/", driversRouter)
 	.route("/", licenseCategoriesRouter)
 	.route("/", licenseRulesRouter)
+	// Story 26.13: Block Templates - MUST be before quotesRouter to avoid /:id conflict
+	.route("/", blockTemplatesRouter)
 	.route("/", quotesRouter)
 	// Story 26.4: Quote Lines CRUD API for Hybrid Blocks
 	.route("/", quoteLinesRouter)
-	// Story 26.13: Block Templates
-	.route("/", blockTemplatesRouter)
 	.route("/", quoteCostsRouter)
 	.route("/", integrationsRouter)
 	.route("/", partnerContractsRouter)

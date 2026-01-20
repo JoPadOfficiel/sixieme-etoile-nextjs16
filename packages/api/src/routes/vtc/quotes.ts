@@ -31,13 +31,15 @@ const createQuoteSchema = z.object({
 	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
 	pricingMode: z
 		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
+		.optional()
+		.default("DYNAMIC")
 		.describe("Pricing mode: FIXED_GRID, DYNAMIC, PARTNER_GRID, CLIENT_DIRECT, or MANUAL"),
 	tripType: z
 		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
 		.describe("Type of trip"),
 	pickupAt: z
-		.string()
-		.datetime()
+		.union([z.string().datetime(), z.date()])
+		.transform((val) => (val instanceof Date ? val.toISOString() : val))
 		.describe("Pickup date/time in Europe/Paris business time"),
 	pickupAddress: z.string().min(1).describe("Pickup address"),
 	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
@@ -61,7 +63,7 @@ const createQuoteSchema = z.object({
 	// Story 16.1: Trip type specific fields
 	isRoundTrip: z.boolean().optional().default(false).describe("Round trip for TRANSFER"),
 	stops: z.array(stopSchema).optional().nullable().describe("Intermediate stops for EXCURSION"),
-	returnDate: z.string().datetime().optional().nullable().describe("Return date for EXCURSION"),
+	returnDate: z.union([z.string().datetime(), z.date()]).optional().nullable().transform((val) => (val instanceof Date ? val.toISOString() : val)).describe("Return date for EXCURSION"),
 	durationHours: z.number().positive().optional().nullable().describe("Duration in hours for DISPO"),
 	maxKilometers: z.number().positive().optional().nullable().describe("Max kilometers for DISPO"),
 	passengerCount: z.number().int().positive().describe("Number of passengers"),
@@ -71,8 +73,8 @@ const createQuoteSchema = z.object({
 		.nonnegative()
 		.default(0)
 		.describe("Number of luggage pieces"),
-	suggestedPrice: z.number().nonnegative().describe("Suggested price in EUR"),
-	finalPrice: z.number().nonnegative().describe("Final price in EUR"),
+	suggestedPrice: z.number().nonnegative().optional().default(0).describe("Suggested price in EUR"),
+	finalPrice: z.number().nonnegative().optional().default(0).describe("Final price in EUR"),
 	// Story 24.9: Bidirectional pricing storage
 	partnerGridPrice: z.number().nonnegative().optional().nullable().describe("Partner grid price in EUR"),
 	clientDirectPrice: z.number().nonnegative().optional().nullable().describe("Client direct price in EUR"),
@@ -99,19 +101,33 @@ const createQuoteSchema = z.object({
 		.nullable()
 		.describe("Detailed cost breakdown: fuel, tolls, driver, wear"),
 	validUntil: z
-		.string()
-		.datetime()
+		.union([z.string().datetime(), z.date()])
 		.optional()
 		.nullable()
+		.transform((val) => (val instanceof Date ? val.toISOString() : val))
 		.describe("Quote validity date in Europe/Paris business time"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 	// Story 17.5: Estimated end time for driver availability detection
 	estimatedEndAt: z
-		.string()
-		.datetime()
+		.union([z.string().datetime(), z.date()])
 		.optional()
 		.nullable()
+		.transform((val) => (val instanceof Date ? val.toISOString() : val))
 		.describe("Estimated end time calculated from pickupAt + totalDurationMinutes"),
+	// Story 26: Yolo Mode / Shopping Cart support
+	organizationId: z.string().optional().describe("Organization ID (extracted from session, optional in payload)"),
+	isYoloMode: z.boolean().optional().default(false).describe("Whether quote uses Yolo Mode (Shopping Cart)"),
+	lines: z.array(z.record(z.unknown())).optional().nullable().describe("Quote lines for Yolo Mode"),
+	// Frontend sends these objects but API only needs IDs - passthrough to avoid validation errors
+	contact: z.record(z.unknown()).optional().nullable().describe("Contact object (ignored, use contactId)"),
+	vehicleCategory: z.record(z.unknown()).optional().nullable().describe("Vehicle category object (ignored, use vehicleCategoryId)"),
+	endCustomer: z.record(z.unknown()).optional().nullable().describe("End customer object (ignored, use endCustomerId)"),
+	// Story 6.6: Airport helper fields
+	flightNumber: z.string().optional().nullable().describe("Flight number for airport transfers"),
+	waitingTimeMinutes: z.number().optional().nullable().describe("Waiting time in minutes for airport transfers"),
+	selectedOptionalFeeIds: z.array(z.string()).optional().nullable().describe("Selected optional fee IDs"),
+	// Story 22.6: STAY trip type fields
+	stayDays: z.array(z.record(z.unknown())).optional().nullable().describe("Stay days for STAY trip type"),
 }).superRefine((data, ctx) => {
 	// Story 16.1: Conditional validation based on trip type
 	
