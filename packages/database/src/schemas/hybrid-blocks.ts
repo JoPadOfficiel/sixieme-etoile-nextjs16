@@ -179,6 +179,9 @@ export const QuoteLineInputBaseSchema = z.object({
   // Hierarchy
   parentId: z.string().cuid().nullable().optional(),
   sortOrder: z.number().int().nonnegative().default(0),
+
+  // Story 28.6: Control mission spawning per line
+  dispatchable: z.boolean().optional(),
 });
 
 /**

@@ -354,6 +354,7 @@ export const quoteLinesRouter = new Hono()
 									vatRate: line.vatRate,
 									parentId: resolvedParentId,
 									sortOrder: line.sortOrder,
+									dispatchable: line.dispatchable, // Story 28.6
 								},
 							});
 						})
@@ -384,22 +385,23 @@ export const quoteLinesRouter = new Hono()
 
 					const created = await tx.quoteLine.create({
 						data: {
-							// Let Prisma generate CUID automatically
-							quoteId,
-							type: line.type,
-							label: line.label,
-							description: line.description,
-							sourceData: line.sourceData 
-								? (line.sourceData as Prisma.InputJsonValue) 
-								: Prisma.JsonNull,
-							displayData: line.displayData as Prisma.InputJsonValue,
-							quantity: line.quantity,
-							unitPrice: line.unitPrice,
-							totalPrice: line.totalPrice,
-							vatRate: line.vatRate,
-							parentId: resolvedParentId,
-							sortOrder: line.sortOrder,
-						},
+								// Let Prisma generate CUID automatically
+								quoteId,
+								type: line.type,
+								label: line.label,
+								description: line.description,
+								sourceData: line.sourceData 
+									? (line.sourceData as Prisma.InputJsonValue) 
+									: Prisma.JsonNull,
+								displayData: line.displayData as Prisma.InputJsonValue,
+								quantity: line.quantity,
+								unitPrice: line.unitPrice,
+								totalPrice: line.totalPrice,
+								vatRate: line.vatRate,
+								parentId: resolvedParentId,
+								sortOrder: line.sortOrder,
+								dispatchable: line.dispatchable, // Story 28.6
+							},
 					});
 					
 					// Map tempId to actual created id for child references
@@ -431,6 +433,7 @@ export const quoteLinesRouter = new Hono()
 							vatRate: line.vatRate,
 							parentId: resolvedParentId,
 							sortOrder: line.sortOrder,
+							dispatchable: line.dispatchable, // Story 28.6
 						},
 					});
 					stats.created++;

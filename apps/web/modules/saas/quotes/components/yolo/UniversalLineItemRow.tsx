@@ -443,6 +443,7 @@ export function UniversalLineItemRow({
 	const indentPadding = depth * INDENT_SIZE_PX;
 
 	// Story 26.20: Row background with enhanced visual polish
+	// Story 28.6: Muted style for non-dispatchable lines
 	const rowBackground = cn(
 		"group relative flex items-center gap-2 px-3 py-2 border-b transition-all duration-200 ease-out",
 		// Base border styling
@@ -453,6 +454,8 @@ export function UniversalLineItemRow({
 		isHovered && !isDragging && "bg-muted/40 dark:bg-slate-800/40",
 		type === "GROUP" &&
 			"bg-gradient-to-r from-muted/30 to-transparent font-medium",
+		// Story 28.6: Visual indicator for non-dispatchable lines
+		dispatchable === false && "opacity-60 bg-muted/20",
 	);
 
 	// Story 26.19: Handle checkbox click with shift key detection
@@ -684,8 +687,8 @@ export function UniversalLineItemRow({
 					{formatPrice(displayData.total, currency)}
 				</div>
 
-				{/* Story 28.6: Dispatch toggle - only for CALCULATED lines */}
-				{type === "CALCULATED" && onDispatchableChange && (
+				{/* Story 28.6: Dispatch toggle - for CALCULATED and GROUP lines */}
+				{(type === "CALCULATED" || type === "GROUP") && onDispatchableChange && (
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>

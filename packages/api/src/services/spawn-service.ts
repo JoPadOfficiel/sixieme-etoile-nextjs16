@@ -222,7 +222,7 @@ export class SpawnService {
 	 * @returns Array of mission create data
 	 */
 	private static processGroupLine(
-		groupLine: { id: string; type: string; label: string; sourceData: unknown; children?: Array<{ id: string; type: string; label: string; sourceData: unknown; children?: unknown[] }> },
+		groupLine: { id: string; type: string; label: string; sourceData: unknown; dispatchable?: boolean; children?: Array<{ id: string; type: string; label: string; sourceData: unknown; dispatchable?: boolean; children?: unknown[] }> },
 		quote: { id: string; pickupAt: Date | null; estimatedEndAt: Date | null; pickupAddress: string | null; pickupLatitude: unknown; pickupLongitude: unknown; dropoffAddress: string | null; dropoffLatitude: unknown; dropoffLongitude: unknown; passengerCount: number | null; luggageCount: number | null; vehicleCategoryId: string | null; vehicleCategory: { name: string } | null; tripType: string; pricingMode: string | null; isRoundTrip: boolean | null },
 		order: { id: string; organizationId: string },
 		existingLineIds: Set<string>
@@ -248,6 +248,14 @@ export class SpawnService {
 				if (existingLineIds.has(child.id)) {
 					console.log(
 						`[SPAWN] Skipping child line ${child.id}: Mission already exists`
+					);
+					continue;
+				}
+
+				// Story 28.6: Skip if child is not dispatchable
+				if (child.dispatchable === false) {
+					console.log(
+						`[SPAWN] Skipping child line ${child.id}: dispatchable=false`
 					);
 					continue;
 				}

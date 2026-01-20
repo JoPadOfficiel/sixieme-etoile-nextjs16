@@ -116,11 +116,13 @@ model QuoteLine {
 ## Files to Modify
 
 - `packages/database/prisma/schema.prisma`
+- `packages/database/src/schemas/hybrid-blocks.ts`
 - `packages/api/src/services/spawn-service.ts`
+- `packages/api/src/routes/vtc/quote-lines.ts`
+- `packages/api/src/services/__tests__/spawn-service-dispatchable.test.ts`
 - `apps/web/modules/saas/quotes/components/yolo/SortableQuoteLinesList.tsx`
 - `apps/web/modules/saas/quotes/components/yolo/UniversalLineItemRow.tsx`
 - `apps/web/modules/saas/quotes/components/yolo/dnd-utils.ts`
-- `apps/web/modules/saas/dispatch/services/SpawnService.test.ts`
 
 ---
 
@@ -148,15 +150,27 @@ model QuoteLine {
 **Files Modified:**
 
 1. `packages/database/prisma/schema.prisma` - Added `dispatchable Boolean @default(true)` to QuoteLine model
-2. `packages/api/src/services/spawn-service.ts` - Added `dispatchable: true` filter in query
-3. `apps/web/modules/saas/quotes/components/yolo/UniversalLineItemRow.tsx` - Added Switch toggle for dispatch control
-4. `apps/web/modules/saas/quotes/components/yolo/SortableQuoteLinesList.tsx` - Wired dispatchable props to UniversalLineItemRow
-5. `apps/web/modules/saas/quotes/components/yolo/dnd-utils.ts` - Added dispatchable field to QuoteLine interface
-6. `apps/web/modules/saas/dispatch/services/SpawnService.test.ts` - Added 2 unit tests for dispatchable behavior
+2. `packages/database/src/schemas/hybrid-blocks.ts` - Added `dispatchable` to QuoteLineInputBaseSchema for API validation
+3. `packages/api/src/services/spawn-service.ts` - Added `dispatchable: true` filter in query + GROUP children filter
+4. `packages/api/src/routes/vtc/quote-lines.ts` - Added dispatchable to PATCH create/update operations
+5. `apps/web/modules/saas/quotes/components/yolo/UniversalLineItemRow.tsx` - Added Switch toggle for CALCULATED and GROUP lines + muted style
+6. `apps/web/modules/saas/quotes/components/yolo/SortableQuoteLinesList.tsx` - Wired dispatchable props to UniversalLineItemRow
+7. `apps/web/modules/saas/quotes/components/yolo/dnd-utils.ts` - Added dispatchable field to QuoteLine interface
+8. `packages/api/src/services/__tests__/spawn-service-dispatchable.test.ts` - New test file for API SpawnService dispatchable behavior
 
 **Tests Added:**
 
-- TC1: `should skip lines with dispatchable: false` - Verifies non-dispatchable lines don't spawn missions
-- TC2: `should default dispatchable to true when not specified` - Verifies backward compatibility
+- TC1: `should only spawn missions for lines with dispatchable=true` - Verifies query filter
+- TC2: `should skip GROUP children with dispatchable=false` - Verifies GROUP children filtering
+
+**Code Review Fixes Applied:**
+
+1. ✅ API persistence: Added dispatchable to PATCH/GET quote-lines
+2. ✅ SpawnService GROUP children: Added dispatchable filter for children
+3. ✅ UI toggle for GROUP: Extended toggle visibility to GROUP lines
+4. ✅ Tests: Created new test file for API SpawnService (not frontend)
+5. ✅ Logging: Added log for skipped dispatchable=false lines
+6. ✅ Story file list: Updated with all modified files
+7. ✅ Visual feedback: Added muted style (opacity-60) for non-dispatchable lines
 
 **Status:** Review
