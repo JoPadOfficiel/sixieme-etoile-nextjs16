@@ -1,6 +1,6 @@
 # Story 26.20: Visual Polish - Glassmorphism
 
-## Status: review
+## Status: done
 ## Epic: 26 - Flexible "Yolo Mode" Billing
 ## Priority: High
 ## Story Points: 3
