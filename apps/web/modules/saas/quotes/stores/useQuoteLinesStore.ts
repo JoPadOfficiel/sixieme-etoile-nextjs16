@@ -96,7 +96,8 @@ export const useQuoteLinesStore = create<QuoteLinesState>()(
 					selectedLineIds: new Set(state.lines.map((l) => getLineId(l))),
 				})),
 
-			deselectAll: () => set({ selectedLineIds: new Set(), lastSelectedId: null }),
+			deselectAll: () =>
+				set({ selectedLineIds: new Set(), lastSelectedId: null }),
 
 			// Story 26.19: Bulk Actions
 			deleteSelected: () =>
@@ -133,42 +134,81 @@ export const useQuoteLinesStore = create<QuoteLinesState>()(
 					const { lines, selectedLineIds } = state;
 					if (selectedLineIds.size === 0) return state;
 
-					// Find the last selected line's index for insertion point
-					let lastSelectedIndex = -1;
+					// 1. Identify lines to duplicate
+					// We need to duplicate selected lines.
+					// IF a Group is selected, we should also duplicate its children even if they aren't explicitly in selectedLineIds
+					// (Standard behavior for "Duplicate Group"). Or we strictly follow selection.
+					// The Story notes say: "Les lignes GROUP sélectionnées incluent implicitement leurs enfants pour les actions".
+					// So we must expand selection to include descendants for the operation.
+
+					const effectiveIdsToDuplicate = new Set<string>(selectedLineIds);
+
+					// Expand selection to include children of selected groups
+					lines.forEach((line) => {
+						if (selectedLineIds.has(getLineId(line)) && line.type === "GROUP") {
+							const descendants = getDescendantIds(lines, getLineId(line));
+							descendants.forEach((childId) =>
+								effectiveIdsToDuplicate.add(childId),
+							);
+						}
+					});
+
+					// 2. Create map of Old ID -> New ID
+					const idMap = new Map<string, string>();
+					effectiveIdsToDuplicate.forEach((oldId) => {
+						const newTempId = `dup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+						idMap.set(oldId, newTempId);
+					});
+
+					// 3. Create duplicates with remapped IDs and ParentIDs
+					const duplicates: QuoteLine[] = [];
+					const newSelectedIds = new Set<string>(); // We will select the NEW items
+
+					// Process lines in order to maintain relative sorting
+					lines.forEach((line) => {
+						const oldId = getLineId(line);
+						if (effectiveIdsToDuplicate.has(oldId)) {
+							const newId = idMap.get(oldId)!;
+
+							// Check if parent was also duplicated
+							let newParentId = line.parentId;
+							if (line.parentId && idMap.has(line.parentId)) {
+								newParentId = idMap.get(line.parentId) ?? null; // Should exist
+							}
+
+							const duplicate: QuoteLine = {
+								...line,
+								id: undefined, // Clear DB ID
+								tempId: newId,
+								parentId: newParentId,
+								// We will adjust sortOrder later
+							};
+
+							duplicates.push(duplicate);
+							newSelectedIds.add(newId);
+						}
+					});
+
+					// 4. Insert duplicates
+					// Strategy: Insert the whole block of duplicates after the *last* item of the *last* selected original block.
+					// This keeps duplicates together.
+
+					// Find insertion index: last index of any line in the effective set
+					let lastIndex = -1;
 					for (let i = lines.length - 1; i >= 0; i--) {
-						if (selectedLineIds.has(getLineId(lines[i]))) {
-							lastSelectedIndex = i;
+						if (effectiveIdsToDuplicate.has(getLineId(lines[i]))) {
+							lastIndex = i;
 							break;
 						}
 					}
 
-					// Create duplicates
-					const duplicates: QuoteLine[] = [];
-					const newSelectedIds = new Set<string>();
-
-					for (const line of lines) {
-						const lineId = getLineId(line);
-						if (selectedLineIds.has(lineId)) {
-							const newTempId = `dup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-							const duplicate: QuoteLine = {
-								...line,
-								id: undefined,
-								tempId: newTempId,
-								sortOrder: (line.sortOrder ?? 0) + 0.5,
-							};
-							duplicates.push(duplicate);
-							newSelectedIds.add(newTempId);
-						}
-					}
-
-					// Insert duplicates after the last selected line
 					const newLines = [
-						...lines.slice(0, lastSelectedIndex + 1),
+						...lines.slice(0, lastIndex + 1),
 						...duplicates,
-						...lines.slice(lastSelectedIndex + 1),
+						...lines.slice(lastIndex + 1),
 					];
 
-					// Recalculate sortOrder
+					// 5. Re-index sortOrder for everyone to be clean
 					const sortedLines = newLines.map((line, index) => ({
 						...line,
 						sortOrder: index,

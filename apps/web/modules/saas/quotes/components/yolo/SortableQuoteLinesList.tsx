@@ -32,6 +32,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Button } from "@ui/components/button";
+import { Checkbox } from "@ui/components/checkbox";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import React, { useCallback, useMemo, useState } from "react";
@@ -100,7 +101,21 @@ export function SortableQuoteLinesList({
 		lastSelectedId,
 		toggleLineSelection,
 		selectRange,
+		selectAll,
+		deselectAll,
 	} = useQuoteLinesStore();
+
+	const allSelected = lines.length > 0 && selectedLineIds.size === lines.length;
+	const someSelected =
+		selectedLineIds.size > 0 && selectedLineIds.size < lines.length;
+
+	const handleHeaderCheckboxChange = useCallback(() => {
+		if (allSelected) {
+			deselectAll();
+		} else {
+			selectAll();
+		}
+	}, [allSelected, deselectAll, selectAll]);
 
 	// Configure sensors for mouse/touch and keyboard
 	const sensors = useSensors(
@@ -392,7 +407,19 @@ export function SortableQuoteLinesList({
 				<div className="rounded-md border bg-background">
 					{/* Header row */}
 					<div className="flex items-center border-b bg-muted/30 px-4 py-2 font-medium text-muted-foreground text-xs">
-						<div className="w-8" /> {/* Drag handle space */}
+						<div className="flex w-8 items-center justify-center">
+							{/* Story 26.19: Select All Checkbox */}
+							{!readOnly && (
+								<Checkbox
+									checked={
+										allSelected ? true : someSelected ? "indeterminate" : false
+									}
+									onCheckedChange={handleHeaderCheckboxChange}
+									aria-label={t("actions.selectAll") || "Tout sélectionner"}
+									className="h-4 w-4"
+								/>
+							)}
+						</div>
 						<div className="w-8" /> {/* Icon space */}
 						<div className="flex-1">{t("headers.description")}</div>
 						<div className="w-16 text-right">{t("headers.qty")}</div>
@@ -424,8 +451,6 @@ export function SortableQuoteLinesList({
 					{t("actions.addManualLine") || "Ajouter une ligne manuelle"}
 				</Button>
 			)}
-
-			{/* Drag overlay for smooth dragging */}
 			<DragOverlay>
 				{activeLine ? (
 					<div className="rounded border bg-background opacity-90 shadow-lg">

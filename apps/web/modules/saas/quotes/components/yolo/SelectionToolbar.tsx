@@ -51,10 +51,10 @@ export function SelectionToolbar({
 		<>
 			<div
 				className={cn(
-					"fixed bottom-6 left-1/2 z-50 -translate-x-1/2",
+					"-translate-x-1/2 fixed bottom-6 left-1/2 z-50",
 					"flex items-center gap-3 rounded-full border bg-background/95 px-4 py-2 shadow-lg backdrop-blur-sm",
 					"dark:bg-background/90",
-					"animate-in slide-in-from-bottom-4 fade-in duration-300",
+					"slide-in-from-bottom-4 fade-in animate-in duration-300",
 					className,
 				)}
 			>
@@ -119,7 +119,7 @@ export function SelectionToolbar({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{t("delete.confirmMessage", { count: selectedCount }) ||
-								`Êtes-vous sûr de vouloir supprimer ${selectedCount} ligne${selectedCount > 1 ? "s" : ""} ? Cette action est irréversible.`}
+								`Êtes-vous sûr de vouloir supprimer ${selectedCount} ligne${selectedCount > 1 ? "s" : ""} ?`}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
