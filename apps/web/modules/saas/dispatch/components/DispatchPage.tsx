@@ -304,7 +304,7 @@ export function DispatchPage() {
 					toast({
 						title: "Impossible d'assigner",
 						description: compliance.reason,
-						variant: "destructive",
+						variant: "error",
 					});
 					return; // Block assignment
 				}
@@ -313,7 +313,7 @@ export function DispatchPage() {
 					toast({
 						title: "Attention",
 						description: compliance.reason,
-						variant: "warning", // Ensure variant exists in toast or use default
+						variant: "default", // ensure variant exists in toast or use default
 						className: "bg-yellow-100 border-yellow-500 text-yellow-900",
 					});
 					// Proceed but warn
