@@ -86,7 +86,7 @@ export function DispatchPage() {
 		"with-events-missions",
 	] as const;
 
-	const { data: driversData } = useQuery({
+	const { data: driversData } = useQuery<any>({
 		queryKey: DISPATCH_DRIVERS_QUERY_KEY,
 		queryFn: async () => {
 			const res = await apiClient.vtc.drivers.$get({
