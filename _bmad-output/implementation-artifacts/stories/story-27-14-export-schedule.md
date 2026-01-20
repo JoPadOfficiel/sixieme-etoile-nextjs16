@@ -44,8 +44,8 @@ Permet aux dispatchers d'imprimer ou d'archiver la liste des missions de la jour
 - [x] AC9: État vide (OK)
 
 ### Action Items
-- [ ] [Low] Rendre le nom de l'organisation dynamique dans `ExportScheduleButton.tsx` (actuellement hardcodé)
-- [ ] [Low] Optimiser la génération PDF avec `useMemo` ou `debouncing` si le nombre de chauffeurs augmente significativement
+- [x] Rendre le nom de l'organisation dynamique dans `ExportScheduleButton.tsx` (Fixé via `useActiveOrganization`)
+- [x] Optimiser la génération PDF avec `dynamic` import (Fixé via `next/dynamic` dans `GanttTimeline`)
 
 ## Tests Exécutés
 - [x] Compilation TypeScript (OK)

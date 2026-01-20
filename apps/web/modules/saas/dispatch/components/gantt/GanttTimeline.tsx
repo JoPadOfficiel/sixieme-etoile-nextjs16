@@ -16,9 +16,15 @@ import { TooltipProvider } from "@ui/components/tooltip";
 import { cn } from "@ui/lib";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { ExportScheduleButton } from "../ExportScheduleButton";
 import { GanttDriverRow } from "./GanttDriverRow";
+
+const ExportScheduleButton = dynamic(
+	() =>
+		import("../ExportScheduleButton").then((mod) => mod.ExportScheduleButton),
+	{ ssr: false },
+);
 import { GanttDriverSidebar } from "./GanttDriverSidebar";
 import { GanttEmptyState } from "./GanttEmptyState";
 import { GanttGrid } from "./GanttGrid";

@@ -10,10 +10,10 @@
 "use client";
 
 import { PDFDownloadLink } from "@react-pdf/renderer";
+import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
 import { Button } from "@ui/components/button";
 import { PrinterIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
 import type { GanttDriver } from "./gantt/types";
 import {
 	SchedulePdfDocument,
@@ -32,12 +32,7 @@ export function ExportScheduleButton({
 	className,
 }: ExportScheduleButtonProps) {
 	const t = useTranslations("dispatch.export");
-	const [isClient, setIsClient] = useState(false);
-
-	// Ensure we only render PDFDownloadLink on client-side
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
+	const { activeOrganization } = useActiveOrganization();
 
 	// Prepare translations object for the PDF (server-component compatible way)
 	const pdfTranslations: SchedulePdfTranslations = {
@@ -56,17 +51,8 @@ export function ExportScheduleButton({
 		of: t("pdf.of"),
 	};
 
-	// TODO: Replace with real organization name from context
-	const organizationName = "Sixième Étoile";
-
-	if (!isClient) {
-		return (
-			<Button variant="outline" size="sm" className={className} disabled>
-				<PrinterIcon className="mr-2 h-4 w-4" />
-				{t("buttonLabel")}
-			</Button>
-		);
-	}
+	// Organization name from context
+	const organizationName = activeOrganization?.name || "Organisation";
 
 	return (
 		<PDFDownloadLink
