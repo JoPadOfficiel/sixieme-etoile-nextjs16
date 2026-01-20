@@ -1,5 +1,5 @@
+import type { Mission, Prisma, TripType } from "@prisma/client";
 import { db } from "@repo/database";
-import type { Mission, Prisma, TripType, QuoteLineType } from "@prisma/client";
 import { eachDayOfInterval, startOfDay } from "date-fns";
 
 /**
@@ -11,6 +11,18 @@ export interface SpawnManualParams {
 	organizationId: string;
 	startAt: Date;
 	vehicleCategoryId: string;
+	notes?: string;
+}
+
+/**
+ * Story 28.13: Internal Mission Parameters
+ */
+export interface CreateInternalParams {
+	orderId: string;
+	organizationId: string;
+	label: string;
+	startAt: Date;
+	vehicleCategoryId?: string;
 	notes?: string;
 }
 
@@ -46,7 +58,7 @@ export class SpawnService {
 	 */
 	static async execute(
 		orderId: string,
-		organizationId: string
+		organizationId: string,
 	): Promise<Mission[]> {
 		// 1. Fetch Order with Quotes and QuoteLines (tenant-scoped)
 		const order = await db.order.findFirst({
@@ -62,10 +74,7 @@ export class SpawnService {
 					include: {
 						lines: {
 							where: {
-								OR: [
-									{ type: "CALCULATED" },
-									{ type: "GROUP" },
-								],
+								OR: [{ type: "CALCULATED" }, { type: "GROUP" }],
 								parentId: null, // Only top-level lines (not nested children)
 								dispatchable: true, // Story 28.6: Only spawn if dispatchable
 							},
@@ -97,7 +106,9 @@ export class SpawnService {
 			select: { quoteLineId: true },
 		});
 		const existingLineIds = new Set<string>(
-			existingMissions.map((m) => m.quoteLineId).filter((id): id is string => id !== null)
+			existingMissions
+				.map((m) => m.quoteLineId)
+				.filter((id): id is string => id !== null),
 		);
 
 		// 3. Collect eligible lines that don't already have missions
@@ -110,13 +121,13 @@ export class SpawnService {
 					// Skip if mission already exists for this line (partial recovery)
 					if (existingLineIds.has(line.id)) {
 						console.log(
-							`[SPAWN] Skipping CALCULATED line ${line.id}: Mission already exists`
+							`[SPAWN] Skipping CALCULATED line ${line.id}: Mission already exists`,
 						);
 						continue;
 					}
 					// Build mission data for CALCULATED line
 					missionCreateData.push(
-						this.buildMissionData(line, quote, order, null)
+						this.buildMissionData(line, quote, order, null),
 					);
 				} else if (line.type === "GROUP") {
 					// Story 28.5: Process GROUP line
@@ -124,7 +135,7 @@ export class SpawnService {
 						line,
 						quote,
 						order,
-						existingLineIds
+						existingLineIds,
 					);
 					missionCreateData.push(...groupMissions);
 				}
@@ -135,7 +146,7 @@ export class SpawnService {
 		if (missionCreateData.length === 0) {
 			if (existingMissions.length > 0) {
 				console.log(
-					`[SPAWN] Order ${orderId}: All eligible lines already have missions (${existingMissions.length})`
+					`[SPAWN] Order ${orderId}: All eligible lines already have missions (${existingMissions.length})`,
 				);
 			} else {
 				console.log(`[SPAWN] Order ${orderId}: No eligible lines to spawn`);
@@ -143,7 +154,7 @@ export class SpawnService {
 			return [];
 		}
 
-			// 4. Create missions in transaction using createMany with skipDuplicates
+		// 4. Create missions in transaction using createMany with skipDuplicates
 		// This prevents race condition duplicates if quoteLineId has unique constraint
 		await db.$transaction(async (tx) => {
 			await tx.mission.createMany({
@@ -153,7 +164,9 @@ export class SpawnService {
 		});
 
 		// 5. Fetch created missions to return (only new ones)
-		const newLineIds = missionCreateData.map((m) => m.quoteLineId).filter(Boolean) as string[];
+		const newLineIds = missionCreateData
+			.map((m) => m.quoteLineId)
+			.filter(Boolean) as string[];
 		const createdMissions = await db.mission.findMany({
 			where: {
 				orderId,
@@ -163,13 +176,13 @@ export class SpawnService {
 		});
 
 		console.log(
-			`[SPAWN] Order ${orderId}: Created ${createdMissions.length} missions`
+			`[SPAWN] Order ${orderId}: Created ${createdMissions.length} missions`,
 		);
 
 		// Log individual mission creation for audit
 		for (const mission of createdMissions) {
 			console.log(
-				`[SPAWN] Mission ${mission.id}: Created from QuoteLine ${mission.quoteLineId}`
+				`[SPAWN] Mission ${mission.id}: Created from QuoteLine ${mission.quoteLineId}`,
 			);
 		}
 
@@ -232,7 +245,14 @@ export class SpawnService {
 	 * @throws Error if line already has a mission or doesn't belong to order
 	 */
 	static async spawnManual(params: SpawnManualParams): Promise<Mission> {
-		const { quoteLineId, orderId, organizationId, startAt, vehicleCategoryId, notes } = params;
+		const {
+			quoteLineId,
+			orderId,
+			organizationId,
+			startAt,
+			vehicleCategoryId,
+			notes,
+		} = params;
 
 		// 1. Fetch the quote line with its quote and verify ownership
 		const quoteLine = await db.quoteLine.findFirst({
@@ -260,12 +280,16 @@ export class SpawnService {
 
 		// 2. Verify the quote belongs to the order
 		if (quoteLine.quote.orderId !== orderId) {
-			throw new Error(`QuoteLine ${quoteLineId} does not belong to Order ${orderId}`);
+			throw new Error(
+				`QuoteLine ${quoteLineId} does not belong to Order ${orderId}`,
+			);
 		}
 
 		// 3. Check if mission already exists for this line
 		if (quoteLine.missions.length > 0) {
-			throw new Error(`QuoteLine ${quoteLineId} already has a mission (${quoteLine.missions[0].id})`);
+			throw new Error(
+				`QuoteLine ${quoteLineId} already has a mission (${quoteLine.missions[0].id})`,
+			);
 		}
 
 		// 4. Fetch vehicle category for sourceData (with tenant scoping for security)
@@ -275,7 +299,9 @@ export class SpawnService {
 		});
 
 		if (!vehicleCategory) {
-			throw new Error(`VehicleCategory ${vehicleCategoryId} not found or access denied`);
+			throw new Error(
+				`VehicleCategory ${vehicleCategoryId} not found or access denied`,
+			);
 		}
 
 		// 5. Create the mission
@@ -315,7 +341,9 @@ export class SpawnService {
 					lineLabel: quoteLine.label,
 					lineDescription: quoteLine.description,
 					lineType: quoteLine.type,
-					lineTotalPrice: quoteLine.totalPrice ? Number(quoteLine.totalPrice) : null,
+					lineTotalPrice: quoteLine.totalPrice
+						? Number(quoteLine.totalPrice)
+						: null,
 					// Trip info
 					tripType: quoteLine.quote.tripType,
 					pricingMode: quoteLine.quote.pricingMode,
@@ -328,7 +356,7 @@ export class SpawnService {
 		});
 
 		console.log(
-			`[SPAWN-MANUAL] Mission ${mission.id}: Created from QuoteLine ${quoteLineId} (Order: ${orderId})`
+			`[SPAWN-MANUAL] Mission ${mission.id}: Created from QuoteLine ${quoteLineId} (Order: ${orderId})`,
 		);
 
 		return mission;
@@ -349,17 +377,48 @@ export class SpawnService {
 	 * @returns Array of mission create data
 	 */
 	private static processGroupLine(
-		groupLine: { id: string; type: string; label: string; sourceData: unknown; dispatchable?: boolean; children?: Array<{ id: string; type: string; label: string; sourceData: unknown; dispatchable?: boolean; children?: unknown[] }> },
-		quote: { id: string; pickupAt: Date | null; estimatedEndAt: Date | null; pickupAddress: string | null; pickupLatitude: unknown; pickupLongitude: unknown; dropoffAddress: string | null; dropoffLatitude: unknown; dropoffLongitude: unknown; passengerCount: number | null; luggageCount: number | null; vehicleCategoryId: string | null; vehicleCategory: { name: string } | null; tripType: string; pricingMode: string | null; isRoundTrip: boolean | null },
+		groupLine: {
+			id: string;
+			type: string;
+			label: string;
+			sourceData: unknown;
+			dispatchable?: boolean;
+			children?: Array<{
+				id: string;
+				type: string;
+				label: string;
+				sourceData: unknown;
+				dispatchable?: boolean;
+				children?: unknown[];
+			}>;
+		},
+		quote: {
+			id: string;
+			pickupAt: Date | null;
+			estimatedEndAt: Date | null;
+			pickupAddress: string | null;
+			pickupLatitude: unknown;
+			pickupLongitude: unknown;
+			dropoffAddress: string | null;
+			dropoffLatitude: unknown;
+			dropoffLongitude: unknown;
+			passengerCount: number | null;
+			luggageCount: number | null;
+			vehicleCategoryId: string | null;
+			vehicleCategory: { name: string } | null;
+			tripType: string;
+			pricingMode: string | null;
+			isRoundTrip: boolean | null;
+		},
 		order: { id: string; organizationId: string },
-		existingLineIds: Set<string>
+		existingLineIds: Set<string>,
 	): Prisma.MissionCreateManyInput[] {
 		const missions: Prisma.MissionCreateManyInput[] = [];
 
 		// Skip if already processed (idempotence)
 		if (existingLineIds.has(groupLine.id)) {
 			console.log(
-				`[SPAWN] Skipping GROUP line ${groupLine.id}: Missions already exist`
+				`[SPAWN] Skipping GROUP line ${groupLine.id}: Missions already exist`,
 			);
 			return missions;
 		}
@@ -367,14 +426,14 @@ export class SpawnService {
 		// Case 1: GROUP with children - recurse
 		if (groupLine.children && groupLine.children.length > 0) {
 			console.log(
-				`[SPAWN] Processing GROUP line ${groupLine.id} with ${groupLine.children.length} children`
+				`[SPAWN] Processing GROUP line ${groupLine.id} with ${groupLine.children.length} children`,
 			);
 
 			for (const child of groupLine.children) {
 				// Skip if child already has mission
 				if (existingLineIds.has(child.id)) {
 					console.log(
-						`[SPAWN] Skipping child line ${child.id}: Mission already exists`
+						`[SPAWN] Skipping child line ${child.id}: Mission already exists`,
 					);
 					continue;
 				}
@@ -382,7 +441,7 @@ export class SpawnService {
 				// Story 28.6: Skip if child is not dispatchable
 				if (child.dispatchable === false) {
 					console.log(
-						`[SPAWN] Skipping child line ${child.id}: dispatchable=false`
+						`[SPAWN] Skipping child line ${child.id}: dispatchable=false`,
 					);
 					continue;
 				}
@@ -390,7 +449,7 @@ export class SpawnService {
 				if (child.type === "CALCULATED") {
 					// Spawn mission for CALCULATED child, link to GROUP parent
 					missions.push(
-						this.buildMissionData(child as any, quote, order, groupLine.id)
+						this.buildMissionData(child as any, quote, order, groupLine.id),
 					);
 				} else if (child.type === "GROUP" && child.children) {
 					// Recurse for nested GROUP (up to 2 levels)
@@ -398,7 +457,7 @@ export class SpawnService {
 						child as any,
 						quote,
 						order,
-						existingLineIds
+						existingLineIds,
 					);
 					missions.push(...nestedMissions);
 				}
@@ -420,7 +479,7 @@ export class SpawnService {
 				});
 
 				console.log(
-					`[SPAWN] GROUP ${groupLine.id}: Spawning ${days.length} missions for date range ${startDate} to ${endDate}`
+					`[SPAWN] GROUP ${groupLine.id}: Spawning ${days.length} missions for date range ${startDate} to ${endDate}`,
 				);
 
 				days.forEach((day, index) => {
@@ -471,12 +530,12 @@ export class SpawnService {
 				});
 			} catch (error) {
 				console.error(
-					`[SPAWN] GROUP ${groupLine.id}: Invalid date range - ${error}`
+					`[SPAWN] GROUP ${groupLine.id}: Invalid date range - ${error}`,
 				);
 			}
 		} else {
 			console.log(
-				`[SPAWN] GROUP ${groupLine.id}: No children and no date range, skipping`
+				`[SPAWN] GROUP ${groupLine.id}: No children and no date range, skipping`,
 			);
 		}
 
@@ -493,10 +552,33 @@ export class SpawnService {
 	 * @returns Mission create data
 	 */
 	private static buildMissionData(
-		line: { id: string; label: string; description?: string | null; sourceData: unknown; totalPrice?: unknown },
-		quote: { id: string; pickupAt: Date | null; estimatedEndAt: Date | null; pickupAddress: string | null; pickupLatitude: unknown; pickupLongitude: unknown; dropoffAddress: string | null; dropoffLatitude: unknown; dropoffLongitude: unknown; passengerCount: number | null; luggageCount: number | null; vehicleCategoryId: string | null; vehicleCategory: { name: string } | null; tripType: string; pricingMode: string | null; isRoundTrip: boolean | null },
+		line: {
+			id: string;
+			label: string;
+			description?: string | null;
+			sourceData: unknown;
+			totalPrice?: unknown;
+		},
+		quote: {
+			id: string;
+			pickupAt: Date | null;
+			estimatedEndAt: Date | null;
+			pickupAddress: string | null;
+			pickupLatitude: unknown;
+			pickupLongitude: unknown;
+			dropoffAddress: string | null;
+			dropoffLatitude: unknown;
+			dropoffLongitude: unknown;
+			passengerCount: number | null;
+			luggageCount: number | null;
+			vehicleCategoryId: string | null;
+			vehicleCategory: { name: string } | null;
+			tripType: string;
+			pricingMode: string | null;
+			isRoundTrip: boolean | null;
+		},
 		order: { id: string; organizationId: string },
-		groupLineId: string | null
+		groupLineId: string | null,
 	): Prisma.MissionCreateManyInput {
 		return {
 			organizationId: order.organizationId,
@@ -541,5 +623,96 @@ export class SpawnService {
 				isRoundTrip: quote.isRoundTrip,
 			},
 		};
+	}
+
+	// =========================================================================
+	// Story 28.13: Internal Mission Creation
+	// =========================================================================
+
+	/**
+	 * Create an internal (non-billable) mission for an Order
+	 * These missions have no quote line source and are excluded from invoices
+	 *
+	 * @param params - Internal mission parameters
+	 * @returns Created mission with isInternal=true
+	 * @throws Error if order doesn't exist or has no quotes
+	 */
+	static async createInternal(params: CreateInternalParams): Promise<Mission> {
+		const {
+			orderId,
+			organizationId,
+			label,
+			startAt,
+			vehicleCategoryId,
+			notes,
+		} = params;
+
+		// 1. Fetch the order with its first quote (for required quoteId relation)
+		const order = await db.order.findFirst({
+			where: {
+				id: orderId,
+				organizationId, // Tenant scope
+			},
+			include: {
+				quotes: {
+					take: 1,
+					orderBy: { createdAt: "asc" },
+				},
+			},
+		});
+
+		if (!order) {
+			throw new Error(`Order ${orderId} not found or access denied`);
+		}
+
+		if (order.quotes.length === 0) {
+			throw new Error(
+				`Order ${orderId} has no quotes - cannot create internal mission`,
+			);
+		}
+
+		const referenceQuote = order.quotes[0];
+
+		// 2. Optionally fetch vehicle category for sourceData
+		let vehicleCategoryName: string | null = null;
+		if (vehicleCategoryId) {
+			const vehicleCategory = await db.vehicleCategory.findFirst({
+				where: { id: vehicleCategoryId, organizationId },
+				select: { name: true },
+			});
+			vehicleCategoryName = vehicleCategory?.name ?? null;
+		}
+
+		// 3. Create the internal mission
+		const mission = await db.mission.create({
+			data: {
+				organizationId,
+				quoteId: referenceQuote.id, // Required relation - use first quote of order
+				quoteLineId: null, // No source line for internal missions
+				orderId,
+				status: "PENDING",
+				startAt,
+				endAt: null,
+				isInternal: true, // Story 28.13: Mark as internal (non-billable)
+				notes: notes ?? null,
+				sourceData: {
+					// Internal mission marker
+					isInternal: true,
+					label,
+					// Vehicle info (if provided)
+					vehicleCategoryId: vehicleCategoryId ?? null,
+					vehicleCategoryName,
+					// Creation metadata
+					createdAt: new Date().toISOString(),
+					createdBy: "internal-task",
+				},
+			},
+		});
+
+		console.log(
+			`[SPAWN-INTERNAL] Mission ${mission.id}: Created internal task "${label}" for Order ${orderId}`,
+		);
+
+		return mission;
 	}
 }

@@ -1,5 +1,6 @@
-import { db } from "@repo/database";
 import type { Prisma } from "@prisma/client";
+import { db } from "@repo/database";
+import { startOfDay } from "date-fns";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -7,34 +8,32 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { withTenantFilter, withTenantId } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
-import { startOfDay } from "date-fns";
 import {
-	calculateFlexibilityScoreSimple,
-	DEFAULT_MAX_DISTANCE_KM,
-} from "../../services/flexibility-score";
-import {
-	filterByCapacity,
-	filterByStatus,
-	filterByHaversineDistance,
-	getRoutingForCandidates,
-	transformVehicleToCandidate,
-	type VehicleCandidate,
-	type CandidateWithRouting,
-} from "../../services/vehicle-selection";
-import type { OrganizationPricingSettings } from "../../services/pricing-engine";
-import {
-	detectChainingOpportunities,
-	extractCostData,
-	estimateDropoffTime,
-	generateChainId,
 	DEFAULT_CHAINING_CONFIG,
 	type MissionForChaining,
-	type ChainingSuggestion,
+	detectChainingOpportunities,
+	estimateDropoffTime,
+	extractCostData,
+	generateChainId,
 } from "../../services/chaining-service";
+import {
+	DEFAULT_MAX_DISTANCE_KM,
+	calculateFlexibilityScoreSimple,
+} from "../../services/flexibility-score";
+import type { OrganizationPricingSettings } from "../../services/pricing-engine";
 import {
 	getShadowFleetCandidates,
 	transformToAssignmentCandidate,
 } from "../../services/shadow-fleet-service";
+import {
+	type CandidateWithRouting,
+	type VehicleCandidate,
+	filterByCapacity,
+	filterByHaversineDistance,
+	filterByStatus,
+	getRoutingForCandidates,
+	transformVehicleToCandidate,
+} from "../../services/vehicle-selection";
 
 /**
  * Missions Router
@@ -250,8 +249,10 @@ function getAssignmentFromQuote(quote: {
 	if (quote.assignedVehicleId) {
 		return {
 			vehicleId: quote.assignedVehicleId,
-			vehicleName: quote.assignedVehicle?.internalName ??
-				quote.assignedVehicle?.registrationNumber ?? null,
+			vehicleName:
+				quote.assignedVehicle?.internalName ??
+				quote.assignedVehicle?.registrationNumber ??
+				null,
 			baseName: quote.assignedVehicle?.operatingBase?.name ?? null,
 			driverId: quote.assignedDriverId,
 			driverName: quote.assignedDriver
@@ -268,7 +269,9 @@ function getAssignmentFromQuote(quote: {
 	// Fallback: check tripAnalysis.assignment (legacy)
 	if (quote.tripAnalysis && typeof quote.tripAnalysis === "object") {
 		const analysis = quote.tripAnalysis as Record<string, unknown>;
-		const assignment = analysis.assignment as Record<string, unknown> | undefined;
+		const assignment = analysis.assignment as
+			| Record<string, unknown>
+			| undefined;
 
 		if (assignment && assignment.vehicleId) {
 			return {
@@ -284,9 +287,14 @@ function getAssignmentFromQuote(quote: {
 		}
 
 		// Also check vehicleSelection for backward compatibility
-		const vehicleSelection = analysis.vehicleSelection as Record<string, unknown> | undefined;
+		const vehicleSelection = analysis.vehicleSelection as
+			| Record<string, unknown>
+			| undefined;
 		if (vehicleSelection?.selectedVehicle) {
-			const selected = vehicleSelection.selectedVehicle as Record<string, unknown>;
+			const selected = vehicleSelection.selectedVehicle as Record<
+				string,
+				unknown
+			>;
 			return {
 				vehicleId: (selected.vehicleId as string) || null,
 				vehicleName: (selected.vehicleName as string) || null,
@@ -312,15 +320,19 @@ function getStaffingSummary(tripAnalysis: unknown): StaffingSummary | null {
 	}
 
 	const analysis = tripAnalysis as Record<string, unknown>;
-	const compliancePlan = analysis.compliancePlan as Record<string, unknown> | undefined;
-	const staffingCosts = analysis.staffingCosts as Record<string, unknown> | undefined;
+	const compliancePlan = analysis.compliancePlan as
+		| Record<string, unknown>
+		| undefined;
+	const staffingCosts = analysis.staffingCosts as
+		| Record<string, unknown>
+		| undefined;
 
 	if (!compliancePlan) {
 		return null;
 	}
 
 	const planType = (compliancePlan.planType as string) || "SINGLE_DRIVER";
-	
+
 	// Map plan types to expected format
 	const normalizedPlanType = (() => {
 		switch (planType) {
@@ -339,30 +351,45 @@ function getStaffingSummary(tripAnalysis: unknown): StaffingSummary | null {
 	const isRSERequired = normalizedPlanType !== "SINGLE_DRIVER";
 
 	// Extract costs breakdown
-	const adjustedSchedule = compliancePlan.adjustedSchedule as Record<string, unknown> | undefined;
-	const costBreakdown = compliancePlan.costBreakdown as Record<string, unknown> | undefined;
+	const adjustedSchedule = compliancePlan.adjustedSchedule as
+		| Record<string, unknown>
+		| undefined;
+	const costBreakdown = compliancePlan.costBreakdown as
+		| Record<string, unknown>
+		| undefined;
 
-	const driverCount = adjustedSchedule?.driversRequired 
-		? Number(adjustedSchedule.driversRequired) 
-		: (normalizedPlanType === "DOUBLE_CREW" ? 2 : 1);
-	
-	const staffingBreakdown = staffingCosts?.breakdown as Record<string, unknown> | undefined;
-	const hotelNights = adjustedSchedule?.hotelNightsRequired 
-		? Number(adjustedSchedule.hotelNightsRequired) 
-		: staffingBreakdown?.hotelNights 
+	const driverCount = adjustedSchedule?.driversRequired
+		? Number(adjustedSchedule.driversRequired)
+		: normalizedPlanType === "DOUBLE_CREW"
+			? 2
+			: 1;
+
+	const staffingBreakdown = staffingCosts?.breakdown as
+		| Record<string, unknown>
+		| undefined;
+	const hotelNights = adjustedSchedule?.hotelNightsRequired
+		? Number(adjustedSchedule.hotelNightsRequired)
+		: staffingBreakdown?.hotelNights
 			? Number(staffingBreakdown.hotelNights)
 			: 0;
 
-	const mealCount = staffingBreakdown?.mealCount 
+	const mealCount = staffingBreakdown?.mealCount
 		? Number(staffingBreakdown.mealCount)
 		: 0;
 
-	const totalStaffingCost = staffingCosts?.totalStaffingCost 
-		? Number(staffingCosts.totalStaffingCost) 
-		: (compliancePlan.additionalCost ? Number(compliancePlan.additionalCost) : 0);
+	const totalStaffingCost = staffingCosts?.totalStaffingCost
+		? Number(staffingCosts.totalStaffingCost)
+		: compliancePlan.additionalCost
+			? Number(compliancePlan.additionalCost)
+			: 0;
 
 	// Don't return summary if it's standard staffing with no costs
-	if (!isRSERequired && totalStaffingCost === 0 && hotelNights === 0 && mealCount === 0) {
+	if (
+		!isRSERequired &&
+		totalStaffingCost === 0 &&
+		hotelNights === 0 &&
+		mealCount === 0
+	) {
 		return null;
 	}
 
@@ -392,8 +419,15 @@ export const missionsRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, dateFrom, dateTo, vehicleCategoryId, clientType, search } =
-				c.req.valid("query");
+			const {
+				page,
+				limit,
+				dateFrom,
+				dateTo,
+				vehicleCategoryId,
+				clientType,
+				search,
+			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 			const now = new Date();
@@ -425,10 +459,14 @@ export const missionsRouter = new Hono()
 						contact: { companyName: { contains: search, mode: "insensitive" } },
 					},
 					{
-						endCustomer: { firstName: { contains: search, mode: "insensitive" } },
+						endCustomer: {
+							firstName: { contains: search, mode: "insensitive" },
+						},
 					},
 					{
-						endCustomer: { lastName: { contains: search, mode: "insensitive" } },
+						endCustomer: {
+							lastName: { contains: search, mode: "insensitive" },
+						},
 					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
@@ -506,13 +544,15 @@ export const missionsRouter = new Hono()
 					code: (quote as any).vehicleCategory.code,
 				},
 				// Story 24.5: Map endCustomer
-				endCustomer: (quote as any).endCustomer ? {
-					id: (quote as any).endCustomer.id,
-					firstName: (quote as any).endCustomer.firstName,
-					lastName: (quote as any).endCustomer.lastName,
-					email: (quote as any).endCustomer.email,
-					phone: (quote as any).endCustomer.phone,
-				} : null,
+				endCustomer: (quote as any).endCustomer
+					? {
+							id: (quote as any).endCustomer.id,
+							firstName: (quote as any).endCustomer.firstName,
+							lastName: (quote as any).endCustomer.lastName,
+							email: (quote as any).endCustomer.email,
+							phone: (quote as any).endCustomer.phone,
+						}
+					: null,
 				assignment: getAssignmentFromQuote(quote),
 				profitability: {
 					marginPercent: quote.marginPercent
@@ -530,16 +570,19 @@ export const missionsRouter = new Hono()
 				notes: quote.notes,
 				// Story 22.12: Subcontracting info
 				isSubcontracted: quote.isSubcontracted,
-				subcontractor: quote.isSubcontracted && (quote as any).subcontractor
-					? {
-							id: (quote as any).subcontractor.id,
-							companyName: (quote as any).subcontractor.companyName,
-							contactName: (quote as any).subcontractor.contactName,
-							phone: (quote as any).subcontractor.phone,
-							agreedPrice: Number(quote.subcontractedPrice) || 0,
-							subcontractedAt: quote.subcontractedAt?.toISOString() || new Date().toISOString(),
-						}
-					: null,
+				subcontractor:
+					quote.isSubcontracted && (quote as any).subcontractor
+						? {
+								id: (quote as any).subcontractor.id,
+								companyName: (quote as any).subcontractor.companyName,
+								contactName: (quote as any).subcontractor.contactName,
+								phone: (quote as any).subcontractor.phone,
+								agreedPrice: Number(quote.subcontractedPrice) || 0,
+								subcontractedAt:
+									quote.subcontractedAt?.toISOString() ||
+									new Date().toISOString(),
+							}
+						: null,
 			}));
 
 			return c.json({
@@ -637,13 +680,15 @@ export const missionsRouter = new Hono()
 					code: (quote as any).vehicleCategory.code,
 				},
 				// Story 24.5: Map endCustomer
-				endCustomer: (quote as any).endCustomer ? {
-					id: (quote as any).endCustomer.id,
-					firstName: (quote as any).endCustomer.firstName,
-					lastName: (quote as any).endCustomer.lastName,
-					email: (quote as any).endCustomer.email,
-					phone: (quote as any).endCustomer.phone,
-				} : null,
+				endCustomer: (quote as any).endCustomer
+					? {
+							id: (quote as any).endCustomer.id,
+							firstName: (quote as any).endCustomer.firstName,
+							lastName: (quote as any).endCustomer.lastName,
+							email: (quote as any).endCustomer.email,
+							phone: (quote as any).endCustomer.phone,
+						}
+					: null,
 				tripAnalysis: quote.tripAnalysis,
 				appliedRules: quote.appliedRules,
 				assignment: getAssignmentFromQuote(quote),
@@ -658,16 +703,19 @@ export const missionsRouter = new Hono()
 				compliance: getComplianceStatus(quote.tripAnalysis),
 				// Story 22.12: Subcontracting info
 				isSubcontracted: quote.isSubcontracted,
-				subcontractor: quote.isSubcontracted && (quote as any).subcontractor
-					? {
-							id: (quote as any).subcontractor.id,
-							companyName: (quote as any).subcontractor.companyName,
-							contactName: (quote as any).subcontractor.contactName,
-							phone: (quote as any).subcontractor.phone,
-							agreedPrice: Number(quote.subcontractedPrice) || 0,
-							subcontractedAt: quote.subcontractedAt?.toISOString() || new Date().toISOString(),
-						}
-					: null,
+				subcontractor:
+					quote.isSubcontracted && (quote as any).subcontractor
+						? {
+								id: (quote as any).subcontractor.id,
+								companyName: (quote as any).subcontractor.companyName,
+								contactName: (quote as any).subcontractor.contactName,
+								phone: (quote as any).subcontractor.phone,
+								agreedPrice: Number(quote.subcontractedPrice) || 0,
+								subcontractedAt:
+									quote.subcontractedAt?.toISOString() ||
+									new Date().toISOString(),
+							}
+						: null,
 			};
 
 			return c.json(mission);
@@ -705,21 +753,30 @@ export const missionsRouter = new Hono()
 			}
 
 			// Get regulatory category from vehicle category
-			const regulatoryCategory = quote.vehicleCategory.regulatoryCategory as "LIGHT" | "HEAVY";
+			const regulatoryCategory = quote.vehicleCategory.regulatoryCategory as
+				| "LIGHT"
+				| "HEAVY";
 
 			// Extract compliance validation result from tripAnalysis
 			let validationResult = null;
 			if (quote.tripAnalysis && typeof quote.tripAnalysis === "object") {
 				const analysis = quote.tripAnalysis as Record<string, unknown>;
-				const complianceResult = analysis.complianceResult as Record<string, unknown> | undefined;
-				
+				const complianceResult = analysis.complianceResult as
+					| Record<string, unknown>
+					| undefined;
+
 				if (complianceResult) {
 					validationResult = {
-						isCompliant: complianceResult.isCompliant as boolean ?? true,
-						regulatoryCategory: (complianceResult.regulatoryCategory as string) ?? regulatoryCategory,
+						isCompliant: (complianceResult.isCompliant as boolean) ?? true,
+						regulatoryCategory:
+							(complianceResult.regulatoryCategory as string) ??
+							regulatoryCategory,
 						violations: (complianceResult.violations as unknown[]) ?? [],
 						warnings: (complianceResult.warnings as unknown[]) ?? [],
-						adjustedDurations: (complianceResult.adjustedDurations as Record<string, unknown>) ?? {
+						adjustedDurations: (complianceResult.adjustedDurations as Record<
+							string,
+							unknown
+						>) ?? {
 							totalDrivingMinutes: 0,
 							totalAmplitudeMinutes: 0,
 							injectedBreakMinutes: 0,
@@ -805,12 +862,13 @@ export const missionsRouter = new Hono()
 					}
 				: null;
 
-			const dropoff = quote.dropoffLatitude && quote.dropoffLongitude
-				? {
-						lat: Number(quote.dropoffLatitude),
-						lng: Number(quote.dropoffLongitude),
-					}
-				: pickup; // Fallback to pickup if no dropoff
+			const dropoff =
+				quote.dropoffLatitude && quote.dropoffLongitude
+					? {
+							lat: Number(quote.dropoffLatitude),
+							lng: Number(quote.dropoffLongitude),
+						}
+					: pickup; // Fallback to pickup if no dropoff
 
 			// Load vehicles with bases
 			const vehicles = await db.vehicle.findMany({
@@ -886,7 +944,7 @@ export const missionsRouter = new Hono()
 				quote.luggageCount ?? 0,
 				quote.vehicleCategoryId,
 			);
-			
+
 			// Keep track of mission requirements for compliance checks
 			const missionRequirements = {
 				passengerCount: quote.passengerCount,
@@ -911,13 +969,29 @@ export const missionsRouter = new Hono()
 				driverName: string | null;
 				driverLicenses: string[];
 				flexibilityScore: number;
-				scoreBreakdown: { licensesScore: number; availabilityScore: number; distanceScore: number; rseCapacityScore: number };
+				scoreBreakdown: {
+					licensesScore: number;
+					availabilityScore: number;
+					distanceScore: number;
+					rseCapacityScore: number;
+				};
 				compliance: MissionCompliance;
-				estimatedCost: { approach: number | null; service: number | null; return: number | null; total: number | null }; // Story 19.8: Can be null
+				estimatedCost: {
+					approach: number | null;
+					service: number | null;
+					return: number | null;
+					total: number | null;
+				}; // Story 19.8: Can be null
 				routingSource: string;
 				segments: {
-					approach: { distanceKm: number | null; durationMinutes: number | null };
-					service: { distanceKm: number | null; durationMinutes: number | null };
+					approach: {
+						distanceKm: number | null;
+						durationMinutes: number | null;
+					};
+					service: {
+						distanceKm: number | null;
+						durationMinutes: number | null;
+					};
 					return: { distanceKm: number | null; durationMinutes: number | null };
 				};
 			}
@@ -944,8 +1018,11 @@ export const missionsRouter = new Hono()
 
 				for (const candidate of candidatesWithRouting) {
 					// Find matching driver(s) for this vehicle
-					const vehicleData = vehicles.find((v) => v.id === candidate.vehicleId);
-					const requiredLicenseCode = vehicleData?.requiredLicenseCategory?.code;
+					const vehicleData = vehicles.find(
+						(v) => v.id === candidate.vehicleId,
+					);
+					const requiredLicenseCode =
+						vehicleData?.requiredLicenseCategory?.code;
 
 					// Find drivers with required license
 					const eligibleDrivers = drivers.filter((driver) => {
@@ -968,8 +1045,8 @@ export const missionsRouter = new Hono()
 						});
 
 						const compliance = determineComplianceStatus(
-							candidate, 
-							null, 
+							candidate,
+							null,
 							vehicleData,
 							missionRequirements,
 						);
@@ -995,24 +1072,45 @@ export const missionsRouter = new Hono()
 							scoreBreakdown: scoreResult.breakdown,
 							compliance,
 							estimatedCost: {
-								approach: Math.round(candidate.approachDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-								service: Math.round(candidate.serviceDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-								return: Math.round(candidate.returnDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+								approach:
+									Math.round(
+										candidate.approachDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
+								service:
+									Math.round(
+										candidate.serviceDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
+								return:
+									Math.round(
+										candidate.returnDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
 								total: Math.round(candidate.internalCost * 100) / 100,
 							},
 							routingSource: candidate.routingSource,
 							segments: {
 								approach: {
-									distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.approachDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.approachDurationMinutes * 100) / 100,
 								},
 								service: {
-									distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.serviceDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.serviceDurationMinutes * 100) / 100,
 								},
 								return: {
-									distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.returnDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.returnDurationMinutes * 100) / 100,
 								},
 							},
 						});
@@ -1034,8 +1132,8 @@ export const missionsRouter = new Hono()
 
 						// Determine compliance status
 						const compliance = determineComplianceStatus(
-							candidate, 
-							driver, 
+							candidate,
+							driver,
 							vehicleData,
 							missionRequirements,
 						);
@@ -1064,25 +1162,46 @@ export const missionsRouter = new Hono()
 							scoreBreakdown: scoreResult.breakdown,
 							compliance,
 							estimatedCost: {
-								approach: Math.round(candidate.approachDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-								service: Math.round(candidate.serviceDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
-								return: Math.round(candidate.returnDistanceKm * (settings.baseRatePerKm ?? 2.5) * 100) / 100,
+								approach:
+									Math.round(
+										candidate.approachDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
+								service:
+									Math.round(
+										candidate.serviceDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
+								return:
+									Math.round(
+										candidate.returnDistanceKm *
+											(settings.baseRatePerKm ?? 2.5) *
+											100,
+									) / 100,
 								total: Math.round(candidate.internalCost * 100) / 100,
 							},
 							routingSource: candidate.routingSource,
 							// Story 8.3: Add segment details for route visualization
 							segments: {
 								approach: {
-									distanceKm: Math.round(candidate.approachDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.approachDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.approachDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.approachDurationMinutes * 100) / 100,
 								},
 								service: {
-									distanceKm: Math.round(candidate.serviceDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.serviceDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.serviceDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.serviceDurationMinutes * 100) / 100,
 								},
 								return: {
-									distanceKm: Math.round(candidate.returnDistanceKm * 100) / 100,
-									durationMinutes: Math.round(candidate.returnDurationMinutes * 100) / 100,
+									distanceKm:
+										Math.round(candidate.returnDistanceKm * 100) / 100,
+									durationMinutes:
+										Math.round(candidate.returnDurationMinutes * 100) / 100,
 								},
 							},
 						});
@@ -1094,8 +1213,11 @@ export const missionsRouter = new Hono()
 				const limitedVehicles = capacityFiltered.slice(0, 50);
 
 				for (const vehicleCandidate of limitedVehicles) {
-					const vehicleData = vehicles.find((v) => v.id === vehicleCandidate.vehicleId);
-					const requiredLicenseCode = vehicleData?.requiredLicenseCategory?.code;
+					const vehicleData = vehicles.find(
+						(v) => v.id === vehicleCandidate.vehicleId,
+					);
+					const requiredLicenseCode =
+						vehicleData?.requiredLicenseCategory?.code;
 
 					// Find drivers with required license
 					const eligibleDrivers = drivers.filter((driver) => {
@@ -1216,28 +1338,43 @@ export const missionsRouter = new Hono()
 			}
 
 			// Sort by flexibility score descending
-			candidates.sort((a: { flexibilityScore: number }, b: { flexibilityScore: number }) => b.flexibilityScore - a.flexibilityScore);
+			candidates.sort(
+				(a: { flexibilityScore: number }, b: { flexibilityScore: number }) =>
+					b.flexibilityScore - a.flexibilityScore,
+			);
 
 			// Story 18.9: Get Shadow Fleet candidates
 			const shadowFleetResult = await getShadowFleetCandidates(
 				{
 					id: quote.id,
-					pickupLatitude: quote.pickupLatitude ? Number(quote.pickupLatitude) : null,
-					pickupLongitude: quote.pickupLongitude ? Number(quote.pickupLongitude) : null,
-					dropoffLatitude: quote.dropoffLatitude ? Number(quote.dropoffLatitude) : null,
-					dropoffLongitude: quote.dropoffLongitude ? Number(quote.dropoffLongitude) : null,
+					pickupLatitude: quote.pickupLatitude
+						? Number(quote.pickupLatitude)
+						: null,
+					pickupLongitude: quote.pickupLongitude
+						? Number(quote.pickupLongitude)
+						: null,
+					dropoffLatitude: quote.dropoffLatitude
+						? Number(quote.dropoffLatitude)
+						: null,
+					dropoffLongitude: quote.dropoffLongitude
+						? Number(quote.dropoffLongitude)
+						: null,
 					vehicleCategoryId: quote.vehicleCategoryId,
 					finalPrice: Number(quote.finalPrice),
 					internalCost: quote.internalCost ? Number(quote.internalCost) : null,
 					tripAnalysis: quote.tripAnalysis,
 				},
 				organizationId,
-				db
+				db,
 			);
 
 			// Transform Shadow Fleet candidates to assignment-compatible format
-			const shadowFleetCandidates = shadowFleetResult.candidates.map((sfCandidate) =>
-				transformToAssignmentCandidate(sfCandidate, shadowFleetResult.internalCost)
+			const shadowFleetCandidates = shadowFleetResult.candidates.map(
+				(sfCandidate) =>
+					transformToAssignmentCandidate(
+						sfCandidate,
+						shadowFleetResult.internalCost,
+					),
 			);
 
 			// Combine internal and Shadow Fleet candidates
@@ -1247,7 +1384,10 @@ export const missionsRouter = new Hono()
 				isShadowFleet: false as const,
 			}));
 
-			const allCandidates = [...internalCandidatesWithFlag, ...shadowFleetCandidates];
+			const allCandidates = [
+				...internalCandidatesWithFlag,
+				...shadowFleetCandidates,
+			];
 
 			return c.json({
 				candidates: allCandidates,
@@ -1355,13 +1495,20 @@ export const missionsRouter = new Hono()
 			let secondDriver = null;
 			if (secondDriverId) {
 				// Check if mission requires double crew (from tripAnalysis.compliancePlan)
-				const tripAnalysis = quote.tripAnalysis as Record<string, unknown> | null;
-				const compliancePlan = tripAnalysis?.compliancePlan as Record<string, unknown> | null;
+				const tripAnalysis = quote.tripAnalysis as Record<
+					string,
+					unknown
+				> | null;
+				const compliancePlan = tripAnalysis?.compliancePlan as Record<
+					string,
+					unknown
+				> | null;
 				const planType = compliancePlan?.planType as string | null;
 
 				if (planType !== "DOUBLE_CREW") {
 					throw new HTTPException(400, {
-						message: "Second driver not required for this mission. Only DOUBLE_CREW missions require a second driver.",
+						message:
+							"Second driver not required for this mission. Only DOUBLE_CREW missions require a second driver.",
 					});
 				}
 
@@ -1399,7 +1546,7 @@ export const missionsRouter = new Hono()
 				assignedAt: new Date(),
 				// Update tripAnalysis with assignment info
 				tripAnalysis: {
-					...(quote.tripAnalysis as object ?? {}),
+					...((quote.tripAnalysis as object) ?? {}),
 					assignment: {
 						vehicleId,
 						vehicleName: vehicle.internalName ?? vehicle.registrationNumber,
@@ -1418,7 +1565,7 @@ export const missionsRouter = new Hono()
 					},
 				},
 			};
-			
+
 			// Update the quote first
 			await db.quote.update({
 				where: { id: quote.id },
@@ -1452,10 +1599,13 @@ export const missionsRouter = new Hono()
 			// Story 20.8: Include second driver in assignment response
 			const assignment: MissionAssignment = {
 				vehicleId: updatedQuote.assignedVehicleId,
-				vehicleName: updatedQuote.assignedVehicle?.internalName ??
+				vehicleName:
+					updatedQuote.assignedVehicle?.internalName ??
 					updatedQuote.assignedVehicle?.registrationNumber ??
-					vehicle.internalName ?? vehicle.registrationNumber,
-				baseName: updatedQuote.assignedVehicle?.operatingBase?.name ??
+					vehicle.internalName ??
+					vehicle.registrationNumber,
+				baseName:
+					updatedQuote.assignedVehicle?.operatingBase?.name ??
 					vehicle.operatingBase.name,
 				driverId: updatedQuote.assignedDriverId,
 				driverName: updatedQuote.assignedDriver
@@ -1584,12 +1734,14 @@ export const missionsRouter = new Hono()
 function determineComplianceStatus(
 	candidate: CandidateWithRouting,
 	driver: { driverLicenses: unknown[] } | null | undefined,
-	vehicleData: {
-		passengerCapacity: number;
-		luggageCapacity: number | null;
-		vehicleCategoryId: string;
-		vehicleCategory: { id: string; name: string; code: string };
-	} | undefined,
+	vehicleData:
+		| {
+				passengerCapacity: number;
+				luggageCapacity: number | null;
+				vehicleCategoryId: string;
+				vehicleCategory: { id: string; name: string; code: string };
+		  }
+		| undefined,
 	missionRequirements: {
 		passengerCount: number;
 		luggageCount: number;
@@ -1610,25 +1762,30 @@ function determineComplianceStatus(
 	if (vehicleData) {
 		if (vehicleData.passengerCapacity < missionRequirements.passengerCount) {
 			violations.push(
-				`Capacité insuffisante: ${vehicleData.passengerCapacity} places vs ${missionRequirements.passengerCount} passagers requis`
+				`Capacité insuffisante: ${vehicleData.passengerCapacity} places vs ${missionRequirements.passengerCount} passagers requis`,
 			);
 			hasViolation = true;
 		}
 
 		// Check luggage capacity (only if vehicle has a defined luggage capacity)
 		// If luggageCapacity is null, we assume it's not specified (not 0)
-		if (missionRequirements.luggageCount > 0 && vehicleData.luggageCapacity !== null) {
+		if (
+			missionRequirements.luggageCount > 0 &&
+			vehicleData.luggageCapacity !== null
+		) {
 			if (vehicleData.luggageCapacity < missionRequirements.luggageCount) {
 				warnings.push(
-					`Capacité bagages limitée: ${vehicleData.luggageCapacity} vs ${missionRequirements.luggageCount} requis`
+					`Capacité bagages limitée: ${vehicleData.luggageCapacity} vs ${missionRequirements.luggageCount} requis`,
 				);
 			}
 		}
 
 		// Check vehicle category mismatch
-		if (vehicleData.vehicleCategoryId !== missionRequirements.vehicleCategoryId) {
+		if (
+			vehicleData.vehicleCategoryId !== missionRequirements.vehicleCategoryId
+		) {
 			warnings.push(
-				`Catégorie différente: ${vehicleData.vehicleCategory.name} (demandé: ${missionRequirements.vehicleCategoryName ?? "N/A"})`
+				`Catégorie différente: ${vehicleData.vehicleCategory.name} (demandé: ${missionRequirements.vehicleCategoryName ?? "N/A"})`,
 			);
 		}
 	}
@@ -1636,7 +1793,9 @@ function determineComplianceStatus(
 	// Check distance (warning if very far - 80km threshold)
 	// This is a soft warning, not a blocker
 	if (candidate.haversineDistanceKm > 80) {
-		warnings.push(`Base éloignée: ${Math.round(candidate.haversineDistanceKm)}km`);
+		warnings.push(
+			`Base éloignée: ${Math.round(candidate.haversineDistanceKm)}km`,
+		);
 	}
 
 	// Check total duration (warning if long trip)
@@ -1688,12 +1847,14 @@ function determineComplianceStatus(
  * Only checks capacity and category - no distance/duration checks possible
  */
 function determineComplianceStatusNoCoordinates(
-	vehicleData: {
-		passengerCapacity: number;
-		luggageCapacity: number | null;
-		vehicleCategoryId: string;
-		vehicleCategory: { id: string; name: string; code: string };
-	} | undefined,
+	vehicleData:
+		| {
+				passengerCapacity: number;
+				luggageCapacity: number | null;
+				vehicleCategoryId: string;
+				vehicleCategory: { id: string; name: string; code: string };
+		  }
+		| undefined,
 	missionRequirements: {
 		passengerCount: number;
 		luggageCount: number;
@@ -1712,24 +1873,29 @@ function determineComplianceStatusNoCoordinates(
 	if (vehicleData) {
 		if (vehicleData.passengerCapacity < missionRequirements.passengerCount) {
 			violations.push(
-				`Capacité insuffisante: ${vehicleData.passengerCapacity} places vs ${missionRequirements.passengerCount} passagers requis`
+				`Capacité insuffisante: ${vehicleData.passengerCapacity} places vs ${missionRequirements.passengerCount} passagers requis`,
 			);
 			hasViolation = true;
 		}
 
 		// Check luggage capacity (only if vehicle has a defined luggage capacity)
-		if (missionRequirements.luggageCount > 0 && vehicleData.luggageCapacity !== null) {
+		if (
+			missionRequirements.luggageCount > 0 &&
+			vehicleData.luggageCapacity !== null
+		) {
 			if (vehicleData.luggageCapacity < missionRequirements.luggageCount) {
 				warnings.push(
-					`Capacité bagages limitée: ${vehicleData.luggageCapacity} vs ${missionRequirements.luggageCount} requis`
+					`Capacité bagages limitée: ${vehicleData.luggageCapacity} vs ${missionRequirements.luggageCount} requis`,
 				);
 			}
 		}
 
 		// Check vehicle category mismatch
-		if (vehicleData.vehicleCategoryId !== missionRequirements.vehicleCategoryId) {
+		if (
+			vehicleData.vehicleCategoryId !== missionRequirements.vehicleCategoryId
+		) {
 			warnings.push(
-				`Catégorie différente: ${vehicleData.vehicleCategory.name} (demandé: ${missionRequirements.vehicleCategoryName ?? "N/A"})`
+				`Catégorie différente: ${vehicleData.vehicleCategory.name} (demandé: ${missionRequirements.vehicleCategoryName ?? "N/A"})`,
 			);
 		}
 	}
@@ -1769,16 +1935,22 @@ function quoteToMissionForChaining(quote: {
 	tripAnalysis: unknown;
 }): MissionForChaining {
 	const costData = extractCostData(quote.tripAnalysis);
-	
+
 	return {
 		id: quote.id,
 		pickupAt: quote.pickupAt,
 		pickupAddress: quote.pickupAddress,
 		pickupLatitude: quote.pickupLatitude ? Number(quote.pickupLatitude) : null,
-		pickupLongitude: quote.pickupLongitude ? Number(quote.pickupLongitude) : null,
+		pickupLongitude: quote.pickupLongitude
+			? Number(quote.pickupLongitude)
+			: null,
 		dropoffAddress: quote.dropoffAddress,
-		dropoffLatitude: quote.dropoffLatitude ? Number(quote.dropoffLatitude) : null,
-		dropoffLongitude: quote.dropoffLongitude ? Number(quote.dropoffLongitude) : null,
+		dropoffLatitude: quote.dropoffLatitude
+			? Number(quote.dropoffLatitude)
+			: null,
+		dropoffLongitude: quote.dropoffLongitude
+			? Number(quote.dropoffLongitude)
+			: null,
 		vehicleCategoryId: quote.vehicleCategoryId,
 		vehicleCategory: quote.vehicleCategory,
 		contact: quote.contact,
@@ -1825,7 +1997,8 @@ export const chainingRouter = new Hono()
 			}
 
 			// Get candidate missions in time window (±4 hours)
-			const searchWindowMs = DEFAULT_CHAINING_CONFIG.searchWindowHours * 60 * 60 * 1000;
+			const searchWindowMs =
+				DEFAULT_CHAINING_CONFIG.searchWindowHours * 60 * 60 * 1000;
 			const minTime = new Date(sourceQuote.pickupAt.getTime() - searchWindowMs);
 			const maxTime = new Date(sourceQuote.pickupAt.getTime() + searchWindowMs);
 
@@ -1881,8 +2054,7 @@ export const chainingRouter = new Hono()
 		),
 		describeRoute({
 			summary: "Apply chain to missions",
-			description:
-				"Chain two missions together to reduce deadhead segments",
+			description: "Chain two missions together to reduce deadhead segments",
 			tags: ["VTC - Dispatch"],
 		}),
 		async (c) => {
@@ -1961,12 +2133,19 @@ export const chainingRouter = new Hono()
 			const sourceCosts = extractCostData(sourceQuote.tripAnalysis);
 			const targetCosts = extractCostData(targetQuote.tripAnalysis);
 			const estimatedSavings = {
-				distanceKm: Math.round(
-					((sourceCosts.returnDistanceKm || 0) + (targetCosts.approachDistanceKm || 0)) * 0.8 * 100
-				) / 100,
-				costEur: Math.round(
-					((sourceCosts.returnCost || 0) + (targetCosts.approachCost || 0)) * 0.8 * 100
-				) / 100,
+				distanceKm:
+					Math.round(
+						((sourceCosts.returnDistanceKm || 0) +
+							(targetCosts.approachDistanceKm || 0)) *
+							0.8 *
+							100,
+					) / 100,
+				costEur:
+					Math.round(
+						((sourceCosts.returnCost || 0) + (targetCosts.approachCost || 0)) *
+							0.8 *
+							100,
+					) / 100,
 			};
 
 			return c.json({
@@ -2107,6 +2286,67 @@ export const chainingRouter = new Hono()
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : "Failed to spawn mission";
+				throw new HTTPException(400, { message });
+			}
+		},
+	)
+
+	// =========================================================================
+	// Story 28.13: Internal Mission Creation
+	// =========================================================================
+
+	.post(
+		"/create-internal",
+		validator(
+			"json",
+			z.object({
+				orderId: z.string().cuid(),
+				label: z.string().min(1).max(200),
+				startAt: z.string().datetime(),
+				vehicleCategoryId: z.string().cuid().optional(),
+				notes: z.string().optional(),
+			}),
+		),
+		describeRoute({
+			summary: "Create an internal (non-billable) mission",
+			description:
+				"Create an internal task that is associated with an order but excluded from invoices. Used for internal operations like vehicle washing, repositioning, etc.",
+			tags: ["VTC - Dispatch"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const { orderId, label, startAt, vehicleCategoryId, notes } =
+				c.req.valid("json");
+
+			// Import SpawnService dynamically to avoid circular dependencies
+			const { SpawnService } = await import("../../services/spawn-service");
+
+			try {
+				const mission = await SpawnService.createInternal({
+					orderId,
+					organizationId,
+					label,
+					startAt: new Date(startAt),
+					vehicleCategoryId,
+					notes,
+				});
+
+				return c.json({
+					success: true,
+					mission: {
+						id: mission.id,
+						status: mission.status,
+						startAt: mission.startAt.toISOString(),
+						isInternal: mission.isInternal,
+						orderId: mission.orderId,
+						notes: mission.notes,
+					},
+				});
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to create internal mission";
 				throw new HTTPException(400, { message });
 			}
 		},

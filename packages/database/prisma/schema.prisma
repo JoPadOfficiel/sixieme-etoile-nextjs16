@@ -1855,6 +1855,10 @@ model Mission {
   // Notes
   notes String?
 
+  // Story 28.13: Internal (non-billable) missions
+  // These missions are excluded from invoice generation
+  isInternal Boolean @default(false)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

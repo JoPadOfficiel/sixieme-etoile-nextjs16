@@ -2507,6 +2507,44 @@
 			"addToInvoice": "Add to Invoice",
 			"addAllToInvoice": "Add All to Invoice",
 			"noInvoiceSelected": "Select an invoice to add extra charges."
+		},
+		"internalMission": {
+			"title": "Add Internal Task",
+			"description": "Create a non-billable internal task linked to this order (washing, repositioning, maintenance...).",
+			"label": "Task Label",
+			"labelPlaceholder": "e.g.: Car Wash, Vehicle Repositioning",
+			"date": "Date",
+			"time": "Time",
+			"vehicleCategory": "Vehicle Category (optional)",
+			"selectCategory": "Select a category",
+			"notes": "Notes",
+			"notesPlaceholder": "Optional notes for this task...",
+			"createTask": "Create Task",
+			"success": "Task Created",
+			"successDescription": "The internal task has been created successfully.",
+			"error": "Error",
+			"errorDescription": "Failed to create internal task. Please try again."
+		},
+		"operations": {
+			"addInternalTask": "Add Internal Task",
+			"noMissions": "No Missions",
+			"noMissionsDescription": "Operational missions will appear here once created.",
+			"label": "Label",
+			"dateTime": "Date/Time",
+			"status": "Status",
+			"assignment": "Assignment",
+			"actions": "Actions",
+			"internalBadge": "Internal",
+			"unassigned": "Unassigned",
+			"viewInDispatch": "View in Dispatch",
+			"unknownMission": "Mission"
+		},
+		"missionStatus": {
+			"pending": "Pending",
+			"assigned": "Assigned",
+			"in_progress": "In Progress",
+			"completed": "Completed",
+			"cancelled": "Cancelled"
 		}
 	},
 	"quotes": {

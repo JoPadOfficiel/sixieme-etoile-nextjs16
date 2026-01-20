@@ -166,7 +166,7 @@ export const EmptyLegOpportunityScalarFieldEnumSchema = z.enum(['id','organizati
 
 export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','label','description','sourceData','displayData','quantity','unitPrice','totalPrice','vatRate','parentId','sortOrder','dispatchable','createdAt','updatedAt']);
 
-export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','createdAt','updatedAt','orderId']);
+export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','isInternal','createdAt','updatedAt','orderId']);
 
 export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId','orderId']);
 
@@ -1418,6 +1418,7 @@ export const MissionSchema = z.object({
   sourceData: JsonValueSchema.nullable(),
   executionData: JsonValueSchema.nullable(),
   notes: z.string().nullable(),
+  isInternal: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   orderId: z.string().nullable(),

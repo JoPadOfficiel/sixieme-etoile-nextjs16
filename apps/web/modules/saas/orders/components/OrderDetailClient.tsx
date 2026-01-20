@@ -36,6 +36,7 @@ import {
 	useSearchParams,
 } from "next/navigation";
 import { useState } from "react";
+import { OperationsTabContent } from "./OperationsTabContent";
 import { PendingChargesAlert } from "./PendingChargesAlert";
 import { SpawnMissionModal } from "./SpawnMissionModal";
 
@@ -725,27 +726,9 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
 					<CommercialTabContent orderId={order.id} />
 				</TabsContent>
 
-				{/* Operations Tab */}
+				{/* Operations Tab - Story 28.13 */}
 				<TabsContent value="operations" className="space-y-4">
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<TruckIcon className="h-5 w-5" />
-								{t("tabs.operationsTitle")}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="flex flex-col items-center justify-center py-12 text-center">
-								<TruckIcon className="mb-4 h-12 w-12 text-muted-foreground" />
-								<h3 className="mb-2 font-medium text-lg">
-									{t("tabs.operationsHeading")}
-								</h3>
-								<p className="max-w-md text-muted-foreground text-sm">
-									{t("tabs.operationsPlaceholder")}
-								</p>
-							</div>
-						</CardContent>
-					</Card>
+					<OperationsTabContent orderId={order.id} />
 				</TabsContent>
 
 				{/* Financial Tab */}

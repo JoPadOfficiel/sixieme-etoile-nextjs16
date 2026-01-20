@@ -2494,6 +2494,44 @@
 			"addToInvoice": "Ajouter à la facture",
 			"addAllToInvoice": "Tout ajouter à la facture",
 			"noInvoiceSelected": "Sélectionnez une facture pour ajouter des frais supplémentaires."
+		},
+		"internalMission": {
+			"title": "Ajouter une tâche interne",
+			"description": "Créez une tâche interne non facturable liée à ce dossier (lavage, repositionnement, maintenance...).",
+			"label": "Libellé de la tâche",
+			"labelPlaceholder": "ex: Lavage voiture, Repositionnement véhicule",
+			"date": "Date",
+			"time": "Heure",
+			"vehicleCategory": "Catégorie de véhicule (optionnel)",
+			"selectCategory": "Sélectionner une catégorie",
+			"notes": "Notes",
+			"notesPlaceholder": "Notes optionnelles pour cette tâche...",
+			"createTask": "Créer la tâche",
+			"success": "Tâche créée",
+			"successDescription": "La tâche interne a été créée avec succès.",
+			"error": "Erreur",
+			"errorDescription": "Impossible de créer la tâche interne. Veuillez réessayer."
+		},
+		"operations": {
+			"addInternalTask": "Ajouter tâche interne",
+			"noMissions": "Aucune mission",
+			"noMissionsDescription": "Les missions opérationnelles apparaîtront ici une fois créées.",
+			"label": "Libellé",
+			"dateTime": "Date/Heure",
+			"status": "Statut",
+			"assignment": "Affectation",
+			"actions": "Actions",
+			"internalBadge": "Interne",
+			"unassigned": "Non affecté",
+			"viewInDispatch": "Voir au dispatch",
+			"unknownMission": "Mission"
+		},
+		"missionStatus": {
+			"pending": "En attente",
+			"assigned": "Affecté",
+			"in_progress": "En cours",
+			"completed": "Terminé",
+			"cancelled": "Annulé"
 		}
 	},
 	"quotes": {
