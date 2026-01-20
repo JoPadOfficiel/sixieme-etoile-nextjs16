@@ -108,6 +108,7 @@ const listInvoicesSchema = z.object({
 		.datetime()
 		.optional()
 		.describe("Filter invoices issued until this date"),
+	orderId: z.string().optional().describe("Filter by order ID"),
 });
 
 // ============================================================================
@@ -135,7 +136,7 @@ async function generateInvoiceNumber(organizationId: string): Promise<string> {
 	if (lastInvoice) {
 		const lastNumberStr = lastInvoice.number.replace(prefix, "");
 		const lastNumber = Number.parseInt(lastNumberStr, 10);
-		if (!isNaN(lastNumber)) {
+		if (!Number.isNaN(lastNumber)) {
 			nextNumber = lastNumber + 1;
 		}
 	}
@@ -163,8 +164,16 @@ export const invoicesRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, status, contactId, search, dateFrom, dateTo } =
-				c.req.valid("query");
+			const {
+				page,
+				limit,
+				status,
+				contactId,
+				search,
+				dateFrom,
+				dateTo,
+				orderId,
+			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -172,6 +181,7 @@ export const invoicesRouter = new Hono()
 			const baseWhere: Prisma.InvoiceWhereInput = {
 				...(status && { status }),
 				...(contactId && { contactId }),
+				...(orderId && { orderId }),
 			};
 
 			// Add search filter
@@ -469,7 +479,8 @@ export const invoicesRouter = new Hono()
 			const invoiceNumber = await generateInvoiceNumber(organizationId);
 
 			// Story 7.3: Parse appliedRules to extract optional fees and promotions
-			const parsedRules = parseAppliedRules(quote.appliedRules);
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			const parsedRules: any = parseAppliedRules(quote.appliedRules);
 
 			// Story 25.4: Inject end customer name for Agency invoices
 			const endCustomerName =

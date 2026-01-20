@@ -1989,7 +1989,7 @@ model Quote {
   updatedAt DateTime @updatedAt
 
   // Relations
-  invoice                Invoice?
+  invoices               Invoice[]
   statusAuditLogs        QuoteStatusAuditLog[]
   documents              Document[]
   vehicle                Vehicle?                @relation(fields: [vehicleId], references: [id])
@@ -2030,7 +2030,7 @@ model Invoice {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Source quote (optional - can be standalone invoice)
-  quoteId String? @unique
+  quoteId String?
   quote   Quote?  @relation(fields: [quoteId], references: [id])
 
   // Contact
@@ -2086,6 +2086,7 @@ model Invoice {
   @@index([status])
   @@index([issueDate])
   @@index([orderId]) // Story 28.1: Index for Order relation
+  @@index([quoteId])
   @@map("invoice")
 }
 

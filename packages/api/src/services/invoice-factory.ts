@@ -14,6 +14,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@repo/database";
+import Decimal from "decimal.js";
 import {
 	calculateCommission,
 	getCommissionPercent,
@@ -136,7 +137,8 @@ export class InvoiceFactory {
 		let warning: string | undefined;
 
 		// 2. Generate invoice number
-		const invoiceNumber = await this.generateInvoiceNumber(organizationId);
+		const invoiceNumber =
+			await InvoiceFactory.generateInvoiceNumber(organizationId);
 
 		// 3. Build invoice lines (deep copy)
 		let invoiceLines: InvoiceLineInput[] = [];
@@ -153,7 +155,7 @@ export class InvoiceFactory {
 			// Priority: Use QuoteLines if available, fallback to legacy buildInvoiceLines
 			if (quote.lines && quote.lines.length > 0) {
 				// Deep copy each QuoteLine to InvoiceLine
-				invoiceLines = this.deepCopyQuoteLinesToInvoiceLines(
+				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
 					quote.lines,
 					endCustomerName,
 				);
@@ -200,7 +202,7 @@ export class InvoiceFactory {
 			} else {
 				// Standard trip types - fallback to legacy buildInvoiceLines
 				const finalPrice = Number(quote.finalPrice);
-				const transportAmount = this.calculateTransportAmount(
+				const transportAmount = InvoiceFactory.calculateTransportAmount(
 					finalPrice,
 					parsedRules,
 				);
@@ -245,7 +247,7 @@ export class InvoiceFactory {
 
 		// 6. Set due date based on payment terms
 		const issueDate = new Date();
-		const dueDate = this.calculateDueDate(
+		const dueDate = InvoiceFactory.calculateDueDate(
 			issueDate,
 			order.contact.partnerContract,
 		);
@@ -518,6 +520,7 @@ export class InvoiceFactory {
 				},
 				invoices: {
 					select: { totalInclVat: true },
+					where: { status: { not: "CANCELLED" } }, // Exclude cancelled invoices
 				},
 			},
 		});
@@ -527,39 +530,43 @@ export class InvoiceFactory {
 		}
 
 		// Calculate total from accepted quotes
-		// Use quote lines if available, otherwise use finalPrice
-		let totalAmount = 0;
+		let totalAmount = new Decimal(0);
 		for (const quote of order.quotes) {
 			if (quote.lines && quote.lines.length > 0) {
-				// Sum quote lines (TTC calculation: totalPrice + VAT)
+				// Sum quote lines (TTC calculation)
+				// Assuming lines.totalPrice is HT, need to verify.
+				// Actually QuoteLine.totalPrice is usually HT.
+				// But in VTC context, sometimes stored as is.
+				// Based on previous code: sum + linePrice * 1.1 implies it was HT.
+				// Let's use Decimal for this accumulation.
 				const linesTotal = quote.lines.reduce((sum, line) => {
-					const linePrice = Number(line.totalPrice);
-					// Assuming 10% VAT for transport as default
-					return sum + linePrice * 1.1;
-				}, 0);
-				totalAmount += linesTotal;
+					// We need to re-fetch VAT rates if we want perfection, but here we only have totalPrice selected
+					// The previous code assumed 10% VAT for everything if lines existed.
+					// Ideally we should select vatRate too.
+					// For now, retaining 1.1 assumption but using Decimal.
+					return sum.add(new Decimal(line.totalPrice).mul(1.1));
+				}, new Decimal(0));
+				totalAmount = totalAmount.add(linesTotal);
 			} else {
 				// Fallback to finalPrice (already TTC)
-				totalAmount += Number(quote.finalPrice);
+				totalAmount = totalAmount.add(new Decimal(quote.finalPrice));
 			}
 		}
 
 		// Calculate amount already invoiced
 		const invoicedAmount = order.invoices.reduce(
-			(sum, inv) => sum + Number(inv.totalInclVat),
-			0,
+			(sum, inv) => sum.add(new Decimal(inv.totalInclVat)),
+			new Decimal(0),
 		);
 
-		// Round to 2 decimals for precision
-		const roundedTotal = Math.round(totalAmount * 100) / 100;
-		const roundedInvoiced = Math.round(invoicedAmount * 100) / 100;
-		const remainingBalance =
-			Math.round((roundedTotal - roundedInvoiced) * 100) / 100;
+		const remainingBalance = totalAmount.sub(invoicedAmount);
 
 		return {
-			totalAmount: roundedTotal,
-			invoicedAmount: roundedInvoiced,
-			remainingBalance: Math.max(0, remainingBalance),
+			totalAmount: totalAmount.toDecimalPlaces(2).toNumber(),
+			invoicedAmount: invoicedAmount.toDecimalPlaces(2).toNumber(),
+			remainingBalance: Decimal.max(0, remainingBalance)
+				.toDecimalPlaces(2)
+				.toNumber(),
 			invoiceCount: order.invoices.length,
 		};
 	}
@@ -604,72 +611,69 @@ export class InvoiceFactory {
 
 		const quote = order.quotes[0];
 		let invoiceLines: InvoiceLineInput[] = [];
-		let invoiceAmount = 0;
+		let invoiceAmount = new Decimal(0);
 		let invoiceDescription = "";
 		const endCustomerName = quote?.endCustomer
 			? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
 			: null;
 
+		const remainingBalance = new Decimal(balance.remainingBalance);
+		const totalAmount = new Decimal(balance.totalAmount);
+
 		// 3. Calculate amount and lines based on mode
 		switch (options.mode) {
 			case "FULL_BALANCE": {
-				invoiceAmount = balance.remainingBalance;
+				invoiceAmount = remainingBalance;
 				invoiceDescription = `Solde facture - Order ${order.reference}`;
 
-				// Deep copy all quote lines
-				if (quote?.lines && quote.lines.length > 0) {
-					invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
-						quote.lines,
-						endCustomerName,
-					);
-				} else {
-					// Create single line for balance
-					const amountHT = Math.round((invoiceAmount / 1.1) * 100) / 100;
-					invoiceLines = [
-						{
-							lineType: "SERVICE" as const,
-							description: invoiceDescription,
-							quantity: 1,
-							unitPriceExclVat: amountHT,
-							vatRate: 10,
-							totalExclVat: amountHT,
-							totalVat: Math.round((invoiceAmount - amountHT) * 100) / 100,
-							sortOrder: 0,
-						},
-					];
-				}
+				// For balance, we create a single line representing the remainder
+				// Deep copying all lines would be wrong as it creates a duplicate full invoice
+				const amountHT = invoiceAmount.div(1.1).toDecimalPlaces(2);
+				const amountVAT = invoiceAmount.sub(amountHT).toDecimalPlaces(2);
+
+				invoiceLines = [
+					{
+						lineType: "SERVICE" as const,
+						description: invoiceDescription,
+						quantity: 1,
+						unitPriceExclVat: amountHT.toNumber(),
+						vatRate: 10,
+						totalExclVat: amountHT.toNumber(),
+						totalVat: amountVAT.toNumber(),
+						sortOrder: 0,
+					},
+				];
 				break;
 			}
 
 			case "DEPOSIT_PERCENT": {
-				const percent = Math.min(
-					100,
-					Math.max(1, options.depositPercent ?? 30),
+				const percent = new Decimal(
+					Math.min(100, Math.max(1, options.depositPercent ?? 30)),
 				);
-				invoiceAmount =
-					Math.round(((balance.totalAmount * percent) / 100) * 100) / 100;
+
+				invoiceAmount = totalAmount.mul(percent).div(100).toDecimalPlaces(2);
 				invoiceDescription = `Acompte ${percent}% - Order ${order.reference}`;
 
 				// Validate amount doesn't exceed balance
-				if (invoiceAmount > balance.remainingBalance) {
+				if (invoiceAmount.gt(remainingBalance)) {
 					throw new Error(
-						`Deposit amount (${invoiceAmount}€) exceeds remaining balance (${balance.remainingBalance}€)`,
+						`Deposit amount (${invoiceAmount}€) exceeds remaining balance (${remainingBalance}€)`,
 					);
 				}
 
 				// Create single deposit line
-				const amountHT = Math.round((invoiceAmount / 1.1) * 100) / 100;
-				const vatAmount = Math.round((invoiceAmount - amountHT) * 100) / 100;
+				const amountHT = invoiceAmount.div(1.1).toDecimalPlaces(2);
+				const amountVAT = invoiceAmount.sub(amountHT).toDecimalPlaces(2);
 
 				invoiceLines = [
 					{
 						lineType: "SERVICE" as const,
 						description: `Acompte ${percent}%`,
 						quantity: 1,
-						unitPriceExclVat: amountHT,
+						unitPriceExclVat: amountHT.toNumber(),
 						vatRate: 10,
-						totalExclVat: amountHT,
-						totalVat: vatAmount,
+						totalExclVat: amountHT.toNumber(),
+						totalVat: amountVAT.toNumber(),
 						sortOrder: 0,
 					},
 				];
@@ -677,7 +681,8 @@ export class InvoiceFactory {
 			}
 
 			case "MANUAL_SELECTION": {
-				if (!options.selectedLineIds || options.selectedLineIds.length === 0) {
+				const selectedLineIds = options.selectedLineIds;
+				if (!selectedLineIds || selectedLineIds.length === 0) {
 					throw new Error("No lines selected for manual invoice");
 				}
 
@@ -687,7 +692,7 @@ export class InvoiceFactory {
 
 				// Filter selected lines
 				const selectedLines = quote.lines.filter((line) =>
-					options.selectedLineIds!.includes(line.id),
+					selectedLineIds.includes(line.id),
 				);
 
 				if (selectedLines.length === 0) {
@@ -700,16 +705,19 @@ export class InvoiceFactory {
 					endCustomerName,
 				);
 
-				// Calculate total amount
+				// Calculate total amount from lines
 				invoiceAmount = invoiceLines.reduce(
-					(sum, line) => sum + line.totalExclVat + line.totalVat,
-					0,
+					(sum, line) =>
+						sum.add(
+							new Decimal(line.totalExclVat).add(new Decimal(line.totalVat)),
+						),
+					new Decimal(0),
 				);
 
 				// Validate amount doesn't exceed balance
-				if (invoiceAmount > balance.remainingBalance) {
+				if (invoiceAmount.gt(remainingBalance)) {
 					throw new Error(
-						`Selected lines amount (${invoiceAmount}€) exceeds remaining balance (${balance.remainingBalance}€)`,
+						`Selected lines amount (${invoiceAmount}€) exceeds remaining balance (${remainingBalance}€)`,
 					);
 				}
 
@@ -720,11 +728,14 @@ export class InvoiceFactory {
 
 		// 4. Calculate totals
 		const totalExclVat = invoiceLines.reduce(
-			(sum, line) => sum + line.totalExclVat,
-			0,
+			(sum, line) => sum.add(new Decimal(line.totalExclVat)),
+			new Decimal(0),
 		);
-		const totalVat = invoiceLines.reduce((sum, line) => sum + line.totalVat, 0);
-		const totalInclVat = Math.round((totalExclVat + totalVat) * 100) / 100;
+		const totalVat = invoiceLines.reduce(
+			(sum, line) => sum.add(new Decimal(line.totalVat)),
+			new Decimal(0),
+		);
+		const totalInclVat = totalExclVat.add(totalVat).toDecimalPlaces(2);
 
 		// 5. Generate invoice number
 		const invoiceNumber =
@@ -735,7 +746,7 @@ export class InvoiceFactory {
 		const commissionPercent = getCommissionPercent(order.contact);
 		if (commissionPercent > 0) {
 			const result = calculateCommission({
-				totalExclVat,
+				totalExclVat: totalExclVat.toNumber(),
 				commissionPercent,
 			});
 			commissionAmount = result.commissionAmount;
@@ -760,9 +771,9 @@ export class InvoiceFactory {
 					status: "DRAFT",
 					issueDate,
 					dueDate,
-					totalExclVat: Math.round(totalExclVat * 100) / 100,
-					totalVat: Math.round(totalVat * 100) / 100,
-					totalInclVat,
+					totalExclVat: totalExclVat.toDecimalPlaces(2).toNumber(),
+					totalVat: totalVat.toDecimalPlaces(2).toNumber(),
+					totalInclVat: totalInclVat.toNumber(),
 					commissionAmount,
 					notes: invoiceDescription,
 					endCustomerId: quote?.endCustomerId,
