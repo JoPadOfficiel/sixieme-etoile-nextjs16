@@ -280,6 +280,11 @@ export const ordersRouter = new Hono()
 							vehicleCategory: true,
 							lines: {
 								orderBy: { sortOrder: "asc" },
+								include: {
+									missions: {
+										select: { id: true, status: true },
+									},
+								},
 							},
 						},
 					},

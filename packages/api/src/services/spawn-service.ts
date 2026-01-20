@@ -268,14 +268,14 @@ export class SpawnService {
 			throw new Error(`QuoteLine ${quoteLineId} already has a mission (${quoteLine.missions[0].id})`);
 		}
 
-		// 4. Fetch vehicle category for sourceData
-		const vehicleCategory = await db.vehicleCategory.findUnique({
-			where: { id: vehicleCategoryId },
+		// 4. Fetch vehicle category for sourceData (with tenant scoping for security)
+		const vehicleCategory = await db.vehicleCategory.findFirst({
+			where: { id: vehicleCategoryId, organizationId },
 			select: { id: true, name: true },
 		});
 
 		if (!vehicleCategory) {
-			throw new Error(`VehicleCategory ${vehicleCategoryId} not found`);
+			throw new Error(`VehicleCategory ${vehicleCategoryId} not found or access denied`);
 		}
 
 		// 5. Create the mission

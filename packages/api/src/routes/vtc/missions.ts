@@ -2063,10 +2063,10 @@ export const chainingRouter = new Hono()
 		validator(
 			"json",
 			z.object({
-				quoteLineId: z.string().min(1),
-				orderId: z.string().min(1),
+				quoteLineId: z.string().cuid(),
+				orderId: z.string().cuid(),
 				startAt: z.string().datetime(),
-				vehicleCategoryId: z.string().min(1),
+				vehicleCategoryId: z.string().cuid(),
 				notes: z.string().optional(),
 			}),
 		),

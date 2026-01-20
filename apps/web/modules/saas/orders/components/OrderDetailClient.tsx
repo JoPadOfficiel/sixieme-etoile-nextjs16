@@ -50,7 +50,7 @@ interface QuoteLine {
 	type: "CALCULATED" | "MANUAL" | "GROUP";
 	totalPrice: string;
 	dispatchable: boolean;
-	missionId: string | null;
+	missions: Array<{ id: string; status: string }>;
 	sourceData: unknown;
 }
 
@@ -106,8 +106,12 @@ interface CommercialTabContentProps {
 
 function CommercialTabContent({ orderId }: CommercialTabContentProps) {
 	const t = useTranslations("orders");
+	const router = useRouter();
+	const params = useParams();
+	const organizationSlug = params.organizationSlug as string;
 	const [selectedLine, setSelectedLine] = useState<QuoteLine | null>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [modalKey, setModalKey] = useState(0);
 
 	// Fetch quote lines for this order
 	const { data: quotesData, isLoading, refetch } = useQuery({
@@ -136,16 +140,24 @@ function CommercialTabContent({ orderId }: CommercialTabContentProps) {
 
 	// Filter lines that can have manual spawn (MANUAL type or dispatchable=false, and no mission)
 	const canSpawnManually = (line: QuoteLine) => {
-		return !line.missionId && (line.type === "MANUAL" || !line.dispatchable);
+		const hasMission = line.missions && line.missions.length > 0;
+		return !hasMission && (line.type === "MANUAL" || !line.dispatchable);
+	};
+
+	// Get first mission ID if exists
+	const getLinkedMissionId = (line: QuoteLine): string | null => {
+		return line.missions && line.missions.length > 0 ? line.missions[0].id : null;
 	};
 
 	const handleOpenSpawnModal = (line: QuoteLine) => {
 		setSelectedLine(line);
+		setModalKey((prev) => prev + 1); // Force modal reset
 		setIsModalOpen(true);
 	};
 
 	const handleSpawnSuccess = () => {
 		refetch();
+		router.refresh(); // Refresh server data for KPI update
 	};
 
 	if (isLoading) {
@@ -223,11 +235,16 @@ function CommercialTabContent({ orderId }: CommercialTabContentProps) {
 										{Number(line.totalPrice).toFixed(2)}€
 									</TableCell>
 									<TableCell>
-										{line.missionId ? (
-											<Badge variant="default" className="gap-1">
+										{getLinkedMissionId(line) ? (
+											<Button
+												variant="link"
+												size="sm"
+												className="gap-1 p-0 h-auto"
+												onClick={() => router.push(`/app/${organizationSlug}/dispatch?mission=${getLinkedMissionId(line)}`)}
+											>
 												<LinkIcon className="h-3 w-3" />
 												{t("commercial.linked")}
-											</Badge>
+											</Button>
 										) : (
 											<Badge variant="outline" className="text-muted-foreground">
 												{t("commercial.unlinked")}
@@ -257,7 +274,7 @@ function CommercialTabContent({ orderId }: CommercialTabContentProps) {
 			{/* Spawn Mission Modal */}
 			{selectedLine && (
 				<SpawnMissionModal
-					key={selectedLine.id}
+					key={`${selectedLine.id}-${modalKey}`}
 					open={isModalOpen}
 					onOpenChange={setIsModalOpen}
 					quoteLine={selectedLine}
@@ -265,6 +282,11 @@ function CommercialTabContent({ orderId }: CommercialTabContentProps) {
 					defaultDate={
 						(selectedLine as QuoteLine & { pickupAt?: string }).pickupAt
 							? new Date((selectedLine as QuoteLine & { pickupAt?: string }).pickupAt!)
+							: undefined
+					}
+					defaultTime={
+						(selectedLine as QuoteLine & { pickupAt?: string }).pickupAt
+							? format(new Date((selectedLine as QuoteLine & { pickupAt?: string }).pickupAt!), "HH:mm")
 							: undefined
 					}
 					defaultVehicleCategoryId={

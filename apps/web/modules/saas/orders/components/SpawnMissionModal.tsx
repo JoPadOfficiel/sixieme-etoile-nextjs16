@@ -47,6 +47,7 @@ interface SpawnMissionModalProps {
 	quoteLine: QuoteLine;
 	orderId: string;
 	defaultDate?: Date;
+	defaultTime?: string;
 	defaultVehicleCategoryId?: string;
 	onSuccess?: (mission: { id: string; status: string }) => void;
 }
@@ -63,6 +64,7 @@ export function SpawnMissionModal({
 	quoteLine,
 	orderId,
 	defaultDate,
+	defaultTime,
 	defaultVehicleCategoryId,
 	onSuccess,
 }: SpawnMissionModalProps) {
@@ -76,7 +78,7 @@ export function SpawnMissionModal({
 	const [date, setDate] = useState<string>(
 		defaultDate ? format(defaultDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
 	);
-	const [time, setTime] = useState<string>("09:00");
+	const [time, setTime] = useState<string>(defaultTime ?? "09:00");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState<string>(
 		defaultVehicleCategoryId ?? ""
 	);

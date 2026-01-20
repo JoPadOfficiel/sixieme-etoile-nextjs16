@@ -7,7 +7,7 @@
 | **Story ID**         | 28-7                                              |
 | **Epic**             | Epic 28 - Order Management & Intelligent Spawning |
 | **Title**            | Manual Item Handling UI                           |
-| **Status**           | ready-for-dev                                     |
+| **Status**           | done                                              |
 | **Created**          | 2026-01-20                                        |
 | **Priority**         | High                                              |
 | **Estimated Points** | 5                                                 |
@@ -91,9 +91,9 @@ AND submitting creates a mission linked to that line
    - Modal component with form
    - Uses Shadcn Dialog, DatePicker, Select, Textarea
 
-2. `apps/web/app/api/vtc/missions/spawn-manual/route.ts`
-   - POST handler for manual mission creation
-   - Zod validation schema
+2. `packages/api/src/routes/vtc/missions.ts`
+   - Added POST `/spawn-manual` endpoint to existing Hono router
+   - Zod validation schema with cuid() validation
 
 #### Modified Files
 
