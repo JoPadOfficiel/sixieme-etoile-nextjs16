@@ -3136,6 +3136,29 @@
 				"noSuitableCategoryDescription": "No vehicle category can accommodate {passengers} passengers"
 			}
 		},
+		"templates": {
+			"saveQuoteAsTemplate": "Save Quote as Template",
+			"saveQuoteDescription": "Save the current quote structure to reuse it later.",
+			"templateName": "Template Name",
+			"templateNamePlaceholder": "e.g., Fashion Week Package",
+			"cancel": "Cancel",
+			"save": "Save",
+			"loadTemplate": "Load Quote Template",
+			"loadTemplateDescription": "Select a saved quote structure to load.",
+			"noFullQuoteTemplates": "No quote templates saved yet.",
+			"templateContent": "Contains:",
+			"moreItems": "more items...",
+			"loadAction": "How to load?",
+			"replaceCart": "Replace current cart",
+			"addToCart": "Add to current cart",
+			"selectTemplateToPreview": "Select a template to preview",
+			"confirmReplaceTitle": "Replace entire cart?",
+			"confirmReplaceDescription": "This will remove all current items in the cart and replace them with the template contents. This action cannot be undone.",
+			"confirmReplace": "Yes, replace it",
+			"deleteTemplateTitle": "Delete Template?",
+			"deleteTemplateDescription": "Are you sure you want to delete this quote template? This cannot be undone.",
+			"delete": "Delete"
+		},
 		"yolo": {
 			"linesEditor": "Shopping Cart",
 			"headers": {

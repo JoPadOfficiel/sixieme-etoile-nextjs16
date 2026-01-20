@@ -19,6 +19,7 @@ import { organizationMiddleware } from "../../middleware/organization";
 const transformBlockTemplate = (template: any) => ({
 	id: template.id,
 	label: template.label,
+	isFullQuote: template.isFullQuote,
 	data: template.data,
 	createdAt: template.createdAt.toISOString(),
 	updatedAt: template.updatedAt.toISOString(),
@@ -32,11 +33,20 @@ const listBlockTemplatesSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().positive().max(100).default(50),
 	search: z.string().optional(),
+	// Story 26.21: Filter by template type
+	isFullQuote: z
+		.enum(["true", "false"])
+		.optional()
+		.transform((v) =>
+			v === "true" ? true : v === "false" ? false : undefined,
+		),
 });
 
 const createBlockTemplateSchema = z.object({
 	label: z.string().min(1, "Label is required").max(100, "Label too long"),
 	data: z.record(z.any()),
+	// Story 26.21: Support full quote templates
+	isFullQuote: z.boolean().optional().default(false),
 });
 
 // ============================================================================
@@ -60,7 +70,7 @@ export const blockTemplatesRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, search } = c.req.valid("query");
+			const { page, limit, search, isFullQuote } = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -69,6 +79,8 @@ export const blockTemplatesRouter = new Hono()
 					...(search && {
 						label: { contains: search, mode: "insensitive" as const },
 					}),
+					// Story 26.21: Filter by template type if specified
+					...(isFullQuote !== undefined && { isFullQuote }),
 				},
 				organizationId,
 			);
@@ -115,6 +127,8 @@ export const blockTemplatesRouter = new Hono()
 					{
 						label: data.label,
 						data: data.data as Prisma.InputJsonValue,
+						// Story 26.21: Support full quote templates
+						isFullQuote: data.isFullQuote,
 					},
 					organizationId,
 				),

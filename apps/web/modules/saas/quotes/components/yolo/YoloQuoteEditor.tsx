@@ -2,10 +2,14 @@
 
 import { Button } from "@ui/components/button";
 import { FolderPlusIcon, PlusIcon } from "lucide-react";
+import { BookmarkPlusIcon, UploadCloudIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useStore } from "zustand";
 import { useQuoteLinesStore } from "../../stores/useQuoteLinesStore";
+import { LoadQuoteTemplateDialog } from "./LoadQuoteTemplateDialog";
+import { SaveQuoteTemplateDialog } from "./SaveQuoteTemplateDialog";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SortableQuoteLinesList } from "./SortableQuoteLinesList";
 import type { QuoteLine } from "./dnd-utils";
@@ -36,6 +40,7 @@ export function YoloQuoteEditor({
 	onChange,
 }: YoloQuoteEditorProps) {
 	const t = useTranslations("quotes.yolo");
+	const tTemplates = useTranslations("quotes.templates");
 	const {
 		lines,
 		setLines,
@@ -56,6 +61,24 @@ export function YoloQuoteEditor({
 	const initialized = useRef(false);
 	// Track previous initialLines length to detect "Loading -> Loaded" transition
 	const prevInitialLength = useRef(initialLines.length);
+
+	// Story 26.21: Template Dialog State
+	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+	const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+
+	const handleLoadLines = useCallback(
+		(newLines: QuoteLine[], mode: "replace" | "append") => {
+			if (mode === "replace") {
+				useQuoteLinesStore.setState({ lines: newLines });
+				clear(); // Clear history to start fresh
+			} else {
+				useQuoteLinesStore.setState((state) => ({
+					lines: [...state.lines, ...newLines],
+				}));
+			}
+		},
+		[clear],
+	);
 
 	// Initialize store state
 	useEffect(() => {
@@ -128,7 +151,15 @@ export function YoloQuoteEditor({
 				}
 			}
 		},
-		[readOnly, undo, redo, selectAll, deselectAll, deleteSelected, selectedLineIds],
+		[
+			readOnly,
+			undo,
+			redo,
+			selectAll,
+			deselectAll,
+			deleteSelected,
+			selectedLineIds,
+		],
 	);
 
 	// Add global listener
@@ -201,7 +232,8 @@ export function YoloQuoteEditor({
 					{/* Story 26.19: Show selection count */}
 					{selectedLineIds.size > 0 && (
 						<span>
-							{selectedLineIds.size} ligne{selectedLineIds.size > 1 ? "s" : ""} sélectionnée{selectedLineIds.size > 1 ? "s" : ""}
+							{selectedLineIds.size} ligne{selectedLineIds.size > 1 ? "s" : ""}{" "}
+							sélectionnée{selectedLineIds.size > 1 ? "s" : ""}
 						</span>
 					)}
 				</div>
@@ -224,8 +256,42 @@ export function YoloQuoteEditor({
 					>
 						Redo
 					</button>
+					<div className="mx-1 h-6 w-px bg-border" />
+					<button
+						type="button"
+						onClick={() => setSaveDialogOpen(true)}
+						disabled={readOnly || lines.length === 0}
+						className="flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-40"
+						title={tTemplates("saveQuoteAsTemplate") || "Save as Template"}
+					>
+						<BookmarkPlusIcon className="h-3 w-3" />
+						<span className="sr-only sm:not-sr-only">Save Tpl</span>
+					</button>
+					<button
+						type="button"
+						onClick={() => setLoadDialogOpen(true)}
+						disabled={readOnly}
+						className="flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-40"
+						title={tTemplates("loadTemplate") || "Load Template"}
+					>
+						<UploadCloudIcon className="h-3 w-3" />
+						<span className="sr-only sm:not-sr-only">Load Tpl</span>
+					</button>
 				</div>
 			</div>
+
+			{/* Story 26.21: Template Dialogs */}
+			<SaveQuoteTemplateDialog
+				isOpen={saveDialogOpen}
+				onOpenChange={setSaveDialogOpen}
+				lines={lines}
+			/>
+			<LoadQuoteTemplateDialog
+				isOpen={loadDialogOpen}
+				onOpenChange={setLoadDialogOpen}
+				currentLinesCount={lines.length}
+				onLoadLines={handleLoadLines}
+			/>
 
 			<SortableQuoteLinesList
 				lines={lines}

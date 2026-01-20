@@ -172,7 +172,7 @@ export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quote
 
 export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
 
-export const BlockTemplateScalarFieldEnumSchema = z.enum(['id','organizationId','label','data','createdAt','updatedAt']);
+export const BlockTemplateScalarFieldEnumSchema = z.enum(['id','organizationId','label','isFullQuote','data','createdAt','updatedAt']);
 
 export const DocumentTypeScalarFieldEnumSchema = z.enum(['id','code','name','description']);
 
@@ -1533,11 +1533,13 @@ export type InvoiceLine = z.infer<typeof InvoiceLineSchema>
 
 /**
  * BlockTemplate - Story 26.13: Reusable block presets
+ * Story 26.21: Extended to support full quote templates (isFullQuote=true)
  */
 export const BlockTemplateSchema = z.object({
   id: z.string().cuid(),
   organizationId: z.string(),
   label: z.string(),
+  isFullQuote: z.boolean(),
   data: JsonValueSchema,
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

@@ -3118,6 +3118,29 @@
 				"noSuitableCategoryDescription": "Aucune catégorie de véhicule ne peut accueillir {passengers} passagers"
 			}
 		},
+		"templates": {
+			"saveQuoteAsTemplate": "Enregistrer le devis comme modèle",
+			"saveQuoteDescription": "Enregistrez la structure du devis actuel pour la réutiliser plus tard.",
+			"templateName": "Nom du modèle",
+			"templateNamePlaceholder": "ex: Forfait Fashion Week",
+			"cancel": "Annuler",
+			"save": "Enregistrer",
+			"loadTemplate": "Charger un modèle de devis",
+			"loadTemplateDescription": "Sélectionnez une structure de devis enregistrée à charger.",
+			"noFullQuoteTemplates": "Aucun modèle de devis enregistré pour le moment.",
+			"templateContent": "Contient :",
+			"moreItems": "autres éléments...",
+			"loadAction": "Comment charger le modèle ?",
+			"replaceCart": "Remplacer le panier actuel",
+			"addToCart": "Ajouter au panier actuel",
+			"selectTemplateToPreview": "Sélectionnez un modèle pour voir l'aperçu",
+			"confirmReplaceTitle": "Remplacer tout le panier ?",
+			"confirmReplaceDescription": "Ceci supprimera tous les éléments actuels du panier et les remplacera par le contenu du modèle. Cette action est irréversible.",
+			"confirmReplace": "Oui, remplacer",
+			"deleteTemplateTitle": "Supprimer le modèle ?",
+			"deleteTemplateDescription": "Êtes-vous sûr de vouloir supprimer ce modèle de devis ? Cette action est irréversible.",
+			"delete": "Supprimer"
+		},
 		"yolo": {
 			"linesEditor": "Panier",
 			"headers": {

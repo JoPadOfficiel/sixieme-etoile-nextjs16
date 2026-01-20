@@ -2075,6 +2075,7 @@ model InvoiceLine {
 }
 
 /// BlockTemplate - Story 26.13: Reusable block presets
+/// Story 26.21: Extended to support full quote templates (isFullQuote=true)
 model BlockTemplate {
   id             String       @id @default(cuid())
   organizationId String
@@ -2082,14 +2083,20 @@ model BlockTemplate {
 
   label String // Name of the template in the UI
 
-  // Template data (mix of displayData and pricing fields)
-  // { displayData: { label: "Champagne", ... }, unitPrice: 50, vatRate: 20, quantity: 1 }
+  // Story 26.21: Flag to distinguish single-block templates from full quote templates
+  // When true, data contains an array of QuoteLine structures with hierarchy
+  isFullQuote Boolean @default(false)
+
+  // Template data:
+  // For single blocks: { displayData: { label: "Champagne", ... }, unitPrice: 50, vatRate: 20, quantity: 1 }
+  // For full quotes (isFullQuote=true): { lines: [...], version: 1 }
   data Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([organizationId])
+  @@index([isFullQuote])
   @@map("block_template")
 }
 
