@@ -15,6 +15,13 @@ export const getSession = async (req: NextRequest): Promise<Session | null> => {
 		return null;
 	}
 
+	// Check content type to avoid parsing HTML as JSON
+	const contentType = response.headers.get("content-type");
+	if (!contentType?.includes("application/json")) {
+		console.warn("[getSession] Response is not JSON:", contentType);
+		return null;
+	}
+
 	return await response.json();
 };
 

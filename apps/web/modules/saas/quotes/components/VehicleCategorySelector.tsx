@@ -42,7 +42,6 @@ interface VehicleCategoriesResponse {
 		limit: number;
 		total: number;
 		totalPages: number;
-		totalPages: number;
 	};
 }
 

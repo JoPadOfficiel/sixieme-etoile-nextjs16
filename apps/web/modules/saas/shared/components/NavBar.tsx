@@ -2,12 +2,12 @@
 import { config } from "@repo/config";
 import { useSession } from "@saas/auth/hooks/use-session";
 import { useActiveOrganization } from "@saas/organizations/hooks/use-active-organization";
+import { UserMenu } from "@saas/shared/components/UserMenu";
 import {
 	SIDEBAR_WIDTH_COLLAPSED,
 	SIDEBAR_WIDTH_EXPANDED,
 	useSidebar,
 } from "@saas/shared/contexts/SidebarContext";
-import { UserMenu } from "@saas/shared/components/UserMenu";
 import { Logo } from "@shared/components/Logo";
 import {
 	Tooltip,
@@ -19,6 +19,7 @@ import {
 	BarChart3Icon,
 	CarIcon,
 	ChevronRightIcon,
+	ClipboardListIcon,
 	FileTextIcon,
 	FolderIcon,
 	HomeIcon,
@@ -34,8 +35,8 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { OrganzationSelect } from "../../organizations/components/OrganizationSelect";
 import { OrganizationLogo } from "../../organizations/components/OrganizationLogo";
+import { OrganzationSelect } from "../../organizations/components/OrganizationSelect";
 
 // Sidebar toggle icon SVG (same as ContentHeader)
 function SidebarToggleIcon({ className }: { className?: string }) {
@@ -76,7 +77,13 @@ export function NavBar() {
 	const pathname = usePathname();
 	const { user } = useSession();
 	const { activeOrganization } = useActiveOrganization();
-	const { isCollapsed, isMobile, isMobileMenuOpen, closeMobileMenu, toggleMobileMenu } = useSidebar();
+	const {
+		isCollapsed,
+		isMobile,
+		isMobileMenuOpen,
+		closeMobileMenu,
+		toggleMobileMenu,
+	} = useSidebar();
 
 	const { useSidebarLayout } = config.ui.saas;
 
@@ -110,6 +117,12 @@ export function NavBar() {
 						href: `${basePath}/quotes`,
 						icon: FileTextIcon,
 						isActive: pathname.startsWith(`${basePath}/quotes`),
+					},
+					{
+						label: t("orders.title"),
+						href: `${basePath}/orders`,
+						icon: ClipboardListIcon,
+						isActive: pathname.startsWith(`${basePath}/orders`),
 					},
 					{
 						label: t("invoices.title"),
@@ -191,8 +204,8 @@ export function NavBar() {
 	const MobileSidebar = () => (
 		<div
 			className={cn(
-				"fixed top-0 left-0 bottom-0 z-50 flex flex-col border-r bg-background transition-transform duration-200 ease-in-out md:hidden",
-				isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+				"fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r bg-background transition-transform duration-200 ease-in-out md:hidden",
+				isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
 			)}
 			style={{ width: `${mobileSidebarWidth}px` }}
 		>
@@ -202,16 +215,16 @@ export function NavBar() {
 				<button
 					type="button"
 					onClick={toggleMobileMenu}
-					className="group/sidebar-trigger inline-flex size-8 items-center justify-center rounded-md px-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group/sidebar-trigger inline-flex size-8 items-center justify-center rounded-md px-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
 					aria-label={t("sidebar.collapse")}
 				>
 					<SidebarToggleIcon className="text-muted-foreground" />
 				</button>
 
 				{/* Organization selector */}
-				{config.organizations.enable && !config.organizations.hideOrganization && activeOrganization && (
-					<OrganzationSelect className="flex-1" />
-				)}
+				{config.organizations.enable &&
+					!config.organizations.hideOrganization &&
+					activeOrganization && <OrganzationSelect className="flex-1" />}
 			</div>
 
 			{/* Navigation items */}
@@ -226,7 +239,7 @@ export function NavBar() {
 									"flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
 									menuItem.isActive
 										? "bg-primary/10 font-medium text-primary"
-										: "text-muted-foreground hover:bg-accent hover:text-foreground"
+										: "text-muted-foreground hover:bg-accent hover:text-foreground",
 								)}
 							>
 								<menuItem.icon className="h-5 w-5 shrink-0" />
@@ -248,7 +261,7 @@ export function NavBar() {
 	const MobileHeaderBar = () => (
 		<div
 			className={cn(
-				"fixed top-0 right-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 transition-all duration-200 ease-in-out md:hidden"
+				"fixed top-0 right-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 transition-all duration-200 ease-in-out md:hidden",
 			)}
 			style={{
 				left: isMobileMenuOpen ? `${mobileSidebarWidth}px` : "0px",
@@ -259,7 +272,7 @@ export function NavBar() {
 				<button
 					type="button"
 					onClick={toggleMobileMenu}
-					className="group/sidebar-trigger inline-flex size-8 items-center justify-center rounded-md px-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+					className="group/sidebar-trigger inline-flex size-8 items-center justify-center rounded-md px-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
 					aria-label={t("sidebar.expand")}
 				>
 					<SidebarToggleIcon className="text-muted-foreground" />
@@ -267,9 +280,12 @@ export function NavBar() {
 			)}
 
 			{/* Organization selector - only when sidebar is closed */}
-			{!isMobileMenuOpen && config.organizations.enable && !config.organizations.hideOrganization && activeOrganization && (
-				<OrganzationSelect className="flex-1 max-w-[200px]" />
-			)}
+			{!isMobileMenuOpen &&
+				config.organizations.enable &&
+				!config.organizations.hideOrganization &&
+				activeOrganization && (
+					<OrganzationSelect className="max-w-[200px] flex-1" />
+				)}
 
 			{/* User menu - RIGHT side */}
 			<div className="ml-auto">
@@ -283,7 +299,7 @@ export function NavBar() {
 		<div
 			className={cn(
 				"fixed inset-0 z-40 bg-black/50 transition-opacity duration-200 md:hidden",
-				isMobileMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+				isMobileMenuOpen ? "opacity-100" : "pointer-events-none opacity-0",
 			)}
 			onClick={closeMobileMenu}
 			aria-hidden="true"
@@ -294,11 +310,11 @@ export function NavBar() {
 	const DesktopSidebar = () => (
 		<nav
 			className={cn(
-				"hidden transition-all duration-200 ease-in-out bg-background md:block",
+				"hidden bg-background transition-all duration-200 ease-in-out md:block",
 				{
 					"md:fixed md:top-0 md:left-0 md:z-30 md:h-full md:border-r":
 						useSidebarLayout,
-				}
+				},
 			)}
 			style={{
 				width: useSidebarLayout ? `${sidebarWidth}px` : undefined,
@@ -313,7 +329,8 @@ export function NavBar() {
 				<div className="flex flex-wrap items-center justify-between gap-4">
 					<div
 						className={cn("flex items-center gap-2", {
-							"flex w-full flex-col items-stretch align-stretch": useSidebarLayout,
+							"flex w-full flex-col items-stretch align-stretch":
+								useSidebarLayout,
 							"items-center": useSidebarLayout && isCollapsed,
 						})}
 					>
@@ -353,7 +370,7 @@ export function NavBar() {
 																className="size-8"
 															/>
 														) : (
-															<div className="size-8 rounded-md bg-primary/20 flex items-center justify-center text-xs font-medium">
+															<div className="flex size-8 items-center justify-center rounded-md bg-primary/20 font-medium text-xs">
 																{user?.name?.charAt(0) || "?"}
 															</div>
 														)}
@@ -361,7 +378,9 @@ export function NavBar() {
 												</TooltipTrigger>
 												<TooltipContent side="right">
 													{activeOrganization?.name ||
-														t("organizations.organizationSelect.personalAccount")}
+														t(
+															"organizations.organizationSelect.personalAccount",
+														)}
 												</TooltipContent>
 											</Tooltip>
 										</div>
@@ -391,14 +410,12 @@ export function NavBar() {
 								href={menuItem.href}
 								className={cn(
 									"flex items-center gap-2 whitespace-nowrap transition-all duration-200",
-									[
-										menuItem.isActive
-											? "font-bold"
-											: "",
-									],
+									[menuItem.isActive ? "font-bold" : ""],
 									{
-										"-mx-4 border-l-2 px-4 py-2": useSidebarLayout && !isCollapsed,
-										"border-l-0 px-0 py-2 justify-center": useSidebarLayout && isCollapsed,
+										"-mx-4 border-l-2 px-4 py-2":
+											useSidebarLayout && !isCollapsed,
+										"justify-center border-l-0 px-0 py-2":
+											useSidebarLayout && isCollapsed,
 										"border-primary": menuItem.isActive,
 										"border-transparent": !menuItem.isActive,
 									},
@@ -425,9 +442,7 @@ export function NavBar() {
 							<li key={menuItem.href}>
 								{useSidebarLayout && isCollapsed ? (
 									<Tooltip>
-										<TooltipTrigger asChild>
-											{menuLink}
-										</TooltipTrigger>
+										<TooltipTrigger asChild>{menuLink}</TooltipTrigger>
 										<TooltipContent side="right" sideOffset={8}>
 											{menuItem.label}
 										</TooltipContent>
@@ -442,13 +457,10 @@ export function NavBar() {
 
 				{/* Footer with user menu */}
 				<div
-					className={cn(
-						"-mx-4 mt-auto mb-0 p-4",
-						{
-							block: useSidebarLayout,
-							"px-2": useSidebarLayout && isCollapsed,
-						}
-					)}
+					className={cn("-mx-4 mt-auto mb-0 p-4", {
+						block: useSidebarLayout,
+						"px-2": useSidebarLayout && isCollapsed,
+					})}
 				>
 					{/* User menu */}
 					{isCollapsed ? (
@@ -473,7 +485,7 @@ export function NavBar() {
 					<MobileHeaderBar />
 				</>
 			)}
-			
+
 			{/* Desktop sidebar */}
 			<DesktopSidebar />
 		</>
