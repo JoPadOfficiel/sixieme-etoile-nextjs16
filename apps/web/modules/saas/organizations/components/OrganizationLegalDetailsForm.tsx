@@ -2,6 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SettingsItem } from "@saas/shared/components/SettingsItem";
+import { Spinner } from "@shared/components/Spinner";
+import { apiClient } from "@shared/lib/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import {
 	Form,
@@ -13,12 +16,9 @@ import {
 } from "@ui/components/form";
 import { Input } from "@ui/components/input";
 import { useToast } from "@ui/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { apiClient } from "@shared/lib/api-client";
-import { Spinner } from "@shared/components/Spinner";
 
 const formSchema = z.object({
 	address: z.string().optional(),
@@ -69,10 +69,10 @@ export function OrganizationLegalDetailsForm() {
 	// Fetch existing details
 	const { data, isLoading } = useQuery({
 		queryKey: ["organization-details"],
-		queryFn: async () => {
+		queryFn: async (): Promise<Partial<FormValues>> => {
 			const res = await apiClient.vtc["organization-details"].$get();
 			if (!res.ok) throw new Error("Failed to fetch details");
-			return res.json();
+			return res.json() as Promise<Partial<FormValues>>;
 		},
 	});
 
@@ -130,13 +130,13 @@ export function OrganizationLegalDetailsForm() {
 	if (isLoading) return <Spinner />;
 
 	return (
-		<SettingsItem 
-			title="Détails Légaux & Coordonnées" 
+		<SettingsItem
+			title="Détails Légaux & Coordonnées"
 			description="Ces informations apparaîtront sur vos devis et factures."
 		>
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 						<FormField
 							control={form.control}
 							name="siret"
@@ -199,7 +199,10 @@ export function OrganizationLegalDetailsForm() {
 								<FormItem>
 									<FormLabel>Adresse</FormLabel>
 									<FormControl>
-										<Input placeholder="123 Avenue des Champs-Elysées" {...field} />
+										<Input
+											placeholder="123 Avenue des Champs-Elysées"
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -248,7 +251,7 @@ export function OrganizationLegalDetailsForm() {
 						</div>
 					</div>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 transition-all">
+					<div className="grid grid-cols-1 gap-4 transition-all md:grid-cols-2">
 						<FormField
 							control={form.control}
 							name="email"
@@ -277,7 +280,7 @@ export function OrganizationLegalDetailsForm() {
 						/>
 					</div>
 
-					<div className="rounded-lg border p-4 bg-muted/20">
+					<div className="rounded-lg border bg-muted/20 p-4">
 						<h4 className="mb-4 font-medium">Coordonnées Bancaires</h4>
 						<div className="grid grid-cols-1 gap-4">
 							<FormField

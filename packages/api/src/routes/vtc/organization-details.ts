@@ -1,7 +1,7 @@
 import { db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator } from "hono-openapi/zod";
+import { resolver, validator } from "hono-openapi/zod";
 import { z } from "zod";
 import { organizationMiddleware } from "../../middleware/organization";
 
@@ -54,14 +54,15 @@ export const organizationDetailsRouter = new Hono()
 		"/",
 		describeRoute({
 			summary: "Get organization legal details",
-			description: "Get the legal details (address, SIRET, VAT...) for the current organization.",
+			description:
+				"Get the legal details (address, SIRET, VAT...) for the current organization.",
 			tags: ["VTC - Organization"],
 			responses: {
 				200: {
 					description: "Organization details",
 					content: {
 						"application/json": {
-							schema: organizationDetailsResponseSchema,
+							schema: resolver(organizationDetailsResponseSchema),
 						},
 					},
 				},
@@ -96,7 +97,8 @@ export const organizationDetailsRouter = new Hono()
 			// Handle legacy seed data where address might be an object
 			let addressStr = metadata.address;
 			if (typeof metadata.address === "object" && metadata.address !== null) {
-				addressStr = metadata.address.street || metadata.address.addressLine1 || "";
+				addressStr =
+					metadata.address.street || metadata.address.addressLine1 || "";
 				// Backfill postalCode and city if missing in root but present in address object
 				if (!metadata.postalCode && metadata.address.postalCode) {
 					metadata.postalCode = metadata.address.postalCode;

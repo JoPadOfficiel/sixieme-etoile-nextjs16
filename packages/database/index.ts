@@ -1,6 +1,7 @@
-export { PrismaClient } from "@prisma/client";
+export * from "@prisma/client";
 export * from "./src/client";
-export * from "./src/zod";
+// Note: ./src/zod exports Zod schemas but also model types that conflict with @prisma/client
+// Import zod schemas directly when needed: import { UserSchema, ... } from "@repo/database/src/zod"
 
 // Story 26.1: TypeScript interfaces for JSON fields
 export * from "./src/types";

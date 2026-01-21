@@ -18,8 +18,10 @@ import { invoicesRouter } from "./invoices";
 import { invoicesBulkPaymentRouter } from "./invoices-bulk-payment";
 import { licenseCategoriesRouter } from "./license-categories";
 import { licenseRulesRouter } from "./license-rules";
-import { missionsRouter } from "./missions";
+import { chainingRouter, missionsRouter } from "./missions";
 import { optionalFeesRouter } from "./optional-fees";
+// Story 28.2: Order Management API
+import { ordersRouter } from "./orders";
 import { organizationDetailsRouter } from "./organization-details";
 import {
 	dispoAssignmentsRouter,
@@ -49,8 +51,6 @@ import { timeBucketsRouter } from "./time-buckets";
 import { vehicleCategoriesRouter } from "./vehicle-categories";
 import { vehiclesRouter } from "./vehicles";
 import { zoneRoutesRouter } from "./zone-routes";
-// Story 28.2: Order Management API
-import { ordersRouter } from "./orders";
 
 /**
  * VTC ERP Router
@@ -86,6 +86,8 @@ export const vtcRouter = new Hono()
 	.route("/", invoicesRouter)
 	.route("/", documentsRouter)
 	.route("/", missionsRouter)
+	// Story 8.4 + 28.7: Chaining and manual mission spawning
+	.route("/", chainingRouter)
 	.route("/", emptyLegsRouter)
 	.route("/", missionEmptyLegRouter)
 	.route("/", subcontractorsRouter)
