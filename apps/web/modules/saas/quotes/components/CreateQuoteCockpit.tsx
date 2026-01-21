@@ -9,11 +9,12 @@ import { useToast } from "@ui/hooks/use-toast";
 import { Loader2Icon, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOptionalFees } from "../hooks/useOptionalFees";
 import { usePricingCalculation } from "../hooks/usePricingCalculation";
 import { useScenarioHelpers } from "../hooks/useScenarioHelpers";
 import { useVehicleCategories } from "../hooks/useVehicleCategories";
+import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
 import type { AddedFee } from "./AddQuoteFeeDialog";
@@ -23,6 +24,7 @@ import { ComplianceAlertBanner } from "./ComplianceAlertBanner";
 import { QuoteBasicInfoPanel } from "./QuoteBasicInfoPanel";
 import { QuotePricingPanel } from "./QuotePricingPanel";
 import { TripTransparencyPanel } from "./TripTransparencyPanel";
+import UniversalLineItemRow from "./yolo/UniversalLineItemRow";
 import { YoloQuoteEditor } from "./yolo/YoloQuoteEditor";
 import type { QuoteLine } from "./yolo/dnd-utils";
 
@@ -55,8 +57,11 @@ export function CreateQuoteCockpit() {
 	// Added fees for the current item
 	const [addedFees, setAddedFees] = useState<AddedFee[]>([]);
 
-	// Shopping Cart State (The list of lines)
+	// Shopping Cart State (The list of committed lines)
 	const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
+
+	// Preview line ID for the current item being configured (constant to track it)
+	const PREVIEW_LINE_ID = "__preview__";
 
 	// Track selection for editing (optional future enhancement)
 	// For now, clicking a line in cart could populate formData, but let's stick to "Add New" flow first.
@@ -137,6 +142,76 @@ export function CreateQuoteCockpit() {
 		[],
 	);
 
+	// Preview line: Shows current trip in Shopping Cart in real-time
+	// This line is NOT part of quoteLines - it's a visual preview only
+	const previewLine: QuoteLine | null = useMemo(() => {
+		// Only show preview if we have a valid price and addresses
+		if (!pricingResult?.price || pricingResult.price <= 0) return null;
+		if (!formData.pickupAddress) return null;
+
+		const categoryName = allVehicleCategories?.find(
+			(c) => c.id === formData.vehicleCategoryId,
+		)?.name;
+
+		// Create label - simplified version for preview
+		const pickupCity =
+			formData.pickupAddress.split(",")[0] || formData.pickupAddress;
+		const dropoffCity = formData.dropoffAddress
+			? formData.dropoffAddress.split(",")[0] || formData.dropoffAddress
+			: "Disposition";
+
+		return {
+			id: PREVIEW_LINE_ID,
+			type: "CALCULATED" as const,
+			label: `${pickupCity} → ${dropoffCity}`,
+			description:
+				[
+					categoryName,
+					formData.tripType === "TRANSFER" && formData.isRoundTrip
+						? "A/R"
+						: null,
+					pricingResult.tripAnalysis?.totalDistanceKm
+						? `${Math.round(pricingResult.tripAnalysis.totalDistanceKm)} km`
+						: null,
+				]
+					.filter(Boolean)
+					.join(" • ") || undefined,
+			quantity: 1,
+			unitPrice: pricingResult.price,
+			totalPrice: pricingResult.price,
+			vatRate: 10,
+			parentId: null,
+			// DisplayData must match UniversalLineItemRow's expected interface
+			displayData: {
+				label: `${pickupCity} → ${dropoffCity}`,
+				description:
+					[
+						categoryName,
+						formData.tripType === "TRANSFER" && formData.isRoundTrip
+							? "A/R"
+							: null,
+						pricingResult.tripAnalysis?.totalDistanceKm
+							? `${Math.round(pricingResult.tripAnalysis.totalDistanceKm)} km`
+							: null,
+					]
+						.filter(Boolean)
+						.join(" • ") || undefined,
+				quantity: 1,
+				unitPrice: pricingResult.price,
+				vatRate: 10,
+				total: pricingResult.price,
+			},
+			sourceData: {
+				origin: formData.pickupAddress,
+				destination: formData.dropoffAddress,
+				distance: pricingResult.tripAnalysis?.totalDistanceKm,
+				duration: pricingResult.tripAnalysis?.totalDurationMinutes,
+				basePrice: pricingResult.price,
+				pickupAt: formData.pickupAt?.toISOString(),
+			},
+		};
+	}, [formData, pricingResult, allVehicleCategories, PREVIEW_LINE_ID]);
+
 	// Determine if blocking violations exist
 	const violations = hasBlockingViolations(
 		pricingResult?.complianceResult || null,
@@ -160,13 +235,26 @@ export function CreateQuoteCockpit() {
 			// Use primary line data or fallback to current form data (if cart empty or no calc lines)
 			const finalFormData = primaryData || formData;
 
+			if (!finalFormData.pickupAt) {
+				throw new Error("Date de prise en charge requise");
+			}
+
 			const response = await apiClient.vtc.quotes.$post({
 				json: {
 					organizationId: activeOrganization.id,
 					...finalFormData,
+					contact: undefined,
+					endCustomer: undefined,
+					vehicleCategory: undefined,
+					pickupAt: finalFormData.pickupAt,
+					stops: finalFormData.stops.map((s) => ({
+						...s,
+						latitude: s.latitude ?? 0,
+						longitude: s.longitude ?? 0,
+					})),
 					lines: actualLines, // Send the full cart
 					isYoloMode: true,
-				},
+				} as any,
 			});
 
 			if (!response.ok) {
@@ -197,39 +285,82 @@ export function CreateQuoteCockpit() {
 
 	// Helper: Create a line from current form state
 	const createLineFromState = useCallback((): QuoteLine | null => {
-		if (formData.finalPrice <= 0) {
+		// Use formData.finalPrice if set, otherwise fallback to pricingResult.price
+		const effectivePrice =
+			formData.finalPrice > 0 ? formData.finalPrice : pricingResult?.price || 0;
+
+		if (effectivePrice <= 0) {
 			toast({
 				title: t("quotes.create.validation.error"),
 				description: t("quotes.create.validation.priceRequired"),
-				variant: "error", // Fix variant
+				variant: "error",
 			});
 			return null;
 		}
+
+		const categoryName = allVehicleCategories?.find(
+			(c) => c.id === formData.vehicleCategoryId,
+		)?.name;
+
+		const pickupCity =
+			formData.pickupAddress?.split(",")[0] || formData.pickupAddress || "";
+		const dropoffCity = formData.dropoffAddress
+			? formData.dropoffAddress.split(",")[0] || formData.dropoffAddress
+			: "Disposition";
 
 		const tempId = crypto.randomUUID();
 		return {
 			id: tempId,
 			type: "CALCULATED",
-			label: `${formData.pickupAddress} ➝ ${formData.dropoffAddress || "Disposition"}`,
-			description: formData.notes || undefined,
+			label: `${pickupCity} → ${dropoffCity}`,
+			description:
+				[
+					categoryName,
+					formData.tripType === "TRANSFER" && formData.isRoundTrip
+						? "A/R"
+						: null,
+					pricingResult?.tripAnalysis?.totalDistanceKm
+						? `${Math.round(pricingResult.tripAnalysis.totalDistanceKm)} km`
+						: null,
+				]
+					.filter(Boolean)
+					.join(" • ") ||
+				formData.notes ||
+				undefined,
 			quantity: 1,
-			unitPrice: formData.finalPrice,
-			totalPrice: formData.finalPrice,
+			unitPrice: effectivePrice,
+			totalPrice: effectivePrice,
 			vatRate: 10,
 			parentId: null,
+			// DisplayData must match UniversalLineItemRow's expected interface
 			displayData: {
-				pickupAddress: formData.pickupAddress,
-				dropoffAddress: formData.dropoffAddress,
-				pickupDate: formData.pickupAt,
-				vehicleCategory: allVehicleCategories?.find(
-					(c) => c.id === formData.vehicleCategoryId,
-				)?.name,
-				distance: pricingResult?.tripAnalysis?.distance,
-				duration: pricingResult?.tripAnalysis?.duration,
+				label: `${pickupCity} → ${dropoffCity}`,
+				description:
+					[
+						categoryName,
+						formData.tripType === "TRANSFER" && formData.isRoundTrip
+							? "A/R"
+							: null,
+						pricingResult?.tripAnalysis?.totalDistanceKm
+							? `${Math.round(pricingResult.tripAnalysis.totalDistanceKm)} km`
+							: null,
+					]
+						.filter(Boolean)
+						.join(" • ") || undefined,
+				quantity: 1,
+				unitPrice: effectivePrice,
+				vatRate: 10,
+				total: effectivePrice,
 			},
 			sourceData: {
+				origin: formData.pickupAddress,
+				destination: formData.dropoffAddress,
+				distance: pricingResult?.tripAnalysis?.totalDistanceKm,
+				duration: pricingResult?.tripAnalysis?.totalDurationMinutes,
+				basePrice: effectivePrice,
+				pickupAt: formData.pickupAt?.toISOString(),
 				formData: { ...formData }, // Snapshot
-				pricingResult: { ...pricingResult },
+				pricingResult: pricingResult ? { ...pricingResult } : null,
 			},
 		};
 	}, [formData, pricingResult, t, allVehicleCategories, toast]);
@@ -238,7 +369,9 @@ export function CreateQuoteCockpit() {
 	const handleAddItemToCart = useCallback(() => {
 		const newLine = createLineFromState();
 		if (newLine) {
-			setQuoteLines((prev) => [...prev, newLine]);
+			useQuoteLinesStore.setState((state) => ({
+				lines: [...state.lines, newLine],
+			}));
 			toast({
 				title: t("quotes.create.addedToCart"),
 				description: t("quotes.create.addedToCartDesc"),
@@ -318,7 +451,15 @@ export function CreateQuoteCockpit() {
 				)}
 				{violations && (
 					<ComplianceAlertBanner
-						compliancePlan={pricingResult?.tripAnalysis?.compliancePlan}
+						violations={(
+							pricingResult?.tripAnalysis?.compliancePlan?.originalViolations ||
+							[]
+						).map((v) => ({
+							...v,
+							type: v.type as any,
+							unit: "minutes",
+							severity: "BLOCKING" as any,
+						}))}
 					/>
 				)}
 			</div>
@@ -386,12 +527,46 @@ export function CreateQuoteCockpit() {
 						{t("quotes.yolo.linesEditor") || "Panier"}
 					</h3>
 
+					{/* Preview Line - Shown when configuring first item and cart is empty */}
+					{previewLine && quoteLines.length === 0 && (
+						<div className="fade-in slide-in-from-top-2 mb-4 animate-in duration-300">
+							<div className="mb-2 flex items-center gap-2 px-1 font-medium text-primary text-xs uppercase tracking-wider">
+								<span className="relative flex h-2 w-2">
+									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+									<span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+								</span>
+								{t("quotes.yolo.previewLabel") ||
+									"Course en cours de configuration"}
+							</div>
+							<div className="rounded-md border bg-muted/20 opacity-90 ring-1 ring-primary/20 grayscale-[0.1]">
+								<UniversalLineItemRow
+									id={previewLine.id || PREVIEW_LINE_ID}
+									type={previewLine.type}
+									displayData={previewLine.displayData as any}
+									sourceData={previewLine.sourceData as any}
+									depth={0}
+									isExpanded={false}
+									disabled={true}
+									currency="EUR"
+									dispatchable={false}
+									// Dummy handlers for read-only preview
+									onDisplayDataChange={() => {}}
+									onToggleExpand={() => {}}
+									onDetach={() => {}}
+									onInsert={() => {}}
+									onSelectionChange={() => {}}
+									onDispatchableChange={() => {}}
+								/>
+							</div>
+						</div>
+					)}
+
 					<div>
 						<YoloQuoteEditor
-							lines={quoteLines}
-							setLines={setQuoteLines}
+							initialLines={quoteLines}
+							onChange={setQuoteLines}
 							readOnly={createQuoteMutation.isPending}
-							currency={activeOrganization?.currency || "EUR"}
+							currency="EUR"
 						/>
 					</div>
 

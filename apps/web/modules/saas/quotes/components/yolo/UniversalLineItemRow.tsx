@@ -28,10 +28,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
-import {
-	type BlockTemplate,
-	useBlockTemplateActions,
-} from "../../hooks/useBlockTemplateActions";
+import { useBlockTemplateActions } from "../../hooks/useBlockTemplateActions";
 import { SlashMenu, type SlashMenuBlockType } from "../SlashMenu";
 import { DetachWarningModal } from "./DetachWarningModal";
 import {
@@ -127,6 +124,11 @@ export interface UniversalLineItemRowProps {
  * @returns Formatted price string (e.g., "85,00 €")
  */
 function formatPrice(value: number, currency = "EUR"): string {
+	if (value === undefined || value === null)
+		return new Intl.NumberFormat("fr-FR", {
+			style: "currency",
+			currency,
+		}).format(0);
 	return value.toLocaleString("fr-FR", {
 		style: "currency",
 		currency,
@@ -140,6 +142,7 @@ function formatPrice(value: number, currency = "EUR"): string {
  * @returns Formatted number string with up to 2 decimal places
  */
 function formatNumber(value: number): string {
+	if (value === undefined || value === null) return "1";
 	return value.toLocaleString("fr-FR", {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 2,
@@ -341,7 +344,7 @@ export function UniversalLineItemRow({
 	 * Handle template selection
 	 */
 	const handleTemplateSelect = useCallback(
-		(template: BlockTemplate) => {
+		(template: any) => {
 			// Remove trailing slash
 			const newLabel = cleanSlashFromLabel(displayData.label);
 
@@ -352,7 +355,7 @@ export function UniversalLineItemRow({
 			if (onInsert) {
 				// Flatten data mixed structure if needed, but here we assume template.data matches structure
 				onInsert("MANUAL", {
-					...template.data,
+					...(template.data as object),
 					label: template.label, // Use template name as default label? Or data.label? Story says "Insert Template"
 				});
 			}
@@ -688,24 +691,30 @@ export function UniversalLineItemRow({
 				</div>
 
 				{/* Story 28.6: Dispatch toggle - for CALCULATED and GROUP lines */}
-				{(type === "CALCULATED" || type === "GROUP") && onDispatchableChange && (
+				{type === "CALCULATED" && onDispatchableChange && (
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="flex items-center">
 									<Switch
 										checked={dispatchable}
-										onCheckedChange={(checked) => onDispatchableChange(id, checked)}
+										onCheckedChange={(checked) =>
+											onDispatchableChange(id, checked)
+										}
 										disabled={disabled}
 										className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-muted"
-										aria-label={t("quotes.yolo.dispatchToggle") || "Dispatch mission"}
+										aria-label={
+											t("quotes.yolo.dispatchToggle") || "Dispatch mission"
+										}
 									/>
 								</div>
 							</TooltipTrigger>
 							<TooltipContent side="top">
 								{dispatchable
-									? t("quotes.yolo.dispatchEnabled") || "Mission will be created on confirmation"
-									: t("quotes.yolo.dispatchDisabled") || "No mission will be created"}
+									? t("quotes.yolo.dispatchEnabled") ||
+										"Mission will be created on confirmation"
+									: t("quotes.yolo.dispatchDisabled") ||
+										"No mission will be created"}
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>

@@ -233,6 +233,8 @@
 		"delete": "Supprimer",
 		"deleting": "Suppression...",
 		"saving": "Enregistrement...",
+		"loading": "Chargement...",
+		"creating": "Création...",
 		"error": "Erreur",
 		"success": "Succès",
 		"previous": "Précédent",
@@ -2391,6 +2393,7 @@
 		}
 	},
 	"orders": {
+		"title": "Commandes",
 		"list": {
 			"title": "Dossiers",
 			"heading": "Dossiers",
@@ -2768,6 +2771,7 @@
 			"createQuote": "Créer le devis",
 			"creating": "Création...",
 			"success": "Devis créé avec succès",
+			"successDescription": "Votre devis a été enregistré et est prêt à être envoyé.",
 			"error": "Échec de la création du devis",
 			"pricingError": "Échec du calcul du tarif",
 			"pricingMode": {
@@ -3057,6 +3061,8 @@
 			"backToDetail": "Retour au devis",
 			"save": "Enregistrer les modifications",
 			"success": "Devis modifié avec succès",
+			"successDescription": "Vos modifications ont été enregistrées.",
+			"totalQuote": "Total du devis",
 			"error": "Échec de la modification du devis",
 			"notEditable": "Devis non modifiable",
 			"notEditableDescription": "Seuls les devis en brouillon peuvent être modifiés."
@@ -3304,7 +3310,9 @@
 			"confirmReplace": "Oui, remplacer",
 			"deleteTemplateTitle": "Supprimer le modèle ?",
 			"deleteTemplateDescription": "Êtes-vous sûr de vouloir supprimer ce modèle de devis ? Cette action est irréversible.",
-			"delete": "Supprimer"
+			"delete": "Supprimer",
+			"saveButton": "Sauvegarder Mod.",
+			"loadButton": "Charger Mod."
 		},
 		"yolo": {
 			"linesEditor": "Panier",
@@ -3360,6 +3368,14 @@
 				"labelWarning": "Vous avez modifié le libellé de manière significative. Les données opérationnelles restent inchangées.",
 				"successTitle": "Ligne détachée",
 				"success": "Ligne détachée de la route opérationnelle"
+			},
+			"dispatchToggle": "Déclencher la mission",
+			"dispatchEnabled": "Une mission sera créée à la validation",
+			"dispatchDisabled": "Aucune mission ne sera créée",
+			"previewLabel": "Course en cours de configuration",
+			"template": {
+				"errorTitle": "Erreur",
+				"errorSaving": "Échec de l'enregistrement du modèle. Veuillez réessayer."
 			}
 		}
 	},
@@ -3865,6 +3881,32 @@
 		}
 	},
 	"dispatch": {
+		"export": {
+			"button": "Exporter planning",
+			"buttonLabel": "Exporter le planning",
+			"title": "Exporter le planning",
+			"tooltip": "Télécharger le planning journalier en PDF",
+			"description": "Télécharger le planning en PDF",
+			"period": "Période",
+			"format": "Format",
+			"download": "Télécharger",
+			"cancel": "Annuler",
+			"generating": "Génération...",
+			"pdf": {
+				"date": "Date",
+				"generatedAt": "Généré le",
+				"driver": "Chauffeur",
+				"departure": "Départ",
+				"arrival": "Arrivée",
+				"pickup": "Prise en charge",
+				"dropoff": "Dépose",
+				"client": "Client",
+				"noMissions": "Aucune mission prévue pour ce jour.",
+				"noMissionsForDriver": "Aucune mission pour ce chauffeur.",
+				"page": "Page",
+				"of": "sur"
+			}
+		},
 		"title": "Dispatch",
 		"backlog": "À traiter",
 		"subtitle": "{count, plural, =0 {Aucune mission} one {# mission} other {# missions}} à dispatcher",

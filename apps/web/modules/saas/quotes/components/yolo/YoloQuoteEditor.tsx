@@ -265,7 +265,9 @@ export function YoloQuoteEditor({
 						title={tTemplates("saveQuoteAsTemplate") || "Save as Template"}
 					>
 						<BookmarkPlusIcon className="h-3 w-3" />
-						<span className="sr-only sm:not-sr-only">Save Tpl</span>
+						<span className="sr-only sm:not-sr-only">
+							{tTemplates("saveButton") || "Save Tpl"}
+						</span>
 					</button>
 					<button
 						type="button"
@@ -275,7 +277,9 @@ export function YoloQuoteEditor({
 						title={tTemplates("loadTemplate") || "Load Template"}
 					>
 						<UploadCloudIcon className="h-3 w-3" />
-						<span className="sr-only sm:not-sr-only">Load Tpl</span>
+						<span className="sr-only sm:not-sr-only">
+							{tTemplates("loadButton") || "Load Tpl"}
+						</span>
 					</button>
 				</div>
 			</div>

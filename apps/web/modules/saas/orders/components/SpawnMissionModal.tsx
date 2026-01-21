@@ -1,5 +1,7 @@
 "use client";
 
+import { apiClient } from "@shared/lib/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import {
 	Dialog,
@@ -20,13 +22,11 @@ import {
 } from "@ui/components/select";
 import { Textarea } from "@ui/components/textarea";
 import { useToast } from "@ui/hooks/use-toast";
-import { apiClient } from "@shared/lib/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { Loader2Icon, RocketIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { format } from "date-fns";
 
 /**
  * Story 28.7: Manual Item Handling UI
@@ -76,11 +76,13 @@ export function SpawnMissionModal({
 
 	// Form state - initialized with defaults, reset handled by parent via key prop
 	const [date, setDate] = useState<string>(
-		defaultDate ? format(defaultDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
+		defaultDate
+			? format(defaultDate, "yyyy-MM-dd")
+			: format(new Date(), "yyyy-MM-dd"),
 	);
 	const [time, setTime] = useState<string>(defaultTime ?? "09:00");
 	const [vehicleCategoryId, setVehicleCategoryId] = useState<string>(
-		defaultVehicleCategoryId ?? ""
+		defaultVehicleCategoryId ?? "",
 	);
 	const [notes, setNotes] = useState<string>("");
 
@@ -88,7 +90,9 @@ export function SpawnMissionModal({
 	const { data: vehicleCategories, isLoading: isLoadingCategories } = useQuery({
 		queryKey: ["vehicleCategories", organizationSlug],
 		queryFn: async () => {
-			const response = await apiClient.vtc["vehicle-categories"].$get();
+			const response = await apiClient.vtc["vehicle-categories"].$get({
+				query: { limit: "100" },
+			});
 			if (!response.ok) {
 				throw new Error("Failed to fetch vehicle categories");
 			}
@@ -104,20 +108,25 @@ export function SpawnMissionModal({
 			// Combine date and time into ISO datetime
 			const startAt = new Date(`${date}T${time}:00`).toISOString();
 
-			const response = await apiClient.vtc.missions["spawn-manual"].$post({
-				json: {
+			// Use raw fetch since the typed client may not have this endpoint yet
+			const response = await fetch("/api/vtc/missions/spawn-manual", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
 					quoteLineId: quoteLine.id,
 					orderId,
 					startAt,
 					vehicleCategoryId,
 					notes: notes || undefined,
-				},
+				}),
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
 				throw new Error(
-					(errorData as { message?: string }).message || "Failed to spawn mission"
+					(errorData as { message?: string }).message ||
+						"Failed to spawn mission",
 				);
 			}
 
@@ -135,16 +144,24 @@ export function SpawnMissionModal({
 			queryClient.invalidateQueries({ queryKey: ["missions"] });
 
 			onOpenChange(false);
-			
-			if (onSuccess && (data as { mission?: { id: string; status: string } }).mission) {
-				onSuccess((data as { mission: { id: string; status: string } }).mission);
+
+			if (
+				onSuccess &&
+				(data as { mission?: { id: string; status: string } }).mission
+			) {
+				onSuccess(
+					(data as { mission: { id: string; status: string } }).mission,
+				);
 			}
 		},
 		onError: (error) => {
 			toast({
 				title: t("orders.spawnMission.error"),
-				description: error instanceof Error ? error.message : t("orders.spawnMission.errorDescription"),
-				variant: "destructive",
+				description:
+					error instanceof Error
+						? error.message
+						: t("orders.spawnMission.errorDescription"),
+				variant: "error",
 			});
 		},
 	});
@@ -167,9 +184,10 @@ export function SpawnMissionModal({
 				<div className="grid gap-4 py-4">
 					{/* Line info */}
 					<div className="rounded-md bg-muted p-3">
-						<p className="text-sm font-medium">{quoteLine.label}</p>
-						<p className="text-xs text-muted-foreground">
-							{t("orders.spawnMission.lineType")}: {quoteLine.type} • {Number(quoteLine.totalPrice).toFixed(2)}€
+						<p className="font-medium text-sm">{quoteLine.label}</p>
+						<p className="text-muted-foreground text-xs">
+							{t("orders.spawnMission.lineType")}: {quoteLine.type} •{" "}
+							{Number(quoteLine.totalPrice).toFixed(2)}€
 						</p>
 					</div>
 

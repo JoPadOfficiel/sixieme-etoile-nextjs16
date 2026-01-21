@@ -527,7 +527,7 @@ function FinancialTabContent({
 											{new Intl.NumberFormat("fr-FR", {
 												style: "currency",
 												currency: "EUR",
-											}).format(invoice.totalInclVat)}
+											}).format(Number(invoice.totalInclVat))}
 										</TableCell>
 									</TableRow>
 								))}
