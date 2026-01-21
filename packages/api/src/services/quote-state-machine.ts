@@ -7,20 +7,21 @@
  * @see FR31-FR33: Quote lifecycle requirements
  */
 
-import { db } from "@repo/database";
 import type { Quote, QuoteStatus } from "@prisma/client";
+import { db } from "@repo/database";
 
 /**
  * Valid status transitions map
  * Each key is a current status, and the value is an array of valid next statuses
  */
 const VALID_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
-	DRAFT: ["SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
-	SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"],
-	VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED"],
-	ACCEPTED: [], // Terminal state
+	DRAFT: ["SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"],
+	SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"],
+	VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"],
+	ACCEPTED: ["CANCELLED"], // Can be cancelled
 	REJECTED: [], // Terminal state
 	EXPIRED: [], // Terminal state
+	CANCELLED: [], // Terminal state
 };
 
 /**
@@ -34,6 +35,7 @@ const STATUS_TIMESTAMP_FIELD: Record<QuoteStatus, string | null> = {
 	ACCEPTED: "acceptedAt",
 	REJECTED: "rejectedAt",
 	EXPIRED: "expiredAt",
+	CANCELLED: "cancelledAt",
 };
 
 /**
@@ -46,6 +48,7 @@ const STATUS_LABELS: Record<QuoteStatus, string> = {
 	ACCEPTED: "Accepted",
 	REJECTED: "Rejected",
 	EXPIRED: "Expired",
+	CANCELLED: "Cancelled",
 };
 
 export interface TransitionValidationResult {
@@ -183,7 +186,7 @@ export class QuoteStateMachine {
 				include: {
 					contact: true,
 					vehicleCategory: true,
-					invoice: true,
+					invoices: true,
 				},
 			}),
 			// Create audit log entry

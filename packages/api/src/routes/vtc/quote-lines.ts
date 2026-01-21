@@ -9,14 +9,15 @@
  * - Transaction safety with Prisma
  */
 
+import { Prisma, type QuoteLine, QuoteStatus } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 import { db } from "@repo/database";
 import {
-	QuoteLinesArraySchema,
-	type QuoteLineInput,
 	type QuoteLineDisplayDataInput,
+	type QuoteLineInput,
 	type QuoteLineSourceDataInput,
+	QuoteLinesArraySchema,
 } from "@repo/database";
-import { Prisma, QuoteStatus, type QuoteLine } from "@prisma/client";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -25,7 +26,6 @@ import { z } from "zod";
 import { withTenantId } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import { missionSyncService } from "../../services/mission-sync.service";
-import { Decimal } from "@prisma/client/runtime/library";
 
 // =============================================================================
 // TYPES & HELPERS
@@ -49,13 +49,34 @@ interface QuoteTotals {
  */
 const logger = {
 	info: (message: string, context: Record<string, unknown>) => {
-		console.log(JSON.stringify({ level: 'info', message, ...context, timestamp: new Date().toISOString() }));
+		console.log(
+			JSON.stringify({
+				level: "info",
+				message,
+				...context,
+				timestamp: new Date().toISOString(),
+			}),
+		);
 	},
 	warn: (message: string, context: Record<string, unknown>) => {
-		console.warn(JSON.stringify({ level: 'warn', message, ...context, timestamp: new Date().toISOString() }));
+		console.warn(
+			JSON.stringify({
+				level: "warn",
+				message,
+				...context,
+				timestamp: new Date().toISOString(),
+			}),
+		);
 	},
 	error: (message: string, context: Record<string, unknown>) => {
-		console.error(JSON.stringify({ level: 'error', message, ...context, timestamp: new Date().toISOString() }));
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message,
+				...context,
+				timestamp: new Date().toISOString(),
+			}),
+		);
 	},
 };
 
@@ -88,14 +109,15 @@ function extractInternalCost(line: QuoteLine): Decimal | null {
 	const wear = new Decimal(sourceData.wearCost ?? 0);
 
 	// If no cost components, check for a direct internalCost field
-	const directCost = (sourceData as unknown as { internalCost?: number }).internalCost;
+	const directCost = (sourceData as unknown as { internalCost?: number })
+		.internalCost;
 	if (directCost !== undefined) {
 		return new Decimal(directCost);
 	}
 
 	// Return sum of components - even if 0 (valid cost)
 	// Check if ANY cost field was explicitly provided
-	const hasCostData = 
+	const hasCostData =
 		sourceData.fuelCost !== undefined ||
 		sourceData.tollCost !== undefined ||
 		sourceData.driverCost !== undefined ||
@@ -128,12 +150,17 @@ function calculateQuoteTotals(lines: QuoteLine[]): QuoteTotals {
 	}
 
 	const finalPrice = totalPrice.toDecimalPlaces(2);
-	const internalCost = hasInternalCost ? totalInternalCost.toDecimalPlaces(2) : null;
+	const internalCost = hasInternalCost
+		? totalInternalCost.toDecimalPlaces(2)
+		: null;
 
 	// Calculate margin only if we have both finalPrice and internalCost
 	let marginPercent: Decimal | null = null;
 	if (internalCost !== null && !totalPrice.isZero()) {
-		const margin = totalPrice.minus(totalInternalCost).dividedBy(totalPrice).times(100);
+		const margin = totalPrice
+			.minus(totalInternalCost)
+			.dividedBy(totalPrice)
+			.times(100);
 		marginPercent = margin.toDecimalPlaces(2);
 	}
 
@@ -147,7 +174,7 @@ function calculateQuoteTotals(lines: QuoteLine[]): QuoteTotals {
  */
 function buildIdMap(
 	lines: QuoteLineInput[],
-	existingIds: Set<string>
+	existingIds: Set<string>,
 ): Map<string, string> {
 	const idMap = new Map<string, string>();
 
@@ -172,7 +199,7 @@ function buildIdMap(
  */
 function resolveParentId(
 	parentId: string | null | undefined,
-	idMap: Map<string, string>
+	idMap: Map<string, string>,
 ): string | null {
 	if (!parentId) return null;
 	return idMap.get(parentId) ?? parentId;
@@ -184,14 +211,14 @@ function resolveParentId(
 function checkForOrphanedChildren(
 	linesToDelete: string[],
 	existingLines: Array<{ id: string; parentId: string | null }>,
-	incomingLines: QuoteLineInput[]
+	incomingLines: QuoteLineInput[],
 ): string[] {
 	// Build set of incoming line IDs
-	const incomingIds = new Set(incomingLines.map(l => l.id).filter(Boolean));
-	
+	const incomingIds = new Set(incomingLines.map((l) => l.id).filter(Boolean));
+
 	// Find children of lines to be deleted that are not being re-parented
 	const orphanedChildren: string[] = [];
-	
+
 	for (const line of existingLines) {
 		if (line.parentId && linesToDelete.includes(line.parentId)) {
 			// This line's parent is being deleted
@@ -200,7 +227,7 @@ function checkForOrphanedChildren(
 			}
 		}
 	}
-	
+
 	return orphanedChildren;
 }
 
@@ -245,11 +272,11 @@ export const quoteLinesRouter = new Hono()
 			const quoteId = c.req.param("quoteId");
 			const { lines, recalculateTotals } = c.req.valid("json");
 
-			logger.info("Quote lines update started", { 
-				quoteId, 
-				organizationId, 
+			logger.info("Quote lines update started", {
+				quoteId,
+				organizationId,
 				lineCount: lines.length,
-				recalculateTotals 
+				recalculateTotals,
 			});
 
 			// Verify quote exists and belongs to organization
@@ -275,7 +302,10 @@ export const quoteLinesRouter = new Hono()
 			// Check if quote is editable (only DRAFT quotes can have lines modified)
 			// Using enum instead of magic string
 			if (quote.status !== QuoteStatus.DRAFT) {
-				logger.warn("Attempted to modify non-DRAFT quote", { quoteId, status: quote.status });
+				logger.warn("Attempted to modify non-DRAFT quote", {
+					quoteId,
+					status: quote.status,
+				});
 				throw new HTTPException(400, {
 					message:
 						"Cannot modify lines for non-DRAFT quotes. Quote must be in DRAFT status.",
@@ -284,27 +314,32 @@ export const quoteLinesRouter = new Hono()
 
 			// Build sets for diff logic
 			const existingLineIds = new Set(quote.lines.map((l) => l.id));
-			const incomingWithIds = lines.filter((l): l is QuoteLineInput & { id: string } => 
-				!!l.id && existingLineIds.has(l.id)
+			const incomingWithIds = lines.filter(
+				(l): l is QuoteLineInput & { id: string } =>
+					!!l.id && existingLineIds.has(l.id),
 			);
-			const incomingNewLines = lines.filter((l) => !l.id || !existingLineIds.has(l.id));
+			const incomingNewLines = lines.filter(
+				(l) => !l.id || !existingLineIds.has(l.id),
+			);
 			const incomingIds = new Set(incomingWithIds.map((l) => l.id));
-			const linesToDelete = [...existingLineIds].filter((id) => !incomingIds.has(id));
+			const linesToDelete = Array.from(existingLineIds).filter(
+				(id) => !incomingIds.has(id),
+			);
 
 			// Check for orphaned children before deleting
 			if (linesToDelete.length > 0) {
 				const orphanedChildren = checkForOrphanedChildren(
 					linesToDelete,
 					quote.lines,
-					lines
+					lines,
 				);
-				
+
 				if (orphanedChildren.length > 0) {
 					// Also delete orphaned children to prevent constraint violations
 					linesToDelete.push(...orphanedChildren);
-					logger.info("Including orphaned children in deletion", { 
-						quoteId, 
-						orphanedCount: orphanedChildren.length 
+					logger.info("Including orphaned children in deletion", {
+						quoteId,
+						orphanedCount: orphanedChildren.length,
 					});
 				}
 			}
@@ -344,8 +379,8 @@ export const quoteLinesRouter = new Hono()
 									type: line.type,
 									label: line.label,
 									description: line.description,
-									sourceData: line.sourceData 
-										? (line.sourceData as Prisma.InputJsonValue) 
+									sourceData: line.sourceData
+										? (line.sourceData as Prisma.InputJsonValue)
 										: Prisma.JsonNull,
 									displayData: line.displayData as Prisma.InputJsonValue,
 									quantity: line.quantity,
@@ -357,7 +392,7 @@ export const quoteLinesRouter = new Hono()
 									dispatchable: line.dispatchable, // Story 28.6
 								},
 							});
-						})
+						}),
 					);
 					stats.updated = incomingWithIds.length;
 				}
@@ -365,18 +400,20 @@ export const quoteLinesRouter = new Hono()
 				// 3. Create new lines - need to handle tempId -> id mapping
 				// Create in order to handle parent references correctly
 				const createdLineIds = new Map<string, string>();
-				
+
 				// First pass: create lines without parents or with existing parents
-				const linesWithoutNewParents = incomingNewLines.filter(line => {
+				const linesWithoutNewParents = incomingNewLines.filter((line) => {
 					if (!line.parentId) return true;
 					// Check if parent is an existing line or already in idMap
 					return existingLineIds.has(line.parentId) || idMap.has(line.parentId);
 				});
-				
-				const linesWithNewParents = incomingNewLines.filter(line => {
+
+				const linesWithNewParents = incomingNewLines.filter((line) => {
 					if (!line.parentId) return false;
 					// Parent is a tempId for a new line
-					return !existingLineIds.has(line.parentId) && !idMap.has(line.parentId);
+					return (
+						!existingLineIds.has(line.parentId) && !idMap.has(line.parentId)
+					);
 				});
 
 				// Create lines without new parents first
@@ -385,25 +422,25 @@ export const quoteLinesRouter = new Hono()
 
 					const created = await tx.quoteLine.create({
 						data: {
-								// Let Prisma generate CUID automatically
-								quoteId,
-								type: line.type,
-								label: line.label,
-								description: line.description,
-								sourceData: line.sourceData 
-									? (line.sourceData as Prisma.InputJsonValue) 
-									: Prisma.JsonNull,
-								displayData: line.displayData as Prisma.InputJsonValue,
-								quantity: line.quantity,
-								unitPrice: line.unitPrice,
-								totalPrice: line.totalPrice,
-								vatRate: line.vatRate,
-								parentId: resolvedParentId,
-								sortOrder: line.sortOrder,
-								dispatchable: line.dispatchable, // Story 28.6
-							},
+							// Let Prisma generate CUID automatically
+							quoteId,
+							type: line.type,
+							label: line.label,
+							description: line.description,
+							sourceData: line.sourceData
+								? (line.sourceData as Prisma.InputJsonValue)
+								: Prisma.JsonNull,
+							displayData: line.displayData as Prisma.InputJsonValue,
+							quantity: line.quantity,
+							unitPrice: line.unitPrice,
+							totalPrice: line.totalPrice,
+							vatRate: line.vatRate,
+							parentId: resolvedParentId,
+							sortOrder: line.sortOrder,
+							dispatchable: line.dispatchable, // Story 28.6
+						},
 					});
-					
+
 					// Map tempId to actual created id for child references
 					if (line.tempId) {
 						createdLineIds.set(line.tempId, created.id);
@@ -414,7 +451,8 @@ export const quoteLinesRouter = new Hono()
 
 				// Second pass: create lines with new parents (now that parents exist)
 				for (const line of linesWithNewParents) {
-					const resolvedParentId = createdLineIds.get(line.parentId!) ?? 
+					const resolvedParentId =
+						createdLineIds.get(line.parentId!) ??
 						resolveParentId(line.parentId, idMap);
 
 					await tx.quoteLine.create({
@@ -423,8 +461,8 @@ export const quoteLinesRouter = new Hono()
 							type: line.type,
 							label: line.label,
 							description: line.description,
-							sourceData: line.sourceData 
-								? (line.sourceData as Prisma.InputJsonValue) 
+							sourceData: line.sourceData
+								? (line.sourceData as Prisma.InputJsonValue)
 								: Prisma.JsonNull,
 							displayData: line.displayData as Prisma.InputJsonValue,
 							quantity: line.quantity,
@@ -452,7 +490,7 @@ export const quoteLinesRouter = new Hono()
 					internalCost: quote.internalCost,
 					marginPercent: quote.marginPercent,
 				};
-				
+
 				if (recalculateTotals) {
 					const totals = calculateQuoteTotals(updatedLines);
 
@@ -500,7 +538,8 @@ export const quoteLinesRouter = new Hono()
 			} catch (syncError) {
 				logger.error("Mission sync failed", {
 					quoteId,
-					error: syncError instanceof Error ? syncError.message : String(syncError),
+					error:
+						syncError instanceof Error ? syncError.message : String(syncError),
 				});
 			}
 
@@ -534,7 +573,7 @@ export const quoteLinesRouter = new Hono()
 					updatedAt: line.updatedAt.toISOString(),
 				})),
 			});
-		}
+		},
 	)
 
 	/**
@@ -588,5 +627,5 @@ export const quoteLinesRouter = new Hono()
 					updatedAt: line.updatedAt.toISOString(),
 				})),
 			});
-		}
+		},
 	);

@@ -1,5 +1,6 @@
-import { db } from "@repo/database";
 import { Prisma } from "@prisma/client";
+import type { QuoteStatus } from "@prisma/client";
+import { db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
@@ -11,9 +12,8 @@ import {
 	withTenantId,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
-import { QuoteStateMachine } from "../../services/quote-state-machine";
 import { missionSyncService } from "../../services/mission-sync.service";
-import type { QuoteStatus } from "@prisma/client";
+import { QuoteStateMachine } from "../../services/quote-state-machine";
 
 // Story 16.1: Stop schema for excursion trips
 const stopSchema = z.object({
@@ -24,140 +24,265 @@ const stopSchema = z.object({
 });
 
 // Validation schemas with EUR documentation
-const createQuoteSchema = z.object({
-	contactId: z.string().min(1).describe("Contact ID for the quote"),
-	// Story 24.4: Optional end-customer for partner agency sub-contacts
-	endCustomerId: z.string().optional().nullable().describe("End-customer ID for partner agency sub-contacts"),
-	vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
-	pricingMode: z
-		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
-		.optional()
-		.default("DYNAMIC")
-		.describe("Pricing mode: FIXED_GRID, DYNAMIC, PARTNER_GRID, CLIENT_DIRECT, or MANUAL"),
-	tripType: z
-		.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
-		.describe("Type of trip"),
-	pickupAt: z
-		.union([z.string().datetime(), z.date()])
-		.transform((val) => (val instanceof Date ? val.toISOString() : val))
-		.describe("Pickup date/time in Europe/Paris business time"),
-	pickupAddress: z.string().min(1).describe("Pickup address"),
-	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
-	pickupLongitude: z
-		.number()
-		.optional()
-		.nullable()
-		.describe("Pickup longitude"),
-	// Story 16.1: Made optional for DISPO and OFF_GRID
-	dropoffAddress: z.string().optional().nullable().describe("Dropoff address (optional for DISPO/OFF_GRID)"),
-	dropoffLatitude: z
-		.number()
-		.optional()
-		.nullable()
-		.describe("Dropoff latitude"),
-	dropoffLongitude: z
-		.number()
-		.optional()
-		.nullable()
-		.describe("Dropoff longitude"),
-	// Story 16.1: Trip type specific fields
-	isRoundTrip: z.boolean().optional().default(false).describe("Round trip for TRANSFER"),
-	stops: z.array(stopSchema).optional().nullable().describe("Intermediate stops for EXCURSION"),
-	returnDate: z.union([z.string().datetime(), z.date()]).optional().nullable().transform((val) => (val instanceof Date ? val.toISOString() : val)).describe("Return date for EXCURSION"),
-	durationHours: z.number().positive().optional().nullable().describe("Duration in hours for DISPO"),
-	maxKilometers: z.number().positive().optional().nullable().describe("Max kilometers for DISPO"),
-	passengerCount: z.number().int().positive().describe("Number of passengers"),
-	luggageCount: z
-		.number()
-		.int()
-		.nonnegative()
-		.default(0)
-		.describe("Number of luggage pieces"),
-	suggestedPrice: z.number().nonnegative().optional().default(0).describe("Suggested price in EUR"),
-	finalPrice: z.number().nonnegative().optional().default(0).describe("Final price in EUR"),
-	// Story 24.9: Bidirectional pricing storage
-	partnerGridPrice: z.number().nonnegative().optional().nullable().describe("Partner grid price in EUR"),
-	clientDirectPrice: z.number().nonnegative().optional().nullable().describe("Client direct price in EUR"),
-	internalCost: z
-		.number()
-		.optional()
-		.nullable()
-		.describe("Internal cost in EUR (shadow calculation result)"),
-	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
-	tripAnalysis: z
-		.record(z.unknown())
-		.optional()
-		.nullable()
-		.describe("Shadow calculation details: segments A/B/C, costs"),
-	appliedRules: z
-		.record(z.unknown())
-		.optional()
-		.nullable()
-		.describe("Applied pricing rules, multipliers, promotions"),
-	// Story 15.7: Cost breakdown for audit
-	costBreakdown: z
-		.record(z.unknown())
-		.optional()
-		.nullable()
-		.describe("Detailed cost breakdown: fuel, tolls, driver, wear"),
-	validUntil: z
-		.union([z.string().datetime(), z.date()])
-		.optional()
-		.nullable()
-		.transform((val) => (val instanceof Date ? val.toISOString() : val))
-		.describe("Quote validity date in Europe/Paris business time"),
-	notes: z.string().optional().nullable().describe("Additional notes"),
-	// Story 17.5: Estimated end time for driver availability detection
-	estimatedEndAt: z
-		.union([z.string().datetime(), z.date()])
-		.optional()
-		.nullable()
-		.transform((val) => (val instanceof Date ? val.toISOString() : val))
-		.describe("Estimated end time calculated from pickupAt + totalDurationMinutes"),
-	// Story 26: Yolo Mode / Shopping Cart support
-	organizationId: z.string().optional().describe("Organization ID (extracted from session, optional in payload)"),
-	isYoloMode: z.boolean().optional().default(false).describe("Whether quote uses Yolo Mode (Shopping Cart)"),
-	lines: z.array(z.record(z.unknown())).optional().nullable().describe("Quote lines for Yolo Mode"),
-	// Frontend sends these objects but API only needs IDs - passthrough to avoid validation errors
-	contact: z.record(z.unknown()).optional().nullable().describe("Contact object (ignored, use contactId)"),
-	vehicleCategory: z.record(z.unknown()).optional().nullable().describe("Vehicle category object (ignored, use vehicleCategoryId)"),
-	endCustomer: z.record(z.unknown()).optional().nullable().describe("End customer object (ignored, use endCustomerId)"),
-	// Story 6.6: Airport helper fields
-	flightNumber: z.string().optional().nullable().describe("Flight number for airport transfers"),
-	waitingTimeMinutes: z.number().optional().nullable().describe("Waiting time in minutes for airport transfers"),
-	selectedOptionalFeeIds: z.array(z.string()).optional().nullable().describe("Selected optional fee IDs"),
-	// Story 22.6: STAY trip type fields
-	stayDays: z.array(z.record(z.unknown())).optional().nullable().describe("Stay days for STAY trip type"),
-}).superRefine((data, ctx) => {
-	// Story 16.1: Conditional validation based on trip type
-	
-	// dropoffAddress required for TRANSFER and EXCURSION
-	if ((data.tripType === "TRANSFER" || data.tripType === "EXCURSION") && !data.dropoffAddress) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: "Dropoff address is required for transfers and excursions",
-			path: ["dropoffAddress"],
-		});
-	}
-	
-	// notes required for OFF_GRID
-	if (data.tripType === "OFF_GRID" && (!data.notes || data.notes.trim().length === 0)) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: "Notes are required for off-grid trips",
-			path: ["notes"],
-		});
-	}
-	
-	// durationHours required for DISPO
-	if (data.tripType === "DISPO" && (data.durationHours == null || data.durationHours <= 0)) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: "Duration is required for mise à disposition",
-			path: ["durationHours"],
-		});
-	}
-});
+const createQuoteSchema = z
+	.object({
+		contactId: z.string().min(1).describe("Contact ID for the quote"),
+		// Story 24.4: Optional end-customer for partner agency sub-contacts
+		endCustomerId: z
+			.string()
+			.optional()
+			.nullable()
+			.describe("End-customer ID for partner agency sub-contacts"),
+		vehicleCategoryId: z.string().min(1).describe("Vehicle category ID"),
+		pricingMode: z
+			.enum([
+				"FIXED_GRID",
+				"DYNAMIC",
+				"PARTNER_GRID",
+				"CLIENT_DIRECT",
+				"MANUAL",
+			])
+			.optional()
+			.default("DYNAMIC")
+			.describe(
+				"Pricing mode: FIXED_GRID, DYNAMIC, PARTNER_GRID, CLIENT_DIRECT, or MANUAL",
+			),
+		tripType: z
+			.enum(["TRANSFER", "EXCURSION", "DISPO", "OFF_GRID"])
+			.describe("Type of trip"),
+		pickupAt: z
+			.union([z.string().datetime(), z.date()])
+			.transform((val) => (val instanceof Date ? val.toISOString() : val))
+			.describe("Pickup date/time in Europe/Paris business time"),
+		pickupAddress: z.string().min(1).describe("Pickup address"),
+		pickupLatitude: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Pickup latitude"),
+		pickupLongitude: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Pickup longitude"),
+		// Story 16.1: Made optional for DISPO and OFF_GRID
+		dropoffAddress: z
+			.string()
+			.optional()
+			.nullable()
+			.describe("Dropoff address (optional for DISPO/OFF_GRID)"),
+		dropoffLatitude: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Dropoff latitude"),
+		dropoffLongitude: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Dropoff longitude"),
+		// Story 16.1: Trip type specific fields
+		isRoundTrip: z
+			.boolean()
+			.optional()
+			.default(false)
+			.describe("Round trip for TRANSFER"),
+		stops: z
+			.array(stopSchema)
+			.optional()
+			.nullable()
+			.describe("Intermediate stops for EXCURSION"),
+		returnDate: z
+			.union([z.string().datetime(), z.date()])
+			.optional()
+			.nullable()
+			.transform((val) => (val instanceof Date ? val.toISOString() : val))
+			.describe("Return date for EXCURSION"),
+		durationHours: z
+			.number()
+			.positive()
+			.optional()
+			.nullable()
+			.describe("Duration in hours for DISPO"),
+		maxKilometers: z
+			.number()
+			.positive()
+			.optional()
+			.nullable()
+			.describe("Max kilometers for DISPO"),
+		passengerCount: z
+			.number()
+			.int()
+			.positive()
+			.describe("Number of passengers"),
+		luggageCount: z
+			.number()
+			.int()
+			.nonnegative()
+			.default(0)
+			.describe("Number of luggage pieces"),
+		suggestedPrice: z
+			.number()
+			.nonnegative()
+			.optional()
+			.default(0)
+			.describe("Suggested price in EUR"),
+		finalPrice: z
+			.number()
+			.nonnegative()
+			.optional()
+			.default(0)
+			.describe("Final price in EUR"),
+		// Story 24.9: Bidirectional pricing storage
+		partnerGridPrice: z
+			.number()
+			.nonnegative()
+			.optional()
+			.nullable()
+			.describe("Partner grid price in EUR"),
+		clientDirectPrice: z
+			.number()
+			.nonnegative()
+			.optional()
+			.nullable()
+			.describe("Client direct price in EUR"),
+		internalCost: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Internal cost in EUR (shadow calculation result)"),
+		marginPercent: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Margin percentage"),
+		tripAnalysis: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("Shadow calculation details: segments A/B/C, costs"),
+		appliedRules: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("Applied pricing rules, multipliers, promotions"),
+		// Story 15.7: Cost breakdown for audit
+		costBreakdown: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("Detailed cost breakdown: fuel, tolls, driver, wear"),
+		validUntil: z
+			.union([z.string().datetime(), z.date()])
+			.optional()
+			.nullable()
+			.transform((val) => (val instanceof Date ? val.toISOString() : val))
+			.describe("Quote validity date in Europe/Paris business time"),
+		notes: z.string().optional().nullable().describe("Additional notes"),
+		// Story 17.5: Estimated end time for driver availability detection
+		estimatedEndAt: z
+			.union([z.string().datetime(), z.date()])
+			.optional()
+			.nullable()
+			.transform((val) => (val instanceof Date ? val.toISOString() : val))
+			.describe(
+				"Estimated end time calculated from pickupAt + totalDurationMinutes",
+			),
+		// Story 26: Yolo Mode / Shopping Cart support
+		organizationId: z
+			.string()
+			.optional()
+			.describe(
+				"Organization ID (extracted from session, optional in payload)",
+			),
+		isYoloMode: z
+			.boolean()
+			.optional()
+			.default(false)
+			.describe("Whether quote uses Yolo Mode (Shopping Cart)"),
+		lines: z
+			.array(z.record(z.unknown()))
+			.optional()
+			.nullable()
+			.describe("Quote lines for Yolo Mode"),
+		// Frontend sends these objects but API only needs IDs - passthrough to avoid validation errors
+		contact: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("Contact object (ignored, use contactId)"),
+		vehicleCategory: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("Vehicle category object (ignored, use vehicleCategoryId)"),
+		endCustomer: z
+			.record(z.unknown())
+			.optional()
+			.nullable()
+			.describe("End customer object (ignored, use endCustomerId)"),
+		// Story 6.6: Airport helper fields
+		flightNumber: z
+			.string()
+			.optional()
+			.nullable()
+			.describe("Flight number for airport transfers"),
+		waitingTimeMinutes: z
+			.number()
+			.optional()
+			.nullable()
+			.describe("Waiting time in minutes for airport transfers"),
+		selectedOptionalFeeIds: z
+			.array(z.string())
+			.optional()
+			.nullable()
+			.describe("Selected optional fee IDs"),
+		// Story 22.6: STAY trip type fields
+		stayDays: z
+			.array(z.record(z.unknown()))
+			.optional()
+			.nullable()
+			.describe("Stay days for STAY trip type"),
+	})
+	.superRefine((data, ctx) => {
+		// Story 16.1: Conditional validation based on trip type
+
+		// dropoffAddress required for TRANSFER and EXCURSION
+		if (
+			(data.tripType === "TRANSFER" || data.tripType === "EXCURSION") &&
+			!data.dropoffAddress
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Dropoff address is required for transfers and excursions",
+				path: ["dropoffAddress"],
+			});
+		}
+
+		// notes required for OFF_GRID
+		if (
+			data.tripType === "OFF_GRID" &&
+			(!data.notes || data.notes.trim().length === 0)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Notes are required for off-grid trips",
+				path: ["notes"],
+			});
+		}
+
+		// durationHours required for DISPO
+		if (
+			data.tripType === "DISPO" &&
+			(data.durationHours == null || data.durationHours <= 0)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Duration is required for mise à disposition",
+				path: ["durationHours"],
+			});
+		}
+	});
 
 const updateQuoteSchema = z.object({
 	status: z
@@ -166,7 +291,11 @@ const updateQuoteSchema = z.object({
 		.describe("Quote lifecycle status"),
 	// Full edit fields (only for DRAFT quotes)
 	contactId: z.string().min(1).optional().describe("Contact ID for the quote"),
-	vehicleCategoryId: z.string().min(1).optional().describe("Vehicle category ID"),
+	vehicleCategoryId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe("Vehicle category ID"),
 	pricingMode: z
 		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
 		.optional()
@@ -182,23 +311,79 @@ const updateQuoteSchema = z.object({
 		.describe("Pickup date/time in Europe/Paris business time"),
 	pickupAddress: z.string().min(1).optional().describe("Pickup address"),
 	pickupLatitude: z.number().optional().nullable().describe("Pickup latitude"),
-	pickupLongitude: z.number().optional().nullable().describe("Pickup longitude"),
+	pickupLongitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Pickup longitude"),
 	dropoffAddress: z.string().min(1).optional().describe("Dropoff address"),
-	dropoffLatitude: z.number().optional().nullable().describe("Dropoff latitude"),
-	dropoffLongitude: z.number().optional().nullable().describe("Dropoff longitude"),
-	passengerCount: z.number().int().positive().optional().describe("Number of passengers"),
-	luggageCount: z.number().int().nonnegative().optional().describe("Number of luggage pieces"),
-	suggestedPrice: z.number().nonnegative().optional().describe("Suggested price in EUR"),
-	finalPrice: z.number().nonnegative().optional().describe("Final price in EUR"),
+	dropoffLatitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Dropoff latitude"),
+	dropoffLongitude: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Dropoff longitude"),
+	passengerCount: z
+		.number()
+		.int()
+		.positive()
+		.optional()
+		.describe("Number of passengers"),
+	luggageCount: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe("Number of luggage pieces"),
+	suggestedPrice: z
+		.number()
+		.nonnegative()
+		.optional()
+		.describe("Suggested price in EUR"),
+	finalPrice: z
+		.number()
+		.nonnegative()
+		.optional()
+		.describe("Final price in EUR"),
 	// Story 24.9: Bidirectional pricing storage
-	partnerGridPrice: z.number().nonnegative().optional().nullable().describe("Partner grid price in EUR"),
-	clientDirectPrice: z.number().nonnegative().optional().nullable().describe("Client direct price in EUR"),
-	internalCost: z.number().optional().nullable().describe("Internal cost in EUR"),
+	partnerGridPrice: z
+		.number()
+		.nonnegative()
+		.optional()
+		.nullable()
+		.describe("Partner grid price in EUR"),
+	clientDirectPrice: z
+		.number()
+		.nonnegative()
+		.optional()
+		.nullable()
+		.describe("Client direct price in EUR"),
+	internalCost: z
+		.number()
+		.optional()
+		.nullable()
+		.describe("Internal cost in EUR"),
 	marginPercent: z.number().optional().nullable().describe("Margin percentage"),
-	tripAnalysis: z.record(z.unknown()).optional().nullable().describe("Shadow calculation details"),
-	appliedRules: z.record(z.unknown()).optional().nullable().describe("Applied pricing rules"),
+	tripAnalysis: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Shadow calculation details"),
+	appliedRules: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Applied pricing rules"),
 	// Story 15.7: Cost breakdown for audit
-	costBreakdown: z.record(z.unknown()).optional().nullable().describe("Detailed cost breakdown"),
+	costBreakdown: z
+		.record(z.unknown())
+		.optional()
+		.nullable()
+		.describe("Detailed cost breakdown"),
 	notes: z.string().optional().nullable().describe("Additional notes"),
 	validUntil: z
 		.string()
@@ -212,7 +397,9 @@ const updateQuoteSchema = z.object({
 		.datetime()
 		.optional()
 		.nullable()
-		.describe("Estimated end time calculated from pickupAt + totalDurationMinutes"),
+		.describe(
+			"Estimated end time calculated from pickupAt + totalDurationMinutes",
+		),
 });
 
 const listQuotesSchema = z.object({
@@ -222,7 +409,9 @@ const listQuotesSchema = z.object({
 		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"])
 		.optional(),
 	contactId: z.string().optional(),
-	pricingMode: z.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"]).optional(),
+	pricingMode: z
+		.enum(["FIXED_GRID", "DYNAMIC", "PARTNER_GRID", "CLIENT_DIRECT", "MANUAL"])
+		.optional(),
 	// Story 6.1: Additional filters for quotes list
 	search: z
 		.string()
@@ -297,10 +486,14 @@ export const quotesRouter = new Hono()
 						contact: { companyName: { contains: search, mode: "insensitive" } },
 					},
 					{
-						endCustomer: { firstName: { contains: search, mode: "insensitive" } },
+						endCustomer: {
+							firstName: { contains: search, mode: "insensitive" },
+						},
 					},
 					{
-						endCustomer: { lastName: { contains: search, mode: "insensitive" } },
+						endCustomer: {
+							lastName: { contains: search, mode: "insensitive" },
+						},
 					},
 					{ pickupAddress: { contains: search, mode: "insensitive" } },
 					{ dropoffAddress: { contains: search, mode: "insensitive" } },
@@ -381,7 +574,7 @@ export const quotesRouter = new Hono()
 				include: {
 					contact: true,
 					vehicleCategory: true,
-					invoice: true,
+					invoices: true,
 					// Story 22.4: Include subcontractor info
 					subcontractor: true,
 					// Story 24.5: Include endCustomer for quote summary and PDF display
@@ -488,7 +681,9 @@ export const quotesRouter = new Hono()
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
 						notes: data.notes,
 						// Story 17.5: Estimated end time for driver availability detection
-						estimatedEndAt: data.estimatedEndAt ? new Date(data.estimatedEndAt) : null,
+						estimatedEndAt: data.estimatedEndAt
+							? new Date(data.estimatedEndAt)
+							: null,
 						status: "DRAFT",
 					},
 					organizationId,
@@ -515,7 +710,10 @@ export const quotesRouter = new Hono()
 				await missionSyncService.syncQuoteMissions(quote.id);
 			} catch (syncError) {
 				// Log sync error but don't fail the quote creation
-				console.warn(`[MissionSync] Failed to sync missions for quote ${quote.id}:`, syncError);
+				console.warn(
+					`[MissionSync] Failed to sync missions for quote ${quote.id}:`,
+					syncError,
+				);
 			}
 
 			return c.json(quote, 201);
@@ -580,7 +778,8 @@ export const quotesRouter = new Hono()
 			}
 
 			// Check if trying to modify fields that require DRAFT status
-			const isFullEdit = data.contactId !== undefined ||
+			const isFullEdit =
+				data.contactId !== undefined ||
 				data.vehicleCategoryId !== undefined ||
 				data.pricingMode !== undefined ||
 				data.tripType !== undefined ||
@@ -602,7 +801,8 @@ export const quotesRouter = new Hono()
 			// Block full edit for non-DRAFT quotes
 			if (isFullEdit && !QuoteStateMachine.isEditable(existing.status)) {
 				throw new HTTPException(400, {
-					message: "Cannot fully edit non-DRAFT quotes. Only notes and validUntil can be modified.",
+					message:
+						"Cannot fully edit non-DRAFT quotes. Only notes and validUntil can be modified.",
 				});
 			}
 
@@ -666,7 +866,9 @@ export const quotesRouter = new Hono()
 					where: withTenantId(data.vehicleCategoryId, organizationId),
 				});
 				if (!category) {
-					throw new HTTPException(400, { message: "Vehicle category not found" });
+					throw new HTTPException(400, {
+						message: "Vehicle category not found",
+					});
 				}
 			}
 
@@ -674,56 +876,95 @@ export const quotesRouter = new Hono()
 				where: { id },
 				data: {
 					// Full edit fields (only for DRAFT) - use connect for relations
-					...(data.contactId !== undefined && { contact: { connect: { id: data.contactId } } }),
-					...(data.vehicleCategoryId !== undefined && { vehicleCategory: { connect: { id: data.vehicleCategoryId } } }),
-					...(data.pricingMode !== undefined && { pricingMode: data.pricingMode }),
-					...(data.tripType !== undefined && { tripType: data.tripType }),
-					...(data.pickupAt !== undefined && { pickupAt: new Date(data.pickupAt) }),
-					...(data.pickupAddress !== undefined && { pickupAddress: data.pickupAddress }),
-					...(data.pickupLatitude !== undefined && { pickupLatitude: data.pickupLatitude }),
-					...(data.pickupLongitude !== undefined && { pickupLongitude: data.pickupLongitude }),
-					...(data.dropoffAddress !== undefined && { dropoffAddress: data.dropoffAddress }),
-					...(data.dropoffLatitude !== undefined && { dropoffLatitude: data.dropoffLatitude }),
-					...(data.dropoffLongitude !== undefined && { dropoffLongitude: data.dropoffLongitude }),
-					...(data.passengerCount !== undefined && { passengerCount: data.passengerCount }),
-					...(data.luggageCount !== undefined && { luggageCount: data.luggageCount }),
-					...(data.suggestedPrice !== undefined && { suggestedPrice: data.suggestedPrice }),
-					...(data.internalCost !== undefined && { internalCost: data.internalCost }),
-					...(data.marginPercent !== undefined && { marginPercent: data.marginPercent }),
-					...(data.tripAnalysis !== undefined && { 
-						tripAnalysis: data.tripAnalysis === null 
-							? Prisma.JsonNull 
-							: data.tripAnalysis as Prisma.InputJsonValue 
+					...(data.contactId !== undefined && {
+						contact: { connect: { id: data.contactId } },
 					}),
-					...(data.appliedRules !== undefined && { 
-						appliedRules: data.appliedRules === null 
-							? Prisma.JsonNull 
-							: data.appliedRules as Prisma.InputJsonValue 
+					...(data.vehicleCategoryId !== undefined && {
+						vehicleCategory: { connect: { id: data.vehicleCategoryId } },
+					}),
+					...(data.pricingMode !== undefined && {
+						pricingMode: data.pricingMode,
+					}),
+					...(data.tripType !== undefined && { tripType: data.tripType }),
+					...(data.pickupAt !== undefined && {
+						pickupAt: new Date(data.pickupAt),
+					}),
+					...(data.pickupAddress !== undefined && {
+						pickupAddress: data.pickupAddress,
+					}),
+					...(data.pickupLatitude !== undefined && {
+						pickupLatitude: data.pickupLatitude,
+					}),
+					...(data.pickupLongitude !== undefined && {
+						pickupLongitude: data.pickupLongitude,
+					}),
+					...(data.dropoffAddress !== undefined && {
+						dropoffAddress: data.dropoffAddress,
+					}),
+					...(data.dropoffLatitude !== undefined && {
+						dropoffLatitude: data.dropoffLatitude,
+					}),
+					...(data.dropoffLongitude !== undefined && {
+						dropoffLongitude: data.dropoffLongitude,
+					}),
+					...(data.passengerCount !== undefined && {
+						passengerCount: data.passengerCount,
+					}),
+					...(data.luggageCount !== undefined && {
+						luggageCount: data.luggageCount,
+					}),
+					...(data.suggestedPrice !== undefined && {
+						suggestedPrice: data.suggestedPrice,
+					}),
+					...(data.internalCost !== undefined && {
+						internalCost: data.internalCost,
+					}),
+					...(data.marginPercent !== undefined && {
+						marginPercent: data.marginPercent,
+					}),
+					...(data.tripAnalysis !== undefined && {
+						tripAnalysis:
+							data.tripAnalysis === null
+								? Prisma.JsonNull
+								: (data.tripAnalysis as Prisma.InputJsonValue),
+					}),
+					...(data.appliedRules !== undefined && {
+						appliedRules:
+							data.appliedRules === null
+								? Prisma.JsonNull
+								: (data.appliedRules as Prisma.InputJsonValue),
 					}),
 					// Story 15.7: Cost breakdown for audit
-					...(data.costBreakdown !== undefined && { 
-						costBreakdown: data.costBreakdown === null 
-							? Prisma.JsonNull 
-							: data.costBreakdown as Prisma.InputJsonValue 
+					...(data.costBreakdown !== undefined && {
+						costBreakdown:
+							data.costBreakdown === null
+								? Prisma.JsonNull
+								: (data.costBreakdown as Prisma.InputJsonValue),
 					}),
 					// Standard update fields
 					...(data.finalPrice !== undefined && { finalPrice: data.finalPrice }),
 					// Story 24.9: Update bidirectional prices
-					...(data.partnerGridPrice !== undefined && { partnerGridPrice: data.partnerGridPrice }),
-					...(data.clientDirectPrice !== undefined && { clientDirectPrice: data.clientDirectPrice }),
+					...(data.partnerGridPrice !== undefined && {
+						partnerGridPrice: data.partnerGridPrice,
+					}),
+					...(data.clientDirectPrice !== undefined && {
+						clientDirectPrice: data.clientDirectPrice,
+					}),
 					...(data.notes !== undefined && { notes: data.notes }),
 					...(data.validUntil !== undefined && {
 						validUntil: data.validUntil ? new Date(data.validUntil) : null,
 					}),
 					// Story 17.5: Estimated end time for driver availability detection
 					...(data.estimatedEndAt !== undefined && {
-						estimatedEndAt: data.estimatedEndAt ? new Date(data.estimatedEndAt) : null,
+						estimatedEndAt: data.estimatedEndAt
+							? new Date(data.estimatedEndAt)
+							: null,
 					}),
 				},
 				include: {
 					contact: true,
 					vehicleCategory: true,
-					invoice: true,
+					invoices: true,
 					// Story 24.5: Include endCustomer for response
 					endCustomer: {
 						select: {
@@ -743,7 +984,10 @@ export const quotesRouter = new Hono()
 				await missionSyncService.syncQuoteMissions(quote.id);
 			} catch (syncError) {
 				// Log sync error but don't fail the quote update
-				console.warn(`[MissionSync] Failed to sync missions for quote ${quote.id}:`, syncError);
+				console.warn(
+					`[MissionSync] Failed to sync missions for quote ${quote.id}:`,
+					syncError,
+				);
 			}
 
 			return c.json(quote);
