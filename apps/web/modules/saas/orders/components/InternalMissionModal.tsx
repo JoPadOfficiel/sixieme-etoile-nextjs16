@@ -86,7 +86,9 @@ export function InternalMissionModal({
 	const { data: vehicleCategories, isLoading: isLoadingCategories } = useQuery({
 		queryKey: ["vehicleCategories", organizationSlug],
 		queryFn: async () => {
-			const response = await apiClient.vtc["vehicle-categories"].$get();
+			const response = await apiClient.vtc["vehicle-categories"].$get({
+				query: { limit: "100" },
+			});
 			if (!response.ok) {
 				throw new Error("Failed to fetch vehicle categories");
 			}
@@ -102,14 +104,18 @@ export function InternalMissionModal({
 			// Combine date and time into ISO datetime
 			const startAt = new Date(`${date}T${time}:00`).toISOString();
 
-			const response = await apiClient.vtc.missions["create-internal"].$post({
-				json: {
+			// Use raw fetch since the typed client may not have this endpoint yet
+			const response = await fetch("/api/vtc/missions/create-internal", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
 					orderId,
 					label,
 					startAt,
 					vehicleCategoryId: vehicleCategoryId || undefined,
 					notes: notes || undefined,
-				},
+				}),
 			});
 
 			if (!response.ok) {
@@ -159,7 +165,7 @@ export function InternalMissionModal({
 					error instanceof Error
 						? error.message
 						: t("orders.internalMission.errorDescription"),
-				variant: "destructive",
+				variant: "error",
 			});
 		},
 	});

@@ -523,9 +523,10 @@ export class SpawnService {
 							tripType: quote.tripType,
 							pricingMode: quote.pricingMode,
 							isRoundTrip: quote.isRoundTrip,
-							// Original GROUP sourceData
-							lineSourceData: sourceData,
-						},
+							// Original GROUP sourceData (cast for type compatibility)
+							lineSourceData: (sourceData ??
+								null) as Prisma.InputJsonValue | null,
+						} as Prisma.InputJsonValue,
 					});
 				});
 			} catch (error) {
@@ -586,7 +587,7 @@ export class SpawnService {
 			quoteLineId: line.id,
 			orderId: order.id,
 			status: "PENDING" as const,
-			startAt: quote.pickupAt,
+			startAt: quote.pickupAt ?? new Date(),
 			endAt: quote.estimatedEndAt ?? null,
 			sourceData: {
 				// Location data
@@ -613,7 +614,8 @@ export class SpawnService {
 				// Line info
 				lineLabel: line.label,
 				lineDescription: line.description,
-				lineSourceData: line.sourceData,
+				lineSourceData: (line.sourceData ??
+					null) as Prisma.InputJsonValue | null,
 				lineTotalPrice: line.totalPrice ? Number(line.totalPrice) : null,
 				// GROUP parent reference (Story 28.5)
 				groupLineId: groupLineId,
@@ -621,7 +623,7 @@ export class SpawnService {
 				tripType: quote.tripType,
 				pricingMode: quote.pricingMode,
 				isRoundTrip: quote.isRoundTrip,
-			},
+			} as Prisma.InputJsonValue,
 		};
 	}
 

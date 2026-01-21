@@ -240,7 +240,7 @@ export const ordersRouter = new Hono()
 						contact: {
 							select: {
 								id: true,
-								name: true,
+								displayName: true,
 								email: true,
 								type: true,
 							},
