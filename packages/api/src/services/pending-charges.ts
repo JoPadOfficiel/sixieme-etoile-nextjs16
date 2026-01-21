@@ -427,7 +427,7 @@ export class PendingChargesService {
 			.toLowerCase()
 			.trim();
 
-		for (const invoiced of invoicedDescriptions) {
+		for (const invoiced of Array.from(invoicedDescriptions)) {
 			// Exact match
 			if (invoiced === fullDescription) {
 				return true;

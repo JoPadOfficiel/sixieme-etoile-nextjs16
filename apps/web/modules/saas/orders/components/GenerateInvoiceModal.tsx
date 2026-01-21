@@ -187,7 +187,7 @@ export function GenerateInvoiceModal({
 					error instanceof Error
 						? error.message
 						: t("orders.invoice.errorDescription"),
-				variant: "destructive",
+				variant: "error",
 			});
 		},
 	});

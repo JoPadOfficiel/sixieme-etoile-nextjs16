@@ -1,6 +1,7 @@
 import { getOrganizationMembership } from "@repo/auth";
 import { type Config, config } from "@repo/config";
-import { PurchaseSchema, db } from "@repo/database";
+import { db } from "@repo/database";
+import { PurchaseSchema } from "@repo/database/src/zod";
 import { logger } from "@repo/logs";
 import { createCheckoutLink, createCustomerPortalLink } from "@repo/payments";
 import { Hono } from "hono";
