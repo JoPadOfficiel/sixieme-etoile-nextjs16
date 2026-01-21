@@ -383,7 +383,7 @@ async function migrateStayQuote(
 				type: QuoteLineType.GROUP,
 				label: rootLabel,
 				description: `Séjour ${sortedDays.length} jour(s)`,
-				sourceData: null,
+				sourceData: Prisma.JsonNull,
 				displayData: rootDisplayData as unknown as Prisma.InputJsonValue,
 				quantity: new Prisma.Decimal(1),
 				unitPrice: quote.finalPrice,
@@ -422,7 +422,7 @@ async function migrateStayQuote(
 					type: QuoteLineType.GROUP,
 					label: dayLabel,
 					description: null,
-					sourceData: null,
+					sourceData: Prisma.JsonNull,
 					displayData: buildDisplayData(
 						dayLabel,
 					) as unknown as Prisma.InputJsonValue,
@@ -455,7 +455,7 @@ async function migrateStayQuote(
 						type: QuoteLineType.MANUAL,
 						label: "Frais journaliers (hébergement, repas)",
 						description: null,
-						sourceData: null,
+						sourceData: Prisma.JsonNull,
 						displayData: buildDisplayData(
 							"Frais journaliers",
 						) as unknown as Prisma.InputJsonValue,
