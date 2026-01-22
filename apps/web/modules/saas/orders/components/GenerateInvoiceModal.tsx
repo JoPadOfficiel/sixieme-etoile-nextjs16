@@ -112,15 +112,23 @@ export function GenerateInvoiceModal({
 
 			case "DEPOSIT_PERCENT": {
 				const percent = Math.min(100, Math.max(1, depositPercent));
-				return Math.round(((balance.totalAmount * percent) / 100) * 100) / 100;
+				return new Decimal(balance.totalAmount)
+					.mul(percent)
+					.div(100)
+					.toDecimalPlaces(2)
+					.toNumber();
 			}
 
 			case "MANUAL_SELECTION": {
 				const selectedTotal = quoteLines
 					.filter((line) => selectedLineIds.includes(line.id))
-					.reduce((sum, line) => sum + Number(line.totalPrice), 0);
+					.reduce(
+						(sum, line) => sum.add(new Decimal(line.totalPrice)),
+						new Decimal(0),
+					);
+
 				// Add estimated VAT (10%)
-				return Math.round(selectedTotal * 1.1 * 100) / 100;
+				return selectedTotal.mul(1.1).toDecimalPlaces(2).toNumber();
 			}
 
 			default:

@@ -515,7 +515,7 @@ export class InvoiceFactory {
 					where: { status: "ACCEPTED" },
 					select: {
 						finalPrice: true,
-						lines: { select: { totalPrice: true } },
+						lines: { select: { totalPrice: true, vatRate: true } },
 					},
 				},
 				invoices: {
@@ -540,17 +540,20 @@ export class InvoiceFactory {
 				// Based on previous code: sum + linePrice * 1.1 implies it was HT.
 				// Let's use Decimal for this accumulation.
 				const linesTotal = quote.lines.reduce((sum, line) => {
-					// We need to re-fetch VAT rates if we want perfection, but here we only have totalPrice selected
-					// The previous code assumed 10% VAT for everything if lines existed.
-					// Ideally we should select vatRate too.
-					// For now, retaining 1.1 assumption but using Decimal.
-					return sum.add(new Decimal(line.totalPrice).mul(1.1));
+					// Fix: Use actual VAT rate if available, otherwise default to 10%
+					// We need to request vatRate in the selection above for this to work perfectly.
+					// Assuming 10% for now until we update the query.
+					const vatRate = line.vatRate
+						? new Decimal(line.vatRate)
+						: new Decimal(10);
+					return sum.add(
+						new Decimal(line.totalPrice).mul(vatRate.div(100).add(1)),
+					);
 				}, new Decimal(0));
 				totalAmount = totalAmount.add(linesTotal);
-			} else {
-				// Fallback to finalPrice (already TTC)
-				totalAmount = totalAmount.add(new Decimal(quote.finalPrice));
 			}
+			// Fallback to finalPrice (already TTC)
+			else totalAmount = totalAmount.add(new Decimal(quote.finalPrice));
 		}
 
 		// Calculate amount already invoiced
