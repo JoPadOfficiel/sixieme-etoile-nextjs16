@@ -581,36 +581,111 @@ export class SpawnService {
 		order: { id: string; organizationId: string },
 		groupLineId: string | null,
 	): Prisma.MissionCreateManyInput {
+		// Extract potential trip data from line sourceData (Shopping Cart Mode)
+		const lineSource = (line.sourceData as Record<string, unknown>) || {};
+
+		// Helper to resolve value: Line > Quote > Default
+		const resolve = <T>(
+			lineVal: unknown,
+			quoteVal: T,
+			fallback: T | null = null,
+		): T | null => {
+			if (lineVal !== undefined && lineVal !== null && lineVal !== "") {
+				return lineVal as T;
+			}
+			return quoteVal ?? fallback;
+		};
+
+		// Resolve addresses
+		const pickupAddress = resolve(
+			lineSource.pickupAddress,
+			quote.pickupAddress,
+		);
+		const dropoffAddress = resolve(
+			lineSource.dropoffAddress,
+			quote.dropoffAddress,
+		);
+
+		// Resolve coordinates with number conversion
+		const pickupLat =
+			lineSource.pickupLatitude !== undefined
+				? Number(lineSource.pickupLatitude)
+				: quote.pickupLatitude
+					? Number(quote.pickupLatitude)
+					: null;
+		const pickupLng =
+			lineSource.pickupLongitude !== undefined
+				? Number(lineSource.pickupLongitude)
+				: quote.pickupLongitude
+					? Number(quote.pickupLongitude)
+					: null;
+		const dropoffLat =
+			lineSource.dropoffLatitude !== undefined
+				? Number(lineSource.dropoffLatitude)
+				: quote.dropoffLatitude
+					? Number(quote.dropoffLatitude)
+					: null;
+		const dropoffLng =
+			lineSource.dropoffLongitude !== undefined
+				? Number(lineSource.dropoffLongitude)
+				: quote.dropoffLongitude
+					? Number(quote.dropoffLongitude)
+					: null;
+
+		// Resolve operational details
+		const pax = resolve(lineSource.passengerCount, quote.passengerCount);
+		const lug = resolve(lineSource.luggageCount, quote.luggageCount);
+		const tripType = resolve(lineSource.tripType, quote.tripType) as string;
+		const pricingMode = resolve(lineSource.pricingMode, quote.pricingMode) as
+			| string
+			| null;
+		const isRoundTrip = resolve(lineSource.isRoundTrip, quote.isRoundTrip) as
+			| boolean
+			| null;
+
+		// Resolve Dates (If line has specific dates, use them, else Quote Header dates)
+		// Note: pickupAt/estimatedEndAt are Dates in Quote arg, but might be strings in JSON
+		let startAt = quote.pickupAt ?? new Date();
+		let endAt = quote.estimatedEndAt ?? null;
+
+		if (lineSource.pickupAt) {
+			startAt = new Date(lineSource.pickupAt as string);
+		}
+		if (lineSource.estimatedEndAt) {
+			endAt = new Date(lineSource.estimatedEndAt as string);
+		} else if (lineSource.dropoffAt) {
+			// Compatibility with executionData format
+			endAt = new Date(lineSource.dropoffAt as string);
+		}
+
 		return {
 			organizationId: order.organizationId,
 			quoteId: quote.id,
 			quoteLineId: line.id,
 			orderId: order.id,
 			status: "PENDING" as const,
-			startAt: quote.pickupAt ?? new Date(),
-			endAt: quote.estimatedEndAt ?? null,
+			startAt,
+			endAt,
 			sourceData: {
 				// Location data
-				pickupAddress: quote.pickupAddress,
-				pickupLatitude: quote.pickupLatitude
-					? Number(quote.pickupLatitude)
-					: null,
-				pickupLongitude: quote.pickupLongitude
-					? Number(quote.pickupLongitude)
-					: null,
-				dropoffAddress: quote.dropoffAddress,
-				dropoffLatitude: quote.dropoffLatitude
-					? Number(quote.dropoffLatitude)
-					: null,
-				dropoffLongitude: quote.dropoffLongitude
-					? Number(quote.dropoffLongitude)
-					: null,
+				pickupAddress,
+				pickupLatitude: pickupLat,
+				pickupLongitude: pickupLng,
+				dropoffAddress,
+				dropoffLatitude: dropoffLat,
+				dropoffLongitude: dropoffLng,
 				// Passenger info
-				passengerCount: quote.passengerCount,
-				luggageCount: quote.luggageCount,
+				passengerCount: pax,
+				luggageCount: lug,
 				// Vehicle info
-				vehicleCategoryId: quote.vehicleCategoryId,
-				vehicleCategoryName: quote.vehicleCategory?.name ?? null,
+				vehicleCategoryId: resolve(
+					lineSource.vehicleCategoryId,
+					quote.vehicleCategoryId,
+				),
+				vehicleCategoryName: resolve(
+					lineSource.vehicleCategoryName,
+					quote.vehicleCategory?.name,
+				),
 				// Line info
 				lineLabel: line.label,
 				lineDescription: line.description,
@@ -620,9 +695,9 @@ export class SpawnService {
 				// GROUP parent reference (Story 28.5)
 				groupLineId: groupLineId,
 				// Trip info
-				tripType: quote.tripType,
-				pricingMode: quote.pricingMode,
-				isRoundTrip: quote.isRoundTrip,
+				tripType,
+				pricingMode,
+				isRoundTrip,
 			} as Prisma.InputJsonValue,
 		};
 	}
