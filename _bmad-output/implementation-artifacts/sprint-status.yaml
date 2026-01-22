@@ -353,5 +353,5 @@ development_status:
   29-5-implement-multi-mission-invoicing-sync: done
   29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: done
   29-7-dispatch-list-integrity-backlog-separation: done
-  29-8-revamp-mission-sheet-pdf-generation: backlog
+  29-8-revamp-mission-sheet-pdf-generation: review
   epic-29-retrospective: optional

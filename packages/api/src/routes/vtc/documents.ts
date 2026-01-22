@@ -24,9 +24,11 @@ import {
 	generateQuotePdf,
 	generateInvoicePdf,
 	generateMissionOrderPdf,
+	generateMissionSheetPdf,
 	type QuotePdfData,
 	type InvoicePdfData,
 	type MissionOrderPdfData,
+	type MissionSheetPdfData,
 	type OrganizationPdfData,
 	type ContactPdfData,
 	type InvoiceLinePdfData,
@@ -1143,6 +1145,236 @@ export const documentsRouter = new Hono()
 						metadata: {
 							documentId: document.id,
 							filename,
+						},
+					},
+				});
+			}
+
+			return c.json(document, 201);
+		}
+	)
+
+	// Story 29.8: Generate mission sheet PDF (per-Mission, not per-Quote)
+	.post(
+		"/generate/mission-sheet/:missionId",
+		describeRoute({
+			summary: "Generate mission sheet PDF",
+			description: "Generate a PDF document (Fiche Mission) for a specific Mission entity with driver operational details",
+			tags: ["VTC - Documents"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const missionId = c.req.param("missionId");
+
+			// Fetch mission with all required relations
+			const mission = await db.mission.findFirst({
+				where: {
+					id: missionId,
+					organizationId,
+				},
+				include: {
+					quote: {
+						include: {
+							contact: true,
+							vehicleCategory: true,
+							endCustomer: true,
+						},
+					},
+					quoteLine: true,
+					driver: true,
+					vehicle: {
+						include: {
+							vehicleCategory: true,
+						},
+					},
+				},
+			});
+
+			if (!mission) {
+				throw new HTTPException(404, { message: "Mission not found" });
+			}
+
+			// Type assertion for included relations
+			const missionWithRelations = mission as typeof mission & {
+				quote: NonNullable<typeof mission.quote>;
+				quoteLine: typeof mission.quoteLine;
+				driver: typeof mission.driver;
+				vehicle: typeof mission.vehicle & { vehicleCategory?: { name: string } | null };
+			};
+
+			// Get organization details with pricing settings for branding
+			const organization = await db.organization.findUnique({
+				where: { id: organizationId },
+				include: {
+					organizationPricingSettings: true,
+				},
+			});
+
+			if (!organization) {
+				throw new HTTPException(404, { message: "Organization not found" });
+			}
+
+			// Get document type
+			const documentType = await db.documentType.findUnique({
+				where: { code: "MISSION_ORDER" },
+			});
+
+			if (!documentType) {
+				throw new HTTPException(500, {
+					message: "Document type MISSION_ORDER not found. Please run database seed.",
+				});
+			}
+
+			// Story 29.8: Transform Mission to MissionSheetPdfData
+			const sourceData = (missionWithRelations.sourceData as Record<string, unknown>) || {};
+			const quoteLineSourceData = (missionWithRelations.quoteLine?.sourceData as Record<string, unknown>) || {};
+			
+			// Extract waypoints from sourceData (mission-specific)
+			const stops: Array<{ address: string; name?: string }> = [];
+			const stopsData = sourceData.stops || quoteLineSourceData.stops;
+			if (Array.isArray(stopsData)) {
+				for (const stop of stopsData) {
+					if (typeof stop === 'object' && stop !== null) {
+						const stopObj = stop as Record<string, unknown>;
+						stops.push({
+							address: (stopObj.address as string) || '',
+							name: stopObj.name as string | undefined,
+						});
+					}
+				}
+			}
+
+			// Build driver name
+			const driverName = missionWithRelations.driver
+				? `${missionWithRelations.driver.firstName} ${missionWithRelations.driver.lastName}`.trim()
+				: "À désigner";
+			const driverPhone = missionWithRelations.driver?.phone || null;
+
+			// Build vehicle info
+			const vehicleName = missionWithRelations.vehicle?.internalName 
+				|| missionWithRelations.vehicle?.registrationNumber 
+				|| "À désigner";
+			const vehiclePlate = missionWithRelations.vehicle?.registrationNumber || null;
+			const vehicleCategory = missionWithRelations.vehicle?.vehicleCategory?.name 
+				|| missionWithRelations.quote.vehicleCategory?.name 
+				|| "N/A";
+
+			// Build contact info
+			const contact = missionWithRelations.quote.contact;
+			const contactData = {
+				displayName: contact.displayName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
+				companyName: contact.companyName || null,
+				billingAddress: contact.billingAddress || null,
+				email: contact.email || null,
+				phone: contact.phone || null,
+				vatNumber: contact.vatNumber || null,
+				siret: contact.siret || null,
+				isPartner: contact.isPartner,
+			};
+
+			// Build endCustomer info
+			const endCustomer = missionWithRelations.quote.endCustomer ? {
+				firstName: missionWithRelations.quote.endCustomer.firstName,
+				lastName: missionWithRelations.quote.endCustomer.lastName,
+				email: missionWithRelations.quote.endCustomer.email || null,
+				phone: missionWithRelations.quote.endCustomer.phone || null,
+			} : null;
+
+			// Extract pickup/dropoff from sourceData or quote
+			const pickupAddress = (sourceData.pickupAddress as string) 
+				|| (quoteLineSourceData.pickupAddress as string) 
+				|| missionWithRelations.quote.pickupAddress;
+			const dropoffAddress = (sourceData.dropoffAddress as string) 
+				|| (quoteLineSourceData.dropoffAddress as string) 
+				|| missionWithRelations.quote.dropoffAddress 
+				|| null;
+
+			// Extract duration for DISPO
+			const durationHours = (sourceData.durationHours as number) 
+				|| (quoteLineSourceData.durationHours as number) 
+				|| (missionWithRelations.quote.durationHours ? Number(missionWithRelations.quote.durationHours) : null);
+
+			const pdfData: MissionSheetPdfData = {
+				id: missionWithRelations.id,
+				ref: missionWithRelations.ref,
+				tripType: missionWithRelations.quote.tripType,
+				pickupAddress,
+				dropoffAddress,
+				pickupAt: missionWithRelations.startAt,
+				passengerCount: missionWithRelations.quote.passengerCount,
+				luggageCount: missionWithRelations.quote.luggageCount,
+				vehicleCategory,
+				notes: missionWithRelations.notes || missionWithRelations.quote.notes || null,
+				stops,
+				durationHours,
+				driverName,
+				driverPhone,
+				secondDriverName: null, // TODO: Add second driver support if needed
+				secondDriverPhone: null,
+				vehicleName,
+				vehiclePlate,
+				contact: contactData,
+				endCustomer,
+				createdAt: missionWithRelations.createdAt,
+			};
+
+			const orgData = transformOrganizationToPdfData(organization);
+
+			// Fix: Load logo with robust fallback
+			if (orgData.documentLogoUrl) {
+				const logo = await loadLogoAsBase64(orgData.documentLogoUrl);
+				if (logo) {
+					orgData.documentLogoUrl = logo;
+				} else {
+					orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
+				}
+			} else {
+				orgData.documentLogoUrl = await loadLogoAsBase64(orgData.logo);
+			}
+
+			const pdfBuffer = await generateMissionSheetPdf(pdfData, orgData);
+
+			// Save to storage
+			const storage = getStorageService();
+			const refShort = missionWithRelations.ref || missionWithRelations.id.slice(-8).toUpperCase();
+			const dateStr = format(new Date(), "yyyyMMdd");
+			const timeStr = format(new Date(), "HHmmss");
+			const filename = `FICHE-MISSION-${refShort}-${dateStr}-${timeStr}.pdf`;
+			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const url = await storage.getUrl(storagePath);
+
+			// Create document record
+			const document = await db.document.create({
+				data: withTenantCreate(
+					{
+						documentTypeId: documentType.id,
+						quoteId: missionWithRelations.quoteId,
+						storagePath,
+						url,
+						filename,
+					},
+					organizationId
+				),
+				include: {
+					documentType: true,
+				},
+			});
+
+			// Create Activity record
+			if (missionWithRelations.driverId) {
+				await db.activity.create({
+					data: {
+						organizationId,
+						driverId: missionWithRelations.driverId,
+						quoteId: missionWithRelations.quoteId,
+						entityType: "MISSION",
+						entityId: missionWithRelations.id,
+						type: "DOCUMENT_GENERATED",
+						description: `Génération Fiche Mission ${missionWithRelations.ref || missionWithRelations.id.slice(-8)}`,
+						metadata: {
+							documentId: document.id,
+							filename,
+							missionId: missionWithRelations.id,
 						},
 					},
 				});

@@ -32,8 +32,10 @@ interface VehicleAssignmentPanelProps {
 	onChangeSubcontractor?: () => void;
 	onRemoveSubcontractor?: () => void;
 	className?: string;
-	// Story 25.1: Quote ID for generating mission sheet
+	// Story 25.1: Quote ID for generating mission sheet (legacy)
 	quoteId?: string | null;
+	// Story 29.8: Mission ID for generating per-mission sheet
+	missionId?: string | null;
 }
 
 export function VehicleAssignmentPanel({
@@ -46,9 +48,10 @@ export function VehicleAssignmentPanel({
 	onRemoveSubcontractor,
 	className,
 	quoteId,
+	missionId,
 }: VehicleAssignmentPanelProps) {
 	const t = useTranslations("dispatch.assignment");
-	const { generateMissionOrder, isGenerating } = useMissionOrder();
+	const { generateMissionOrder, isGenerating, generateMissionSheet, isGeneratingSheet } = useMissionOrder();
 
 	if (isLoading) {
 		return <VehicleAssignmentPanelSkeleton className={className} />;
@@ -226,15 +229,21 @@ export function VehicleAssignmentPanel({
 							</div>
 						)}
 
-					{/* Story 25.1: Print Mission Sheet button - show when driver is assigned */}
-					{assignment.driverId && quoteId && (
+					{/* Story 29.8: Print Mission Sheet button - prefer missionId (per-mission) over quoteId (legacy) */}
+					{assignment.driverId && (missionId || quoteId) && (
 						<div className="pt-2 border-t">
 							<Button
 								variant="outline"
 								size="sm"
 								className="w-full"
-								onClick={() => generateMissionOrder(quoteId)}
-								disabled={isGenerating}
+								onClick={() => {
+									if (missionId) {
+										generateMissionSheet(missionId);
+									} else if (quoteId) {
+										generateMissionOrder(quoteId);
+									}
+								}}
+								disabled={isGenerating || isGeneratingSheet}
 							>
 								<Printer className="size-4 mr-2" />
 								{t("printMissionSheet")}
