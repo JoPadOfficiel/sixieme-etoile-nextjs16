@@ -2,7 +2,7 @@
 
 **Epic:** Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)  
 **Author:** JoPad (via BMAD Orchestrator)  
-**Status:** review  
+**Status:** done  
 **Priority:** High (P1 - Visualization)  
 **Estimated Points:** 5  
 **Branch:** `feature/29-2-quote-view`
@@ -49,37 +49,37 @@ Currently, the `QuoteDetailPage` component:
 
 ### AC1: QuoteLines Table Display
 
-- [ ] **AC1.1:** A new `QuoteLinesTable` component displays all `quote.lines` in a table format
-- [ ] **AC1.2:** Each row shows: Line number, Type (TRANSFER/DISPO/EXCURSION), Origin → Destination, Date/Time, Price
-- [ ] **AC1.3:** The table is placed below the header, above the 3-column layout
-- [ ] **AC1.4:** Empty state: If no lines, show legacy single-trip view (backward compatible)
+- [x] **AC1.1:** A new `QuoteLinesTable` component displays all `quote.lines` in a table format
+- [x] **AC1.2:** Each row shows: Line number, Type (TRANSFER/DISPO/EXCURSION), Origin → Destination, Date/Time, Price
+- [x] **AC1.3:** The table is placed below the header, above the 3-column layout
+- [x] **AC1.4:** Empty state: If no lines, show legacy single-trip view (backward compatible)
 
 ### AC2: Multi-Mission Map Component
 
-- [ ] **AC2.1:** Create `MultiMissionMap` component that accepts an array of missions
-- [ ] **AC2.2:** For each mission, display:
+- [x] **AC2.1:** Create `MultiMissionMap` component that accepts an array of missions
+- [x] **AC2.2:** For each mission, display:
   - Green marker (pickup) with label "1A", "2A", etc.
   - Red marker (dropoff) with label "1B", "2B", etc.
-- [ ] **AC2.3:** Map auto-calculates bounds to fit ALL markers on initial load
-- [ ] **AC2.4:** Optional: Draw polyline for each mission if `encodedPolyline` exists in `sourceData`
+- [x] **AC2.3:** Map auto-calculates bounds to fit ALL markers on initial load
+- [x] **AC2.4:** Optional: Draw polyline for each mission if `encodedPolyline` exists in `sourceData`
 
 ### AC3: Interactive Line Selection
 
-- [ ] **AC3.1:** Create React Context `QuoteLineSelectionContext` to track selected line
-- [ ] **AC3.2:** Clicking a row in `QuoteLinesTable` sets that line as selected
-- [ ] **AC3.3:** When a line is selected, map zooms to that mission's bounds (pickup + dropoff)
-- [ ] **AC3.4:** Selected row has visual highlight (border or background)
-- [ ] **AC3.5:** Clicking "View All" or clicking outside resets to full bounds view
+- [x] **AC3.1:** Create React Context `QuoteLineSelectionContext` to track selected line
+- [x] **AC3.2:** Clicking a row in `QuoteLinesTable` sets that line as selected
+- [x] **AC3.3:** When a line is selected, map zooms to that mission's bounds (pickup + dropoff)
+- [x] **AC3.4:** Selected row has visual highlight (border or background)
+- [x] **AC3.5:** Clicking "View All" or clicking outside resets to full bounds view
 
 ### AC4: Data Extraction from sourceData
 
-- [ ] **AC4.1:** Extract coordinates from `line.sourceData`:
+- [x] **AC4.1:** Extract coordinates from `line.sourceData`:
   - `pickupLatitude`, `pickupLongitude`
   - `dropoffLatitude`, `dropoffLongitude`
   - `origin` (address string)
   - `destination` (address string)
-- [ ] **AC4.2:** Handle missing coordinates gracefully (skip marker, show warning)
-- [ ] **AC4.3:** Extract `tripType` for display badge
+- [x] **AC4.2:** Handle missing coordinates gracefully (skip marker, show warning)
+- [x] **AC4.3:** Extract `tripType` for display badge
 
 ---
 

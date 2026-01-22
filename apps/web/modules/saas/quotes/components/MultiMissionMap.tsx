@@ -291,12 +291,17 @@ export function MultiMissionMap({ lines, className }: MultiMissionMapProps) {
       markersRef.current.push(marker);
     });
 
-    // Create polylines connecting pickup to dropoff for each mission
+    // Create polylines connecting pickup to dropoff for each mission ONLY if encodedPolyline exists
     validLines.forEach((line) => {
       const sourceData = line.sourceData as SourceData;
       const isSelected = selectedLineId === line.id;
       const isOtherSelected = selectedLineId !== null && selectedLineId !== line.id;
       
+      // Only draw polyline if encodedPolyline exists in sourceData
+      if (!sourceData?.encodedPolyline) {
+        return;
+      }
+
       const path = [
         { lat: sourceData.pickupLatitude!, lng: sourceData.pickupLongitude! },
         { lat: sourceData.dropoffLatitude!, lng: sourceData.dropoffLongitude! },
@@ -340,6 +345,22 @@ export function MultiMissionMap({ lines, className }: MultiMissionMapProps) {
     setSelectedLineId(null);
   };
 
+  // Handle click outside map (click on map background)
+  const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
+    // Check if click is on map background (not on markers or polylines)
+    if (event.domEvent) {
+      setSelectedLineId(null);
+    }
+  }, [setSelectedLineId]);
+
+  // Add click handler to map container
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    google.maps.event.addListener(map, 'click', handleMapClick);
+  }, [handleMapClick]);
+
   // No valid lines with coordinates
   if (validLines.length === 0) {
     return (
@@ -347,6 +368,9 @@ export function MultiMissionMap({ lines, className }: MultiMissionMapProps) {
         <div className="text-center text-muted-foreground">
           <MapIcon className="size-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">{t("noMissions")}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("lines.noCoordinates")}
+          </p>
         </div>
       </div>
     );
