@@ -4,9 +4,10 @@
 
 - **Epic**: 30 - Validation & Stabilization of Quote-to-Invoice Workflow
 - **Story ID**: 30-2
-- **Status**: review
+- **Status**: done
 - **Created**: 2026-01-23
 - **Branch**: `feature/30-2-dispatch-robustness`
+- **Completed**: 2026-01-23
 
 ---
 
