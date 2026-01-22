@@ -99,8 +99,11 @@ This document decomposes the VTC ERP PRD into **24 functional epics**, aligned w
 - **Epic 28 – Order Management & Intelligent Spawning (Dossier de Commande)**
   Implement the "Dossier" lifecycle to manage multi-mission orders, intelligent spawning from quotes, flexible execution-aware invoicing, and ad-hoc exceptions.
 
-- **Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)**
-  Refactor and finalize the "Shopping Cart" quote system to ensure correct persistence, multi-trip visualization, lossless editing, and intelligent mission spawning.
+  - **Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)**
+    Refactor and finalize the "Shopping Cart" quote system to ensure correct persistence, multi-trip visualization, lossless editing, and intelligent mission spawning.
+
+  - **Epic 30 – Validation & Stabilization of Quote-to-Invoice Workflow**
+    Address critical visual, logic, and persistence defects identified during end-to-end testing of the Quote-to-Dispatch-to-Invoice workflow, including PDF generation, map coordinates, and dispatch assignment.
 
 ---
 
@@ -7883,3 +7886,186 @@ So that I have a clear, distinct work order for each leg of a complex itinerary.
     -   Displays the assigned Driver(s) and Vehicle (if assigned).
     -   Displays Client Platform info (if applicable).
 - **Access:** "Download Mission Sheet" button available on the Mission Card in Dispatch and in the Dossier Mission list.
+
+## Epic 30: Validation & Stabilization of Quote-to-Invoice Workflow
+
+**Goal:** Address critical visual, logic, and persistence defects while significantly enhancing robustness in Dispatch assignment, Quote lifecycle (duplication/cancellation), and Financial Reporting to ensure the system is production-ready.
+
+### Story 30.1: Quote Workflow Fixes & PDF Customization
+
+As an **Operator**,
+I want to duplicate/cancel quotes reliably and customize the level of detail on generated PDFs,
+So that I can manage the sales lifecycle efficiently and send professional documents tailored to client needs.
+
+**Context:**
+We need to stabilize the Quote Lifecycle. Currently, "Cancel" and "Duplicate" actions are brittle or broken. Additionally, users need granular control over the data revealed to clients on PDFs.
+
+**Related FRs:** FR42 (Quote Logic), FR43 (Visuals), FR133 (PDF).
+
+**Acceptance Criteria:**
+
+#### 1. Quote Actions & Persistence (Fixes)
+-   **Editing Persistence (CRITICAL):**
+    -   When editing a saved Quote (Pickup, Dropoff, Time), clicking "Save" MUST strictly persist changes to the database.
+    -   **Bug Repro:** Currently, changing "Rally" to "Sedéja" says "Saved" but reloading "View Data" shows "Rally". This must be fixed in the server action logic (check `sourceData` JSON updates).
+-   **Cancellation:**
+    -   Clicking "Cancel" on a Quote Detail page:
+        -   Sets status to `CANCELLED`.
+        -   Disables "Edit", "Send", "Convert" buttons.
+        -   Updates the UI immediately to reflect the cancelled state.
+-   **Duplication:**
+    -   Clicking "Duplicate" on a Quote:
+        -   Creates a NEW Quote record with status `DRAFT`.
+        -   Clones all `QuoteLine` items.
+        -   **CRITICAL:** Preserves `sellingPrice`, `cost`, `margin`, and `vat` from the original line items.
+        -   Clones the `QuoteLine.sourceData` (pickup/dropoff/vehicle info) correctly.
+        -   Redirects the user to the *new* quote.
+
+#### 2. PDF Enhancements (Fixes & Customization)
+-   **CRITICAL FIXES (Must be done first):**
+    -   **Enriched Description:** The PDF line item description must show FULL details (Type, Pickup/Dropoff Cities, Vehicle Class, Start Time, Pax Count, Luggage). Currently it just shows a generic "Transfer".
+    -   **Pricing Bug:** Fix the "Total HT", "Total VAT", "Total TTC" showing as `0.00 €` on the PDF. Ensure `unitPrice` and `taxRate` are correctly mapped/calculated.
+-   **New Settings Section:**
+    -   In `Settings > General` (or a new `Documents` tab), add "PDF Appearance".
+-   **Controls:**
+    -   **Detail Level:** Radio buttons:
+        -   **Simple:** Shows only `Service Label`, `Date`, `Price`.
+        -   **Standard (Default):** Shows above + `Main Passenger`, `Route`.
+        -   **Full/Traceability:** Shows above + `Vehicle`, `Luggage`, `Flight`, `Distance/Duration`.
+        -   **Custom:** Shows a checklist of fields to toggle individually.
+-   **Live Preview:**
+    -   Display a "Mock Invoice" or "Mock Quote" PDF preview next to the settings.
+    -   The preview *updates in real-time* as toggles are changed.
+
+#### 3. Visuals & i18n (Cleanup)
+-   **Quote Map & Contacts:**
+    -   **Hide Map Logic:** The "Mission with coordinate" map section MUST BE HIDDEN if no specific service/mission is selected in the "View Detail" list.
+    -   **Coordinates:** If a `QuoteLine` (or address) is valid, the map must display it. Fix "Coordinates unavailable" errors for valid addresses.
+    -   **Contact Card:** Ensure the Contact Card appears immediately when a Contact is selected in the Quote Builder.
+-   **Translations:**
+    -   Ensure `quotes.actions.edit` and `yolo.actions.edit` are properly translated in `fr.json` / `en.json`.
+    -   Ensure the new PDF settings labels are translated.
+
+**Technical Notes:**
+-   **Duplicate Quote:** Ensure deep copy of `QuoteLine` + `Service` relations. Verify `sourceData` JSON is copied correctly; often this is where "hydration" fails.
+-   **PDF Settings:** Schema update `organization.pdfSettings` (JSON). Update `pdf-generator.ts` to read constraints.
+
+---
+
+### Story 30.2: Robust Unified Dispatch & Gantt Improvements
+
+As a **Dispatcher**,
+I want a responsive Gantt view and a "Bulletproof" assignment algorithm that enforces RSE/License rules and explains rejection reasons,
+So that I can assign missions confidently without creating illegal or impossible schedules.
+
+**Context:**
+The Dispatch Board has UI glitches (broken scrolling) and the assignment logic is too "optimistic". It needs to strictly enforce License, RSE, and Availability rules.
+
+**Related FRs:** FR18 (Dispatch), FR50 (Constraints), FR69 (Availability).
+
+**Acceptance Criteria:**
+
+#### 1. UI & UX Improvements
+-   **Gantt Scroll:**
+    -   Clicking and dragging the time axis (header) moves the timeline horizontally.
+    -   Fix any "stuck" rubber-banding behavior.
+-   **Backlog Panel:**
+    -   Make `BacklogItem` responsive. Use `flex-wrap` or distinct rows for "Pickup -> Dropoff" so long addresses don't overflow horizontally.
+-   **Modals:**
+    -   **Mission Detail:** Width increased (e.g., `max-w-3xl`) to show full itinerary/map comfortably.
+    -   **Assign Modal:** Width reduced (e.g., `max-w-md` or `lg`) so it feels like a helper tool, not a full page takeover.
+
+#### 2. Intelligent Assignment Logic (The "Brain")
+-   **Candidate Filtering (`findCandidates`):**
+    -   **Hard Constraints:**
+        -   **License:** Driver's `licenseType` MUST match Vehicle's required license (if vehicle assigned first) OR Mission type.
+        -   **Availability:** Driver/Vehicle must NOT have an overlapping `Mission` (status != `CANCELLED`).
+    -   **RSE (Basic):**
+        -   Warn if Daily Driving > 9h (configurable limit).
+        -   Warn if Rest Time < 11h between shifts.
+-   **Conflict Resolution:**
+    -   If an overlap is detected (e.g., trying to force-assign), show a **Conflict Alert**:
+        -   "Driver [Name] has Mission [Ref] at [Time]. Overlap: [X] mins."
+        -   Allow "Force Assign" only with explicit confirmation (red button).
+    -   **Alert Notifications:** When assignment is blocked, display a specific notification explaining WHY (e.g., "Blocked: Driver RSE limit reached").
+-   **Empty State:**
+    -   If the candidate list is empty, display a **diagnostic message**:
+        -   “0 Candidates Found. (3 exclude by Schedule, 2 excluded by License).”
+-   **Filters (Must Work):**
+    -   "OK Only", "Include Warnings", "Internal Only", "Shadow Fleet Only" (Subcontractors), "All Fleets".
+
+#### 3. Multi-Driver & Resources
+-   **Second Driver:**
+    -   In Mission Detail, add "Assign Second Driver" action (for long haul).
+    -   This creates a `MissionAssignment` linking the second driver to the *same* mission ID.
+    -   **Gantt Visibility:** The Mission Bar MUST appear on BOTH drivers' timelines (synchronized).
+
+**Technical Notes:**
+-   **Constraints:** Create `checkConstraints(mission, candidate)` helper. Use Prisma strictly for overlaps.
+-   **UI:** `AssignmentService` or `DispatcherService` logic.
+
+---
+
+### Story 30.3: Validated Financial Reporting
+
+As a **Finance Manager**,
+I want the Reports & Analytics pages to calculate revenue ONLY from validated/paid Invoices (not Quotes),
+So that I see real financial performance (Cash In/Accrued) rather than potential sales.
+
+**Context:**
+Currently, the "Profitability" report aggregates data from `Quotes`. This is misleading. True revenue only exists when an Invoice is ISSUED.
+
+**Related FRs:** FR35 (Reporting).
+
+**Acceptance Criteria:**
+
+#### 1. Data Source Switch
+-   **Profitability Report:**
+    -   Query MUST query the `Invoice` table (or `Mission` linked to `Invoice`).
+    -   **Filter:** `status` IN (`ISSUED`, `PAID`, `PARTIALLY_PAID`). Exclude `DRAFT` or `CANCELLED` invoices.
+    -   **Calculation:** Sum `Invoice.totalHT` (Net) for Revenue.
+-   **Financial Stats (Dashboard):**
+    -   "Total Revenue" widget must sum `Invoice.totalHT`.
+    -   "Pending Payment" widget must sum `Invoice.totalTTC` - `Invoice.amountPaid`.
+
+#### 2. UI Updates
+-   **Labels:** Rename "Quote Value" or "Estimated Rev" to "Invoiced Revenue".
+-   **Empty States:** If no invoices exist for a period, show 0 (don't fall back to Quotes).
+
+**Technical Notes:**
+-   Identify existing `db.quote.aggregate(...)` calls in `reports.ts`. Replace with `db.invoice.aggregate(...)`.
+
+---
+
+### Story 30.4: Invoice Generation Flexibility (Partial Invoicing)
+
+As a **Finance User**,
+I want to select specific items when generating an Invoice from an Order (Dossier),
+So that I can exclude cancelled trips or add billable internal tasks that weren't originally in the commercial quote.
+
+**Context:**
+Currently, invoicing is "All or Nothing". Users need to SELECT which items to bill (Partial billing).
+
+**Related FRs:** FR137 (Invoicing).
+
+**Acceptance Criteria:**
+
+#### 1. Selection Modal
+-   **Trigger:** Clicking "Generate Invoice" on an Order/Dossier page opens a modal instead of immediately creating the invoice.
+-   **Content:**
+    -   List of **Billable Items** (Missions) linked to the Order.
+    -   Columns: `Date`, `Description`, `Price (HT)`, `Status` (Completed/Cancelled).
+    -   **Checkbox:** Select/Deselect each item.
+    -   **Default:** "Completed" missions checked by default; "Cancelled" unchecked.
+-   **Internal Tasks:**
+    -   A secondary list or "Add Item" button to include non-mission billable items (from `InternalTask` table or ad-hoc).
+
+#### 2. Generation Logic
+-   **Filtering:** The API endpoint `createInvoiceFromOrder` must accept an array of `itemIds` (or `missionIds`).
+-   **Calculation:** The Invoice Total is recalculated based *only* on the selected items.
+-   **Status Sync:**
+    -   Billed Missions are marked as `BILLED` to prevent double billing.
+
+**Technical Notes:**
+-   **Frontend:** Create `InvoiceGenerationModal.tsx`.
+-   **Backend:** `POST /invoices/generate` with payload `{ orderId, missionIds: [...] }`. Filter Order.items by the `missionIds` array.

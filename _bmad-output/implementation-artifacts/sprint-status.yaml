@@ -1,4 +1,4 @@
-# generated: 2026-01-22T08:33:24+01:00
+# generated: 2026-01-22T22:08:00+01:00
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-22T08:33:24+01:00
+generated: 2026-01-22T22:08:00+01:00
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -350,8 +350,13 @@ development_status:
   29-2-implement-multi-mission-quote-detail-view: done
   29-3-ensure-lossless-quote-editing-hydration: done
   29-4-implement-intelligent-multi-mission-spawning-the-launch: done
-  29-5-implement-multi-mission-invoicing-sync: done
   29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: done
   29-7-dispatch-list-integrity-backlog-separation: done
   29-8-revamp-mission-sheet-pdf-generation: review
   epic-29-retrospective: optional
+  epic-30: backlog
+  30-1-quote-workflow-fixes-pdf-customization: backlog
+  30-2-robust-unified-dispatch-gantt-improvements: backlog
+  30-3-validated-financial-reporting: backlog
+  30-4-invoice-generation-flexibility-partial-invoicing: backlog
+  epic-30-retrospective: optional
