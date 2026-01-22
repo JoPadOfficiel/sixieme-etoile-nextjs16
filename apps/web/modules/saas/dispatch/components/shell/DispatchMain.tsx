@@ -44,14 +44,19 @@ export function DispatchMain({
 	// Story 29.6: Active preset state
 	const [activePreset, setActivePreset] = useState<ZoomPreset | null>("3days");
 
-	// Story 29.6: Handle preset change
+	// Story 29.6: Handle preset change with better date centering and zoom sync
 	const handlePresetChange = useCallback((preset: ZoomPreset) => {
 		const presetConfig = ZOOM_PRESETS[preset];
-		const newStart = startOfDay(today);
-		const newEnd = endOfDay(addDays(today, presetConfig.rangeDays - 1));
+		const now = new Date();
+		
+		// Center the range around current time for better UX
+		const halfDays = Math.floor(presetConfig.rangeDays / 2);
+		const newStart = startOfDay(addDays(now, -halfDays));
+		const newEnd = endOfDay(addDays(now, presetConfig.rangeDays - halfDays - 1));
+		
 		setDateRange({ start: newStart, end: newEnd });
 		setActivePreset(preset);
-	}, [today]);
+	}, []);
 
 	// Story 29.6: Handle date range change from picker
 	const handleDateRangeChange = useCallback((range: DateRange) => {
