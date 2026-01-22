@@ -108,7 +108,7 @@ export class SpawnService {
 		quote: { pickupAt: Date | null },
 	): Date {
 		const lineSource = (line.sourceData as Record<string, unknown>) || {};
-		
+
 		// Try to parse line's pickupAt first
 		if (lineSource.pickupAt) {
 			try {
@@ -126,12 +126,12 @@ export class SpawnService {
 				);
 			}
 		}
-		
+
 		// Fallback to quote's pickupAt
 		if (quote.pickupAt) {
 			return quote.pickupAt;
 		}
-		
+
 		// Last resort: throw error if no valid date available
 		throw new Error(
 			"[SPAWN] No valid pickup date found in line sourceData or quote pickupAt",
@@ -143,9 +143,14 @@ export class SpawnService {
 	 * Format: {OrderRef}-{paddedIndex} e.g., "ORD-2026-001-01"
 	 * HIGH: Validates orderRef is not null/undefined
 	 */
-	private static generateMissionRef(orderRef: string | null, index: number): string {
+	private static generateMissionRef(
+		orderRef: string | null,
+		index: number,
+	): string {
 		if (!orderRef) {
-			throw new Error("[SPAWN] Cannot generate mission ref: orderRef is null or undefined");
+			throw new Error(
+				"[SPAWN] Cannot generate mission ref: orderRef is null or undefined",
+			);
 		}
 		const paddedIndex = String(index + 1).padStart(2, "0");
 		return `${orderRef}-${paddedIndex}`;
@@ -270,17 +275,17 @@ export class SpawnService {
 		const totalMissions = sortedLines.length;
 		const missionCreateData: Prisma.MissionCreateManyInput[] = sortedLines.map(
 			(item, index) => {
-			const ref = this.generateMissionRef(order.reference, index);
-			return this.buildMissionDataWithRef(
-				item.line,
-				item.quote,
-				order,
-				item.groupLineId,
-				ref,
-				index + 1, // 1-based sequence index
-				totalMissions,
-			);
-		},
+				const ref = this.generateMissionRef(order.reference, index);
+				return this.buildMissionDataWithRef(
+					item.line,
+					item.quote,
+					order,
+					item.groupLineId,
+					ref,
+					index + 1, // 1-based sequence index
+					totalMissions,
+				);
+			},
 		);
 
 		// 6. Create missions in transaction using createMany with skipDuplicates
@@ -643,188 +648,6 @@ export class SpawnService {
 		return lines;
 	}
 
-	// =========================================================================
-	// Story 28.5: GROUP Spawning Logic (Multi-Day) - Legacy method kept for compatibility
-	// =========================================================================
-
-	/**
-	 * Process a GROUP line and return mission create data
-	 * Handles both children-based and date-range-based GROUP lines
-	 *
-	 * @param groupLine - The GROUP QuoteLine to process
-	 * @param quote - The parent Quote
-	 * @param order - The parent Order
-	 * @param existingLineIds - Set of line IDs that already have missions
-	 * @returns Array of mission create data
-	 * @deprecated Use collectGroupLines + buildMissionDataWithRef for Story 29.4
-	 */
-	private static processGroupLine(
-		groupLine: {
-			id: string;
-			type: string;
-			label: string;
-			sourceData: unknown;
-			dispatchable?: boolean;
-			children?: Array<{
-				id: string;
-				type: string;
-				label: string;
-				sourceData: unknown;
-				dispatchable?: boolean;
-				children?: unknown[];
-			}>;
-		},
-		quote: {
-			id: string;
-			pickupAt: Date | null;
-			estimatedEndAt: Date | null;
-			pickupAddress: string | null;
-			pickupLatitude: unknown;
-			pickupLongitude: unknown;
-			dropoffAddress: string | null;
-			dropoffLatitude: unknown;
-			dropoffLongitude: unknown;
-			passengerCount: number | null;
-			luggageCount: number | null;
-			vehicleCategoryId: string | null;
-			vehicleCategory: { name: string } | null;
-			tripType: string;
-			pricingMode: string | null;
-			isRoundTrip: boolean | null;
-		},
-		order: { id: string; organizationId: string },
-		existingLineIds: Set<string>,
-	): Prisma.MissionCreateManyInput[] {
-		const missions: Prisma.MissionCreateManyInput[] = [];
-
-		// Skip if already processed (idempotence)
-		if (existingLineIds.has(groupLine.id)) {
-			console.log(
-				`[SPAWN] Skipping GROUP line ${groupLine.id}: Missions already exist`,
-			);
-			return missions;
-		}
-
-		// Case 1: GROUP with children - recurse
-		if (groupLine.children && groupLine.children.length > 0) {
-			console.log(
-				`[SPAWN] Processing GROUP line ${groupLine.id} with ${groupLine.children.length} children`,
-			);
-
-			for (const child of groupLine.children) {
-				// Skip if child already has mission
-				if (existingLineIds.has(child.id)) {
-					console.log(
-						`[SPAWN] Skipping child line ${child.id}: Mission already exists`,
-					);
-					continue;
-				}
-
-				// Story 28.6: Skip if child is not dispatchable
-				if (child.dispatchable === false) {
-					console.log(
-						`[SPAWN] Skipping child line ${child.id}: dispatchable=false`,
-					);
-					continue;
-				}
-
-				if (child.type === "CALCULATED") {
-					// Spawn mission for CALCULATED child, link to GROUP parent
-					missions.push(
-						this.buildMissionData(child as any, quote, order, groupLine.id),
-					);
-				} else if (child.type === "GROUP" && child.children) {
-					// Recurse for nested GROUP (up to 2 levels)
-					const nestedMissions = this.processGroupLine(
-						child as any,
-						quote,
-						order,
-						existingLineIds,
-					);
-					missions.push(...nestedMissions);
-				}
-				// MANUAL children are skipped
-			}
-			return missions;
-		}
-
-		// Case 2: GROUP with date range (no children) - multi-day spawning
-		const sourceData = groupLine.sourceData as Record<string, unknown> | null;
-		const startDate = sourceData?.startDate as string | undefined;
-		const endDate = sourceData?.endDate as string | undefined;
-
-		if (startDate && endDate) {
-			try {
-				const days = eachDayOfInterval({
-					start: new Date(startDate),
-					end: new Date(endDate),
-				});
-
-				console.log(
-					`[SPAWN] GROUP ${groupLine.id}: Spawning ${days.length} missions for date range ${startDate} to ${endDate}`,
-				);
-
-				days.forEach((day, index) => {
-					missions.push({
-						organizationId: order.organizationId,
-						quoteId: quote.id,
-						quoteLineId: groupLine.id,
-						orderId: order.id,
-						status: "PENDING" as const,
-						startAt: startOfDay(day),
-						endAt: null, // Duration handled in sourceData
-						sourceData: {
-							// Location data from quote
-							pickupAddress: quote.pickupAddress,
-							pickupLatitude: quote.pickupLatitude
-								? Number(quote.pickupLatitude)
-								: null,
-							pickupLongitude: quote.pickupLongitude
-								? Number(quote.pickupLongitude)
-								: null,
-							dropoffAddress: quote.dropoffAddress,
-							dropoffLatitude: quote.dropoffLatitude
-								? Number(quote.dropoffLatitude)
-								: null,
-							dropoffLongitude: quote.dropoffLongitude
-								? Number(quote.dropoffLongitude)
-								: null,
-							// Passenger info
-							passengerCount: quote.passengerCount,
-							luggageCount: quote.luggageCount,
-							// Vehicle info
-							vehicleCategoryId: quote.vehicleCategoryId,
-							vehicleCategoryName: quote.vehicleCategory?.name ?? null,
-							// GROUP-specific info (Story 28.5)
-							groupLineId: groupLine.id,
-							groupLabel: groupLine.label,
-							dayIndex: index + 1,
-							totalDays: days.length,
-							dayDate: day.toISOString(),
-							// Trip info
-							tripType: quote.tripType,
-							pricingMode: quote.pricingMode,
-							isRoundTrip: quote.isRoundTrip,
-							// Original GROUP sourceData (cast for type compatibility)
-							lineSourceData: (sourceData ??
-								null) as Prisma.InputJsonValue | null,
-						} as Prisma.InputJsonValue,
-					});
-				});
-			} catch (error) {
-				console.error(
-					`[SPAWN] GROUP ${groupLine.id}: Invalid date range - ${error}`,
-				);
-			}
-		} else {
-			console.log(
-				`[SPAWN] GROUP ${groupLine.id}: No children and no date range, skipping`,
-			);
-		}
-
-		return missions;
-	}
-
 	/**
 	 * Story 29.4: Build mission create data with sequential ref
 	 *
@@ -1025,7 +848,7 @@ export class SpawnService {
 			passengerCount: number | null;
 			luggageCount: number | null;
 			vehicleCategoryId: string | null;
-			vehicleCategory: { name: string } | null;
+			name: string | null;
 			tripType: string;
 			pricingMode: string | null;
 			isRoundTrip: boolean | null;
