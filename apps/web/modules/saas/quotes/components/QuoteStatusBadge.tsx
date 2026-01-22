@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Ban,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
@@ -85,6 +86,11 @@ function getStatusConfig(status: QuoteStatus) {
       return {
         Icon: Clock,
         badgeClass: "border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+      };
+    case "CANCELLED":
+      return {
+        Icon: Ban,
+        badgeClass: "border-slate-500/50 bg-slate-500/10 text-slate-700 dark:text-slate-400",
       };
   }
 }

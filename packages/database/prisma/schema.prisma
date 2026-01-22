@@ -407,6 +407,14 @@ enum DocumentLanguage {
   BILINGUAL // Both French and English (default)
 }
 
+/// Story 30.1: PDF Appearance level for document generation
+/// Controls the level of detail shown in generated PDF documents
+enum PdfAppearance {
+  SIMPLE // Logo + Essential info only (minimal)
+  STANDARD // Logo + Info + Trip details (default)
+  FULL // Everything including cost breakdown (detailed)
+}
+
 /// Story 26.1: Quote/Invoice line type for Hybrid Blocks architecture
 /// Classifies line items by their source and editability
 enum QuoteLineType {
@@ -1490,6 +1498,12 @@ model OrganizationPricingSettings {
   // Custom footer terms for mission orders
   missionOrderTerms String?
 
+  // Story 30.1: PDF Appearance level
+  // SIMPLE: Logo + Essential info only
+  // STANDARD: Logo + Info + Trip details (default)
+  // FULL: Everything including cost breakdown
+  pdfAppearance PdfAppearance @default(STANDARD)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1958,11 +1972,12 @@ model Quote {
   notes String?
 
   // Status transition timestamps (Story 6.4)
-  sentAt     DateTime?
-  viewedAt   DateTime?
-  acceptedAt DateTime?
-  rejectedAt DateTime?
-  expiredAt  DateTime?
+  sentAt      DateTime?
+  viewedAt    DateTime?
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  expiredAt   DateTime?
+  cancelledAt DateTime? // Story 30.1: Timestamp when quote was cancelled
 
   // Assignment fields (Story 8.2)
   assignedVehicleId String?

@@ -323,7 +323,7 @@ const createQuoteSchema = z
 
 const updateQuoteSchema = z.object({
 	status: z
-		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"])
+		.enum(["DRAFT", "SENT", "VIEWED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"]) // Story 30.1: Added CANCELLED
 		.optional()
 		.describe("Quote lifecycle status"),
 	// Full edit fields (only for DRAFT quotes)
@@ -1186,6 +1186,201 @@ export const quotesRouter = new Hono()
 			}
 
 			return c.json(quote);
+		},
+	)
+
+	// Story 30.1: Duplicate quote with deep clone of all lines
+	.post(
+		"/:id/duplicate",
+		describeRoute({
+			summary: "Duplicate quote",
+			description:
+				"Create a new DRAFT quote by deep cloning an existing quote with all its lines",
+			tags: ["VTC - Quotes"],
+		}),
+		async (c) => {
+			const organizationId = c.get("organizationId");
+			const id = c.req.param("id");
+
+			// Fetch original quote with all lines
+			const original = await db.quote.findFirst({
+				where: withTenantId(id, organizationId),
+				include: {
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
+					stayDays: {
+						include: { services: true },
+						orderBy: { dayNumber: "asc" },
+					},
+				},
+			});
+
+			if (!original) {
+				throw new HTTPException(404, {
+					message: "Quote not found",
+				});
+			}
+
+			// Create new quote with DRAFT status
+			const newQuote = await db.$transaction(async (tx) => {
+				// 1. Create the new quote (copy all fields except id, status, timestamps)
+				const created = await tx.quote.create({
+					data: withTenantCreate(
+						{
+							contactId: original.contactId,
+							endCustomerId: original.endCustomerId,
+							vehicleCategoryId: original.vehicleCategoryId,
+							pricingMode: original.pricingMode,
+							tripType: original.tripType,
+							pickupAt: original.pickupAt,
+							pickupAddress: original.pickupAddress,
+							pickupLatitude: original.pickupLatitude,
+							pickupLongitude: original.pickupLongitude,
+							dropoffAddress: original.dropoffAddress,
+							dropoffLatitude: original.dropoffLatitude,
+							dropoffLongitude: original.dropoffLongitude,
+							isRoundTrip: original.isRoundTrip,
+							stops: original.stops as Prisma.InputJsonValue,
+							returnDate: original.returnDate,
+							durationHours: original.durationHours,
+							maxKilometers: original.maxKilometers,
+							passengerCount: original.passengerCount,
+							luggageCount: original.luggageCount,
+							suggestedPrice: original.suggestedPrice,
+							finalPrice: original.finalPrice,
+							partnerGridPrice: original.partnerGridPrice,
+							clientDirectPrice: original.clientDirectPrice,
+							internalCost: original.internalCost,
+							marginPercent: original.marginPercent,
+							tripAnalysis: original.tripAnalysis as Prisma.InputJsonValue,
+							appliedRules: original.appliedRules as Prisma.InputJsonValue,
+							costBreakdown: original.costBreakdown as Prisma.InputJsonValue,
+							notes: original.notes
+								? `[Copie] ${original.notes}`
+								: "[Copie du devis]",
+							validUntil: null, // Reset validity
+							status: "DRAFT", // Always start as DRAFT
+							estimatedEndAt: original.estimatedEndAt,
+						},
+						organizationId,
+					),
+				});
+
+				// 2. Deep clone all QuoteLines with remapped parentIds
+				if (original.lines.length > 0) {
+					// Build old ID -> new ID map for parent remapping
+					const idMap = new Map<string, string>();
+
+					// First pass: create all lines without parentId
+					for (const line of original.lines) {
+						const newLine = await tx.quoteLine.create({
+							data: {
+								quoteId: created.id,
+								type: line.type,
+								label: line.label,
+								description: line.description,
+								sourceData: line.sourceData as Prisma.InputJsonValue,
+								displayData: line.displayData as Prisma.InputJsonValue,
+								quantity: line.quantity,
+								unitPrice: line.unitPrice,
+								totalPrice: line.totalPrice,
+								vatRate: line.vatRate,
+								sortOrder: line.sortOrder,
+								dispatchable: line.dispatchable,
+								parentId: null, // Will be set in second pass
+							},
+						});
+						idMap.set(line.id, newLine.id);
+					}
+
+					// Second pass: update parentIds using the map
+					for (const line of original.lines) {
+						if (line.parentId && idMap.has(line.parentId)) {
+							const newLineId = idMap.get(line.id)!;
+							const newParentId = idMap.get(line.parentId)!;
+							await tx.quoteLine.update({
+								where: { id: newLineId },
+								data: { parentId: newParentId },
+							});
+						}
+					}
+				}
+
+				// 3. Clone StayDays if present (for STAY trip type)
+				if (original.stayDays && original.stayDays.length > 0) {
+					for (const day of original.stayDays) {
+						const newDay = await tx.stayDay.create({
+							data: {
+								quoteId: created.id,
+								dayNumber: day.dayNumber,
+								date: day.date,
+								hotelRequired: day.hotelRequired,
+								hotelCost: day.hotelCost,
+								mealCount: day.mealCount,
+								mealCost: day.mealCost,
+								driverCount: day.driverCount,
+								driverOvernightCost: day.driverOvernightCost,
+								dayTotalCost: day.dayTotalCost,
+								dayTotalInternalCost: day.dayTotalInternalCost,
+								notes: day.notes,
+							},
+						});
+
+						// Clone services for this day
+						if (day.services && day.services.length > 0) {
+							for (const service of day.services) {
+								await tx.stayService.create({
+									data: {
+										stayDayId: newDay.id,
+										serviceOrder: service.serviceOrder,
+										serviceType: service.serviceType,
+										pickupAt: service.pickupAt,
+										pickupAddress: service.pickupAddress,
+										pickupLatitude: service.pickupLatitude,
+										pickupLongitude: service.pickupLongitude,
+										dropoffAddress: service.dropoffAddress,
+										dropoffLatitude: service.dropoffLatitude,
+										dropoffLongitude: service.dropoffLongitude,
+										durationHours: service.durationHours,
+										stops: service.stops as Prisma.InputJsonValue,
+										distanceKm: service.distanceKm,
+										durationMinutes: service.durationMinutes,
+										serviceCost: service.serviceCost,
+										serviceInternalCost: service.serviceInternalCost,
+										tripAnalysis: service.tripAnalysis as Prisma.InputJsonValue,
+										notes: service.notes,
+									},
+								});
+							}
+						}
+					}
+				}
+
+				// Return the new quote with all relations
+				return tx.quote.findUnique({
+					where: { id: created.id },
+					include: {
+						contact: true,
+						vehicleCategory: true,
+						endCustomer: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+								phone: true,
+								difficultyScore: true,
+							},
+						},
+						lines: {
+							orderBy: { sortOrder: "asc" },
+						},
+					},
+				});
+			});
+
+			return c.json(newQuote, 201);
 		},
 	)
 

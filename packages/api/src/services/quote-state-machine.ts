@@ -409,11 +409,12 @@ export class QuoteStateMachine {
 
 	/**
 	 * Story 22.3: Check if notes can be edited on a quote
-	 * Notes are editable for all statuses except EXPIRED
+	 * Notes are editable for all statuses except EXPIRED and CANCELLED
 	 * This allows operators to add driver instructions after sending
+	 * Story 30.1: CANCELLED quotes are fully locked
 	 */
 	static isNotesEditable(status: QuoteStatus): boolean {
-		return status !== "EXPIRED";
+		return status !== "EXPIRED" && status !== "CANCELLED";
 	}
 
 	/**

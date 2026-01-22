@@ -1433,6 +1433,15 @@
 				"saveError": "Échec de l'enregistrement de la taille",
 				"reset": "Réinitialiser"
 			},
+			"pdfAppearance": {
+				"title": "Niveau de Détail PDF",
+				"description": "Choisissez le niveau de détail affiché dans les documents PDF générés.",
+				"simple": "Simple - Logo + Infos essentielles",
+				"standard": "Standard - Logo + Infos + Détails trajet",
+				"full": "Complet - Tout inclus avec ventilation des coûts",
+				"saveSuccess": "Niveau de détail PDF enregistré avec succès",
+				"saveError": "Échec de l'enregistrement du niveau de détail"
+			},
 			"preview": {
 				"title": "Aperçu du Document",
 				"description": "Aperçu en temps réel de l'apparence de vos documents."
@@ -2617,6 +2626,7 @@
 			"accepted": "Accepté",
 			"rejected": "Refusé",
 			"expired": "Expiré",
+			"cancelled": "Annulé",
 			"transition": {
 				"alreadyInStatus": "Le devis est déjà dans ce statut",
 				"terminalState": "Impossible de changer depuis ce statut. C'est un état terminal.",
@@ -3039,6 +3049,8 @@
 				"send": "Envoyer le devis",
 				"accept": "Marquer comme accepté",
 				"reject": "Marquer comme refusé",
+				"cancel": "Annuler le devis",
+				"duplicate": "Dupliquer",
 				"convertToInvoice": "Convertir en facture",
 				"viewInvoice": "Voir facture",
 				"sendSuccess": "Devis envoyé avec succès",
@@ -3047,6 +3059,10 @@
 				"acceptError": "Échec de l'acceptation du devis",
 				"rejectSuccess": "Devis marqué comme refusé",
 				"rejectError": "Échec du refus du devis",
+				"cancelSuccess": "Devis annulé avec succès",
+				"cancelError": "Échec de l'annulation du devis",
+				"duplicateSuccess": "Devis dupliqué avec succès",
+				"duplicateError": "Échec de la duplication du devis",
 				"invoiceComingSoon": "Création de facture bientôt disponible",
 				"convertSuccess": "Facture créée avec succès",
 				"convertError": "Échec de la création de la facture",

@@ -13,7 +13,8 @@ export type QuoteStatus =
 	| "VIEWED"
 	| "ACCEPTED"
 	| "REJECTED"
-	| "EXPIRED";
+	| "EXPIRED"
+	| "CANCELLED"; // Story 30.1: Cancelled quotes
 export type PricingMode =
 	| "FIXED_GRID"
 	| "DYNAMIC"
@@ -325,12 +326,13 @@ export function getQuoteClientDisplay(quote: Quote): {
  * Each key is a current status, and the value is an array of valid next statuses
  */
 export const VALID_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
-	DRAFT: ["SENT", "EXPIRED"],
-	SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED"],
-	VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED"],
+	DRAFT: ["SENT", "EXPIRED", "CANCELLED"], // Story 30.1: Can cancel from DRAFT
+	SENT: ["VIEWED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"], // Story 30.1: Can cancel from SENT
+	VIEWED: ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"], // Story 30.1: Can cancel from VIEWED
 	ACCEPTED: [], // Terminal state
 	REJECTED: [], // Terminal state
 	EXPIRED: [], // Terminal state
+	CANCELLED: [], // Story 30.1: Terminal state - cancelled quotes cannot transition
 };
 
 /**
@@ -358,6 +360,7 @@ export function isCommerciallyFrozen(status: QuoteStatus): boolean {
 /**
  * Check if a quote can be edited (notes, etc.)
  * Only DRAFT quotes are fully editable
+ * Story 30.1: CANCELLED quotes are locked (not editable)
  */
 export function isEditable(status: QuoteStatus): boolean {
 	return status === "DRAFT";
@@ -365,11 +368,20 @@ export function isEditable(status: QuoteStatus): boolean {
 
 /**
  * Story 22.3: Check if notes can be edited on a quote
- * Notes are editable for all statuses except EXPIRED
+ * Notes are editable for all statuses except EXPIRED and CANCELLED
  * This allows operators to add driver instructions after sending
+ * Story 30.1: CANCELLED quotes are fully locked
  */
 export function isNotesEditable(status: QuoteStatus): boolean {
-	return status !== "EXPIRED";
+	return status !== "EXPIRED" && status !== "CANCELLED";
+}
+
+/**
+ * Story 30.1: Check if a quote can be cancelled
+ * Only DRAFT, SENT, and VIEWED quotes can be cancelled
+ */
+export function canCancel(status: QuoteStatus): boolean {
+	return status === "DRAFT" || status === "SENT" || status === "VIEWED";
 }
 
 /**

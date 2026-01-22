@@ -1426,6 +1426,15 @@
 				"saveError": "Failed to save logo size",
 				"reset": "Reset Default"
 			},
+			"pdfAppearance": {
+				"title": "PDF Detail Level",
+				"description": "Choose the level of detail shown in generated PDF documents.",
+				"simple": "Simple - Logo + Essential info only",
+				"standard": "Standard - Logo + Info + Trip details",
+				"full": "Full - Everything including cost breakdown",
+				"saveSuccess": "PDF detail level saved successfully",
+				"saveError": "Failed to save PDF detail level"
+			},
 			"language": {
 				"title": "Invoice / Quote Language",
 				"description": "Choose the language for Invoices and Quotes. Mission Sheets are always in French.",
@@ -2630,6 +2639,7 @@
 			"accepted": "Accepted",
 			"rejected": "Rejected",
 			"expired": "Expired",
+			"cancelled": "Cancelled",
 			"transition": {
 				"alreadyInStatus": "Quote is already in this status",
 				"terminalState": "Cannot transition from this status. This is a terminal state.",
@@ -3055,6 +3065,8 @@
 				"send": "Send Quote",
 				"accept": "Mark as Accepted",
 				"reject": "Mark as Rejected",
+				"cancel": "Cancel Quote",
+				"duplicate": "Duplicate",
 				"convertToInvoice": "Convert to Invoice",
 				"viewInvoice": "View Invoice",
 				"sendSuccess": "Quote sent successfully",
@@ -3063,6 +3075,10 @@
 				"acceptError": "Failed to accept quote",
 				"rejectSuccess": "Quote marked as rejected",
 				"rejectError": "Failed to reject quote",
+				"cancelSuccess": "Quote cancelled successfully",
+				"cancelError": "Failed to cancel quote",
+				"duplicateSuccess": "Quote duplicated successfully",
+				"duplicateError": "Failed to duplicate quote",
 				"invoiceComingSoon": "Invoice creation coming soon",
 				"convertSuccess": "Invoice created successfully",
 				"convertError": "Failed to create invoice",

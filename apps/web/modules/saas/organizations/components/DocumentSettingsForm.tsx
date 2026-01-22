@@ -26,6 +26,8 @@ import { useDropzone } from "react-dropzone";
 import { v4 as uuid } from "uuid";
 
 // Types for document settings
+type PdfAppearance = "SIMPLE" | "STANDARD" | "FULL";
+
 interface DocumentSettings {
 	documentLogoUrl: string | null;
 	brandColor: string;
@@ -33,6 +35,7 @@ interface DocumentSettings {
 	showCompanyName: boolean;
 	logoWidth: number;
 	documentLanguage: "FRENCH" | "ENGLISH" | "BILINGUAL";
+	pdfAppearance: PdfAppearance; // Story 30.1
 	invoiceTerms: string | null;
 	quoteTerms: string | null;
 	missionOrderTerms: string | null;
@@ -53,6 +56,7 @@ async function getPricingSettings(organizationId: string): Promise<DocumentSetti
 				showCompanyName: data.showCompanyName ?? true,
 				logoWidth: data.logoWidth ?? 150,
 				documentLanguage: data.documentLanguage ?? "BILINGUAL",
+				pdfAppearance: data.pdfAppearance ?? "STANDARD", // Story 30.1
 				invoiceTerms: data.invoiceTerms ?? null,
 				quoteTerms: data.quoteTerms ?? null,
 				missionOrderTerms: data.missionOrderTerms ?? null,
@@ -101,6 +105,7 @@ export function DocumentSettingsForm() {
 	const [showCompanyName, setShowCompanyName] = useState(true);
 	const [logoWidth, setLogoWidth] = useState(150);
 	const [documentLanguage, setDocumentLanguage] = useState<"FRENCH" | "ENGLISH" | "BILINGUAL">("BILINGUAL");
+	const [pdfAppearance, setPdfAppearance] = useState<PdfAppearance>("STANDARD"); // Story 30.1
 	const [invoiceTerms, setInvoiceTerms] = useState("");
 	const [quoteTerms, setQuoteTerms] = useState("");
 	const [missionOrderTerms, setMissionOrderTerms] = useState("");
@@ -120,6 +125,7 @@ export function DocumentSettingsForm() {
 					setShowCompanyName(settings.showCompanyName);
 					setLogoWidth(settings.logoWidth);
 					setDocumentLanguage(settings.documentLanguage);
+					setPdfAppearance(settings.pdfAppearance); // Story 30.1
 					
 					// Prepopulate with defaults if empty
 					setInvoiceTerms(settings.invoiceTerms || DEFAULT_INVOICE_TERMS);
@@ -426,6 +432,27 @@ export function DocumentSettingsForm() {
 		}
 	};
 
+	// Story 30.1: Handle PDF Appearance Change
+	const handlePdfAppearanceChange = async (value: PdfAppearance) => {
+		if (!activeOrganization) return;
+		setPdfAppearance(value);
+		setSaving(true);
+		try {
+			const success = await updatePricingSettings(activeOrganization.id, {
+				pdfAppearance: value,
+			});
+			if (success) {
+				toast({ variant: "success", title: t("settings.documentSettings.pdfAppearance.saveSuccess") });
+			} else {
+				throw new Error("Failed to save PDF appearance");
+			}
+		} catch {
+			toast({ variant: "error", title: t("settings.documentSettings.pdfAppearance.saveError") });
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	// Handle Terms Save
 	const handleTermsSave = async (field: "invoiceTerms" | "quoteTerms" | "missionOrderTerms", value: string) => {
 		if (!activeOrganization) return;
@@ -668,6 +695,33 @@ export function DocumentSettingsForm() {
 						</SelectItem>
 						<SelectItem value="ENGLISH">
 							{t("settings.documentSettings.language.english")}
+						</SelectItem>
+					</SelectContent>
+				</Select>
+			</SettingsItem>
+
+			{/* Story 30.1: PDF Appearance Level */}
+			<SettingsItem
+				title={t("settings.documentSettings.pdfAppearance.title")}
+				description={t("settings.documentSettings.pdfAppearance.description")}
+			>
+				<Select
+					value={pdfAppearance}
+					onValueChange={(value) => handlePdfAppearanceChange(value as PdfAppearance)}
+					disabled={saving}
+				>
+					<SelectTrigger className="w-[200px]">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="SIMPLE">
+							{t("settings.documentSettings.pdfAppearance.simple")}
+						</SelectItem>
+						<SelectItem value="STANDARD">
+							{t("settings.documentSettings.pdfAppearance.standard")}
+						</SelectItem>
+						<SelectItem value="FULL">
+							{t("settings.documentSettings.pdfAppearance.full")}
 						</SelectItem>
 					</SelectContent>
 				</Select>

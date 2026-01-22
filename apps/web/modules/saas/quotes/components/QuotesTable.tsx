@@ -47,7 +47,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Quote, QuotesResponse, QuoteStatus } from "../types";
-import { formatPrice, formatMargin, formatTripSummary } from "../types";
+import { formatPrice, formatMargin, formatTripSummary, canCancel } from "../types";
+import { useQuoteActions } from "../hooks/useQuoteActions";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { ProfitabilityIndicator } from "@saas/shared/components/ProfitabilityIndicator";
 import { TripTransparencyPreview } from "@saas/shared/components/TripTransparencyPreview";
@@ -63,6 +64,7 @@ const STATUS_OPTIONS: QuoteStatus[] = [
   "ACCEPTED",
   "REJECTED",
   "EXPIRED",
+  "CANCELLED", // Story 30.1
 ];
 
 const CLIENT_TYPE_OPTIONS = [
@@ -143,6 +145,9 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Story 30.1: Quote actions hook for cancel and duplicate
+  const { cancelQuote, duplicateQuote } = useQuoteActions();
 
   /**
    * Story 7.2: Mutation for converting quote to invoice from table
@@ -172,10 +177,21 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
     router.push(`/app/${activeOrganization?.slug}/quotes/${quote.id}`);
   };
 
-  const handleDuplicate = (quote: Quote, e: React.MouseEvent) => {
+  /**
+   * Story 30.1: Handle duplicate quote from table dropdown
+   */
+  const handleDuplicate = async (quote: Quote, e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Implement duplicate functionality in Story 6.2
-    console.log("Duplicate quote:", quote.id);
+    try {
+      const newQuote = await duplicateQuote(quote.id);
+      // Navigate to the duplicated quote
+      if (newQuote && typeof newQuote === 'object' && 'id' in newQuote) {
+        router.push(`/app/${activeOrganization?.slug}/quotes/${(newQuote as { id: string }).id}`);
+      }
+    } catch (error) {
+      // Error already handled by hook toast
+      console.error("Duplicate failed:", error);
+    }
   };
 
   /**
@@ -199,10 +215,18 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
     }
   };
 
+  /**
+   * Story 30.1: Handle cancel quote from table dropdown
+   */
   const handleCancel = async (quote: Quote, e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Implement cancel functionality
-    console.log("Cancel quote:", quote.id);
+    try {
+      await cancelQuote(quote.id);
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    } catch (error) {
+      // Error already handled by hook toast
+      console.error("Cancel failed:", error);
+    }
   };
 
   const formatDateTime = (dateString: string) => {
@@ -415,7 +439,8 @@ export function QuotesTable({ onAddQuote }: QuotesTableProps) {
                                 </DropdownMenuItem>
                               </>
                             )}
-                            {(quote.status === "DRAFT" || quote.status === "SENT") && (
+                            {/* Story 30.1: Cancel option for DRAFT, SENT, VIEWED quotes */}
+                            {canCancel(quote.status) && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

@@ -148,7 +148,7 @@ export const ExcursionPackageOriginZoneScalarFieldEnumSchema = z.enum(['id','exc
 
 export const DispoPackageScalarFieldEnumSchema = z.enum(['id','organizationId','name','description','vehicleCategoryId','includedDurationHours','includedDistanceKm','basePrice','overageRatePerKm','overageRatePerHour','isActive','createdAt','updatedAt']);
 
-export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','logoWidth','legalName','address','addressLine2','postalCode','city','phone','email','siret','vatNumber','iban','bic','documentLanguage','invoiceTerms','quoteTerms','missionOrderTerms','createdAt','updatedAt']);
+export const OrganizationPricingSettingsScalarFieldEnumSchema = z.enum(['id','organizationId','baseRatePerKm','baseRatePerHour','defaultMarginPercent','greenMarginThreshold','orangeMarginThreshold','minimumFare','roundingRule','fuelConsumptionL100km','fuelPricePerLiter','tollCostPerKm','wearCostPerKm','driverHourlyCost','zoneConflictStrategy','zoneMultiplierAggregationStrategy','staffingSelectionPolicy','hotelCostPerNight','mealCostPerDay','driverOvernightPremium','secondDriverHourlyRate','relayDriverFixedFee','timeBucketInterpolationStrategy','useDriverHomeForDeadhead','difficultyMultipliers','denseZoneSpeedThreshold','autoSwitchToMAD','denseZoneCodes','minWaitingTimeForSeparateTransfers','maxReturnDistanceKm','roundTripBuffer','autoSwitchRoundTripToMAD','defaultSeasonalityCoefficient','highSeasonCoefficient','lowSeasonCoefficient','maxReturnEmptyDistanceKm','minIdleDaysForComparison','emptyReturnCostPercent','hierarchicalPricingConfig','documentLogoUrl','brandColor','logoPosition','showCompanyName','logoWidth','legalName','address','addressLine2','postalCode','city','phone','email','siret','vatNumber','iban','bic','documentLanguage','invoiceTerms','quoteTerms','missionOrderTerms','pdfAppearance','createdAt','updatedAt']);
 
 export const MadTimeBucketScalarFieldEnumSchema = z.enum(['id','organizationId','pricingSettingsId','durationHours','vehicleCategoryId','price','isActive','createdAt','updatedAt']);
 
@@ -168,7 +168,7 @@ export const QuoteLineScalarFieldEnumSchema = z.enum(['id','quoteId','type','lab
 
 export const MissionScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','quoteLineId','driverId','vehicleId','status','startAt','endAt','sourceData','executionData','notes','ref','isInternal','createdAt','updatedAt','orderId']);
 
-export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId','orderId']);
+export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contactId','endCustomerId','status','pricingMode','tripType','pickupAt','pickupAddress','pickupLatitude','pickupLongitude','dropoffAddress','dropoffLatitude','dropoffLongitude','isRoundTrip','stops','returnDate','durationHours','maxKilometers','passengerCount','luggageCount','vehicleCategoryId','suggestedPrice','finalPrice','internalCost','marginPercent','partnerGridPrice','clientDirectPrice','commissionPercent','commissionAmount','tripAnalysis','appliedRules','costBreakdown','validUntil','estimatedEndAt','notes','sentAt','viewedAt','acceptedAt','rejectedAt','expiredAt','cancelledAt','assignedVehicleId','assignedDriverId','secondDriverId','assignedAt','chainId','chainOrder','chainedWithId','isSubcontracted','subcontractorId','subcontractedPrice','subcontractedAt','subcontractingNotes','stayStartDate','stayEndDate','createdAt','updatedAt','vehicleId','driverId','orderId']);
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId','orderId']);
 
@@ -323,6 +323,10 @@ export type LogoPositionType = `${z.infer<typeof LogoPositionSchema>}`
 export const DocumentLanguageSchema = z.enum(['FRENCH','ENGLISH','BILINGUAL']);
 
 export type DocumentLanguageType = `${z.infer<typeof DocumentLanguageSchema>}`
+
+export const PdfAppearanceSchema = z.enum(['SIMPLE','STANDARD','FULL']);
+
+export type PdfAppearanceType = `${z.infer<typeof PdfAppearanceSchema>}`
 
 export const QuoteLineTypeSchema = z.enum(['CALCULATED','MANUAL','GROUP']);
 
@@ -1131,6 +1135,7 @@ export const OrganizationPricingSettingsSchema = z.object({
   timeBucketInterpolationStrategy: TimeBucketInterpolationStrategySchema.nullable(),
   logoPosition: LogoPositionSchema,
   documentLanguage: DocumentLanguageSchema,
+  pdfAppearance: PdfAppearanceSchema,
   id: z.string().cuid(),
   organizationId: z.string(),
   baseRatePerKm: z.instanceof(Prisma.Decimal, { message: "Field 'baseRatePerKm' must be a Decimal. Location: ['Models', 'OrganizationPricingSettings']"}),
@@ -1476,6 +1481,7 @@ export const QuoteSchema = z.object({
   acceptedAt: z.coerce.date().nullable(),
   rejectedAt: z.coerce.date().nullable(),
   expiredAt: z.coerce.date().nullable(),
+  cancelledAt: z.coerce.date().nullable(),
   assignedVehicleId: z.string().nullable(),
   assignedDriverId: z.string().nullable(),
   secondDriverId: z.string().nullable(),

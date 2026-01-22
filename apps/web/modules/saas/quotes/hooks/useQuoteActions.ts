@@ -68,6 +68,29 @@ export function useQuoteActions() {
   });
 
   /**
+   * Story 30.1: Mutation for duplicating a quote
+   * Uses POST /quotes/:id/duplicate endpoint
+   */
+  const duplicateQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const response = await apiClient.vtc.quotes[":id"].duplicate.$post({
+        param: { id: quoteId },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = (errorData as { message?: string }).message || "Failed to duplicate quote";
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+  });
+
+  /**
    * Story 7.2: Mutation for converting quote to invoice
    * Uses POST /invoices/from-quote/:quoteId endpoint
    */
@@ -177,14 +200,61 @@ export function useQuoteActions() {
     return convertToInvoiceMutation.mutateAsync(quoteId);
   };
 
+  /**
+   * Story 30.1: Cancel a quote
+   * Sets status to CANCELLED and locks the UI
+   */
+  const cancelQuote = (quoteId: string) => {
+    return updateQuoteMutation.mutateAsync(
+      { quoteId, status: "CANCELLED" },
+      {
+        onSuccess: () => {
+          toast({
+            title: t("quotes.detail.actions.cancelSuccess"),
+          });
+        },
+        onError: () => {
+          toast({
+            title: t("quotes.detail.actions.cancelError"),
+            variant: "error",
+          });
+        },
+      }
+    );
+  };
+
+  /**
+   * Story 30.1: Duplicate a quote
+   * Creates a new DRAFT quote with all lines cloned
+   * Returns the new quote for navigation
+   */
+  const duplicateQuote = async (quoteId: string) => {
+    return duplicateQuoteMutation.mutateAsync(quoteId, {
+      onSuccess: () => {
+        toast({
+          title: t("quotes.detail.actions.duplicateSuccess"),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t("quotes.detail.actions.duplicateError"),
+          variant: "error",
+        });
+      },
+    });
+  };
+
   return {
     sendQuote,
     acceptQuote,
     rejectQuote,
     updateNotes,
     convertToInvoice,
+    cancelQuote,
+    duplicateQuote,
     isLoading: updateQuoteMutation.isPending,
     isConverting: convertToInvoiceMutation.isPending,
+    isDuplicating: duplicateQuoteMutation.isPending,
   };
 }
 
