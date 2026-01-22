@@ -54,7 +54,7 @@ so that the invoice accurately reflects each service (date, route) and maintains
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Schema Migration** (AC: 2)
+- [x] **Task 1: Schema Migration** (AC: 2)
 
   - [ ] Add `quoteLineId String?` field to `InvoiceLine` model
   - [ ] Add relation `quoteLine QuoteLine? @relation(fields: [quoteLineId], references: [id])`
@@ -62,7 +62,7 @@ so that the invoice accurately reflects each service (date, route) and maintains
   - [ ] Run `pnpm db:migrate` to apply changes
   - [ ] Run `pnpm db:generate` to update Prisma client
 
-- [ ] **Task 2: Update InvoiceFactory.deepCopyQuoteLinesToInvoiceLines** (AC: 1, 2, 3)
+- [x] **Task 2: Update InvoiceFactory.deepCopyQuoteLinesToInvoiceLines** (AC: 1, 2, 3)
 
   - [ ] Modify method to accept full QuoteLine objects (with id)
   - [ ] Extract date/time from `sourceData.pickupAt` or `displayData`
@@ -70,19 +70,19 @@ so that the invoice accurately reflects each service (date, route) and maintains
   - [ ] Build enriched description: `"[Type] - [Date] - [Route]"`
   - [ ] Return `quoteLineId` in the output structure
 
-- [ ] **Task 3: Update Invoice Creation Transaction** (AC: 1, 2, 5)
+- [x] **Task 3: Update Invoice Creation Transaction** (AC: 1, 2, 5)
 
   - [ ] Modify `InvoiceFactory.createInvoiceFromOrder` to pass `quoteLineId` to `createMany`
   - [ ] Ensure totals are correctly aggregated from lines
   - [ ] Add logging for multi-line invoice creation
 
-- [ ] **Task 4: Update Invoice PDF Template** (AC: 4)
+- [x] **Task 4: Update Invoice PDF Template** (AC: 4)
 
   - [ ] Ensure PDF generator iterates over all InvoiceLines
   - [ ] Display line number, description, quantity, unit price, VAT rate, total
   - [ ] Order lines by `sortOrder`
 
-- [ ] **Task 5: Unit Tests** (AC: 1, 2, 3, 5)
+- [x] **Task 5: Unit Tests** (AC: 1, 2, 3, 5)
 
   - [ ] Test: N QuoteLines → N InvoiceLines
   - [ ] Test: quoteLineId is correctly stored
@@ -204,6 +204,7 @@ Claude Sonnet 4 (Cascade)
 - `packages/api/src/services/invoice-line-utils.ts` - **NEW**: Extracted testable utility functions (deepCopyQuoteLinesToInvoiceLines, buildEnrichedDescription)
 - `packages/api/src/services/__tests__/invoice-line-utils.test.ts` - **NEW**: 17 real unit tests for utility functions
 - `packages/api/src/services/__tests__/invoice-factory.test.ts` - Legacy fake tests (deprecated)
+- `packages/api/src/routes/vtc/documents.ts` - Update for Quote/Invoice PDF descriptions
 - `_bmad-output/implementation-artifacts/stories/story-29-05-implement-multi-mission-invoicing-sync.md` - Story file
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated status
 
