@@ -92,27 +92,64 @@ interface LineWithPickupDate {
 	groupLineId: string | null;
 }
 
-/**
- * Story 29.4: Extract pickup date from line sourceData or fallback to quote
- */
-function extractPickupAt(line: { sourceData: unknown }, quote: { pickupAt: Date | null }): Date {
-	const lineSource = line.sourceData as Record<string, unknown> | null;
-	if (lineSource?.pickupAt) {
-		return new Date(lineSource.pickupAt as string);
-	}
-	return quote.pickupAt ?? new Date();
-}
-
-/**
- * Story 29.4: Generate sequential mission reference
- * Format: {OrderRef}-{paddedIndex} e.g., "ORD-2026-001-01"
- */
-function generateMissionRef(orderRef: string, index: number): string {
-	const paddedIndex = String(index + 1).padStart(2, "0");
-	return `${orderRef}-${paddedIndex}`;
-}
-
 export class SpawnService {
+	/**
+	 * Extract pickup date from line sourceData or fallback to quote pickupAt
+	 * Story 29.4: Used for chronological sorting
+	 * HIGH: Validates date parsing and handles invalid dates gracefully
+	 *
+	 * @param line - QuoteLine with sourceData
+	 * @param quote - Parent Quote
+	 * @returns Extracted or fallback pickup date
+	 * @throws Error if date parsing fails and no fallback available
+	 */
+	private static extractPickupAt(
+		line: { sourceData: unknown },
+		quote: { pickupAt: Date | null },
+	): Date {
+		const lineSource = (line.sourceData as Record<string, unknown>) || {};
+		
+		// Try to parse line's pickupAt first
+		if (lineSource.pickupAt) {
+			try {
+				const parsedDate = new Date(lineSource.pickupAt as string);
+				// Validate date is valid (not Invalid Date)
+				if (!isNaN(parsedDate.getTime())) {
+					return parsedDate;
+				}
+				console.warn(
+					`[SPAWN] Invalid pickupAt in sourceData: ${lineSource.pickupAt}, falling back to quote pickupAt`,
+				);
+			} catch (error) {
+				console.warn(
+					`[SPAWN] Error parsing pickupAt: ${error}, falling back to quote pickupAt`,
+				);
+			}
+		}
+		
+		// Fallback to quote's pickupAt
+		if (quote.pickupAt) {
+			return quote.pickupAt;
+		}
+		
+		// Last resort: throw error if no valid date available
+		throw new Error(
+			"[SPAWN] No valid pickup date found in line sourceData or quote pickupAt",
+		);
+	}
+
+	/**
+	 * Story 29.4: Generate sequential mission reference
+	 * Format: {OrderRef}-{paddedIndex} e.g., "ORD-2026-001-01"
+	 * HIGH: Validates orderRef is not null/undefined
+	 */
+	private static generateMissionRef(orderRef: string | null, index: number): string {
+		if (!orderRef) {
+			throw new Error("[SPAWN] Cannot generate mission ref: orderRef is null or undefined");
+		}
+		const paddedIndex = String(index + 1).padStart(2, "0");
+		return `${orderRef}-${paddedIndex}`;
+	}
 	/**
 	 * Execute spawning for an Order
 	 * Creates missions from eligible QuoteLines (type = CALCULATED, tripType = TRANSFER/DISPO)
@@ -193,7 +230,7 @@ export class SpawnService {
 					linesWithDates.push({
 						line,
 						quote,
-						pickupAt: extractPickupAt(line, quote),
+						pickupAt: this.extractPickupAt(line, quote),
 						groupLineId: null,
 					});
 				} else if (line.type === "GROUP") {
@@ -233,17 +270,17 @@ export class SpawnService {
 		const totalMissions = sortedLines.length;
 		const missionCreateData: Prisma.MissionCreateManyInput[] = sortedLines.map(
 			(item, index) => {
-				const ref = generateMissionRef(order.reference, index);
-				return this.buildMissionDataWithRef(
-					item.line,
-					item.quote,
-					order,
-					item.groupLineId,
-					ref,
-					index + 1, // 1-based sequence index
-					totalMissions,
-				);
-			},
+			const ref = this.generateMissionRef(order.reference, index);
+			return this.buildMissionDataWithRef(
+				item.line,
+				item.quote,
+				order,
+				item.groupLineId,
+				ref,
+				index + 1, // 1-based sequence index
+				totalMissions,
+			);
+		},
 		);
 
 		// 6. Create missions in transaction using createMany with skipDuplicates
@@ -543,7 +580,7 @@ export class SpawnService {
 					lines.push({
 						line: child as LineWithPickupDate["line"],
 						quote,
-						pickupAt: extractPickupAt(child, quote),
+						pickupAt: this.extractPickupAt(child, quote),
 						groupLineId: groupLine.id,
 					});
 				} else if (child.type === "GROUP" && child.children) {

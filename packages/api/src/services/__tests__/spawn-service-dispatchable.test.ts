@@ -36,6 +36,7 @@ describe("SpawnService - dispatchable flag (Story 28.6)", () => {
 		const mockOrder = {
 			id: "order-1",
 			organizationId: "org-1",
+			reference: "ORD-2026-001",
 			quotes: [
 				{
 					id: "quote-1",
@@ -110,6 +111,7 @@ describe("SpawnService - dispatchable flag (Story 28.6)", () => {
 		const mockOrder = {
 			id: "order-2",
 			organizationId: "org-1",
+			reference: "ORD-2026-002",
 			quotes: [
 				{
 					id: "quote-2",

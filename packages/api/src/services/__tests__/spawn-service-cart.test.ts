@@ -42,6 +42,7 @@ describe("SpawnService - Shopping Cart Logic", () => {
 			const mockOrder = {
 				id: "order-cart-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-CART-1",
 				quotes: [
 					{
 						id: "quote-1",
@@ -134,10 +135,12 @@ describe("SpawnService - Shopping Cart Logic", () => {
 			const mockOrder = {
 				id: "order-cart-2",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-CART-2",
 				quotes: [
 					{
 						id: "quote-mixed",
 						tripType: "TRANSFER", // Header says TRANSFER
+						pickupAt: new Date("2026-01-20T10:00:00Z"), // HIGH: Added missing pickupAt
 						pickupAddress: "Paris",
 						lines: [
 							{

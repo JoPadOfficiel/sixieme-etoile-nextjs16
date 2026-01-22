@@ -59,6 +59,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -96,6 +97,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -120,6 +122,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -142,6 +145,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -208,6 +212,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -239,6 +244,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -316,6 +322,8 @@ describe("SpawnService", () => {
 		it("should count only CALCULATED lines from TRANSFER/DISPO quotes", async () => {
 			const mockOrder = {
 				id: "order-1",
+				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						tripType: "TRANSFER",
@@ -355,6 +363,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -404,6 +413,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -457,6 +467,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -493,6 +504,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -544,6 +556,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -579,6 +592,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
@@ -625,6 +639,7 @@ describe("SpawnService", () => {
 			const mockOrder = {
 				id: "order-1",
 				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
 				quotes: [
 					{
 						id: "quote-1",
