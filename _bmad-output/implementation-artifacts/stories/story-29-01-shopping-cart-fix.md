@@ -2,7 +2,7 @@
 
 **Epic:** Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)  
 **Author:** JoPad (via BMAD Orchestrator)  
-**Status:** Review  
+**Status:** Done  
 **Priority:** Critical (P0 - Foundation)  
 **Estimated Points:** 5  
 **Branch:** `feature/29-1-cart-persistence`
@@ -87,7 +87,7 @@ Currently, saving a multi-item quote via `POST /api/vtc/quotes` results in:
 | File                                                 | Changes                                      |
 | ---------------------------------------------------- | -------------------------------------------- |
 | `packages/api/src/routes/vtc/quotes.ts`              | Modify POST handler to process `lines` array |
-| `packages/database/src/schemas/quote-line.schema.ts` | Verify `sourceData` schema (already exists)  |
+| `packages/database/src/schemas/hybrid-blocks.ts`     | Verify `sourceData` schema (already exists)  |
 
 ### Implementation Steps
 
@@ -238,10 +238,10 @@ Database
 ## Definition of Done
 
 - [x] All Acceptance Criteria verified
-- [x] All Test Cases pass (4/4 tests passing)
-- [ ] Code reviewed
+- [x] All Test Cases pass (5/5 tests passing - TC5 added in code review)
+- [x] Code reviewed (Story 29.1 code review completed 2026-01-22)
 - [x] No regressions in existing quote functionality
-- [x] sprint-status.yaml updated to `review`
+- [x] sprint-status.yaml updated to `done`
 
 ---
 

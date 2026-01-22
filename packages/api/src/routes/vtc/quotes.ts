@@ -15,6 +15,42 @@ import { organizationMiddleware } from "../../middleware/organization";
 import { missionSyncService } from "../../services/mission-sync.service";
 import { QuoteStateMachine } from "../../services/quote-state-machine";
 
+// Story 29.1: Quote line input validation schema
+// Validates line items for Shopping Cart / Yolo Mode with type-specific rules
+const quoteLineInputSchema = z
+	.object({
+		type: z.enum(["CALCULATED", "MANUAL", "GROUP"]).default("CALCULATED"),
+		label: z.string().min(1, "Label is required"),
+		description: z.string().nullable().optional(),
+		sourceData: z.record(z.unknown()).nullable().optional(),
+		displayData: z.record(z.unknown()).optional(),
+		quantity: z.number().positive().default(1),
+		unitPrice: z.number().nonnegative().optional(),
+		totalPrice: z.number().nonnegative(),
+		vatRate: z.number().min(0).max(100).default(10),
+		dispatchable: z.boolean().optional().default(true),
+		parentId: z.string().nullable().optional(),
+	})
+	.superRefine((data, ctx) => {
+		// CRITICAL: CALCULATED lines MUST have sourceData for operational traceability
+		if (data.type === "CALCULATED" && !data.sourceData) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"CALCULATED lines require sourceData with operational metadata (origin, destination, distance, etc.)",
+				path: ["sourceData"],
+			});
+		}
+		// GROUP lines cannot be nested (enforced by not allowing parentId)
+		if (data.type === "GROUP" && data.parentId) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "GROUP lines cannot be nested - they must be top-level",
+				path: ["parentId"],
+			});
+		}
+	});
+
 // Story 16.1: Stop schema for excursion trips
 const stopSchema = z.object({
 	address: z.string().min(1).describe("Stop address"),
@@ -200,11 +236,12 @@ const createQuoteSchema = z
 			.optional()
 			.default(false)
 			.describe("Whether quote uses Yolo Mode (Shopping Cart)"),
+		// Story 29.1: Properly validated quote lines (Shopping Cart / Yolo Mode)
 		lines: z
-			.array(z.record(z.unknown()))
+			.array(quoteLineInputSchema)
 			.optional()
 			.nullable()
-			.describe("Quote lines for Yolo Mode"),
+			.describe("Quote lines for Yolo Mode with full validation"),
 		// Frontend sends these objects but API only needs IDs - passthrough to avoid validation errors
 		contact: z
 			.record(z.unknown())
@@ -643,27 +680,38 @@ export const quotesRouter = new Hono()
 			// Story 29.1: Use transaction for atomic Quote + QuoteLines creation
 			const result = await db.$transaction(async (tx) => {
 				// Story 29.1: Calculate aggregated totals from lines if provided (Yolo Mode)
-				const hasLines = data.lines && Array.isArray(data.lines) && data.lines.length > 0;
+				const hasLines =
+					data.lines && Array.isArray(data.lines) && data.lines.length > 0;
 				let aggregatedFinalPrice = data.finalPrice ?? 0;
 				let aggregatedInternalCost: number | null = data.internalCost ?? null;
 
 				if (hasLines) {
 					// Calculate totals from lines
 					aggregatedFinalPrice = data.lines!.reduce((sum, line) => {
-						const linePrice = Number(line.totalPrice) || Number(line.unitPrice) || 0;
+						const linePrice =
+							Number(line.totalPrice) || Number(line.unitPrice) || 0;
 						return sum + linePrice;
 					}, 0);
 
 					// Calculate internal cost from lines if available
 					const lineCosts = data.lines!.map((line) => {
-						const sourceData = line.sourceData as Record<string, unknown> | null;
+						const sourceData = line.sourceData as Record<
+							string,
+							unknown
+						> | null;
 						if (!sourceData) return null;
 						// Check for direct internalCost or sum of cost components
 						if (typeof sourceData.internalCost === "number") {
 							return sourceData.internalCost;
 						}
-						const pricingResult = sourceData.pricingResult as Record<string, unknown> | null;
-						if (pricingResult && typeof pricingResult.internalCost === "number") {
+						const pricingResult = sourceData.pricingResult as Record<
+							string,
+							unknown
+						> | null;
+						if (
+							pricingResult &&
+							typeof pricingResult.internalCost === "number"
+						) {
 							return pricingResult.internalCost;
 						}
 						return null;
@@ -671,14 +719,20 @@ export const quotesRouter = new Hono()
 
 					const validCosts = lineCosts.filter((c): c is number => c !== null);
 					if (validCosts.length > 0) {
-						aggregatedInternalCost = validCosts.reduce((sum, cost) => sum + cost, 0);
+						aggregatedInternalCost = validCosts.reduce(
+							(sum, cost) => sum + cost,
+							0,
+						);
 					}
 				}
 
 				// Calculate margin if we have both values
 				let calculatedMargin: number | null = data.marginPercent ?? null;
 				if (aggregatedInternalCost !== null && aggregatedFinalPrice > 0) {
-					calculatedMargin = ((aggregatedFinalPrice - aggregatedInternalCost) / aggregatedFinalPrice) * 100;
+					calculatedMargin =
+						((aggregatedFinalPrice - aggregatedInternalCost) /
+							aggregatedFinalPrice) *
+						100;
 				}
 
 				// Create Quote header
@@ -748,45 +802,44 @@ export const quotesRouter = new Hono()
 				}> = [];
 
 				if (hasLines) {
+					// Story 29.1: Lines are now validated by quoteLineInputSchema
+					// We can use the validated data directly
 					const linesToCreate = data.lines!.map((line, index) => {
-						const lineData = line as Record<string, unknown>;
-						// Parse type as QuoteLineType enum, default to CALCULATED
-						const lineType = (lineData.type as string) === "MANUAL" 
-							? QuoteLineType.MANUAL 
-							: (lineData.type as string) === "GROUP" 
-								? QuoteLineType.GROUP 
-								: QuoteLineType.CALCULATED;
-						
-						const totalPrice = Number(lineData.totalPrice) || Number(lineData.unitPrice) || 0;
-						const label = (lineData.label as string) || `Item ${index + 1}`;
-						
+						// Type is already validated by Zod - map to Prisma enum
+						const lineType =
+							line.type === "MANUAL"
+								? QuoteLineType.MANUAL
+								: line.type === "GROUP"
+									? QuoteLineType.GROUP
+									: QuoteLineType.CALCULATED;
+
 						// Build displayData with proper typing
-						const displayData: Prisma.InputJsonValue = lineData.displayData
-							? (lineData.displayData as Prisma.InputJsonValue)
-							: { 
-								label, 
-								quantity: 1, 
-								unitPrice: totalPrice, 
-								vatRate: 10, 
-								total: totalPrice 
-							};
+						const displayData: Prisma.InputJsonValue = line.displayData
+							? (line.displayData as Prisma.InputJsonValue)
+							: {
+									label: line.label,
+									quantity: line.quantity || 1,
+									unitPrice: line.totalPrice,
+									vatRate: line.vatRate || 10,
+									total: line.totalPrice,
+								};
 
 						return {
 							quoteId: quote.id,
 							type: lineType,
-							label,
-							description: (lineData.description as string) || null,
+							label: line.label,
+							description: line.description || null,
 							// CRITICAL: Store full operational metadata in sourceData
-							sourceData: lineData.sourceData
-								? (lineData.sourceData as Prisma.InputJsonValue)
+							sourceData: line.sourceData
+								? (line.sourceData as Prisma.InputJsonValue)
 								: Prisma.JsonNull,
 							displayData,
-							quantity: Number(lineData.quantity) || 1,
-							unitPrice: Number(lineData.unitPrice) || totalPrice,
-							totalPrice,
-							vatRate: Number(lineData.vatRate) || 10,
+							quantity: line.quantity || 1,
+							unitPrice: line.unitPrice ?? line.totalPrice,
+							totalPrice: line.totalPrice,
+							vatRate: line.vatRate || 10,
 							sortOrder: index,
-							dispatchable: lineData.dispatchable !== false, // Default true
+							dispatchable: line.dispatchable !== false, // Default true
 						};
 					});
 
@@ -796,20 +849,24 @@ export const quotesRouter = new Hono()
 					});
 
 					// Fetch created lines for response
-					createdLines = await tx.quoteLine.findMany({
-						where: { quoteId: quote.id },
-						orderBy: { sortOrder: "asc" },
-						select: {
-							id: true,
-							type: true,
-							label: true,
-							totalPrice: true,
-							sortOrder: true,
-						},
-					}).then(lines => lines.map(l => ({
-						...l,
-						totalPrice: Number(l.totalPrice),
-					})));
+					createdLines = await tx.quoteLine
+						.findMany({
+							where: { quoteId: quote.id },
+							orderBy: { sortOrder: "asc" },
+							select: {
+								id: true,
+								type: true,
+								label: true,
+								totalPrice: true,
+								sortOrder: true,
+							},
+						})
+						.then((lines) =>
+							lines.map((l) => ({
+								...l,
+								totalPrice: Number(l.totalPrice),
+							})),
+						);
 
 					console.log(
 						`[Story 29.1] Created ${createdLines.length} QuoteLines for quote ${quote.id}, aggregated finalPrice: ${aggregatedFinalPrice}`,
