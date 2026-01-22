@@ -29,6 +29,7 @@ export interface CreateInternalParams {
 /**
  * Story 28.4: Spawning Engine - Trigger Logic
  * Story 28.5: Group Spawning Logic (Multi-Day)
+ * Story 29.4: Intelligent Multi-Mission Spawning with Chronological Ordering
  *
  * SpawnService transforms commercial quote lines into operational missions
  * when an Order transitions to CONFIRMED status.
@@ -42,10 +43,74 @@ export interface CreateInternalParams {
  * - All missions created in a single transaction (atomic)
  * - Idempotent: re-confirming doesn't duplicate missions
  * - Supports partial recovery: only creates missions for lines without existing missions
+ * - Story 29.4: Lines are sorted chronologically and refs are generated sequentially
  */
 
 /** TripTypes that should spawn operational missions */
 const SPAWNABLE_TRIP_TYPES: TripType[] = ["TRANSFER", "DISPO"];
+
+/**
+ * Story 29.4: Interface for line with extracted pickup date for sorting
+ */
+interface LineWithPickupDate {
+	line: {
+		id: string;
+		type: string;
+		label: string;
+		description?: string | null;
+		sourceData: unknown;
+		totalPrice?: unknown;
+		dispatchable?: boolean;
+		children?: Array<{
+			id: string;
+			type: string;
+			label: string;
+			sourceData: unknown;
+			dispatchable?: boolean;
+			children?: unknown[];
+		}>;
+	};
+	quote: {
+		id: string;
+		pickupAt: Date | null;
+		estimatedEndAt: Date | null;
+		pickupAddress: string | null;
+		pickupLatitude: unknown;
+		pickupLongitude: unknown;
+		dropoffAddress: string | null;
+		dropoffLatitude: unknown;
+		dropoffLongitude: unknown;
+		passengerCount: number | null;
+		luggageCount: number | null;
+		vehicleCategoryId: string | null;
+		vehicleCategory: { name: string } | null;
+		tripType: string;
+		pricingMode: string | null;
+		isRoundTrip: boolean | null;
+	};
+	pickupAt: Date;
+	groupLineId: string | null;
+}
+
+/**
+ * Story 29.4: Extract pickup date from line sourceData or fallback to quote
+ */
+function extractPickupAt(line: { sourceData: unknown }, quote: { pickupAt: Date | null }): Date {
+	const lineSource = line.sourceData as Record<string, unknown> | null;
+	if (lineSource?.pickupAt) {
+		return new Date(lineSource.pickupAt as string);
+	}
+	return quote.pickupAt ?? new Date();
+}
+
+/**
+ * Story 29.4: Generate sequential mission reference
+ * Format: {OrderRef}-{paddedIndex} e.g., "ORD-2026-001-01"
+ */
+function generateMissionRef(orderRef: string, index: number): string {
+	const paddedIndex = String(index + 1).padStart(2, "0");
+	return `${orderRef}-${paddedIndex}`;
+}
 
 export class SpawnService {
 	/**
@@ -111,9 +176,8 @@ export class SpawnService {
 				.filter((id): id is string => id !== null),
 		);
 
-		// 3. Collect eligible lines that don't already have missions
-		// Story 28.5: Now handles both CALCULATED and GROUP lines
-		const missionCreateData: Prisma.MissionCreateManyInput[] = [];
+		// 3. Story 29.4: Collect all eligible lines with their pickup dates for sorting
+		const linesWithDates: LineWithPickupDate[] = [];
 
 		for (const quote of order.quotes) {
 			for (const line of quote.lines) {
@@ -125,25 +189,27 @@ export class SpawnService {
 						);
 						continue;
 					}
-					// Build mission data for CALCULATED line
-					missionCreateData.push(
-						this.buildMissionData(line, quote, order, null),
-					);
-				} else if (line.type === "GROUP") {
-					// Story 28.5: Process GROUP line
-					const groupMissions = this.processGroupLine(
+					// Collect line with extracted pickup date
+					linesWithDates.push({
 						line,
 						quote,
-						order,
+						pickupAt: extractPickupAt(line, quote),
+						groupLineId: null,
+					});
+				} else if (line.type === "GROUP") {
+					// Story 28.5: Process GROUP line - collect children with dates
+					const groupLines = this.collectGroupLines(
+						line,
+						quote,
 						existingLineIds,
 					);
-					missionCreateData.push(...groupMissions);
+					linesWithDates.push(...groupLines);
 				}
 				// MANUAL lines are skipped (no operational link)
 			}
 		}
 
-		if (missionCreateData.length === 0) {
+		if (linesWithDates.length === 0) {
 			if (existingMissions.length > 0) {
 				console.log(
 					`[SPAWN] Order ${orderId}: All eligible lines already have missions (${existingMissions.length})`,
@@ -154,7 +220,33 @@ export class SpawnService {
 			return [];
 		}
 
-		// 4. Create missions in transaction using createMany with skipDuplicates
+		// 4. Story 29.4: Sort lines chronologically by pickup date
+		const sortedLines = [...linesWithDates].sort(
+			(a, b) => a.pickupAt.getTime() - b.pickupAt.getTime(),
+		);
+
+		console.log(
+			`[SPAWN] Order ${orderId}: Sorted ${sortedLines.length} lines chronologically`,
+		);
+
+		// 5. Story 29.4: Build mission data with sequential refs
+		const totalMissions = sortedLines.length;
+		const missionCreateData: Prisma.MissionCreateManyInput[] = sortedLines.map(
+			(item, index) => {
+				const ref = generateMissionRef(order.reference, index);
+				return this.buildMissionDataWithRef(
+					item.line,
+					item.quote,
+					order,
+					item.groupLineId,
+					ref,
+					index + 1, // 1-based sequence index
+					totalMissions,
+				);
+			},
+		);
+
+		// 6. Create missions in transaction using createMany with skipDuplicates
 		// This prevents race condition duplicates if quoteLineId has unique constraint
 		await db.$transaction(async (tx) => {
 			await tx.mission.createMany({
@@ -163,7 +255,7 @@ export class SpawnService {
 			});
 		});
 
-		// 5. Fetch created missions to return (only new ones)
+		// 7. Fetch created missions to return (only new ones), ordered by startAt (chronological)
 		const newLineIds = missionCreateData
 			.map((m) => m.quoteLineId)
 			.filter(Boolean) as string[];
@@ -172,17 +264,19 @@ export class SpawnService {
 				orderId,
 				quoteLineId: { in: newLineIds },
 			},
-			orderBy: { createdAt: "asc" },
+			orderBy: { startAt: "asc" }, // Chronological order matches ref sequence
 		});
 
 		console.log(
-			`[SPAWN] Order ${orderId}: Created ${createdMissions.length} missions`,
+			`[SPAWN] Order ${orderId}: Created ${createdMissions.length} missions with sequential refs`,
 		);
 
 		// Log individual mission creation for audit
 		for (const mission of createdMissions) {
+			// Note: mission.ref will be available after Prisma client regeneration
+			const missionRef = (mission as { ref?: string }).ref ?? mission.id;
 			console.log(
-				`[SPAWN] Mission ${mission.id}: Created from QuoteLine ${mission.quoteLineId}`,
+				`[SPAWN] Mission ${missionRef}: Created from QuoteLine ${mission.quoteLineId}`,
 			);
 		}
 
@@ -363,7 +457,157 @@ export class SpawnService {
 	}
 
 	// =========================================================================
-	// Story 28.5: GROUP Spawning Logic (Multi-Day)
+	// Story 29.4: Collect GROUP Lines with Pickup Dates for Sorting
+	// =========================================================================
+
+	/**
+	 * Collect lines from a GROUP for chronological sorting
+	 * Returns LineWithPickupDate array instead of mission data
+	 *
+	 * @param groupLine - The GROUP QuoteLine to process
+	 * @param quote - The parent Quote
+	 * @param existingLineIds - Set of line IDs that already have missions
+	 * @returns Array of lines with extracted pickup dates
+	 */
+	private static collectGroupLines(
+		groupLine: {
+			id: string;
+			type: string;
+			label: string;
+			sourceData: unknown;
+			dispatchable?: boolean;
+			children?: Array<{
+				id: string;
+				type: string;
+				label: string;
+				sourceData: unknown;
+				dispatchable?: boolean;
+				children?: unknown[];
+			}>;
+		},
+		quote: {
+			id: string;
+			pickupAt: Date | null;
+			estimatedEndAt: Date | null;
+			pickupAddress: string | null;
+			pickupLatitude: unknown;
+			pickupLongitude: unknown;
+			dropoffAddress: string | null;
+			dropoffLatitude: unknown;
+			dropoffLongitude: unknown;
+			passengerCount: number | null;
+			luggageCount: number | null;
+			vehicleCategoryId: string | null;
+			vehicleCategory: { name: string } | null;
+			tripType: string;
+			pricingMode: string | null;
+			isRoundTrip: boolean | null;
+		},
+		existingLineIds: Set<string>,
+	): LineWithPickupDate[] {
+		const lines: LineWithPickupDate[] = [];
+
+		// Skip if already processed (idempotence)
+		if (existingLineIds.has(groupLine.id)) {
+			console.log(
+				`[SPAWN] Skipping GROUP line ${groupLine.id}: Missions already exist`,
+			);
+			return lines;
+		}
+
+		// Case 1: GROUP with children - collect each child
+		if (groupLine.children && groupLine.children.length > 0) {
+			console.log(
+				`[SPAWN] Collecting GROUP line ${groupLine.id} with ${groupLine.children.length} children`,
+			);
+
+			for (const child of groupLine.children) {
+				// Skip if child already has mission
+				if (existingLineIds.has(child.id)) {
+					console.log(
+						`[SPAWN] Skipping child line ${child.id}: Mission already exists`,
+					);
+					continue;
+				}
+
+				// Story 28.6: Skip if child is not dispatchable
+				if (child.dispatchable === false) {
+					console.log(
+						`[SPAWN] Skipping child line ${child.id}: dispatchable=false`,
+					);
+					continue;
+				}
+
+				if (child.type === "CALCULATED") {
+					// Collect CALCULATED child with extracted pickup date
+					lines.push({
+						line: child as LineWithPickupDate["line"],
+						quote,
+						pickupAt: extractPickupAt(child, quote),
+						groupLineId: groupLine.id,
+					});
+				} else if (child.type === "GROUP" && child.children) {
+					// Recurse for nested GROUP (up to 2 levels)
+					const nestedLines = this.collectGroupLines(
+						child as typeof groupLine,
+						quote,
+						existingLineIds,
+					);
+					lines.push(...nestedLines);
+				}
+				// MANUAL children are skipped
+			}
+			return lines;
+		}
+
+		// Case 2: GROUP with date range (no children) - multi-day spawning
+		// For date range groups, we collect each day as a separate line
+		const sourceData = groupLine.sourceData as Record<string, unknown> | null;
+		const startDate = sourceData?.startDate as string | undefined;
+		const endDate = sourceData?.endDate as string | undefined;
+
+		if (startDate && endDate) {
+			try {
+				const days = eachDayOfInterval({
+					start: new Date(startDate),
+					end: new Date(endDate),
+				});
+
+				console.log(
+					`[SPAWN] GROUP ${groupLine.id}: Collecting ${days.length} days for date range ${startDate} to ${endDate}`,
+				);
+
+				// For date range groups, we create a synthetic line for each day
+				days.forEach((day) => {
+					lines.push({
+						line: {
+							...groupLine,
+							sourceData: {
+								...(sourceData || {}),
+								dayDate: day.toISOString(),
+							},
+						},
+						quote,
+						pickupAt: startOfDay(day),
+						groupLineId: groupLine.id,
+					});
+				});
+			} catch (error) {
+				console.error(
+					`[SPAWN] GROUP ${groupLine.id}: Invalid date range - ${error}`,
+				);
+			}
+		} else {
+			console.log(
+				`[SPAWN] GROUP ${groupLine.id}: No children and no date range, skipping`,
+			);
+		}
+
+		return lines;
+	}
+
+	// =========================================================================
+	// Story 28.5: GROUP Spawning Logic (Multi-Day) - Legacy method kept for compatibility
 	// =========================================================================
 
 	/**
@@ -375,6 +619,7 @@ export class SpawnService {
 	 * @param order - The parent Order
 	 * @param existingLineIds - Set of line IDs that already have missions
 	 * @returns Array of mission create data
+	 * @deprecated Use collectGroupLines + buildMissionDataWithRef for Story 29.4
 	 */
 	private static processGroupLine(
 		groupLine: {
@@ -544,6 +789,175 @@ export class SpawnService {
 	}
 
 	/**
+	 * Story 29.4: Build mission create data with sequential ref
+	 *
+	 * @param line - The QuoteLine to build mission data from
+	 * @param quote - The parent Quote
+	 * @param order - The parent Order (with reference field)
+	 * @param groupLineId - Optional parent GROUP line ID for traceability
+	 * @param ref - Sequential mission reference (e.g., "ORD-2026-001-01")
+	 * @param sequenceIndex - 1-based position in chronological order
+	 * @param totalMissions - Total missions being spawned for this Order
+	 * @returns Mission create data with ref
+	 */
+	private static buildMissionDataWithRef(
+		line: {
+			id: string;
+			label: string;
+			description?: string | null;
+			sourceData: unknown;
+			totalPrice?: unknown;
+		},
+		quote: {
+			id: string;
+			pickupAt: Date | null;
+			estimatedEndAt: Date | null;
+			pickupAddress: string | null;
+			pickupLatitude: unknown;
+			pickupLongitude: unknown;
+			dropoffAddress: string | null;
+			dropoffLatitude: unknown;
+			dropoffLongitude: unknown;
+			passengerCount: number | null;
+			luggageCount: number | null;
+			vehicleCategoryId: string | null;
+			vehicleCategory: { name: string } | null;
+			tripType: string;
+			pricingMode: string | null;
+			isRoundTrip: boolean | null;
+		},
+		order: { id: string; organizationId: string; reference: string },
+		groupLineId: string | null,
+		ref: string,
+		sequenceIndex: number,
+		totalMissions: number,
+	): Prisma.MissionCreateManyInput {
+		// Extract potential trip data from line sourceData (Shopping Cart Mode)
+		const lineSource = (line.sourceData as Record<string, unknown>) || {};
+
+		// Helper to resolve value: Line > Quote > Default
+		const resolve = <T>(
+			lineVal: unknown,
+			quoteVal: T,
+			fallback: T | null = null,
+		): T | null => {
+			if (lineVal !== undefined && lineVal !== null && lineVal !== "") {
+				return lineVal as T;
+			}
+			return quoteVal ?? fallback;
+		};
+
+		// Resolve addresses
+		const pickupAddress = resolve(
+			lineSource.pickupAddress,
+			quote.pickupAddress,
+		);
+		const dropoffAddress = resolve(
+			lineSource.dropoffAddress,
+			quote.dropoffAddress,
+		);
+
+		// Resolve coordinates with number conversion
+		const pickupLat =
+			lineSource.pickupLatitude !== undefined
+				? Number(lineSource.pickupLatitude)
+				: quote.pickupLatitude
+					? Number(quote.pickupLatitude)
+					: null;
+		const pickupLng =
+			lineSource.pickupLongitude !== undefined
+				? Number(lineSource.pickupLongitude)
+				: quote.pickupLongitude
+					? Number(quote.pickupLongitude)
+					: null;
+		const dropoffLat =
+			lineSource.dropoffLatitude !== undefined
+				? Number(lineSource.dropoffLatitude)
+				: quote.dropoffLatitude
+					? Number(quote.dropoffLatitude)
+					: null;
+		const dropoffLng =
+			lineSource.dropoffLongitude !== undefined
+				? Number(lineSource.dropoffLongitude)
+				: quote.dropoffLongitude
+					? Number(quote.dropoffLongitude)
+					: null;
+
+		// Resolve operational details
+		const pax = resolve(lineSource.passengerCount, quote.passengerCount);
+		const lug = resolve(lineSource.luggageCount, quote.luggageCount);
+		const tripType = resolve(lineSource.tripType, quote.tripType) as string;
+		const pricingMode = resolve(lineSource.pricingMode, quote.pricingMode) as
+			| string
+			| null;
+		const isRoundTrip = resolve(lineSource.isRoundTrip, quote.isRoundTrip) as
+			| boolean
+			| null;
+
+		// Resolve Dates
+		let startAt = quote.pickupAt ?? new Date();
+		let endAt = quote.estimatedEndAt ?? null;
+
+		if (lineSource.pickupAt) {
+			startAt = new Date(lineSource.pickupAt as string);
+		}
+		if (lineSource.estimatedEndAt) {
+			endAt = new Date(lineSource.estimatedEndAt as string);
+		} else if (lineSource.dropoffAt) {
+			endAt = new Date(lineSource.dropoffAt as string);
+		}
+
+		// Note: ref field requires Prisma client regeneration after schema migration
+		return {
+			organizationId: order.organizationId,
+			quoteId: quote.id,
+			quoteLineId: line.id,
+			orderId: order.id,
+			status: "PENDING" as const,
+			startAt,
+			endAt,
+			ref, // Story 29.4: Sequential reference (requires db:generate after migration)
+			sourceData: {
+				// Location data
+				pickupAddress,
+				pickupLatitude: pickupLat,
+				pickupLongitude: pickupLng,
+				dropoffAddress,
+				dropoffLatitude: dropoffLat,
+				dropoffLongitude: dropoffLng,
+				// Passenger info
+				passengerCount: pax,
+				luggageCount: lug,
+				// Vehicle info
+				vehicleCategoryId: resolve(
+					lineSource.vehicleCategoryId,
+					quote.vehicleCategoryId,
+				),
+				vehicleCategoryName: resolve(
+					lineSource.vehicleCategoryName,
+					quote.vehicleCategory?.name,
+				),
+				// Line info
+				lineLabel: line.label,
+				lineDescription: line.description,
+				lineSourceData: (line.sourceData ??
+					null) as Prisma.InputJsonValue | null,
+				lineTotalPrice: line.totalPrice ? Number(line.totalPrice) : null,
+				// GROUP parent reference (Story 28.5)
+				groupLineId: groupLineId,
+				// Trip info
+				tripType,
+				pricingMode,
+				isRoundTrip,
+				// Story 29.4: Sequence metadata
+				sequenceIndex,
+				totalMissionsInOrder: totalMissions,
+				spawnedAt: new Date().toISOString(),
+			} as Prisma.InputJsonValue,
+		};
+	}
+
+	/**
 	 * Build mission create data from a line
 	 *
 	 * @param line - The QuoteLine to build mission data from
@@ -551,6 +965,7 @@ export class SpawnService {
 	 * @param order - The parent Order
 	 * @param groupLineId - Optional parent GROUP line ID for traceability
 	 * @returns Mission create data
+	 * @deprecated Use buildMissionDataWithRef for Story 29.4
 	 */
 	private static buildMissionData(
 		line: {

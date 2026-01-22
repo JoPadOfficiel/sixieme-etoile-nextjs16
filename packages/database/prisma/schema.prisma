@@ -1855,6 +1855,9 @@ model Mission {
   // Notes
   notes String?
 
+  // Story 29.4: Sequential reference for multi-mission orders (e.g., "ORD-2026-001-01")
+  ref String?
+
   // Story 28.13: Internal (non-billable) missions
   // These missions are excluded from invoice generation
   isInternal Boolean @default(false)
@@ -1873,6 +1876,7 @@ model Mission {
   @@index([status])
   @@index([startAt])
   @@index([orderId]) // Story 28.1: Index for Order relation
+  @@index([ref]) // Story 29.4: Index for sequential reference lookup
   @@map("mission")
 }
 

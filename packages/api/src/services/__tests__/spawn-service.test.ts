@@ -652,5 +652,267 @@ describe("SpawnService", () => {
 			expect(result).toEqual([]);
 			expect(db.$transaction).not.toHaveBeenCalled();
 		});
+
+		// =========================================================================
+		// Story 29.4: Chronological Sorting and Sequential Refs
+		// =========================================================================
+
+		it("should sort lines chronologically by pickupAt from sourceData", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				reference: "ORD-2026-001",
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-01-20T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "line-c",
+								type: "CALCULATED",
+								label: "Transfer C (latest)",
+								sourceData: { pickupAt: "2026-01-25T14:00:00Z" },
+								dispatchable: true,
+							},
+							{
+								id: "line-a",
+								type: "CALCULATED",
+								label: "Transfer A (earliest)",
+								sourceData: { pickupAt: "2026-01-24T08:00:00Z" },
+								dispatchable: true,
+							},
+							{
+								id: "line-b",
+								type: "CALCULATED",
+								label: "Transfer B (middle)",
+								sourceData: { pickupAt: "2026-01-25T10:00:00Z" },
+								dispatchable: true,
+							},
+						],
+					},
+				],
+			};
+
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "line-a", ref: "ORD-2026-001-01", startAt: new Date("2026-01-24T08:00:00Z") },
+				{ id: "mission-2", quoteLineId: "line-b", ref: "ORD-2026-001-02", startAt: new Date("2026-01-25T10:00:00Z") },
+				{ id: "mission-3", quoteLineId: "line-c", ref: "ORD-2026-001-03", startAt: new Date("2026-01-25T14:00:00Z") },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([]) // No existing missions
+				.mockResolvedValueOnce(createdMissions as any); // Created missions
+
+			let capturedData: any[] = [];
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({
+						mission: {
+							createMany: vi.fn().mockImplementation(({ data }) => {
+								capturedData = data;
+								return { count: data.length };
+							}),
+						},
+					} as any);
+				}
+				return undefined;
+			});
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			// Verify 3 missions created
+			expect(result).toHaveLength(3);
+
+			// Verify chronological order (line-a first, then line-b, then line-c)
+			expect(capturedData[0].quoteLineId).toBe("line-a");
+			expect(capturedData[1].quoteLineId).toBe("line-b");
+			expect(capturedData[2].quoteLineId).toBe("line-c");
+
+			// Verify sequential refs
+			expect(capturedData[0].ref).toBe("ORD-2026-001-01");
+			expect(capturedData[1].ref).toBe("ORD-2026-001-02");
+			expect(capturedData[2].ref).toBe("ORD-2026-001-03");
+		});
+
+		it("should fallback to quote pickupAt when line has no pickupAt in sourceData", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				reference: "ORD-2026-002",
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-01-20T10:00:00Z"), // Fallback date
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "line-with-date",
+								type: "CALCULATED",
+								label: "Transfer with date",
+								sourceData: { pickupAt: "2026-01-22T08:00:00Z" },
+								dispatchable: true,
+							},
+							{
+								id: "line-without-date",
+								type: "CALCULATED",
+								label: "Transfer without date",
+								sourceData: {}, // No pickupAt - should use quote's pickupAt
+								dispatchable: true,
+							},
+						],
+					},
+				],
+			};
+
+			const createdMissions = [
+				{ id: "mission-1", quoteLineId: "line-without-date", ref: "ORD-2026-002-01", startAt: new Date("2026-01-20T10:00:00Z") },
+				{ id: "mission-2", quoteLineId: "line-with-date", ref: "ORD-2026-002-02", startAt: new Date("2026-01-22T08:00:00Z") },
+			];
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(createdMissions as any);
+
+			let capturedData: any[] = [];
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({
+						mission: {
+							createMany: vi.fn().mockImplementation(({ data }) => {
+								capturedData = data;
+								return { count: data.length };
+							}),
+						},
+					} as any);
+				}
+				return undefined;
+			});
+
+			await SpawnService.execute("order-1", ORG_ID);
+
+			// line-without-date uses quote's pickupAt (2026-01-20) which is earlier
+			// So it should be first in chronological order
+			expect(capturedData[0].quoteLineId).toBe("line-without-date");
+			expect(capturedData[0].ref).toBe("ORD-2026-002-01");
+			expect(capturedData[1].quoteLineId).toBe("line-with-date");
+			expect(capturedData[1].ref).toBe("ORD-2026-002-02");
+		});
+
+		it("should include sequenceIndex and totalMissionsInOrder in sourceData", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				reference: "ORD-2026-003",
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-01-20T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "line-1",
+								type: "CALCULATED",
+								label: "Transfer 1",
+								sourceData: { pickupAt: "2026-01-20T10:00:00Z" },
+								dispatchable: true,
+							},
+							{
+								id: "line-2",
+								type: "CALCULATED",
+								label: "Transfer 2",
+								sourceData: { pickupAt: "2026-01-21T10:00:00Z" },
+								dispatchable: true,
+							},
+						],
+					},
+				],
+			};
+
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany)
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce([
+					{ id: "m1", quoteLineId: "line-1" },
+					{ id: "m2", quoteLineId: "line-2" },
+				] as any);
+
+			let capturedData: any[] = [];
+			vi.mocked(db.$transaction).mockImplementation(async (fn) => {
+				if (typeof fn === "function") {
+					return fn({
+						mission: {
+							createMany: vi.fn().mockImplementation(({ data }) => {
+								capturedData = data;
+								return { count: data.length };
+							}),
+						},
+					} as any);
+				}
+				return undefined;
+			});
+
+			await SpawnService.execute("order-1", ORG_ID);
+
+			// Verify sequenceIndex and totalMissionsInOrder
+			expect(capturedData[0].sourceData.sequenceIndex).toBe(1);
+			expect(capturedData[0].sourceData.totalMissionsInOrder).toBe(2);
+			expect(capturedData[1].sourceData.sequenceIndex).toBe(2);
+			expect(capturedData[1].sourceData.totalMissionsInOrder).toBe(2);
+
+			// Verify spawnedAt is present
+			expect(capturedData[0].sourceData.spawnedAt).toBeDefined();
+			expect(capturedData[1].sourceData.spawnedAt).toBeDefined();
+		});
+
+		it("should not create duplicate missions on re-spawn (idempotence)", async () => {
+			const mockOrder = {
+				id: "order-1",
+				organizationId: ORG_ID,
+				reference: "ORD-2026-004",
+				quotes: [
+					{
+						id: "quote-1",
+						tripType: "TRANSFER",
+						pickupAt: new Date("2026-01-20T10:00:00Z"),
+						vehicleCategory: { name: "BERLINE" },
+						lines: [
+							{
+								id: "line-1",
+								type: "CALCULATED",
+								label: "Transfer 1",
+								sourceData: {},
+								dispatchable: true,
+							},
+							{
+								id: "line-2",
+								type: "CALCULATED",
+								label: "Transfer 2",
+								sourceData: {},
+								dispatchable: true,
+							},
+						],
+					},
+				],
+			};
+
+			// All lines already have missions
+			vi.mocked(db.order.findFirst).mockResolvedValue(mockOrder as any);
+			vi.mocked(db.mission.findMany).mockResolvedValueOnce([
+				{ quoteLineId: "line-1" },
+				{ quoteLineId: "line-2" },
+			] as any);
+
+			const result = await SpawnService.execute("order-1", ORG_ID);
+
+			// No new missions should be created
+			expect(result).toEqual([]);
+			expect(db.$transaction).not.toHaveBeenCalled();
+		});
 	});
 });
