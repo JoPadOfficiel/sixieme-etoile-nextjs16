@@ -1,4 +1,4 @@
-# generated: 2026-01-20T04:26:13+01:00
+# generated: 2026-01-22T08:33:24+01:00
 # project: sixieme-etoile-nextjs16
 # project_key: file-system-local
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-20T04:26:13+01:00
+generated: 2026-01-22T08:33:24+01:00
 project: sixieme-etoile-nextjs16
 project_key: file-system-local
 tracking_system: file-system
@@ -51,7 +51,7 @@ development_status:
   2-1-implement-contact-model-basic-crm-ui: done
   2-2-store-partner-contract-data-rate-grid-links: done
   2-3-allow-safe-reclassification-between-partner-and-private: done
-  2-4-link-quotes-and-invoices-to-contacts-partner-agencies: done
+  2-4-link-quotes-invoices-to-contacts-partner-agencies: done
   2-5-expose-commercial-context-in-crm-views: done
   epic-2-retrospective: optional
   epic-3: done
@@ -267,6 +267,7 @@ development_status:
   23-9-add-vehicle-category-filter-to-quote-fee-promotion-catalog: done
   23-10-implement-automated-e2e-tests-for-bug-fixes: done
   23-11-implement-vehicle-category-filter-tests: done
+  23-12-update-documentation-and-user-guide: done
   epic-23-retrospective: optional
   epic-24: done
   24-1-create-endcustomer-data-model: done
@@ -329,7 +330,7 @@ development_status:
   27-13-real-time-updates-polling-socket: done
   27-14-export-schedule: done
   epic-27-retrospective: optional
-  epic-28: in-progress
+  epic-28: done
   28-1-order-entity-prisma-schema: done
   28-2-order-state-machine-api: done
   28-3-dossier-view-ui-skeleton-tabs: done
@@ -344,3 +345,13 @@ development_status:
   28-12-post-mission-pending-charges: done
   28-13-ad-hoc-free-missions: done
   epic-28-retrospective: optional
+  epic-29: in-progress
+  29-1-fix-shopping-cart-persistence-pricing-aggregation: in-progress
+  29-2-implement-multi-mission-quote-detail-view: backlog
+  29-3-ensure-lossless-quote-editing-hydration: backlog
+  29-4-implement-intelligent-multi-mission-spawning-the-launch: backlog
+  29-5-implement-multi-mission-invoicing-sync: backlog
+  29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: backlog
+  29-7-dispatch-list-integrity-backlog-separation: backlog
+  29-8-revamp-mission-sheet-pdf-generation: backlog
+  epic-29-retrospective: optional

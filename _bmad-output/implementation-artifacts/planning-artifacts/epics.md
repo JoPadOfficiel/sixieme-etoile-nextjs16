@@ -99,6 +99,9 @@ This document decomposes the VTC ERP PRD into **24 functional epics**, aligned w
 - **Epic 28 – Order Management & Intelligent Spawning (Dossier de Commande)**
   Implement the "Dossier" lifecycle to manage multi-mission orders, intelligent spawning from quotes, flexible execution-aware invoicing, and ad-hoc exceptions.
 
+- **Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)**
+  Refactor and finalize the "Shopping Cart" quote system to ensure correct persistence, multi-trip visualization, lossless editing, and intelligent mission spawning.
+
 ---
 
 ## Functional Requirements Inventory (Summary)
@@ -223,7 +226,7 @@ Canonical FR definitions are in `docs/bmad/prd.md`. This section summarises FR g
   - Secondary epics: **Epic 7 – Invoicing & Documents**, **Epic 8 – Dispatch**, **Epic 2 – CRM**
 
 - **FR Group 17 (FR150–FR158) – Multi-Item Quote Cart & Revolutionary UX**
-  - Primary epic: **Epic 26 – Flexible "Yolo Mode" Billing**
+  - Primary epic: **Epic 29 – Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)**
   - Secondary epics: **Epic 6 – Quotes & Operator Cockpit**, **Epic 7 – Invoicing & Documents**
 
 ---
@@ -1309,156 +1312,99 @@ So that I can send professional documents to clients and keep an auditable archi
 
 ## Epic 8: Dispatch & Strategic Optimisation
 
-**Goal:** Provide a dispatch screen and optimisation features (multi-base selection, chaining, empty legs, subcontracting) to support profitable and compliant assignment decisions.
+**Goal:** Provide a comprehensive "Unifed Cockpit" for dispatching that offers seamless toggling between Gantt, List, and Map views, with advanced visualization features (Continuous Axis, Zoom, Date Range) and strict separation between Orders and Operational Missions.
 
-### Story 8.1: Implement Dispatch Screen Layout (Missions List + Map + Transparency)
+### Story 8.1: Implement Unified Cockpit Layout (Gantt/List/Map Toggles)
 
-As a **dispatcher**,  
-I want a dedicated Dispatch screen with mission list, map and transparency panel,  
-So that I can take assignment decisions with full context.
+As a **dispatcher**,
+I want a single page where I can switch between Gantt, List, and Map views instantly,
+So that I can visualize my fleet's schedule in the most appropriate format for the task at hand.
 
-**Related FRs:** FR50–FR51, FR42–FR44, FR24; UX spec 8.8.
+**Related FRs:** FR140, FR140.1, FR50–FR51.
 
 **Acceptance Criteria:**
-
-**Given** `/dashboard/dispatch`,  
-**When** I open the page,  
-**Then** I see:
-
-- Left: missions list with filters by status, time window, vehicle category, partner/private.
-- Right-top: Google Map showing the selected mission’s route and relevant bases.
-- Right-bottom: TripTransparencyPanel + VehicleAssignmentPanel showing current assignment, profitability and compliance.
+- **View Toggles:** Distinct buttons to switch modes: "Gantt" (Planning), "List" (Tabular), "Map" (Geospatial).
+- **State Persistence:** Switching views retains the currently selected Date Range and Filters.
+- **List View Population:** The "List" mode must display the *exact same* set of missions as the Gantt (Assigned + Unassigned), in a sortable table. It must NEVER be empty if missions exist.
+- **Backlog Pane:** A dedicated collapsible pane on the left shows *only* Unassigned Missions (Backlog), distinct from the main planning area.
 
 **Prerequisites:** Stories 4.6–4.7, 5.1–5.2, 6.7, Maps integration.
 
 **Technical Notes:**
+- The "List" view currently appears empty in screenshots; ensure the data fetch strategy (React Query) is shared between Gantt and List components.
 
-- Follow the three-zone layout from the UX spec, optimised for wide screens.
-- Missions are typically derived from accepted quotes and/or external scheduling data.
+### Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers
 
-### Story 8.2: Implement Assignment Drawer with Candidate Vehicles/Drivers & Flexibility Score
-
-As a **dispatcher**,  
-I want an assignment drawer that shows candidate vehicles/drivers with suitability scores,  
+As a **dispatcher**,
+I want an assignment drawer that shows candidate vehicles/drivers with suitability scores,
 So that I can quickly pick the best option.
 
-**Related FRs:** FR50–FR51, FR17–FR20, FR25–FR30.
+**Related FRs:** FR50–FR51, FR17–FR20.
 
 **Acceptance Criteria:**
+- **Drawer:** Clicking a mission opens a drawer with candidates.
+- **Scoring:** Candidates are ranked by distance, compliance, and schedule fit.
+- **Feedback:** selecting a candidate updates the mission instantly.
 
-**Given** I click `Assign` or `Change assignment` on a mission,  
-**When** the drawer opens,  
-**Then** I see a list of candidate vehicle/driver pairs with a flexibility/fitness score (based on number of licences, schedule slack, distance from base, RSE counters), compliance indicator and estimated internal cost.
+### Story 8.3: Implement Multi-Base Optimisation
 
-**And** selecting a candidate updates the mission assignment, reruns shadow calculation if needed and updates profitability and compliance badges.
-
-**Prerequisites:** Stories 5.1–5.5, 4.5–4.7, 8.1.
-
-**Technical Notes:**
-
-- Flexibility score computation can be simple initially (weighted sum) but must use real data (licences, availability).
-- Assignment actions should be undoable where feasible (e.g. simple reversion).
-
-### Story 8.3: Implement Multi-Base Optimisation & Visualisation
-
-As an **operations lead**,  
-I want the dispatch engine to simulate the approach–service–return loop from multiple bases,  
-So that I can pick assignments that minimise deadhead cost and preserve profit.
+As an **operations lead**,
+I want the dispatch engine to simulate the approach–service–return loop from multiple bases,
+So that I can pick assignments that minimise deadhead cost.
 
 **Related FRs:** FR17–FR20, FR51.
 
 **Acceptance Criteria:**
+- **Simulation:** Engine calculates costs (Segment A/B/C) for top candidates.
+- **Visuals:** Map highlights approach paths for different bases.
 
-**Given** a mission with multiple feasible bases/vehicles,  
-**When** I open its assignment drawer,  
-**Then** the engine has evaluated candidate bases using the same pre-filter + routing logic as pricing (Story 4.5) and shows for each option total internal cost and resulting margin.
+### Story 8.4: Trip Chaining Opportunities
 
-**And** the map can highlight alternative bases/routes to visually compare options.
-
-**Prerequisites:** Stories 4.5, 5.1, 8.1–8.2.
-
-### Story 8.4: Detect & Suggest Trip Chaining Opportunities
-
-As a **dispatcher**,  
-I want the system to detect opportunities to chain trips,  
-So that I can reduce or eliminate deadhead segments.
+As a **dispatcher**,
+I want the system to detect opportunities to chain trips to reduce deadhead,
+So that I can optimize fleet usage.
 
 **Related FRs:** FR52.
 
 **Acceptance Criteria:**
+- **Suggestions:** UI proposes "Chain with Mission X" if spatially/temporally close.
+- **Linkage:** Accepting a chain links the missions operationally.
 
-**Given** a set of confirmed missions in a time window,  
-**When** the planning engine runs,  
-**Then** it detects where the drop-off of one mission is close in time and space to the pickup of another, and proposes chain suggestions in the Dispatch UI (e.g. "Chain with Mission #1234"), with estimated savings.
+### Story 8.5: Empty-Leg Opportunities
 
-**Prerequisites:** Stories 4.5–4.6, 5.1–5.5, 8.1.
-
-**Technical Notes:**
-
-- Initial implementation can focus on simple heuristics (distance/time thresholds) and reuse existing routing data.
-- Chaining decisions should update shadow calculations and profitability when applied.
-
-### Story 8.5: Model & Surface Empty-Leg Opportunities
-
-As a **yield manager**,  
-I want empty-leg segments tracked and surfaced as sellable opportunities,  
-So that we can monetise return trips.
+As a **yield manager**,
+I want empty-leg segments tracked and surfaced,
+So that I can resell them.
 
 **Related FRs:** FR53.
 
 **Acceptance Criteria:**
+- **Detection:** Automatic creation of `EmptyLegOpportunity` records for significant deadheads.
+- **Visibility:** Filter to show empty legs on the Gantt/Map.
 
-**Given** missions that create known empty-leg legs (e.g. one-way charters),  
-**When** they are confirmed,  
-**Then** corresponding `EmptyLegOpportunity` records are created with corridor information and time windows.
+### Story 8.6: Subcontracting Integration
 
-**And** the Dispatch/Planning UI can filter and show these empty legs, and pricing can apply special empty-leg pricing strategies when new requests match these corridors.
-
-**Prerequisites:** Stories 1.1 (EmptyLegOpportunity model), 4.5–4.7, 8.1.
-
-**Technical Notes:**
-
-- Keep the first version simple (manual marking or rule-based detection); more advanced logic can come later.
-- Ensure empty-leg pricing rules sit in the same domain as other advanced pricing rules.
-
-### Story 8.6: Integrate Subcontractor Directory & Subcontracting Suggestions
-
-As an **operations manager**,  
-I want to register subcontractor partners and get suggestions when internal trips are structurally unprofitable,  
-So that I can decide to subcontract with full margin visibility.
+As an **operations manager**,
+I want to subcontract trips that are structurally unprofitable for my fleet,
+So that I can maintain service levels without losing money.
 
 **Related FRs:** FR54.
 
 **Acceptance Criteria:**
+- **Suggestion:** System flags missions with negative internal margin.
+- **Action:** "Subcontract" button allows assigning to a Partner from the directory.
 
-**Given** a directory of subcontractor partners with operating zones and indicative price levels,  
-**When** a mission is structurally unprofitable for the internal fleet,  
-**Then** the planning engine proposes subcontracting options with estimated subcontractor price and resulting margin, and the Dispatch UI surfaces these options clearly.
+### Story 8.7: Profitability & Compliance Badges
 
-**Prerequisites:** Stories 2.1–2.2 (contacts extended for partners), 4.2–4.7, 8.1–8.3.
+As a **dispatcher**,
+I want to see status badges (Margin, RSE, Assignment) on every mission block,
+So that I can spot issues at a glance.
 
-**Technical Notes:**
-
-- A minimal first version can reuse `Contact` with extra fields (subcontractor flag, zone preferences).
-- Subcontracting decisions should be logged for later analysis.
-
-### Story 8.7: Surface Profitability & Compliance Badges for Missions
-
-As a **dispatcher**,  
-I want profitability and compliance badges visible on each mission,  
-So that I can spot problematic assignments at a glance.
-
-**Related FRs:** FR24, FR47–FR49, FR50; UX dispatch badges.
+**Related FRs:** FR24, FR47, FR50.
 
 **Acceptance Criteria:**
-
-**Given** the missions list in Dispatch,  
-**When** I view it,  
-**Then** each row shows a profitability badge (green/orange/red), a compliance badge (OK/Warning/Violation) and an assignment badge (Unassigned/Assigned) using Lucide icons and colour coding as in the UX spec.
-
-**And** clicking a mission reveals more detail on both profitability (TripTransparencyPanel) and compliance (decisions from Epic 5).
-
-**Prerequisites:** Stories 4.7, 5.3–5.6, 8.1.
+- **Visuals:** Icons/Colors for Profit (Red/Green), Compliance (Warning), Status.
+- **Updates:** Badges update in real-time upon reassignment.
 
 **Technical Notes:**
 
@@ -7833,3 +7779,107 @@ So that I can track "Wash Car" or "Courtesy Ride" tasks.
 - Does not create a QuoteLine (or creates a 0€ hidden one).
 - Appears in Dispatch.
 
+---
+
+## Epic 29: Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)
+
+**Goal:** Provide a robust, end-to-end "Shopping Cart" experience where multi-item quotes are persisted correctly, visualized as distinct trips (not just one), editable without data loss, and spawned into individual missions per line item.
+
+### Story 29.1: Fix Shopping Cart Persistence & Pricing Aggregation
+
+As a **User**,
+I want my multi-item quote to be saved with all individual line items and a correct total price,
+So that I don't lose the details of my "Shopping Cart" when I save or reload.
+
+**Related FRs:** FR150, FR152, FR156.
+
+**Acceptance Criteria:**
+- **Persistence:** Saving a quote with N items persists N distinct `QuoteLine` records in the database.
+- **Aggregation:** The `Quote` header `finalPrice` must equal the sum of all `QuoteLine.sellingPrice` values.
+- **Display:** The UI must display the correct aggregated total in the list view, not just the price of the last item.
+- **Data Integrity:** `QuoteLine` stores full context (pickup, dropoff, vehicle) in `sourceData` JSON to be independent.
+
+### Story 29.2: Implement Multi-Mission Quote Detail View
+
+As a **Sales User**,
+I want to view a saved multi-mission quote and see *all* the trips on the map and in the list,
+So that I can verify the full itinerary before sending it to the client.
+
+**Related FRs:** FR158, FR159 (New).
+
+**Acceptance Criteria:**
+- **List View:** The Quote Detail page lists all line items (Travel, Disposal, etc.) clearly.
+- **Map Visualization:** The map displays markers/paths for ALL travel lines, not just the first one. (Focus on selected line, or fit bounds to all).
+- **Expand/Collapse:** Users can expand a line item to see its specific details (distance, duration, vehicle).
+- **"No Pricing Data" Fix:** The view never shows empty/broken states for valid saved quotes.
+
+### Story 29.3: Ensure Lossless Quote Editing (Hydration)
+
+As a **User**,
+I want to edit an existing multi-item quote and have my "Shopping Cart" fully restored,
+So that I can add or remove a trip without re-typing the whole quote.
+
+**Related FRs:** FR153, FR160.
+
+**Acceptance Criteria:**
+- **Hydration:** Clicking "Edit" on a Quote loads the `CreateQuoteCockpit` and repopulates the "Shopping Cart" with all existing lines.
+- **State/React Sync:** The internal React state (Zustand/Context) is correctly initialized from the DB `QuoteLine` records.
+- **Pricing Context:** Each restored line retains its pricing data (margin, costs) so the profitability indicator remains accurate.
+- **Add/Remove:** I can add a new line to the restored cart and save, updating the existing Quote (or creating a version).
+
+### Story 29.4: Implement Intelligent Multi-Mission Spawning (The "Launch")
+
+As an **Operations Manager**,
+I want a confirmed multi-item quote to generate separate Operational Missions for each line item via a specific "Launch" action,
+So that distinct dispatch tasks are created without duplicating the commercial Order data.
+
+### Story 29.6: Upgrade Unified Dispatch Visualization (Gantt Zoom & Axis)
+
+As a **Dispatcher**,
+I want a powerful Gantt chart that supports zooming, continuous time axes, and custom date ranges,
+So that I can manage schedules spanning multiple days or nights without visual breaks.
+
+**Related FRs:** FR140, FR141 (Unified Dispatch Improvements).
+
+**Acceptance Criteria:**
+- **Date Range Picker:** The Dispatch Header must include a robust selector for arbitrary periods (e.g., "Jan 10 - Jan 15") or presets ("Today", "This Week").
+- **Zoom Levels:**
+    -   **Day View:** High detail (hour-by-hour), showing Day Numbers in headers.
+    -   **3-Day View:** Mid-level overview.
+    -   **Week View:** Low detail (7-10 days), showing clearly labeled Day Names/Dates (e.g., "Mon 12").
+- **Continuous Axis:** The timeline must flow clearly from 22h -> 23h -> 00h -> 01h -> ... without "hard stops" or visual gaps.
+- **Virtualization:** Ensure performance remains high even with continuous scroll.
+
+### Story 29.7: Dispatch List Integrity & Backlog Separation
+
+As a **Dispatcher**,
+I want a strict separation between "Backlog" (Unassigned) and "Planned" (Assigned) missions in the List View,
+So that I never see duplicates or "Order Containers" cluttering my dispatch operations.
+
+**Related FRs:** FR140.2 (Data Separation), FR144 (Backlog).
+
+**Acceptance Criteria:**
+- **Strict Filtering:** The "List" mode must display *only* `Mission` entities (operational tasks). It must NEVER display `Quote` or `Order` entities (commercial containers).
+- **Matching Gantt:** The Planned List (Main Table) must query `missions where driverId IS NOT NULL` (or all if filtered), showing exactly the same dataset as the Gantt rows.
+- **Backlog Pane:** The side pane must query *only* `missions where driverId IS NULL`.
+- **Ad-Hoc Integrity:** "Free Missions" (Ad-hoc) created directly in Dispatch must appear in these lists, distinguished by a "Non-Billable" badge if necessary, effectively treating them as first-class citizens alongside commercial missions.
+
+
+### Story 29.8: Revamp Mission Sheet PDF Generation (Per-Mission)
+
+As a **Dispatcher/Driver**,
+I want a generated PDF Mission Sheet that is specific to the individual mission (not the whole quote), with a unique ID and correct service type,
+So that I have a clear, distinct work order for each leg of a complex itinerary.
+
+**Related FRs:** FR120, FR120.1, FR121, FR122, FR123 (Group 14).
+
+**Acceptance Criteria:**
+- **Granularity:** The system generates 1 PDF per `Mission`. If an Order has 5 missions, I can download 5 distinct PDFs.
+- **Header info:**
+    -   **ID:** Displays `Mission.ref` (e.g., `M-12345`) or `Order.ref` + Index (e.g., `Q-999-01`). MUST NOT be the generic Quote ref.
+    -   **Type:** CLEARLY states "TRANSFER", "DISPOSAL", or "EXCURSION" in large type, derived from the `Mission.type`.
+- **Content Scope:** The "Itinerary" section shows *only* the waypoints for this specific mission.
+- **Context:**
+    -   Displays the assigned Driver(s) and Vehicle (if assigned).
+    -   Displays Client Platform info (if applicable).
+- **Access:** "Download Mission Sheet" button available on the Mission Card in Dispatch and in the Dossier Mission list.

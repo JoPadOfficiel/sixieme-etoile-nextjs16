@@ -325,22 +325,27 @@ Functional requirements are grouped by capability area and numbered sequentially
 - **FR87:** The system shall implement a hierarchical pricing algorithm that evaluates each trip request in strict priority order: (1) intra-central-zone flat rate, (2) defined inter-zone forfait, (3) same-ring dynamic with zone multiplier, (4) fallback horokilometric calculation.
 - **FR88:** The system shall support configurable thresholds for the automatic transfer-to-MAD switch, including minimum waiting time, maximum return distance, and zone density classification.
 
-### FR Group 17 - Multi-Item Quote Cart & Revolutionary UX
+### FR Group 17 - Multi-Mission Quote Lifecycle ("Yolo Mode")
 
 - **FR150:** The quote creation process must support a "Shopping Cart" model where multiple independent line items (transfers, disposals, excursions) can be added to a single quote session before saving.
 - **FR151:** The system must allow users to "Add to Quote" the current configuration without leaving the screen, pushing the item to a visible, persistent cart list.
 - **FR152:** The system must display a real-time "Total Quote Price" that sums all items in the cart, updating instantly as items are added, removed, or modified.
-- **FR153:** Users must be able to edit an existing calculated item in the cart, which should repopulate the configuration form with the item's original data.
+- **FR153:** Users must be able to edit an existing calculated item in the cart, which should repopulate the configuration form with the item's original data (Hydration).
 - **FR154:** The system must support "Duplicate" and "Remove" actions for all cart items.
-- **FR155:** The user interface must utilize "Glassmorphism" and modern animation principles (smooth transitions, flying elements) to provide a premium "Revolutionary" feel.
-- **FR156:** The cart state must be persisted locally so that data is not lost on page reload or accidental navigation.
-- **FR157:** The system must allow saving "Templates" of multi-item configurations for rapid reuse.
-- **FR158:** Each line item within the multi-item quote must remain individually dispatchable (linking to a distinct Mission).
+- **FR155:** The user interface must utilize a "Glassmorphism" 3-section layout: Input -> Cart/Detail -> Total/Action.
+- **FR156:** The cart state including full trip data (waypoints, vehicle, margin) must be persisted in the `QuoteLine` table so that no data is lost on save/reload.
+- **FR157:** The Quote Detail view must visualize all lines simultaneously on a map (or allow cycling through them) and list them clearly with individual prices.
+- **FR158:** Upon confirmation, the system must spawn a distinct Dispatch Mission for each relevant line item (Shopping Cart -> Multi-Mission Dossier), ensuring individual schedulability.
+- **FR159:** Editing a saved Multi-Mission Quote must reload the entire Shopping Cart state from the API, allowing seamless addition or removal of trips without breaking the version history.
 
-### FR Group 14   Mission Sheets, PDF Compliance, Payments & Deep Linking
+### FR Group 14 - Mission Sheets & PDF Generation (Multi-Mission Ready)
 
-- **FR131:** The system shall support generating a PDF Mission Sheet for drivers/dispatchers, auto-filled with operational data (Service, Passenger, Vehicle, Notes) but with specific execution fields (Km/Time Departure/Arrival, Expenses) left editable/empty for manual entry.
-- **FR132:** The generated Mission Sheet shall be saved automatically to the driver's Activity history for future reference.
+- **FR120:** The system must generate a professional PDF "Mission Sheet" (Fiche de Mission) for **each individual operational mission**.
+- **FR120.1:** **Access:** These sheets must be downloadable from the Order (Dossier) view AND the Dispatch cockpit.
+- **FR121:** **Numbering:** The document header must display the unique **Mission Identifier** (e.g., `M-202401-001` or `ORD-123-01`) instead of the generic Quote ID. It must handle sequential numbering correctly (never stuck at "01").
+- **FR122:** **Service Type:** The header must explicitly state the **Type of Service** (Transfer, Disposal, Excursion) derived directly from the source Quote Line.
+- **FR123:** **Content:** The PDF must include specific details for *that* mission only (Pickup, Dropoff, Vehicle, Client), excluding irrelevant data from other lines in the dossier.
+- **FR124:** **Staffing:** The sheet must adapt to show Single or Double Driver setup as assigned in Dispatch. Mission Sheet shall be saved automatically to the driver's Activity history for future reference.
 - **FR133:** All generated PDFs (Quotes, Invoices) shall strictly adhere to EU/FR compliance layouts: Sender on left, Recipient on right, standardized tabular breakdown (Description, Qty, Rate, Total), and full legal footer (SIRET, VAT, Address).
 - **FR134:** The system shall verify and include "Start" and "End" timestamp metadata on the mission sheet creation event.
 - **FR135:** Admins shall be able to upload a custom Organization Logo (SVG/PNG), set legal metadata, and configure "Logo Position" (Left/Right) in settings. This preference shall dynamically invert the header layout (Logo vs Quote Metadata) on all generated documents.
@@ -988,11 +993,17 @@ This appendix consolidates the advanced modules that adjust and explain the comp
 
 Requirements for the consolidated "Command Center" that merges planning and list views.
 
-- **FR140:** The system shall provide a single "Unified Cockpit" page (`/dispatch`) that allows operators to instantly toggle between a **Gantt Planning View** and a **Legacy List View** without losing context or state.
-- **FR141:** The Gantt view shall visualize ALL missions, including "Manual/Yolo" missions that lack a calculated route, by using a generic or manually defined duration/timestamp, ensuring total visibility.
-- **FR142:** The system shall include a **Live Map Layer** in the Cockpit that, upon selecting a mission, visualizes the trip vector (Pickup $\rightarrow$ Dropoff) and highlights available drivers sorted by proximity to the pickup point.
-- **FR143:** The Dispatch system must visually alert users (e.g., red shake animation) if a drag-and-drop assignment violates an RSE constraint or overlaps with a Driver Calendar Event (Holiday/Sick).
-- **FR144:** The planner shall support a "Backlog" pane of unassigned missions that allows filtering/sorting and drag-and-drop assignment onto the Gantt timeline or driver rows.
+- **FR140:** The system shall provide a single "Unified Cockpit" page (`/dispatch`) with instant toggling between **Gantt Planning**, **List**, and **Map** views.
+- **FR140.1:** **List View Population:** The "List" view must never be empty if missions exist. It must render a tabular view of all missions associated with the selected date range/driver filter, mirroring the data shown on the Gantt.
+- **FR140.2:** **Data Separation:** The system must STRICTLY separate "Commercial Orders" (Dossiers) from "Operational Missions". Only *Spawned Missions* appear in Dispatch. Orders (containers) do not appear as rows to prevent duplication.
+- **FR141:** The Gantt view shall visualize ALL missions, with support for "Ghost" blocks for unassigned/manual tasks.
+- **FR141.1:** **Date Range Picker:** The Dispatch Header must include a robust Date Range Picker allowing selection of arbitrary periods (e.g., "Jan 12 - Jan 15") rather than a single day, to support multi-day planning.
+- **FR141.2:** **Zoom Levels:** The Gantt must support "Day" (High detail), "3-Day", and "Week" (7-10 days) zoom levels.
+- **FR141.3:** **Axis Continuity:** The time axis must show a continuous flow (00h-24h -> Next Day 00h) without visual gaps (e.g., stopping at 22h).
+- **FR141.4:** **Axis Labels:** In "Week" or zoomed-out modes, the axis header must clearly display **Day Names and Dates** (e.g., "Mon 22/01") above the hours to maintain context.
+- **FR142:** The system shall include a **Live Map Layer** in the Cockpit that visualizes the trip vector and highlights nearby drivers.
+- **FR143:** The Dispatch system must visually alert users (e.g., red shake animation) if a drag-and-drop assignment violates an RSE constraint or overlaps with a Driver Calendar Event.
+- **FR144:** The planner shall support a **Backlog Pane** solely for "Unassigned Missions". It must NOT show "Draft Quotes" or "Orders", only operational tasks waiting for a driver.
 
 ### FR Group 16 - Flexible "Yolo" Billing (Universal Blocks)
 
@@ -1016,29 +1027,21 @@ Requirements for the new "Folder-based" architecture (Dossier de Commande) and m
     2.  **Operational Layer**: The generated Missions (Status, Driver, Vehicle).
     3.  **Financial Layer**: The Invoices and Payments.
 
-#### 18.2 - Intelligent Mission Spawning (The "Router")
-- **FR163:** Upon Order Confirmation, the system must trigger a **Spawning Engine** that evaluates each `QuoteLine` to decide *if* and *how* to create a Mission.
-- **FR164:** **Standard Spawning**: For standard types (Transfer, Disposal), 1 QuoteLine = 1 Mission. The Mission inherits the QuoteLine's date, addresses, and vehicle category.
-- **FR165:** **Complex/Multi-Day Spawning**: For `GROUP` lines (e.g., "Wedding Pack 3 Days"), the Spawner must be able to generate **N Missions** based on the group's child lines (e.g., 1 Mission per day).
-- **FR166:** **Optional Dispatch**: The system must support a `dispatchable` flag on `QuoteLine` items.
-    - If `true` (e.g., Van, Sedan): A Mission is created in the Dispatch Backlog.
-    - If `false` (e.g., "Porter Service", "Champagne"): No Mission is typically created, OR a "Service Task" is created but not assigned to a driver.
-    - **Crucial**: The operator must be able to **force-enable** dispatch for manual items (e.g., manually added "Luggage Van" line needs to become a real Mission for a driver).
-- **FR167:** **Manual Items Handling**: For `MANUAL` type lines added to a Quote (e.g., "Extra Luggage Van"):
-    - By default, they do not spawn a mission.
-    - The operator must have a "Convert to Mission" action in the Dossier View to turn a manual line into a dispatchable entity if it requires a driver.
+#### 18.2 - Intelligent Mission Spawning (The "Launch")
+- **FR163:** Upon Order Confirmation, the system triggers the **Spawning Engine**. unique "Launch" event converts Commercial Lines into Operational Missions.
+- **FR163.1:** **1-to-N Logic:** A single multi-day QuoteLine (e.g., "3 Day Disposal") must spawn **3 distinct Missions** (one per day) in the Dispatch.
+- **FR163.2:** **Ad-Hoc Integrity:** "Free Missions" (e.g., "Car Wash") created in Dispatch must link back to the Dossier (`orderId`) but have `price=0` and hidden from the client Invoice unless explicitly added.
+- **FR164:** **Standard Spawning:** Transfer/Disposal lines spawn 1 Mission each.
+- **FR165:** **Complex Spawning:** Group blocks imply potential multi-mission generation based on duration/dates.
+- **FR166:** **Dispatchable Flag:** Only lines with `dispatchable=true` enter the Backlog. Purely financial lines (e.g., "Toll adjustment") remain in the Order but do not clutter Dispatch.
+- **FR167:** **Manual Items:** Operators can manually "Promote" a manual line to a Mission if it requires a driver.
 
 #### 18.3 - Invoicing Flexibility (Fully Editable)
 - **FR168:** The Invoicing Engine must treat the generated Invoice as a **detached snapshot**.
-- **FR169:** Operators must be able to **edit everything** on the draft invoice line items, regardless of the source Mission data:
-    - Change Label (e.g., add "Mr Smith - VIP").
-    - Change Quantity/Price (e.g., add last-minute waiting hours).
-    - Change VAT Rate.
-- **FR170:** **Execution Feedback Loop**: While the Invoice is decoupled, the system should allow "pulling" execution data into the invoice description via placeholders (e.g., `{{mission.driverName}}`, `{{mission.vehiclePlate}}`) for automated customization where needed.
+- **FR169:** Operators must be able to **edit everything** on the draft invoice line items.
+- **FR170:** **Execution Feedback Loop:** Placeholders (e.g., `{{mission.driverName}}`) allow pulling operational data into invoice text.
 
 #### 18.4 - Handling the "Other 20%" (Exceptions)
-- **FR171:** **Partial/Deposit Billing**: The system must allow creating an invoice for *part* of an Order (e.g., "Deposit 30%" or "Only Missions 1 & 2").
-- **FR172:** **Post-Mission Upsell**: If a driver adds an expense or waiting time during the Mission, this must appear as a "Pending Charge" in the Dossier. The operator can then choose to:
-    - Add it to the final Invoice.
-    - Ignore it (commercial gesture).
-- **FR173:** **Ad-Hoc Missions**: The system must allow creating a "Free Mission" in the Dispatch (e.g., "Go wash the car") that is linked to the Dossier for history but has `price = 0` on the commercial side.
+- **FR171:** **Partial/Deposit Billing:** Support for billing a % or specific list of missions.
+- **FR172:** **Post-Mission Upsell:** Driver-added fees function as "Pending Charges" in the Dossier, waiting for approval.
+- **FR173:** **Ad-Hoc Missions:** Non-billable operational tasks (maintenance, deadhead) appear in Dispatch but are excluded from commercial totals.
