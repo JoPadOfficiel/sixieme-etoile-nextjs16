@@ -2636,6 +2636,7 @@
 		},
 		"actions": {
 			"menu": "Actions",
+			"edit": "Modifier",
 			"viewEdit": "Voir / Modifier",
 			"viewEditComingSoon": "Page de détails du devis bientôt disponible",
 			"duplicate": "Dupliquer",
@@ -3377,6 +3378,7 @@
 			"labelPlaceholder": "Description...",
 			"groupPlaceholder": "Nom du groupe...",
 			"actions": {
+				"edit": "Modifier",
 				"addManualLine": "Ajouter ligne manuelle",
 				"addGroup": "Créer un groupe",
 				"undo": "Annuler",

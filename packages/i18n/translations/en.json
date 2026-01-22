@@ -2649,6 +2649,7 @@
 		},
 		"actions": {
 			"menu": "Actions",
+			"edit": "Edit",
 			"viewEdit": "View / Edit",
 			"viewEditComingSoon": "Quote details page coming soon",
 			"duplicate": "Duplicate",
@@ -2658,6 +2659,7 @@
 			"cancel": "Cancel Quote",
 			"saveAsTemplate": "Save as Template"
 		},
+
 		"pagination": {
 			"showing": "Showing {from} to {to} of {total} quotes",
 			"page": "Page {current} of {total}"
@@ -3392,6 +3394,7 @@
 			"labelPlaceholder": "Description...",
 			"groupPlaceholder": "Group name...",
 			"actions": {
+				"edit": "Edit",
 				"addManualLine": "Add Manual Line",
 				"addGroup": "Add Group",
 				"undo": "Undo",
