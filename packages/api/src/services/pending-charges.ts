@@ -8,6 +8,7 @@
 
 import type { InvoiceLine, Mission } from "@prisma/client";
 import { db } from "@repo/database";
+import Decimal from "decimal.js";
 
 // ============================================================================
 // Types
@@ -81,12 +82,22 @@ export class PendingChargesService {
 			throw new Error(`Order ${orderId} not found`);
 		}
 
-		// 2. Build set of already-invoiced charges (by description matching)
+		// 2. Build sets of already-invoiced charges
+		// - By description for fuzzy matching
+		// - By pendingChargeId for exact matching (when charges were added via this service)
 		const invoicedDescriptions = new Set<string>();
+		const invoicedChargeIds = new Set<string>();
 		for (const invoice of order.invoices) {
 			for (const line of invoice.lines) {
-				// Normalize and add to set
+				// Normalize description for fuzzy matching
 				invoicedDescriptions.add(line.description.toLowerCase().trim());
+				// Check sourceData for pendingChargeId (added by this service)
+				const sourceData = line.sourceData as {
+					pendingChargeId?: string;
+				} | null;
+				if (sourceData?.pendingChargeId) {
+					invoicedChargeIds.add(sourceData.pendingChargeId);
+				}
 			}
 		}
 
@@ -114,24 +125,30 @@ export class PendingChargesService {
 				waitingMinutes > this.INCLUDED_WAITING_MINUTES
 			) {
 				const billableMinutes = waitingMinutes - this.INCLUDED_WAITING_MINUTES;
-				const amount = billableMinutes * this.WAITING_TIME_RATE_PER_MINUTE;
+				const amount = new Decimal(billableMinutes)
+					.mul(this.WAITING_TIME_RATE_PER_MINUTE)
+					.toDecimalPlaces(2)
+					.toNumber();
 				const description = `Waiting Time (${billableMinutes} min)`;
 
+				const chargeId = `pc_wait_${mission.id}`;
 				if (
 					!this.isAlreadyInvoiced(
+						chargeId,
 						description,
 						missionLabel,
+						invoicedChargeIds,
 						invoicedDescriptions,
 					)
 				) {
 					pendingCharges.push({
-						id: `pc_wait_${mission.id}`,
+						id: chargeId,
 						orderId,
 						missionId: mission.id,
 						missionLabel,
 						type: "WAITING_TIME",
 						description,
-						amount: Math.round(amount * 100) / 100, // Round to 2 decimals
+						amount,
 						vatRate: 10,
 						invoiced: false,
 					});
@@ -143,21 +160,24 @@ export class PendingChargesService {
 			if (typeof parkingCost === "number" && parkingCost > 0) {
 				const description = "Parking";
 
+				const chargeId = `pc_park_${mission.id}`;
 				if (
 					!this.isAlreadyInvoiced(
+						chargeId,
 						description,
 						missionLabel,
+						invoicedChargeIds,
 						invoicedDescriptions,
 					)
 				) {
 					pendingCharges.push({
-						id: `pc_park_${mission.id}`,
+						id: chargeId,
 						orderId,
 						missionId: mission.id,
 						missionLabel,
 						type: "PARKING",
 						description,
-						amount: Math.round(parkingCost * 100) / 100,
+						amount: new Decimal(parkingCost).toDecimalPlaces(2).toNumber(),
 						vatRate: 20, // Parking at standard VAT
 						invoiced: false,
 					});
@@ -171,21 +191,24 @@ export class PendingChargesService {
 			if (typeof additionalTolls === "number" && additionalTolls > 0) {
 				const description = "Additional Tolls";
 
+				const chargeId = `pc_toll_${mission.id}`;
 				if (
 					!this.isAlreadyInvoiced(
+						chargeId,
 						description,
 						missionLabel,
+						invoicedChargeIds,
 						invoicedDescriptions,
 					)
 				) {
 					pendingCharges.push({
-						id: `pc_toll_${mission.id}`,
+						id: chargeId,
 						orderId,
 						missionId: mission.id,
 						missionLabel,
 						type: "ADDITIONAL_TOLLS",
 						description,
-						amount: Math.round(additionalTolls * 100) / 100,
+						amount: new Decimal(additionalTolls).toDecimalPlaces(2).toNumber(),
 						vatRate: 20,
 						invoiced: false,
 					});
@@ -203,21 +226,26 @@ export class PendingChargesService {
 						typeof charge.amount === "number" &&
 						charge.amount > 0
 					) {
+						const chargeId = `pc_other_${mission.id}_${charge.label.replace(/\s+/g, "_").toLowerCase()}`;
 						if (
 							!this.isAlreadyInvoiced(
+								chargeId,
 								charge.label,
 								missionLabel,
+								invoicedChargeIds,
 								invoicedDescriptions,
 							)
 						) {
 							pendingCharges.push({
-								id: `pc_other_${mission.id}_${charge.label.replace(/\s+/g, "_").toLowerCase()}`,
+								id: chargeId,
 								orderId,
 								missionId: mission.id,
 								missionLabel,
 								type: "OTHER",
 								description: charge.label,
-								amount: Math.round(charge.amount * 100) / 100,
+								amount: new Decimal(charge.amount)
+									.toDecimalPlaces(2)
+									.toNumber(),
 								vatRate: 20,
 								invoiced: false,
 							});
@@ -239,21 +267,27 @@ export class PendingChargesService {
 				if (extraKm > 2) {
 					const description = `Extra Distance (+${extraKm.toFixed(1)} km)`;
 
+					const chargeId = `pc_km_${mission.id}`;
 					if (
 						!this.isAlreadyInvoiced(
+							chargeId,
 							description,
 							missionLabel,
+							invoicedChargeIds,
 							invoicedDescriptions,
 						)
 					) {
 						pendingCharges.push({
-							id: `pc_km_${mission.id}`,
+							id: chargeId,
 							orderId,
 							missionId: mission.id,
 							missionLabel,
 							type: "EXTRA_KM",
 							description,
-							amount: Math.round(extraKm * this.EXTRA_KM_RATE * 100) / 100,
+							amount: new Decimal(extraKm)
+								.mul(this.EXTRA_KM_RATE)
+								.toDecimalPlaces(2)
+								.toNumber(),
 							vatRate: 10,
 							invoiced: false,
 						});
@@ -287,9 +321,13 @@ export class PendingChargesService {
 			throw new Error(`Invoice ${invoiceId} not found`);
 		}
 
-		// Calculate amounts (charge.amount is TTC, we need to extract HT)
-		const amountExclVat = charge.amount / (1 + charge.vatRate / 100);
-		const vatAmount = charge.amount - amountExclVat;
+		// Calculate amounts using Decimal for precision (charge.amount is TTC, we need to extract HT)
+		const amountTTC = new Decimal(charge.amount);
+		const vatMultiplier = new Decimal(1).add(
+			new Decimal(charge.vatRate).div(100),
+		);
+		const amountExclVat = amountTTC.div(vatMultiplier).toDecimalPlaces(2);
+		const vatAmount = amountTTC.sub(amountExclVat).toDecimalPlaces(2);
 
 		// Get next sort order
 		const lastSortOrder = invoice.lines[0]?.sortOrder ?? 0;
@@ -302,10 +340,10 @@ export class PendingChargesService {
 				blockType: "MANUAL",
 				description: `${charge.description} - ${charge.missionLabel}`,
 				quantity: 1,
-				unitPriceExclVat: Math.round(amountExclVat * 100) / 100,
+				unitPriceExclVat: amountExclVat.toNumber(),
 				vatRate: charge.vatRate,
-				totalExclVat: Math.round(amountExclVat * 100) / 100,
-				totalVat: Math.round(vatAmount * 100) / 100,
+				totalExclVat: amountExclVat.toNumber(),
+				totalVat: vatAmount.toNumber(),
 				sortOrder: lastSortOrder + 1,
 				sourceData: {
 					pendingChargeId: charge.id,
@@ -361,24 +399,27 @@ export class PendingChargesService {
 			where: { invoiceId },
 		});
 
-		let totalExclVat = 0;
-		let totalVat = 0;
+		let totalExclVat = new Decimal(0);
+		let totalVat = new Decimal(0);
 
 		for (const line of lines) {
-			totalExclVat += Number(line.totalExclVat);
-			totalVat += Number(line.totalVat);
+			totalExclVat = totalExclVat.add(new Decimal(line.totalExclVat));
+			totalVat = totalVat.add(new Decimal(line.totalVat));
 		}
 
-		// Round to 2 decimal places
-		totalExclVat = Math.round(totalExclVat * 100) / 100;
-		totalVat = Math.round(totalVat * 100) / 100;
-		const totalInclVat = Math.round((totalExclVat + totalVat) * 100) / 100;
+		// Round to 2 decimal places using Decimal
+		const finalExclVat = totalExclVat.toDecimalPlaces(2).toNumber();
+		const finalVat = totalVat.toDecimalPlaces(2).toNumber();
+		const totalInclVat = totalExclVat
+			.add(totalVat)
+			.toDecimalPlaces(2)
+			.toNumber();
 
 		await db.invoice.update({
 			where: { id: invoiceId },
 			data: {
-				totalExclVat,
-				totalVat,
+				totalExclVat: finalExclVat,
+				totalVat: finalVat,
 				totalInclVat,
 			},
 		});
@@ -414,14 +455,22 @@ export class PendingChargesService {
 	}
 
 	/**
-	 * Helper: Check if a charge description is already invoiced
-	 * Uses fuzzy matching to avoid duplicates
+	 * Helper: Check if a charge is already invoiced
+	 * Uses both exact chargeId matching and fuzzy description matching
 	 */
 	private static isAlreadyInvoiced(
+		chargeId: string,
 		description: string,
 		missionLabel: string,
+		invoicedChargeIds: Set<string>,
 		invoicedDescriptions: Set<string>,
 	): boolean {
+		// First check exact match by chargeId (most reliable)
+		if (invoicedChargeIds.has(chargeId)) {
+			return true;
+		}
+
+		// Fall back to fuzzy description matching
 		const normalizedDesc = description.toLowerCase().trim();
 		const fullDescription = `${description} - ${missionLabel}`
 			.toLowerCase()

@@ -1,7 +1,16 @@
 # Story 28.12: Post-Mission Pending Charges
 
 **Epic:** Epic 28 – Order Management & Intelligent Spawning  
-**Status:** REVIEW
+**Status:** done
+
+## Code Review Record
+
+### 2026-01-22 - Automated Review Fixes
+- **Fixed Critical**: Migrated all financial calculations to `decimal.js` for precision (replaced `Math.round(x*100)/100`).
+- **Fixed Medium**: Improved duplicate detection to check `sourceData.pendingChargeId` in addition to fuzzy description matching.
+- **Fixed Medium**: Added unit tests for `addAllChargesToInvoice` batch method (2 new tests).
+- **Fixed Low**: Synced sprint-status.yaml with story status.
+- **Verification**: All 8 unit tests passing.
 **Priority:** High  
 **Estimated Effort:** 5 Story Points  
 **Created:** 2026-01-20  

@@ -229,4 +229,74 @@ describe("PendingChargesService", () => {
 			});
 		});
 	});
+
+	describe("addAllChargesToInvoice", () => {
+		it("should add all pending charges to invoice in batch", async () => {
+			const mockInvoiceId = "inv-123";
+
+			// Mock detectPendingCharges result (via order.findFirst)
+			vi.mocked(db.order.findFirst).mockResolvedValue({
+				id: mockOrderId,
+				missions: [
+					{
+						id: "mission-1",
+						sourceData: { pickupAddress: "A", dropoffAddress: "B" },
+						executionData: {
+							waitingTimeMinutes: 30, // 15 min billable = 7.50
+							parkingCost: 10, // 10€
+						},
+					},
+				],
+				invoices: [],
+			} as any);
+
+			vi.mocked(db.invoice.findFirst).mockResolvedValue({
+				id: mockInvoiceId,
+				lines: [{ sortOrder: 0 }],
+			} as any);
+
+			vi.mocked(db.invoiceLine.create).mockResolvedValue({
+				id: "line-new",
+			} as any);
+
+			vi.mocked(db.invoiceLine.findMany).mockResolvedValue([
+				{ totalExclVat: 10, totalVat: 1 },
+			] as any);
+
+			const result = await PendingChargesService.addAllChargesToInvoice(
+				mockOrderId,
+				mockInvoiceId,
+				mockOrgId,
+			);
+
+			// Should have processed 2 charges (waiting + parking)
+			expect(result.linesCreated).toBe(2);
+			expect(result.totalAmount).toBeGreaterThan(0);
+			expect(db.invoiceLine.create).toHaveBeenCalledTimes(2);
+		});
+
+		it("should return zero when no pending charges exist", async () => {
+			const mockInvoiceId = "inv-123";
+
+			vi.mocked(db.order.findFirst).mockResolvedValue({
+				id: mockOrderId,
+				missions: [
+					{
+						id: "mission-1",
+						executionData: null, // No execution data
+					},
+				],
+				invoices: [],
+			} as any);
+
+			const result = await PendingChargesService.addAllChargesToInvoice(
+				mockOrderId,
+				mockInvoiceId,
+				mockOrgId,
+			);
+
+			expect(result.linesCreated).toBe(0);
+			expect(result.totalAmount).toBe(0);
+		});
+	});
 });
