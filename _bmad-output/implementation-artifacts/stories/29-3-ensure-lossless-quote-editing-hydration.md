@@ -3,7 +3,7 @@
 # Story 29.3: Ensure Lossless Quote Editing (Hydration)
 
 **Epic:** Epic 29 - Complete Multi-Mission Quote Lifecycle (Yolo Mode V2)  
-**Status:** ready-for-dev  
+**Status:** done  
 **Priority:** High  
 **Story Key:** 29-3  
 **Created:** 2026-01-22T11:12:00+01:00  
