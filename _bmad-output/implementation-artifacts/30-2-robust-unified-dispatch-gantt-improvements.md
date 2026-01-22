@@ -192,15 +192,22 @@ AND le Gantt affiche les deux chauffeurs sur la mission
 
 ---
 
-## Files to Modify
+## Files Modified (Story 30.2 - Phase 1)
 
-1. `apps/web/modules/saas/dispatch/utils/checkConstraints.ts` - Refactor complet
-2. `packages/api/src/routes/vtc/missions.ts` - Endpoint candidates
-3. `apps/web/modules/saas/dispatch/components/AssignmentDrawer.tsx` - UI diagnostics
-4. `apps/web/modules/saas/dispatch/components/CandidatesList.tsx` - Empty state + warnings
-5. `apps/web/modules/saas/dispatch/components/CandidateCard.tsx` - Force Assign button
-6. `apps/web/modules/saas/dispatch/types/assignment.ts` - Types diagnostics
-7. `apps/web/modules/saas/dispatch/components/gantt/GanttTimeline.tsx` - Scroll fix
+1. ✅ `apps/web/modules/saas/dispatch/utils/checkConstraints.ts` - New dedicated module with "Le Cerveau" algorithm
+2. ✅ `apps/web/modules/saas/dispatch/utils/checkCompliance.ts` - Refactored to re-export from checkConstraints
+3. ✅ `apps/web/modules/saas/dispatch/utils/checkCompliance.test.ts` - 16 unit tests for constraint validation
+4. ✅ `apps/web/modules/saas/dispatch/types/assignment.ts` - Added ConstraintDiagnostics and CandidateWarning types
+5. ✅ `apps/web/modules/saas/dispatch/components/CandidatesList.tsx` - Empty state with diagnostics + action suggestions
+6. ✅ `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status to review
+
+## Files to Modify (Story 30.2 - Phase 2 - Review Follow-ups)
+
+- [ ] `packages/api/src/routes/vtc/missions.ts` - Integrate checkConstraints + Prisma overlap queries
+- [ ] `apps/web/modules/saas/dispatch/components/CandidateCard.tsx` - Add warning badge + Force Assign button
+- [ ] `apps/web/modules/saas/dispatch/components/gantt/GanttTimeline.tsx` - Fix horizontal scroll
+- [ ] `apps/web/modules/saas/dispatch/components/gantt/DispatchSidebar.tsx` - Responsive backlog
+- [ ] `apps/web/modules/saas/dispatch/hooks/useAssignmentCandidates.ts` - Second driver assignment logic
 
 ---
 

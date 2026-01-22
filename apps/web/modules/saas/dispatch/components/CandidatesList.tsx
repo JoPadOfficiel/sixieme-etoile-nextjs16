@@ -138,6 +138,9 @@ function CandidatesListEmpty({
 	);
 
 	const diagnosticLines: string[] = [];
+	const totalExcluded = diagnostics ? 
+		(diagnostics.excludedByLicense + diagnostics.excludedBySchedule + diagnostics.excludedByCalendar) : 0;
+	
 	if (diagnostics) {
 		if (diagnostics.excludedByLicense > 0) {
 			diagnosticLines.push(`${diagnostics.excludedByLicense} exclu(s) pour permis incompatible`);
@@ -167,6 +170,8 @@ function CandidatesListEmpty({
 			<p className="text-sm text-muted-foreground mt-2 max-w-[250px]">
 				{preSelectedDriverName 
 					? "Ce conducteur n'est pas éligible ou n'a pas de véhicule compatible pour cette mission."
+					: hasDiagnostics
+					? `Aucun chauffeur disponible. ${totalExcluded} candidat(s) exclu(s).`
 					: t("description")}
 			</p>
 			{/* Story 30.2: Show diagnostic details */}

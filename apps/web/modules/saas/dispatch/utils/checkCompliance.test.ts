@@ -1,13 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { 
-  checkCompliance, 
+  checkCompliance,
+  type DriverCalendarEvent,
+} from "./checkCompliance";
+import {
   checkConstraints,
   aggregateDiagnostics,
-  type DriverCalendarEvent,
   type CandidateConstraints,
   type MissionTimeWindow,
   type ConstraintCheckResult,
-} from "./checkCompliance";
+} from "./checkConstraints";
 import type { MissionListItem } from "../types";
 
 // Mock Mission Helper
