@@ -45,3 +45,4 @@ export { QuoteLinesTable } from "./QuoteLinesTable";
 export { MultiMissionMap } from "./MultiMissionMap";
 export { QuoteMultiMissionTotals } from "./QuoteMultiMissionTotals";
 export { QuoteClientCard } from "./QuoteClientCard";
+export { QuoteLineDetailPanel } from "./QuoteLineDetailPanel";

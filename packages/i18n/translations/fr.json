@@ -3019,6 +3019,16 @@
 				"marginPercent": "Marge %",
 				"pricingMode": "Mode de tarification"
 			},
+			"lineDetail": {
+				"title": "Détail du service",
+				"dateTime": "Date/Heure",
+				"price": "Prix",
+				"distance": "Distance",
+				"duration": "Durée",
+				"internalCost": "Coût interne",
+				"margin": "Marge",
+				"noDetailedData": "Données détaillées non disponibles pour ce service"
+			},
 			"frozen": {
 				"title": "Valeurs commerciales figées",
 				"description": "Ce devis a été envoyé. Les valeurs commerciales (prix, coûts, marges) ne peuvent plus être modifiées."

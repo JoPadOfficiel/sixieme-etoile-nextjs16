@@ -3034,6 +3034,16 @@
 				"marginPercent": "Margin %",
 				"pricingMode": "Pricing Mode"
 			},
+			"lineDetail": {
+				"title": "Service Detail",
+				"dateTime": "Date/Time",
+				"price": "Price",
+				"distance": "Distance",
+				"duration": "Duration",
+				"internalCost": "Internal Cost",
+				"margin": "Margin",
+				"noDetailedData": "Detailed data not available for this service"
+			},
 			"frozen": {
 				"title": "Commercial Values Frozen",
 				"description": "This quote has been sent. Commercial values (prices, costs, margins) cannot be modified."

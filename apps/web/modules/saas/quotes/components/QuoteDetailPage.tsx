@@ -14,6 +14,7 @@ import { QuoteLinesTable } from "./QuoteLinesTable";
 import { MultiMissionMap } from "./MultiMissionMap";
 import { QuoteMultiMissionTotals } from "./QuoteMultiMissionTotals";
 import { QuoteClientCard } from "./QuoteClientCard";
+import { QuoteLineDetailPanel } from "./QuoteLineDetailPanel";
 import { QuoteLineSelectionProvider } from "../contexts/QuoteLineSelectionContext";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
@@ -204,13 +205,16 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
 
           {/* Main content: 2-column layout for multi-mission */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Services table + Map (takes 9 cols) */}
+            {/* Left: Services table + Map + Detail Panel (takes 9 cols) */}
             <div className="lg:col-span-9 space-y-6">
               {/* Services Table with expandable details */}
               <QuoteLinesTable lines={data.lines} />
               
               {/* Map showing all missions */}
               <MultiMissionMap lines={data.lines} className="h-[350px]" />
+              
+              {/* Line Detail Panel - shows when a line is selected */}
+              <QuoteLineDetailPanel lines={data.lines} />
               
               {/* Aggregated Totals Card */}
               <QuoteMultiMissionTotals quote={data} />
