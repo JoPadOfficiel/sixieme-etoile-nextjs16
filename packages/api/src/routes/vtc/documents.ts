@@ -304,6 +304,7 @@ function transformQuoteToPdfData(
 		lines?: Prisma.QuoteLineGetPayload<any>[];
 	},
 	language: DocumentLanguage = "BILINGUAL",
+	user?: { role?: string } | null,
 ): QuotePdfData {
 	// Parse applied rules
 	const parsedRules = parseAppliedRules(quote.appliedRules);
@@ -412,9 +413,16 @@ function transformQuoteToPdfData(
 			// For safety in this "Restricted" context, let's prioritize the detailed description
 			// because the user complaint is about MISSING details.
 
+			// SECURITY FIX: Role-based price access control
+			const canSeeInternalPrices = user?.role === "ADMIN" || user?.role === "MANAGER";
+			
 			// CRITICAL FIX 2: Fix 0.00€ price mapping - Use QuoteLine prices if display prices are 0
-			const unitPrice = Number(display.unitPrice ?? l.unitPrice ?? 0);
-			const totalPrice = Number(display.totalPrice ?? l.totalPrice ?? 0);
+			const unitPrice = canSeeInternalPrices 
+				? Number(display.unitPrice ?? l.unitPrice ?? 0)
+				: Number(display.unitPrice ?? 0);
+			const totalPrice = canSeeInternalPrices 
+				? Number(display.totalPrice ?? l.totalPrice ?? 0)
+				: Number(display.totalPrice ?? 0);
 			const vatRate = Number(display.vatRate ?? l.vatRate ?? 0);
 			const totalVat = Number(
 				display.totalVat ?? totalPrice * (vatRate / 100),
@@ -974,7 +982,8 @@ export const documentsRouter = new Hono()
 			const orgData = transformOrganizationToPdfData(organization);
 			const documentLanguage = (orgData.documentLanguage ||
 				"BILINGUAL") as DocumentLanguage;
-			const pdfData = transformQuoteToPdfData(quote, documentLanguage);
+			const user = c.get("user");
+			const pdfData = transformQuoteToPdfData(quote, documentLanguage, user && user.role ? { role: user.role } : null);
 
 			// Fix: Load logo with robust fallback
 			// Try document settings logo first, then organization logo

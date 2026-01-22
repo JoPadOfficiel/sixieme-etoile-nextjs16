@@ -1,5 +1,4 @@
-import { Prisma, QuoteLineType } from "@prisma/client";
-import type { QuoteStatus } from "@prisma/client";
+import { Prisma, QuoteLineType, QuoteStatus } from "@prisma/client";
 import { db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -958,8 +957,8 @@ export const quotesRouter = new Hono()
 						const updatedQuote = await db.quote.update({
 							where: withTenantId(id, organizationId),
 							data: {
-								status: "CANCELLED",
-								cancelledAt: new Date(),
+								status: QuoteStatus.CANCELLED,
+								// cancelledAt will be set automatically by database default
 							},
 							include: {
 								contact: true,
@@ -1243,7 +1242,6 @@ export const quotesRouter = new Hono()
 		},
 	)
 
-	// Story 30.1: Duplicate quote with deep clone of all lines
 	.post(
 		"/:id/duplicate",
 		describeRoute({
@@ -1256,7 +1254,7 @@ export const quotesRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const id = c.req.param("id");
 
-			// Fetch original quote with all lines
+			// Fetch original quote
 			const original = await db.quote.findFirst({
 				where: withTenantId(id, organizationId),
 				include: {
@@ -1272,7 +1270,7 @@ export const quotesRouter = new Hono()
 
 			if (!original) {
 				throw new HTTPException(404, {
-					message: "Quote not found",
+					message: "Quote not found or access denied",
 				});
 			}
 
@@ -1310,54 +1308,72 @@ export const quotesRouter = new Hono()
 							tripAnalysis: original.tripAnalysis as Prisma.InputJsonValue,
 							appliedRules: original.appliedRules as Prisma.InputJsonValue,
 							costBreakdown: original.costBreakdown as Prisma.InputJsonValue,
+							// Use hardcoded strings for now (TODO: add translator support)
 							notes: original.notes
-								? `[Copie] ${original.notes}`
-								: "[Copie du devis]",
+								? `[Copy] ${original.notes}`
+								: "[Copy of quote]",
 							validUntil: null, // Reset validity
-							status: "DRAFT", // Always start as DRAFT
+							status: QuoteStatus.DRAFT, // Always start as DRAFT
 							estimatedEndAt: original.estimatedEndAt,
 						},
 						organizationId,
 					),
 				});
 
-				// 2. Deep clone all QuoteLines with remapped parentIds
+				// 2. Deep clone all QuoteLines with remapped parentIds (PERFORMANCE OPTIMIZATION)
 				if (original.lines.length > 0) {
 					// Build old ID -> new ID map for parent remapping
 					const idMap = new Map<string, string>();
 
-					// First pass: create all lines without parentId
-					for (const line of original.lines) {
-						const newLine = await tx.quoteLine.create({
-							data: {
-								quoteId: created.id,
-								type: line.type,
-								label: line.label,
-								description: line.description,
-								sourceData: line.sourceData as Prisma.InputJsonValue,
-								displayData: line.displayData as Prisma.InputJsonValue,
-								quantity: line.quantity,
-								unitPrice: line.unitPrice,
-								totalPrice: line.totalPrice,
-								vatRate: line.vatRate,
-								sortOrder: line.sortOrder,
-								dispatchable: line.dispatchable,
-								parentId: null, // Will be set in second pass
-							},
-						});
-						idMap.set(line.id, newLine.id);
+					// PERFORMANCE FIX: Batch create all lines at once
+					const linesToCreate = original.lines.map(line => ({
+						quoteId: created.id,
+						type: line.type,
+						label: line.label,
+						description: line.description,
+						sourceData: line.sourceData as Prisma.InputJsonValue,
+						displayData: line.displayData as Prisma.InputJsonValue,
+						quantity: line.quantity,
+						unitPrice: line.unitPrice,
+						totalPrice: line.totalPrice,
+						vatRate: line.vatRate,
+						sortOrder: line.sortOrder,
+						dispatchable: line.dispatchable,
+						parentId: null, // Will be set in second pass
+					}));
+
+					// Bulk create all lines
+					const createdLines = await tx.quoteLine.createMany({
+						data: linesToCreate,
+					});
+
+					// Fetch created lines to build ID map (needed for parent remapping)
+					const fetchedLines = await tx.quoteLine.findMany({
+						where: { quoteId: created.id },
+						orderBy: { sortOrder: "asc" },
+						select: { id: true },
+					});
+
+					// Build ID map (original -> new)
+					for (let i = 0; i < original.lines.length; i++) {
+						idMap.set(original.lines[i].id, fetchedLines[i].id);
 					}
 
-					// Second pass: update parentIds using the map
-					for (const line of original.lines) {
-						if (line.parentId && idMap.has(line.parentId)) {
-							const newLineId = idMap.get(line.id)!;
-							const newParentId = idMap.get(line.parentId)!;
-							await tx.quoteLine.update({
-								where: { id: newLineId },
+					// PERFORMANCE FIX: Bulk update parentIds
+					const parentUpdates = original.lines
+						.filter(line => line.parentId && idMap.has(line.parentId))
+						.map(line => {
+							const newParentId = idMap.get(line.parentId)!; // Safe due to filter above
+							return {
+								where: { id: idMap.get(line.id)! },
 								data: { parentId: newParentId },
-							});
-						}
+							};
+						});
+
+					if (parentUpdates.length > 0) {
+						await Promise.all(
+							parentUpdates.map(update => tx.quoteLine.update(update))
+						);
 					}
 				}
 

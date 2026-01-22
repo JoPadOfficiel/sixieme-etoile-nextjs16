@@ -204,23 +204,30 @@ export function useQuoteActions() {
    * Story 30.1: Cancel a quote
    * Sets status to CANCELLED and locks the UI
    */
-  const cancelQuote = (quoteId: string) => {
-    return updateQuoteMutation.mutateAsync(
-      { quoteId, status: "CANCELLED" },
-      {
-        onSuccess: () => {
-          toast({
-            title: t("quotes.detail.actions.cancelSuccess"),
-          });
-        },
-        onError: () => {
-          toast({
-            title: t("quotes.detail.actions.cancelError"),
-            variant: "error",
-          });
-        },
-      }
-    );
+  const cancelQuote = async (quoteId: string) => {
+    try {
+      await updateQuoteMutation.mutateAsync(
+        { quoteId, status: "CANCELLED" },
+        {
+          onSuccess: () => {
+            toast({
+              title: t("quotes.detail.actions.cancelSuccess"),
+            });
+          },
+          onError: () => {
+            toast({
+              title: t("quotes.detail.actions.cancelError"),
+              variant: "error",
+            });
+          },
+        }
+      );
+    } catch {
+      toast({
+        title: t("quotes.detail.actions.cancelError"),
+        variant: "error",
+      });
+    }
   };
 
   /**
@@ -229,19 +236,28 @@ export function useQuoteActions() {
    * Returns the new quote for navigation
    */
   const duplicateQuote = async (quoteId: string) => {
-    return duplicateQuoteMutation.mutateAsync(quoteId, {
-      onSuccess: () => {
-        toast({
-          title: t("quotes.detail.actions.duplicateSuccess"),
-        });
-      },
-      onError: () => {
-        toast({
-          title: t("quotes.detail.actions.duplicateError"),
-          variant: "error",
-        });
-      },
-    });
+    try {
+      const result = await duplicateQuoteMutation.mutateAsync(quoteId, {
+        onSuccess: () => {
+          toast({
+            title: t("quotes.detail.actions.duplicateSuccess"),
+          });
+        },
+        onError: () => {
+          toast({
+            title: t("quotes.detail.actions.duplicateError"),
+            variant: "error",
+          });
+        },
+      });
+      return result;
+    } catch (error) {
+      toast({
+        title: t("quotes.detail.actions.duplicateError"),
+        variant: "error",
+      });
+      throw error;
+    }
   };
 
   return {

@@ -6,22 +6,43 @@ import { z } from "zod";
 import { organizationMiddleware } from "../../middleware/organization";
 
 // Story 17.1: Zone conflict resolution strategy enum
-const zoneConflictStrategyEnum = z.enum(["PRIORITY", "MOST_EXPENSIVE", "CLOSEST", "COMBINED"]);
+const zoneConflictStrategyEnum = z.enum([
+	"PRIORITY",
+	"MOST_EXPENSIVE",
+	"CLOSEST",
+	"COMBINED",
+]);
 
 // Story 17.2: Zone multiplier aggregation strategy enum
-const zoneMultiplierAggregationStrategyEnum = z.enum(["MAX", "PICKUP_ONLY", "DROPOFF_ONLY", "AVERAGE"]);
+const zoneMultiplierAggregationStrategyEnum = z.enum([
+	"MAX",
+	"PICKUP_ONLY",
+	"DROPOFF_ONLY",
+	"AVERAGE",
+]);
 
 // Story 17.3: Staffing selection policy enum
-const staffingSelectionPolicyEnum = z.enum(["CHEAPEST", "FASTEST", "PREFER_INTERNAL"]);
+const staffingSelectionPolicyEnum = z.enum([
+	"CHEAPEST",
+	"FASTEST",
+	"PREFER_INTERNAL",
+]);
 
 // Story 17.9: Time bucket interpolation strategy enum
-const timeBucketInterpolationStrategyEnum = z.enum(["ROUND_UP", "ROUND_DOWN", "PROPORTIONAL"]);
+const timeBucketInterpolationStrategyEnum = z.enum([
+	"ROUND_UP",
+	"ROUND_DOWN",
+	"PROPORTIONAL",
+]);
 
 // Story 25.3: Logo position enum for PDF documents
 const logoPositionEnum = z.enum(["LEFT", "RIGHT"]);
 
 // Story 25.4: Document language enum
 const documentLanguageEnum = z.enum(["FRENCH", "ENGLISH", "BILINGUAL"]);
+
+// Story 30.1: PDF Appearance enum
+const pdfAppearanceEnum = z.enum(["SIMPLE", "STANDARD", "FULL"]);
 
 // Story 17.15: Difficulty multipliers schema
 const difficultyMultipliersSchema = z.object({
@@ -49,7 +70,9 @@ const updatePricingSettingsSchema = z.object({
 	// Story 17.1: Zone conflict resolution strategy
 	zoneConflictStrategy: zoneConflictStrategyEnum.nullable().optional(),
 	// Story 17.2: Zone multiplier aggregation strategy
-	zoneMultiplierAggregationStrategy: zoneMultiplierAggregationStrategyEnum.nullable().optional(),
+	zoneMultiplierAggregationStrategy: zoneMultiplierAggregationStrategyEnum
+		.nullable()
+		.optional(),
 	// Story 17.3: Staffing selection policy
 	staffingSelectionPolicy: staffingSelectionPolicyEnum.nullable().optional(),
 	// Story 17.4: Staffing cost parameters (configurable per FR66)
@@ -61,7 +84,9 @@ const updatePricingSettingsSchema = z.object({
 	// Story 17.12: Use driver home for deadhead calculations
 	useDriverHomeForDeadhead: z.boolean().optional(),
 	// Story 17.9: Time bucket interpolation strategy
-	timeBucketInterpolationStrategy: timeBucketInterpolationStrategyEnum.nullable().optional(),
+	timeBucketInterpolationStrategy: timeBucketInterpolationStrategyEnum
+		.nullable()
+		.optional(),
 	// Story 17.15: Difficulty multipliers (Patience Tax)
 	difficultyMultipliers: difficultyMultipliersSchema.nullable().optional(),
 	// Story 18.11: Transfer-to-MAD thresholds
@@ -70,19 +95,29 @@ const updatePricingSettingsSchema = z.object({
 	autoSwitchToMAD: z.boolean().optional(),
 	denseZoneCodes: z.array(z.string()).optional(),
 	// Round-trip detection (Story 18.3)
-	minWaitingTimeForSeparateTransfers: z.number().min(0).max(1440).nullable().optional(),
+	minWaitingTimeForSeparateTransfers: z
+		.number()
+		.min(0)
+		.max(1440)
+		.nullable()
+		.optional(),
 	maxReturnDistanceKm: z.number().min(0).max(1000).nullable().optional(),
 	roundTripBuffer: z.number().min(0).max(240).nullable().optional(),
 	autoSwitchRoundTripToMAD: z.boolean().optional(),
 	// Story 25.3: Document personalization fields
 	// documentLogoUrl is a storage path, not a full URL (e.g., "orgId/uuid.png")
 	documentLogoUrl: z.string().max(500).nullable().optional(),
-	brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+	brandColor: z
+		.string()
+		.regex(/^#[0-9A-Fa-f]{6}$/)
+		.nullable()
+		.optional(),
 	logoPosition: logoPositionEnum.optional(),
 	showCompanyName: z.boolean().optional(),
 	logoWidth: z.number().int().min(50).max(300).optional(),
 	// Story 25.4: Document language and terms
 	documentLanguage: documentLanguageEnum.optional(),
+	pdfAppearance: pdfAppearanceEnum.optional(),
 	invoiceTerms: z.string().max(5000).nullable().optional(),
 	quoteTerms: z.string().max(5000).nullable().optional(),
 	missionOrderTerms: z.string().max(5000).nullable().optional(),
@@ -91,12 +126,12 @@ const updatePricingSettingsSchema = z.object({
 // Helper to convert Decimal fields to numbers for JSON response
 function serializePricingSettings(settings: any) {
 	if (!settings) return null;
-	
+
 	const safeNumber = (val: any) => {
 		if (val === null || val === undefined) return null;
 		try {
 			// Handle Prisma Decimal objects
-			if (typeof val === 'object' && val.toNumber) return val.toNumber();
+			if (typeof val === "object" && val.toNumber) return val.toNumber();
 			const n = Number(val);
 			return isNaN(n) ? null : n;
 		} catch (e) {
@@ -120,7 +155,8 @@ function serializePricingSettings(settings: any) {
 		wearCostPerKm: safeNumber(settings.wearCostPerKm),
 		driverHourlyCost: safeNumber(settings.driverHourlyCost),
 		zoneConflictStrategy: settings.zoneConflictStrategy,
-		zoneMultiplierAggregationStrategy: settings.zoneMultiplierAggregationStrategy,
+		zoneMultiplierAggregationStrategy:
+			settings.zoneMultiplierAggregationStrategy,
 		staffingSelectionPolicy: settings.staffingSelectionPolicy,
 		hotelCostPerNight: safeNumber(settings.hotelCostPerNight),
 		mealCostPerDay: safeNumber(settings.mealCostPerDay),
@@ -133,7 +169,8 @@ function serializePricingSettings(settings: any) {
 		denseZoneSpeedThreshold: safeNumber(settings.denseZoneSpeedThreshold),
 		autoSwitchToMAD: settings.autoSwitchToMAD ?? false,
 		denseZoneCodes: settings.denseZoneCodes ?? [],
-		minWaitingTimeForSeparateTransfers: settings.minWaitingTimeForSeparateTransfers ?? 180,
+		minWaitingTimeForSeparateTransfers:
+			settings.minWaitingTimeForSeparateTransfers ?? 180,
 		maxReturnDistanceKm: safeNumber(settings.maxReturnDistanceKm),
 		roundTripBuffer: settings.roundTripBuffer ?? 30,
 		autoSwitchRoundTripToMAD: settings.autoSwitchRoundTripToMAD ?? false,
@@ -143,11 +180,18 @@ function serializePricingSettings(settings: any) {
 		showCompanyName: settings.showCompanyName ?? true,
 		logoWidth: settings.logoWidth ?? 150,
 		documentLanguage: settings.documentLanguage ?? "BILINGUAL",
+		pdfAppearance: settings.pdfAppearance ?? "STANDARD",
 		invoiceTerms: settings.invoiceTerms ?? null,
 		quoteTerms: settings.quoteTerms ?? null,
 		missionOrderTerms: settings.missionOrderTerms ?? null,
-		createdAt: settings.createdAt instanceof Date ? settings.createdAt.toISOString() : new Date().toISOString(),
-		updatedAt: settings.updatedAt instanceof Date ? settings.updatedAt.toISOString() : new Date().toISOString(),
+		createdAt:
+			settings.createdAt instanceof Date
+				? settings.createdAt.toISOString()
+				: new Date().toISOString(),
+		updatedAt:
+			settings.updatedAt instanceof Date
+				? settings.updatedAt.toISOString()
+				: new Date().toISOString(),
 	};
 }
 
@@ -176,7 +220,7 @@ export const pricingSettingsRouter = new Hono()
 			}
 
 			return c.json(serializePricingSettings(settings));
-		}
+		},
 	)
 
 	// Update (upsert) pricing settings
@@ -193,7 +237,10 @@ export const pricingSettingsRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const data = c.req.valid("json");
 
-			console.log("[pricing-settings] PATCH received:", { organizationId, data });
+			console.log("[pricing-settings] PATCH received:", {
+				organizationId,
+				data,
+			});
 
 			try {
 				// Check if settings exist
@@ -208,17 +255,46 @@ export const pricingSettingsRouter = new Hono()
 					// Ensure we only pass valid fields to Prisma update
 					const updateData: any = {};
 					const modelFields = [
-						'baseRatePerKm', 'baseRatePerHour', 'defaultMarginPercent', 'greenMarginThreshold', 
-						'orangeMarginThreshold', 'minimumFare', 'roundingRule', 'fuelConsumptionL100km', 
-						'fuelPricePerLiter', 'tollCostPerKm', 'wearCostPerKm', 'driverHourlyCost',
-						'zoneConflictStrategy', 'zoneMultiplierAggregationStrategy', 'staffingSelectionPolicy',
-						'hotelCostPerNight', 'mealCostPerDay', 'driverOvernightPremium', 'secondDriverHourlyRate', 
-						'relayDriverFixedFee', 'useDriverHomeForDeadhead', 'timeBucketInterpolationStrategy',
-						'difficultyMultipliers', 'denseZoneSpeedThreshold', 'autoSwitchToMAD', 'denseZoneCodes',
-						'minWaitingTimeForSeparateTransfers', 'maxReturnDistanceKm', 'roundTripBuffer', 
-						'autoSwitchRoundTripToMAD', 'documentLogoUrl', 'brandColor', 'logoPosition', 
-						'showCompanyName', 'logoWidth', 'documentLanguage', 'invoiceTerms', 'quoteTerms', 
-						'missionOrderTerms'
+						"baseRatePerKm",
+						"baseRatePerHour",
+						"defaultMarginPercent",
+						"greenMarginThreshold",
+						"orangeMarginThreshold",
+						"minimumFare",
+						"roundingRule",
+						"fuelConsumptionL100km",
+						"fuelPricePerLiter",
+						"tollCostPerKm",
+						"wearCostPerKm",
+						"driverHourlyCost",
+						"zoneConflictStrategy",
+						"zoneMultiplierAggregationStrategy",
+						"staffingSelectionPolicy",
+						"hotelCostPerNight",
+						"mealCostPerDay",
+						"driverOvernightPremium",
+						"secondDriverHourlyRate",
+						"relayDriverFixedFee",
+						"useDriverHomeForDeadhead",
+						"timeBucketInterpolationStrategy",
+						"difficultyMultipliers",
+						"denseZoneSpeedThreshold",
+						"autoSwitchToMAD",
+						"denseZoneCodes",
+						"minWaitingTimeForSeparateTransfers",
+						"maxReturnDistanceKm",
+						"roundTripBuffer",
+						"autoSwitchRoundTripToMAD",
+						"documentLogoUrl",
+						"brandColor",
+						"logoPosition",
+						"showCompanyName",
+						"logoWidth",
+						"documentLanguage",
+						"pdfAppearance",
+						"invoiceTerms",
+						"quoteTerms",
+						"missionOrderTerms",
 					];
 
 					for (const key of Object.keys(data)) {
@@ -227,7 +303,10 @@ export const pricingSettingsRouter = new Hono()
 						}
 					}
 
-					console.log("[pricing-settings] Updating with cleaned data:", updateData);
+					console.log(
+						"[pricing-settings] Updating with cleaned data:",
+						updateData,
+					);
 					settings = await db.organizationPricingSettings.update({
 						where: { organizationId },
 						data: updateData,
@@ -250,6 +329,7 @@ export const pricingSettingsRouter = new Hono()
 							wearCostPerKm: data.wearCostPerKm ?? null,
 							driverHourlyCost: data.driverHourlyCost ?? null,
 							documentLanguage: data.documentLanguage ?? "BILINGUAL",
+							pdfAppearance: data.pdfAppearance ?? "STANDARD",
 							invoiceTerms: data.invoiceTerms ?? null,
 							quoteTerms: data.quoteTerms ?? null,
 							missionOrderTerms: data.missionOrderTerms ?? null,
@@ -269,16 +349,19 @@ export const pricingSettingsRouter = new Hono()
 					message: error.message,
 					stack: error.stack,
 					organizationId,
-					data
+					data,
 				});
-				
-				return c.json({ 
-					error: "Internal Server Error", 
-					message: error.message,
-					details: error.toString()
-				}, 500);
+
+				return c.json(
+					{
+						error: "Internal Server Error",
+						message: error.message,
+						details: error.toString(),
+					},
+					500,
+				);
 			}
-		}
+		},
 	)
 
 	// Get configuration health status
@@ -342,5 +425,5 @@ export const pricingSettingsRouter = new Hono()
 					vehicleCategoriesCount,
 				},
 			});
-		}
+		},
 	);
