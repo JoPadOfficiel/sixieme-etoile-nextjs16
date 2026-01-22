@@ -27,6 +27,10 @@ import {
 	calculateInvoiceTotals,
 	parseAppliedRules,
 } from "./invoice-line-builder";
+import {
+	type QuoteLineForDeepCopy,
+	deepCopyQuoteLinesToInvoiceLines as deepCopyQuoteLinesUtil,
+} from "./invoice-line-utils";
 
 // ============================================================================
 // Types
@@ -348,196 +352,17 @@ export class InvoiceFactory {
 	}
 
 	/**
-	 * HIGH-1 FIX: Deep copy QuoteLines directly to InvoiceLines
-	 * This ensures AC2/AC3/AC4 compliance - complete isolation between Quote and Invoice
-	 * Story 29.5: Enhanced with quoteLineId traceability and enriched descriptions
+	 * Deep copy QuoteLines to InvoiceLines using exported utility function
+	 * This wrapper delegates to the testable utility function
 	 */
 	private static deepCopyQuoteLinesToInvoiceLines(
-		quoteLines: Array<{
-			id: string;
-			label: string;
-			description: string | null;
-			quantity: { toString(): string } | number;
-			unitPrice: { toString(): string } | number;
-			totalPrice: { toString(): string } | number;
-			vatRate: { toString(): string } | number;
-			type: string;
-			sortOrder: number;
-			sourceData?: unknown;
-			displayData?: unknown;
-		}>,
+		quoteLines: QuoteLineForDeepCopy[],
 		endCustomerName: string | null,
 	): InvoiceLineInput[] {
-		return quoteLines.map((line, index) => {
-			const quantity =
-				typeof line.quantity === "number"
-					? line.quantity
-					: Number(line.quantity.toString());
-			const unitPrice =
-				typeof line.unitPrice === "number"
-					? line.unitPrice
-					: Number(line.unitPrice.toString());
-			const totalPrice =
-				typeof line.totalPrice === "number"
-					? line.totalPrice
-					: Number(line.totalPrice.toString());
-			const vatRate =
-				typeof line.vatRate === "number"
-					? line.vatRate
-					: Number(line.vatRate.toString());
-
-			// Calculate VAT amounts
-			const totalExclVat = Math.round(totalPrice * 100) / 100;
-			const totalVat = Math.round(((totalExclVat * vatRate) / 100) * 100) / 100;
-
-			// Story 29.5: Build enriched description with date and route
-			const description = InvoiceFactory.buildEnrichedDescription(
-				line,
-				endCustomerName,
-				index === 0,
-			);
-
-			// Map QuoteLine type to InvoiceLine type
-			let lineType:
-				| "SERVICE"
-				| "OPTIONAL_FEE"
-				| "PROMOTION_ADJUSTMENT"
-				| "OTHER" = "SERVICE";
-			if (line.type === "OPTIONAL_FEE") {
-				lineType = "OPTIONAL_FEE";
-			} else if (line.type === "PROMOTION") {
-				lineType = "PROMOTION_ADJUSTMENT";
-			} else if (line.type === "MANUAL") {
-				lineType = "OTHER";
-			}
-
-			return {
-				lineType,
-				description,
-				quantity,
-				unitPriceExclVat: unitPrice,
-				vatRate,
-				totalExclVat,
-				totalVat,
-				sortOrder: line.sortOrder ?? index,
-				// Story 29.5: Traceability link to source QuoteLine
-				quoteLineId: line.id,
-			};
+		// Delegate to exported utility function for testability
+		return deepCopyQuoteLinesUtil(quoteLines, endCustomerName, {
+			locale: "fr-FR", // TODO: Get from organization settings
 		});
-	}
-
-	/**
-	 * Story 29.5: Build enriched description with date and route from sourceData
-	 * Format: "[Type] - [Date] - [Pickup] → [Dropoff]" or fallback to label
-	 */
-	private static buildEnrichedDescription(
-		line: {
-			label: string;
-			description: string | null;
-			type: string;
-			sourceData?: unknown;
-			displayData?: unknown;
-		},
-		endCustomerName: string | null,
-		isFirstLine: boolean,
-	): string {
-		// Try to extract date and route from sourceData
-		const sourceData = line.sourceData as Record<string, unknown> | null;
-		const displayData = line.displayData as Record<string, unknown> | null;
-
-		let description = line.label;
-
-		// Extract pickup date/time
-		let pickupAt: Date | null = null;
-		if (sourceData?.pickupAt) {
-			pickupAt = new Date(sourceData.pickupAt as string);
-		} else if (displayData?.pickupAt) {
-			pickupAt = new Date(displayData.pickupAt as string);
-		}
-
-		// Extract addresses
-		const pickupAddress =
-			(sourceData?.pickupAddress as string) ||
-			(displayData?.pickupAddress as string) ||
-			null;
-		const dropoffAddress =
-			(sourceData?.dropoffAddress as string) ||
-			(displayData?.dropoffAddress as string) ||
-			null;
-
-		// Build enriched description if we have date/route info
-		if (pickupAt && !Number.isNaN(pickupAt.getTime())) {
-			// Story 29.5: Use document language for date formatting
-			// Fixed: Using explicit default locale (future: get from org settings)
-			const locale = "fr-FR";
-			const formattedDate = pickupAt.toLocaleDateString(locale, {
-				day: "2-digit",
-				month: "2-digit",
-				year: "numeric",
-			});
-			const formattedTime = pickupAt.toLocaleTimeString(locale, {
-				hour: "2-digit",
-				minute: "2-digit",
-			});
-
-			// Story 29.5: Extract trip type from sourceData for correct service type display
-			const sourceData = line.sourceData as Record<string, unknown> | null;
-			const displayData = line.displayData as Record<string, unknown> | null;
-
-			// Get actual trip type from sourceData/displayData, fallback to line.type
-			const tripType =
-				(sourceData?.tripType as string) ||
-				(displayData?.tripType as string) ||
-				(line.type === "CALCULATED" ? "TRANSFER" : line.type);
-
-			// Map trip type to display label
-			const typeLabels: Record<string, string> = {
-				TRANSFER: "Transfer",
-				DISPO: "Mise à disposition",
-				EXCURSION: "Excursion",
-				STAY: "Séjour",
-				CALCULATED: "Transfer", // Fallback for legacy data
-				MANUAL: "Service",
-				OPTIONAL_FEE: "Option",
-				PROMOTION: "Promotion",
-			};
-			const typeLabel = typeLabels[tripType] || tripType;
-
-			// Build description parts
-			const parts: string[] = [typeLabel, `${formattedDate} ${formattedTime}`];
-
-			if (pickupAddress && dropoffAddress) {
-				// Truncate addresses if too long
-				const maxLen = 40;
-				const pickup =
-					pickupAddress.length > maxLen
-						? `${pickupAddress.substring(0, maxLen)}...`
-						: pickupAddress;
-				const dropoff =
-					dropoffAddress.length > maxLen
-						? `${dropoffAddress.substring(0, maxLen)}...`
-						: dropoffAddress;
-				parts.push(`${pickup} → ${dropoff}`);
-			} else if (pickupAddress) {
-				const pickup =
-					pickupAddress.length > 50
-						? `${pickupAddress.substring(0, 50)}...`
-						: pickupAddress;
-				parts.push(pickup);
-			}
-
-			description = parts.join(" - ");
-		} else if (line.description) {
-			// Fallback: use label + description
-			description = `${line.label} - ${line.description}`;
-		}
-
-		// Add end customer name on first line
-		if (endCustomerName && isFirstLine) {
-			description += ` (Client: ${endCustomerName})`;
-		}
-
-		return description;
 	}
 
 	/**

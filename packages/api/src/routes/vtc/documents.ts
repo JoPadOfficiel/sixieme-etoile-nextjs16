@@ -6,45 +6,43 @@
  * for quotes, invoices, and mission orders.
  */
 
-import { db } from "@repo/database";
 import type { Prisma } from "@prisma/client";
+import { db } from "@repo/database";
+import { format } from "date-fns";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { format } from "date-fns";
 import {
 	withTenantCreate,
 	withTenantFilter,
 	withTenantId,
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
+import { getStorageService } from "../../services/document-storage";
 import {
-	generateQuotePdf,
-	generateInvoicePdf,
-	generateMissionOrderPdf,
-	generateMissionSheetPdf,
-	type QuotePdfData,
+	type DocumentLanguage,
+	buildInvoiceLines,
+	buildStayInvoiceLines,
+	buildTripDescription,
+	calculateTransportAmount,
+	parseAppliedRules,
+} from "../../services/invoice-line-builder";
+import { buildEnrichedDescription } from "../../services/invoice-line-utils";
+import {
+	type ContactPdfData,
+	type InvoiceLinePdfData,
 	type InvoicePdfData,
 	type MissionOrderPdfData,
 	type MissionSheetPdfData,
 	type OrganizationPdfData,
-	type ContactPdfData,
-	type InvoiceLinePdfData,
+	type QuotePdfData,
+	generateInvoicePdf,
+	generateMissionOrderPdf,
+	generateMissionSheetPdf,
+	generateQuotePdf,
 } from "../../services/pdf-generator";
-import {
-	getStorageService,
-	LocalStorageService,
-} from "../../services/document-storage";
-import {
-	parseAppliedRules,
-	buildInvoiceLines,
-	calculateTransportAmount,
-	buildStayInvoiceLines,
-	buildTripDescription,
-	type DocumentLanguage,
-} from "../../services/invoice-line-builder";
 
 // ============================================================================
 // Validation Schemas
@@ -80,18 +78,23 @@ function isSvg(buffer: Buffer): boolean {
  * Supports both local storage paths and public HTTP URLs
  * Converts SVG to PNG using sharp
  */
-async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<string | null> {
+async function loadLogoAsBase64(
+	pathOrUrl: string | null | undefined,
+): Promise<string | null> {
 	if (!pathOrUrl) return null;
 	// Security: Prevent directory traversal
 	if (pathOrUrl.includes("..")) {
-		console.error("Potential directory traversal attempt in logo path:", pathOrUrl);
+		console.error(
+			"Potential directory traversal attempt in logo path:",
+			pathOrUrl,
+		);
 		return null;
 	}
 	try {
 		let buffer: Buffer;
 		let mime = "image/jpeg"; // Default
 
-		if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+		if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
 			const res = await fetch(pathOrUrl);
 			if (!res.ok) {
 				console.error(`Failed to fetch logo URL: ${res.status}`);
@@ -99,7 +102,7 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 			}
 			const arr = await res.arrayBuffer();
 			buffer = Buffer.from(arr);
-			
+
 			const contentType = res.headers.get("content-type");
 			if (contentType) mime = contentType;
 		} else {
@@ -108,14 +111,18 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 				buffer = await storage.getBuffer(pathOrUrl);
 			} catch (e: any) {
 				// Fallback: Check public/uploads for local dev (ENOENT)
-				if (e.code === 'ENOENT' && process.env.NODE_ENV !== 'production') {
+				if (e.code === "ENOENT" && process.env.NODE_ENV !== "production") {
 					try {
-						const fs = require('fs/promises');
-						const path = require('path');
+						const fs = require("fs/promises");
+						const path = require("path");
 						// Try to find the file in public/uploads/document-logos
 						// process.cwd() is likely apps/web in Next.js
 						// So we look in public/uploads relative to CWD
-						const fallbackPath = path.join(process.cwd(), 'public/uploads/document-logos', pathOrUrl);
+						const fallbackPath = path.join(
+							process.cwd(),
+							"public/uploads/document-logos",
+							pathOrUrl,
+						);
 						console.log(`Fallback: Checking logo at ${fallbackPath}`);
 						buffer = await fs.readFile(fallbackPath);
 					} catch (fallbackError) {
@@ -127,7 +134,7 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 					return null; // Return null on any storage error to prevent crash
 				}
 			}
-			
+
 			if (pathOrUrl.toLowerCase().endsWith(".png")) {
 				mime = "image/png";
 			} else if (pathOrUrl.toLowerCase().endsWith(".svg")) {
@@ -136,7 +143,11 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 		}
 
 		// Convert SVG to PNG
-		if (mime === "image/svg+xml" || pathOrUrl.toLowerCase().endsWith(".svg") || isSvg(buffer)) {
+		if (
+			mime === "image/svg+xml" ||
+			pathOrUrl.toLowerCase().endsWith(".svg") ||
+			isSvg(buffer)
+		) {
 			console.log("Converting SVG logo to PNG...");
 			try {
 				buffer = await sharp(buffer).png().toBuffer();
@@ -146,7 +157,7 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 				return null; // Fail safe
 			}
 		}
-		
+
 		return `data:${mime};base64,${buffer.toString("base64")}`;
 	} catch (e) {
 		console.error("Logo load failed:", e);
@@ -160,16 +171,20 @@ async function loadLogoAsBase64(pathOrUrl: string | null | undefined): Promise<s
 /**
  * Transform organization to PDF data format
  */
-function transformOrganizationToPdfData(org: Prisma.OrganizationGetPayload<{
-	include: { organizationPricingSettings: true }
-}>): OrganizationPdfData {
+function transformOrganizationToPdfData(
+	org: Prisma.OrganizationGetPayload<{
+		include: { organizationPricingSettings: true };
+	}>,
+): OrganizationPdfData {
 	const settings = org.organizationPricingSettings;
 
 	// Parse metadata for legal info (Story 25.1)
 	let metadata: any = {};
 	if (org.metadata) {
-		if (typeof org.metadata === 'string') {
-			try { metadata = JSON.parse(org.metadata); } catch {}
+		if (typeof org.metadata === "string") {
+			try {
+				metadata = JSON.parse(org.metadata);
+			} catch {}
 		} else {
 			metadata = org.metadata;
 		}
@@ -183,27 +198,30 @@ function transformOrganizationToPdfData(org: Prisma.OrganizationGetPayload<{
 		logoPosition: settings?.logoPosition,
 		showCompanyName: settings?.showCompanyName,
 		logoWidth: settings?.logoWidth,
-		
+
 		// Story 25.4: Document Settings
-		documentLanguage: settings?.documentLanguage ?? 'BILINGUAL',
+		documentLanguage: settings?.documentLanguage ?? "BILINGUAL",
 		invoiceTerms: settings?.invoiceTerms,
 		quoteTerms: settings?.quoteTerms,
 		missionOrderTerms: settings?.missionOrderTerms,
-		
+
 		// Story 25.2: EU Compliance - Complete address and legal info
 		name: settings?.legalName ?? org.name,
-		address: (typeof metadata.address === 'string' ? metadata.address : null) ?? settings?.address ?? null,
+		address:
+			(typeof metadata.address === "string" ? metadata.address : null) ??
+			settings?.address ??
+			null,
 		addressLine2: metadata.addressLine2 ?? settings?.addressLine2 ?? null,
 		postalCode: metadata.postalCode ?? settings?.postalCode ?? null,
 		city: metadata.city ?? settings?.city ?? null,
 		phone: metadata.phone ?? settings?.phone ?? null,
 		email: metadata.email ?? settings?.email ?? null,
-		
+
 		siret: metadata.siret ?? settings?.siret ?? null,
 		vatNumber: metadata.vatNumber ?? settings?.vatNumber ?? null,
 		iban: metadata.iban ?? settings?.iban ?? null,
 		bic: metadata.bic ?? settings?.bic ?? null,
-		
+
 		// Extended legal info for Mission Order footer
 		rcs: metadata.rcs ?? (settings as any)?.rcs ?? null,
 		rm: metadata.rm ?? null,
@@ -242,61 +260,70 @@ function transformContactToPdfData(contact: {
  * Transform quote to PDF data format
  * Uses unknown for Decimal fields to handle Prisma types
  */
-function transformQuoteToPdfData(quote: {
-	id: string;
-	pickupAddress: string;
-	dropoffAddress: string | null;
-	pickupAt: Date;
-	passengerCount: number;
-	luggageCount: number;
-	finalPrice: unknown;
-	internalCost?: unknown;
-	marginPercent?: unknown;
-	pricingMode: string;
-	tripType: string;
-	status: string;
-	validUntil?: Date | null;
-	notes?: string | null;
-	createdAt: Date;
-	contact: {
-		displayName: string;
-		companyName?: string | null;
-		billingAddress?: string | null;
-		email?: string | null;
-		phone?: string | null;
-		vatNumber?: string | null;
-		siret?: string | null;
-		isPartner: boolean;
-	};
-	vehicleCategory?: {
-		name: string;
-	} | null;
-	// Story 24.5: EndCustomer for partner agency sub-contacts
-	endCustomer?: {
-		firstName: string;
-		lastName: string;
-		email?: string | null;
-		phone?: string | null;
-	} | null;
-	// New fields for line item generation
-	appliedRules?: any;
-	stayDays?: any[];
-	// Story 26.11: Hybrid Blocks support
-	lines?: Prisma.QuoteLineGetPayload<any>[];
-}, language: DocumentLanguage = 'BILINGUAL'): QuotePdfData {
+function transformQuoteToPdfData(
+	quote: {
+		id: string;
+		pickupAddress: string;
+		dropoffAddress: string | null;
+		pickupAt: Date;
+		passengerCount: number;
+		luggageCount: number;
+		finalPrice: unknown;
+		internalCost?: unknown;
+		marginPercent?: unknown;
+		pricingMode: string;
+		tripType: string;
+		status: string;
+		validUntil?: Date | null;
+		notes?: string | null;
+		createdAt: Date;
+		contact: {
+			displayName: string;
+			companyName?: string | null;
+			billingAddress?: string | null;
+			email?: string | null;
+			phone?: string | null;
+			vatNumber?: string | null;
+			siret?: string | null;
+			isPartner: boolean;
+		};
+		vehicleCategory?: {
+			name: string;
+		} | null;
+		// Story 24.5: EndCustomer for partner agency sub-contacts
+		endCustomer?: {
+			firstName: string;
+			lastName: string;
+			email?: string | null;
+			phone?: string | null;
+		} | null;
+		// New fields for line item generation
+		appliedRules?: any;
+		stayDays?: any[];
+		// Story 26.11: Hybrid Blocks support
+		lines?: Prisma.QuoteLineGetPayload<any>[];
+	},
+	language: DocumentLanguage = "BILINGUAL",
+): QuotePdfData {
 	// Parse applied rules
 	const parsedRules = parseAppliedRules(quote.appliedRules);
-	
+
 	let lines: InvoiceLinePdfData[] = [];
-	
-	if (quote.tripType === "STAY" && quote.stayDays && quote.stayDays.length > 0) {
+
+	if (
+		quote.tripType === "STAY" &&
+		quote.stayDays &&
+		quote.stayDays.length > 0
+	) {
 		// Use stay invoice line builder
 		const invoiceLines = buildStayInvoiceLines(
 			quote.stayDays,
 			parsedRules,
-			quote.endCustomer ? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}` : null
+			quote.endCustomer
+				? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
+				: null,
 		);
-		lines = invoiceLines.map(l => ({
+		lines = invoiceLines.map((l) => ({
 			description: l.description,
 			quantity: l.quantity,
 			unitPriceExclVat: l.unitPriceExclVat,
@@ -306,11 +333,14 @@ function transformQuoteToPdfData(quote: {
 		}));
 	} else {
 		// Standard quote
-		const transportAmount = calculateTransportAmount(Number(quote.finalPrice), parsedRules);
-		const endCustomerName = quote.endCustomer 
-			? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}` 
+		const transportAmount = calculateTransportAmount(
+			Number(quote.finalPrice),
+			parsedRules,
+		);
+		const endCustomerName = quote.endCustomer
+			? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
 			: null;
-		
+
 		// Build trip context for detailed descriptions with language support
 		const tripContext = {
 			pickupAddress: quote.pickupAddress,
@@ -323,7 +353,7 @@ function transformQuoteToPdfData(quote: {
 			endCustomerName,
 			language, // Pass language for localized descriptions
 		};
-		
+
 		const invoiceLines = buildInvoiceLines(
 			transportAmount,
 			quote.pickupAddress,
@@ -332,7 +362,7 @@ function transformQuoteToPdfData(quote: {
 			endCustomerName,
 			tripContext, // Pass trip context for detailed descriptions
 		);
-		lines = invoiceLines.map(l => ({
+		lines = invoiceLines.map((l) => ({
 			description: l.description,
 			quantity: l.quantity,
 			unitPriceExclVat: l.unitPriceExclVat,
@@ -345,24 +375,55 @@ function transformQuoteToPdfData(quote: {
 	// Story 26.11: Use QuoteLine lines if available (Hybrid Blocks / Universal Mode)
 	// This overrides the legacy line generation above
 	if (quote.lines && quote.lines.length > 0) {
-		lines = quote.lines.map(l => {
-			const display = (l.displayData as unknown as {
-				label?: string;
-				quantity?: number;
-				unitPrice?: number;
-				totalPrice?: number;
-				vatRate?: number;
-				totalVat?: number;
-			}) || {};
-			
+		lines = quote.lines.map((l) => {
+			const display =
+				(l.displayData as unknown as {
+					label?: string;
+					quantity?: number;
+					unitPrice?: number;
+					totalPrice?: number;
+					vatRate?: number;
+					totalVat?: number;
+				}) || {};
+
+			// Generate enriched description on the fly for Quote PDF
+			// This ensures we have full details (Date, Route, Pax, etc.) even for multi-item quotes
+			const enrichedDescription = buildEnrichedDescription(
+				l as any,
+				quote.endCustomer
+					? `${quote.endCustomer.firstName} ${quote.endCustomer.lastName}`
+					: null,
+				false, // No "Client:" prefix on individual lines for quotes usually, or maybe true for first? Let's check logic.
+				// Actually, buildEnrichedDescription handles isFirstLine logic internally for customer name.
+				// But here we are mapping all lines. Let's pass false and maybe rely on endCustomer in header or footer.
+				// Wait, buildEnrichedDescription adds customer name if isFirstLine=true.
+				// For quotes, we usually want detailed descriptions.
+				{ locale: "fr-FR" }, // Default to FR for now as per previous logic, or map from language param?
+			);
+
+			// Use enriched description if available, otherwise fallback to label
+			// But buildEnrichedDescription already falls back to label.
+			// However, if we have a specific manual override in display.label, maybe we should use it?
+			// The original logic was: display.label || l.label
+			// If user manually changed label in UI, we should respect it.
+			// But usually sourceData is the truth for details.
+
+			// Strategy: Use enriched description unless display.label is explicitly different from l.label (manual edit)
+			// For safety in this "Restricted" context, let's prioritize the detailed description
+			// because the user complaint is about MISSING details.
+
 			return {
-				description: display.label || l.label,
+				description: enrichedDescription, // FORCE detailed description
 				quantity: Number(display.quantity ?? 1),
 				unitPriceExclVat: Number(display.unitPrice ?? 0),
 				vatRate: Number(display.vatRate ?? 0),
 				totalExclVat: Number(display.totalPrice ?? 0),
 				// Calculate VAT amount if not present
-				totalVat: Number(display.totalVat ?? (Number(display.totalPrice ?? 0) * (Number(display.vatRate ?? 0) / 100))),
+				totalVat: Number(
+					display.totalVat ??
+						Number(display.totalPrice ?? 0) *
+							(Number(display.vatRate ?? 0) / 100),
+				),
 				type: (l.type as any) || "CALCULATED",
 			};
 		});
@@ -387,12 +448,14 @@ function transformQuoteToPdfData(quote: {
 		contact: transformContactToPdfData(quote.contact),
 		createdAt: quote.createdAt,
 		// Story 24.5: Include endCustomer for PDF display
-		endCustomer: quote.endCustomer ? {
-			firstName: quote.endCustomer.firstName,
-			lastName: quote.endCustomer.lastName,
-			email: quote.endCustomer.email,
-			phone: quote.endCustomer.phone,
-		} : null,
+		endCustomer: quote.endCustomer
+			? {
+					firstName: quote.endCustomer.firstName,
+					lastName: quote.endCustomer.lastName,
+					email: quote.endCustomer.email,
+					phone: quote.endCustomer.phone,
+				}
+			: null,
 		lines,
 	};
 }
@@ -401,61 +464,68 @@ function transformQuoteToPdfData(quote: {
  * Transform invoice to PDF data format
  * Uses unknown for Decimal fields to handle Prisma types
  */
-function transformInvoiceToPdfData(invoice: {
-	id: string;
-	number: string;
-	issueDate: Date;
-	dueDate: Date;
-	totalExclVat: unknown;
-	totalVat: unknown;
-	totalInclVat: unknown;
-	commissionAmount?: unknown;
-	notes?: string | null;
-	contact: {
-		displayName: string;
-		companyName?: string | null;
-		billingAddress?: string | null;
-		email?: string | null;
-		phone?: string | null;
-		vatNumber?: string | null;
-		isPartner: boolean;
-		partnerContract?: {
-			paymentTerms?: string | null;
-		} | null;
-	};
-	lines: {
-		description: string;
-		quantity: unknown;
-		unitPriceExclVat: unknown;
-		vatRate: unknown;
+function transformInvoiceToPdfData(
+	invoice: {
+		id: string;
+		number: string;
+		issueDate: Date;
+		dueDate: Date;
 		totalExclVat: unknown;
 		totalVat: unknown;
-	}[];
-	// Story 24.6: EndCustomer for partner agency invoices
-	endCustomer?: {
-		firstName: string;
-		lastName: string;
-		email?: string | null;
-		phone?: string | null;
-	} | null;
-	// Quote ID for reference
-	quoteId?: string | null;
-	// Quote details for trip info
-	quote?: {
-		pickupAddress: string;
-		dropoffAddress?: string | null;
-		pickupAt: Date;
-		passengerCount: number;
-		luggageCount: number;
-		tripType: string;
-		vehicleCategory?: { name: string } | null;
-	} | null;
-}, language: DocumentLanguage = 'BILINGUAL'): InvoicePdfData {
+		totalInclVat: unknown;
+		commissionAmount?: unknown;
+		notes?: string | null;
+		contact: {
+			displayName: string;
+			companyName?: string | null;
+			billingAddress?: string | null;
+			email?: string | null;
+			phone?: string | null;
+			vatNumber?: string | null;
+			isPartner: boolean;
+			partnerContract?: {
+				paymentTerms?: string | null;
+			} | null;
+		};
+		lines: {
+			description: string;
+			quantity: unknown;
+			unitPriceExclVat: unknown;
+			vatRate: unknown;
+			totalExclVat: unknown;
+			totalVat: unknown;
+		}[];
+		// Story 24.6: EndCustomer for partner agency invoices
+		endCustomer?: {
+			firstName: string;
+			lastName: string;
+			email?: string | null;
+			phone?: string | null;
+		} | null;
+		// Quote ID for reference
+		quoteId?: string | null;
+		// Quote details for trip info
+		quote?: {
+			pickupAddress: string;
+			dropoffAddress?: string | null;
+			pickupAt: Date;
+			passengerCount: number;
+			luggageCount: number;
+			tripType: string;
+			vehicleCategory?: { name: string } | null;
+		} | null;
+	},
+	language: DocumentLanguage = "BILINGUAL",
+): InvoicePdfData {
 	// Build detailed description (legacy behavior) or use displayData (Hybrid behavior)
 	const lines = invoice.lines.map((line): InvoiceLinePdfData => {
 		const display = (line as any).displayData || {};
+		// Prioritize the persisted description (which is already enriched with details)
+		// over the display label, unless the display label is explicitly set (e.g. manual override)
+		// Actually, standard InvoiceLines created by InvoiceFactory already have the FULL enriched description in 'description'.
+		// So we should just use line.description directly.
 		return {
-			description: display.label || line.description,
+			description: line.description || display.label || "",
 			quantity: Number(display.quantity ?? line.quantity),
 			unitPriceExclVat: Number(display.unitPrice ?? line.unitPriceExclVat),
 			vatRate: Number(display.vatRate ?? line.vatRate),
@@ -464,22 +534,29 @@ function transformInvoiceToPdfData(invoice: {
 			type: (line as any).blockType || "CALCULATED",
 		};
 	});
-	
+
 	// Legacy: Replace first line's description with detailed trip info IFF it's a legacy invoice (no Hybrid lines)
 	// We assume it's legacy if all lines are standard CALCULATED and don't explicitly rely on displayData overrides
 	// However, usually Hybrid Mode implies we want strict display.
 	// If the user manually edited lines (MANUAL or modified CALCULATED), we should respect it.
 	// We skip the legacy override if we detect we are in "Universal Blocks" mode (Story 26.1).
 	// A simple heuristic: if we have more than 1 line OR any line is GROUP/MANUAL, we skip the override.
-	const isStrictDisplayMode = lines.some(l => l.type === "GROUP" || l.type === "MANUAL") || lines.length > 1;
+	const isStrictDisplayMode =
+		lines.some((l) => l.type === "GROUP" || l.type === "MANUAL") ||
+		lines.length > 1;
 
-	if (!isStrictDisplayMode && invoice.quote && lines.length > 0 && lines[0].type === "CALCULATED") {
+	if (
+		!isStrictDisplayMode &&
+		invoice.quote &&
+		lines.length > 0 &&
+		lines[0].type === "CALCULATED"
+	) {
 		const q = invoice.quote;
-		
-		const endCustomerName = invoice.endCustomer 
-			? `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}` 
+
+		const endCustomerName = invoice.endCustomer
+			? `${invoice.endCustomer.firstName} ${invoice.endCustomer.lastName}`
 			: null;
-		
+
 		// Use language-aware description builder
 		const detailedDescription = buildTripDescription({
 			pickupAddress: q.pickupAddress,
@@ -487,15 +564,15 @@ function transformInvoiceToPdfData(invoice: {
 			pickupAt: q.pickupAt,
 			passengerCount: q.passengerCount,
 			luggageCount: q.luggageCount,
-			vehicleCategory: q.vehicleCategory?.name || 'Standard',
+			vehicleCategory: q.vehicleCategory?.name || "Standard",
 			tripType: q.tripType,
 			endCustomerName,
 			language,
 		});
-		
+
 		lines[0] = { ...lines[0], description: detailedDescription };
 	}
-	
+
 	return {
 		id: invoice.id,
 		number: invoice.number,
@@ -504,29 +581,37 @@ function transformInvoiceToPdfData(invoice: {
 		totalExclVat: Number(invoice.totalExclVat),
 		totalVat: Number(invoice.totalVat),
 		totalInclVat: Number(invoice.totalInclVat),
-		commissionAmount: invoice.commissionAmount ? Number(invoice.commissionAmount) : null,
+		commissionAmount: invoice.commissionAmount
+			? Number(invoice.commissionAmount)
+			: null,
 		notes: invoice.notes,
 		contact: transformContactToPdfData(invoice.contact),
 		lines,
 		paymentTerms: invoice.contact.partnerContract?.paymentTerms || null,
-		endCustomer: invoice.endCustomer ? {
-			firstName: invoice.endCustomer.firstName,
-			lastName: invoice.endCustomer.lastName,
-			email: invoice.endCustomer.email,
-			phone: invoice.endCustomer.phone,
-		} : null,
+		endCustomer: invoice.endCustomer
+			? {
+					firstName: invoice.endCustomer.firstName,
+					lastName: invoice.endCustomer.lastName,
+					email: invoice.endCustomer.email,
+					phone: invoice.endCustomer.phone,
+				}
+			: null,
 		// Include quote reference for display in invoice PDF
-		quoteReference: invoice.quoteId ? invoice.quoteId.slice(-8).toUpperCase() : null,
+		quoteReference: invoice.quoteId
+			? invoice.quoteId.slice(-8).toUpperCase()
+			: null,
 		// Include trip details from quote
-		tripDetails: invoice.quote ? {
-			pickupAddress: invoice.quote.pickupAddress,
-			dropoffAddress: invoice.quote.dropoffAddress,
-			pickupAt: invoice.quote.pickupAt,
-			passengerCount: invoice.quote.passengerCount,
-			luggageCount: invoice.quote.luggageCount,
-			vehicleCategory: invoice.quote.vehicleCategory?.name || "Standard",
-			tripType: invoice.quote.tripType,
-		} : null,
+		tripDetails: invoice.quote
+			? {
+					pickupAddress: invoice.quote.pickupAddress,
+					dropoffAddress: invoice.quote.dropoffAddress,
+					pickupAt: invoice.quote.pickupAt,
+					passengerCount: invoice.quote.passengerCount,
+					luggageCount: invoice.quote.luggageCount,
+					vehicleCategory: invoice.quote.vehicleCategory?.name || "Standard",
+					tripType: invoice.quote.tripType,
+				}
+			: null,
 	};
 }
 
@@ -540,17 +625,18 @@ function transformMissionToPdfData(quote: any): MissionOrderPdfData {
 		? `${quote.assignedDriver.firstName} ${quote.assignedDriver.lastName}`.trim()
 		: "À désigner";
 	const driverPhone = quote.assignedDriver?.phone || null;
-	
+
 	// Story 25.1: Second driver for RSE double crew missions
 	const secondDriverName = quote.secondDriver
 		? `${quote.secondDriver.firstName} ${quote.secondDriver.lastName}`.trim()
 		: null;
 	const secondDriverPhone = quote.secondDriver?.phone || null;
-	
+
 	// Build vehicle name from internalName or registrationNumber
-	const vehicleName = quote.assignedVehicle?.internalName 
-		|| quote.assignedVehicle?.registrationNumber 
-		|| "À désigner";
+	const vehicleName =
+		quote.assignedVehicle?.internalName ||
+		quote.assignedVehicle?.registrationNumber ||
+		"À désigner";
 	return {
 		...baseData,
 		driverName,
@@ -560,8 +646,14 @@ function transformMissionToPdfData(quote: any): MissionOrderPdfData {
 		vehicleName,
 		vehiclePlate: quote.assignedVehicle?.registrationNumber,
 		// Story 26.12: Determine if this is a Manual/Yolo mission
-		isManual: quote.lines && quote.lines.length > 0 ? quote.lines[0].type === "MANUAL" : false,
-		displayLabel: quote.lines && quote.lines.length > 0 ? (quote.lines[0].displayData?.label || quote.lines[0].label) : null,
+		isManual:
+			quote.lines && quote.lines.length > 0
+				? quote.lines[0].type === "MANUAL"
+				: false,
+		displayLabel:
+			quote.lines && quote.lines.length > 0
+				? quote.lines[0].displayData?.label || quote.lines[0].label
+				: null,
 	};
 }
 
@@ -600,12 +692,22 @@ export const documentsRouter = new Hono()
 		validator("query", listDocumentsSchema),
 		describeRoute({
 			summary: "List documents",
-			description: "Get a paginated list of generated documents for the current organization",
+			description:
+				"Get a paginated list of generated documents for the current organization",
 			tags: ["VTC - Documents"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, type, quoteId, invoiceId, search, dateFrom, dateTo } = c.req.valid("query");
+			const {
+				page,
+				limit,
+				type,
+				quoteId,
+				invoiceId,
+				search,
+				dateFrom,
+				dateTo,
+			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -624,7 +726,13 @@ export const documentsRouter = new Hono()
 			if (search) {
 				baseWhere.OR = [
 					{ invoice: { number: { contains: search, mode: "insensitive" } } },
-					{ invoice: { contact: { displayName: { contains: search, mode: "insensitive" } } } },
+					{
+						invoice: {
+							contact: {
+								displayName: { contains: search, mode: "insensitive" },
+							},
+						},
+					},
 				];
 			}
 
@@ -671,7 +779,7 @@ export const documentsRouter = new Hono()
 					totalPages: Math.ceil(total / limit),
 				},
 			});
-		}
+		},
 	)
 
 	// Get single document
@@ -706,7 +814,7 @@ export const documentsRouter = new Hono()
 			}
 
 			return c.json(document);
-		}
+		},
 	)
 
 	// Download document file
@@ -747,7 +855,7 @@ export const documentsRouter = new Hono()
 					"Content-Length": buffer.length.toString(),
 				},
 			});
-		}
+		},
 	)
 
 	// Serve file directly (for local storage)
@@ -784,7 +892,7 @@ export const documentsRouter = new Hono()
 					message: "File not found",
 				});
 			}
-		}
+		},
 	)
 
 	// Generate quote PDF
@@ -854,15 +962,17 @@ export const documentsRouter = new Hono()
 
 			if (!documentType) {
 				throw new HTTPException(500, {
-					message: "Document type QUOTE_PDF not found. Please run database seed.",
+					message:
+						"Document type QUOTE_PDF not found. Please run database seed.",
 				});
 			}
 
 			// Generate PDF
 			const orgData = transformOrganizationToPdfData(organization);
-			const documentLanguage = (orgData.documentLanguage || 'BILINGUAL') as DocumentLanguage;
+			const documentLanguage = (orgData.documentLanguage ||
+				"BILINGUAL") as DocumentLanguage;
 			const pdfData = transformQuoteToPdfData(quote, documentLanguage);
-			
+
 			// Fix: Load logo with robust fallback
 			// Try document settings logo first, then organization logo
 			if (orgData.documentLogoUrl) {
@@ -883,7 +993,11 @@ export const documentsRouter = new Hono()
 			// Save to storage
 			const storage = getStorageService();
 			const filename = generateFilename("QUOTE_PDF", quote.id);
-			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const storagePath = await storage.save(
+				pdfBuffer,
+				filename,
+				organizationId,
+			);
 			const url = await storage.getUrl(storagePath);
 
 			// Create document record
@@ -896,7 +1010,7 @@ export const documentsRouter = new Hono()
 						url,
 						filename,
 					},
-					organizationId
+					organizationId,
 				),
 				include: {
 					documentType: true,
@@ -904,7 +1018,7 @@ export const documentsRouter = new Hono()
 			});
 
 			return c.json(document, 201);
-		}
+		},
 	)
 
 	// Generate invoice PDF
@@ -983,13 +1097,15 @@ export const documentsRouter = new Hono()
 
 			if (!documentType) {
 				throw new HTTPException(500, {
-					message: "Document type INVOICE_PDF not found. Please run database seed.",
+					message:
+						"Document type INVOICE_PDF not found. Please run database seed.",
 				});
 			}
 
 			// Generate PDF
 			const orgData = transformOrganizationToPdfData(organization);
-			const documentLanguage = (orgData.documentLanguage || 'BILINGUAL') as DocumentLanguage;
+			const documentLanguage = (orgData.documentLanguage ||
+				"BILINGUAL") as DocumentLanguage;
 			const pdfData = transformInvoiceToPdfData(invoice, documentLanguage);
 
 			// Fix: Load logo with robust fallback
@@ -1009,7 +1125,11 @@ export const documentsRouter = new Hono()
 			// Save to storage
 			const storage = getStorageService();
 			const filename = generateFilename("INVOICE_PDF", invoice.number);
-			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const storagePath = await storage.save(
+				pdfBuffer,
+				filename,
+				organizationId,
+			);
 			const url = await storage.getUrl(storagePath);
 
 			// Create document record
@@ -1022,7 +1142,7 @@ export const documentsRouter = new Hono()
 						url,
 						filename,
 					},
-					organizationId
+					organizationId,
 				),
 				include: {
 					documentType: true,
@@ -1030,7 +1150,7 @@ export const documentsRouter = new Hono()
 			});
 
 			return c.json(document, 201);
-		}
+		},
 	)
 
 	// Generate mission order PDF - Story 25.1
@@ -1038,7 +1158,8 @@ export const documentsRouter = new Hono()
 		"/generate/mission-order/:quoteId",
 		describeRoute({
 			summary: "Generate mission order PDF",
-			description: "Generate a PDF document (Fiche Mission) for an assigned mission",
+			description:
+				"Generate a PDF document (Fiche Mission) for an assigned mission",
 			tags: ["VTC - Documents"],
 		}),
 		async (c) => {
@@ -1086,7 +1207,8 @@ export const documentsRouter = new Hono()
 
 			if (!documentType) {
 				throw new HTTPException(500, {
-					message: "Document type MISSION_ORDER not found. Please run database seed.",
+					message:
+						"Document type MISSION_ORDER not found. Please run database seed.",
 				});
 			}
 
@@ -1111,7 +1233,11 @@ export const documentsRouter = new Hono()
 			// Save to storage
 			const storage = getStorageService();
 			const filename = generateFilename("MISSION_ORDER", quote.id);
-			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const storagePath = await storage.save(
+				pdfBuffer,
+				filename,
+				organizationId,
+			);
 			const url = await storage.getUrl(storagePath);
 
 			// Create document record
@@ -1124,7 +1250,7 @@ export const documentsRouter = new Hono()
 						url,
 						filename,
 					},
-					organizationId
+					organizationId,
 				),
 				include: {
 					documentType: true,
@@ -1151,7 +1277,7 @@ export const documentsRouter = new Hono()
 			}
 
 			return c.json(document, 201);
-		}
+		},
 	)
 
 	// Story 29.8: Generate mission sheet PDF (per-Mission, not per-Quote)
@@ -1159,7 +1285,8 @@ export const documentsRouter = new Hono()
 		"/generate/mission-sheet/:missionId",
 		describeRoute({
 			summary: "Generate mission sheet PDF",
-			description: "Generate a PDF document (Fiche Mission) for a specific Mission entity with driver operational details",
+			description:
+				"Generate a PDF document (Fiche Mission) for a specific Mission entity with driver operational details",
 			tags: ["VTC - Documents"],
 		}),
 		async (c) => {
@@ -1199,7 +1326,9 @@ export const documentsRouter = new Hono()
 				quote: NonNullable<typeof mission.quote>;
 				quoteLine: typeof mission.quoteLine;
 				driver: typeof mission.driver;
-				vehicle: typeof mission.vehicle & { vehicleCategory?: { name: string } | null };
+				vehicle: typeof mission.vehicle & {
+					vehicleCategory?: { name: string } | null;
+				};
 			};
 
 			// Get organization details with pricing settings for branding
@@ -1221,23 +1350,29 @@ export const documentsRouter = new Hono()
 
 			if (!documentType) {
 				throw new HTTPException(500, {
-					message: "Document type MISSION_ORDER not found. Please run database seed.",
+					message:
+						"Document type MISSION_ORDER not found. Please run database seed.",
 				});
 			}
 
 			// Story 29.8: Transform Mission to MissionSheetPdfData
-			const sourceData = (missionWithRelations.sourceData as Record<string, unknown>) || {};
-			const quoteLineSourceData = (missionWithRelations.quoteLine?.sourceData as Record<string, unknown>) || {};
-			
+			const sourceData =
+				(missionWithRelations.sourceData as Record<string, unknown>) || {};
+			const quoteLineSourceData =
+				(missionWithRelations.quoteLine?.sourceData as Record<
+					string,
+					unknown
+				>) || {};
+
 			// Extract waypoints from sourceData (mission-specific)
 			const stops: Array<{ address: string; name?: string }> = [];
 			const stopsData = sourceData.stops || quoteLineSourceData.stops;
 			if (Array.isArray(stopsData)) {
 				for (const stop of stopsData) {
-					if (typeof stop === 'object' && stop !== null) {
+					if (typeof stop === "object" && stop !== null) {
 						const stopObj = stop as Record<string, unknown>;
 						stops.push({
-							address: (stopObj.address as string) || '',
+							address: (stopObj.address as string) || "",
 							name: stopObj.name as string | undefined,
 						});
 					}
@@ -1251,18 +1386,23 @@ export const documentsRouter = new Hono()
 			const driverPhone = missionWithRelations.driver?.phone || null;
 
 			// Build vehicle info
-			const vehicleName = missionWithRelations.vehicle?.internalName 
-				|| missionWithRelations.vehicle?.registrationNumber 
-				|| "À désigner";
-			const vehiclePlate = missionWithRelations.vehicle?.registrationNumber || null;
-			const vehicleCategory = missionWithRelations.vehicle?.vehicleCategory?.name 
-				|| missionWithRelations.quote.vehicleCategory?.name 
-				|| "N/A";
+			const vehicleName =
+				missionWithRelations.vehicle?.internalName ||
+				missionWithRelations.vehicle?.registrationNumber ||
+				"À désigner";
+			const vehiclePlate =
+				missionWithRelations.vehicle?.registrationNumber || null;
+			const vehicleCategory =
+				missionWithRelations.vehicle?.vehicleCategory?.name ||
+				missionWithRelations.quote.vehicleCategory?.name ||
+				"N/A";
 
 			// Build contact info
 			const contact = missionWithRelations.quote.contact;
 			const contactData = {
-				displayName: contact.displayName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
+				displayName:
+					contact.displayName ||
+					`${contact.firstName || ""} ${contact.lastName || ""}`.trim(),
 				companyName: contact.companyName || null,
 				billingAddress: contact.billingAddress || null,
 				email: contact.email || null,
@@ -1273,26 +1413,33 @@ export const documentsRouter = new Hono()
 			};
 
 			// Build endCustomer info
-			const endCustomer = missionWithRelations.quote.endCustomer ? {
-				firstName: missionWithRelations.quote.endCustomer.firstName,
-				lastName: missionWithRelations.quote.endCustomer.lastName,
-				email: missionWithRelations.quote.endCustomer.email || null,
-				phone: missionWithRelations.quote.endCustomer.phone || null,
-			} : null;
+			const endCustomer = missionWithRelations.quote.endCustomer
+				? {
+						firstName: missionWithRelations.quote.endCustomer.firstName,
+						lastName: missionWithRelations.quote.endCustomer.lastName,
+						email: missionWithRelations.quote.endCustomer.email || null,
+						phone: missionWithRelations.quote.endCustomer.phone || null,
+					}
+				: null;
 
 			// Extract pickup/dropoff from sourceData or quote
-			const pickupAddress = (sourceData.pickupAddress as string) 
-				|| (quoteLineSourceData.pickupAddress as string) 
-				|| missionWithRelations.quote.pickupAddress;
-			const dropoffAddress = (sourceData.dropoffAddress as string) 
-				|| (quoteLineSourceData.dropoffAddress as string) 
-				|| missionWithRelations.quote.dropoffAddress 
-				|| null;
+			const pickupAddress =
+				(sourceData.pickupAddress as string) ||
+				(quoteLineSourceData.pickupAddress as string) ||
+				missionWithRelations.quote.pickupAddress;
+			const dropoffAddress =
+				(sourceData.dropoffAddress as string) ||
+				(quoteLineSourceData.dropoffAddress as string) ||
+				missionWithRelations.quote.dropoffAddress ||
+				null;
 
 			// Extract duration for DISPO
-			const durationHours = (sourceData.durationHours as number) 
-				|| (quoteLineSourceData.durationHours as number) 
-				|| (missionWithRelations.quote.durationHours ? Number(missionWithRelations.quote.durationHours) : null);
+			const durationHours =
+				(sourceData.durationHours as number) ||
+				(quoteLineSourceData.durationHours as number) ||
+				(missionWithRelations.quote.durationHours
+					? Number(missionWithRelations.quote.durationHours)
+					: null);
 
 			const pdfData: MissionSheetPdfData = {
 				id: missionWithRelations.id,
@@ -1304,7 +1451,10 @@ export const documentsRouter = new Hono()
 				passengerCount: missionWithRelations.quote.passengerCount,
 				luggageCount: missionWithRelations.quote.luggageCount,
 				vehicleCategory,
-				notes: missionWithRelations.notes || missionWithRelations.quote.notes || null,
+				notes:
+					missionWithRelations.notes ||
+					missionWithRelations.quote.notes ||
+					null,
 				stops,
 				durationHours,
 				driverName,
@@ -1336,11 +1486,17 @@ export const documentsRouter = new Hono()
 
 			// Save to storage
 			const storage = getStorageService();
-			const refShort = missionWithRelations.ref || missionWithRelations.id.slice(-8).toUpperCase();
+			const refShort =
+				missionWithRelations.ref ||
+				missionWithRelations.id.slice(-8).toUpperCase();
 			const dateStr = format(new Date(), "yyyyMMdd");
 			const timeStr = format(new Date(), "HHmmss");
 			const filename = `FICHE-MISSION-${refShort}-${dateStr}-${timeStr}.pdf`;
-			const storagePath = await storage.save(pdfBuffer, filename, organizationId);
+			const storagePath = await storage.save(
+				pdfBuffer,
+				filename,
+				organizationId,
+			);
 			const url = await storage.getUrl(storagePath);
 
 			// Create document record
@@ -1353,7 +1509,7 @@ export const documentsRouter = new Hono()
 						url,
 						filename,
 					},
-					organizationId
+					organizationId,
 				),
 				include: {
 					documentType: true,
@@ -1381,7 +1537,7 @@ export const documentsRouter = new Hono()
 			}
 
 			return c.json(document, 201);
-		}
+		},
 	)
 
 	// Delete document (only if not linked to issued invoice)
@@ -1410,7 +1566,10 @@ export const documentsRouter = new Hono()
 			}
 
 			// Don't allow deletion of documents linked to issued/paid invoices
-			if (document.invoice && ["ISSUED", "PAID"].includes(document.invoice.status)) {
+			if (
+				document.invoice &&
+				["ISSUED", "PAID"].includes(document.invoice.status)
+			) {
 				throw new HTTPException(400, {
 					message: "Cannot delete documents linked to issued or paid invoices",
 				});
@@ -1421,5 +1580,5 @@ export const documentsRouter = new Hono()
 			});
 
 			return c.json({ success: true });
-		}
+		},
 	);

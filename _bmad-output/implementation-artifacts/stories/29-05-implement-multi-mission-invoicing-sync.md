@@ -94,6 +94,13 @@ so that the invoice accurately reflects each service (date, route) and maintains
   - [ ] Add `isOutOfSync` computed field to invoice line response
   - [ ] Add warning badge in invoice detail UI
 
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] **AC4 Verified**: Invoice PDF template already supports multi-line display. `generateInvoicePdf()` iterates over all InvoiceLines, renders descriptions with word-wrap, and displays all pricing columns. Lines ordered by sortOrder. Enriched descriptions (date/route) from `buildEnrichedDescription()` are displayed correctly.
+- [x] [AI-Review][CRITICAL] **Unit Tests Rewritten**: Tests were fake (re-implementing logic instead of calling production code). Created `invoice-line-utils.ts` with exported functions and `invoice-line-utils.test.ts` with 17 real tests.
+- [x] [AI-Review][MEDIUM] **Locale Configuration**: Extracted `buildEnrichedDescription` to accept locale as parameter. Default remains "fr-FR" but can now be configured.
+- [x] [User-Feedback][HIGH] **Restored Full PDF Details**: Enhanced `buildEnrichedDescription` to include full addresses, passenger count, luggage count, and vehicle category on separate lines, ensuring consistent detail level between single and multi-mission invoices.
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -192,11 +199,13 @@ Claude Sonnet 4 (Cascade)
 ### File List
 
 - `packages/database/prisma/schema.prisma` - Added quoteLineId field and index to InvoiceLine
-- `packages/api/src/services/invoice-factory.ts` - Enhanced deepCopyQuoteLinesToInvoiceLines, added buildEnrichedDescription
+- `packages/api/src/services/invoice-factory.ts` - Refactored to use exported utility functions
 - `packages/api/src/services/invoice-line-builder.ts` - Added quoteLineId to InvoiceLineInput interface
-- `packages/api/src/services/__tests__/invoice-factory.test.ts` - Comprehensive unit tests for multi-mission support
+- `packages/api/src/services/invoice-line-utils.ts` - **NEW**: Extracted testable utility functions (deepCopyQuoteLinesToInvoiceLines, buildEnrichedDescription)
+- `packages/api/src/services/__tests__/invoice-line-utils.test.ts` - **NEW**: 17 real unit tests for utility functions
+- `packages/api/src/services/__tests__/invoice-factory.test.ts` - Legacy fake tests (deprecated)
 - `_bmad-output/implementation-artifacts/stories/story-29-05-implement-multi-mission-invoicing-sync.md` - Story file
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated status to review
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated status
 
 ## Senior Developer Review (AI)
 
