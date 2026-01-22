@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Skeleton } from "@ui/components/skeleton";
-import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, CreditCard, Clock } from "lucide-react";
 import { cn } from "@ui/lib";
 import type { ProfitabilityReportSummary } from "../types";
 
@@ -11,8 +11,9 @@ import type { ProfitabilityReportSummary } from "../types";
  * ReportSummaryCards Component
  *
  * Story 9.8: Basic Profitability & Yield Reporting
+ * Story 30.3: Validated Financial Reporting - Invoice-based metrics
  *
- * Displays summary cards for key profitability metrics.
+ * Displays summary cards for key profitability metrics based on Invoice data.
  */
 
 interface ReportSummaryCardsProps {
@@ -52,7 +53,9 @@ export function ReportSummaryCards({
 
 	if (isLoading) {
 		return (
-			<div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4", className)}>
+			<div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", className)}>
+				<SummaryCardSkeleton />
+				<SummaryCardSkeleton />
 				<SummaryCardSkeleton />
 				<SummaryCardSkeleton />
 				<SummaryCardSkeleton />
@@ -73,8 +76,8 @@ export function ReportSummaryCards({
 				: "text-red-600";
 
 	return (
-		<div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4", className)}>
-			{/* Total Revenue */}
+		<div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", className)}>
+			{/* Total Revenue - Story 30.3: Now from Invoices */}
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 					<CardTitle className="text-sm font-medium">{t("totalRevenue")}</CardTitle>
@@ -83,8 +86,34 @@ export function ReportSummaryCards({
 				<CardContent>
 					<div className="text-2xl font-bold">{formatCurrency(summary.totalRevenue)}</div>
 					<p className="text-xs text-muted-foreground">
-						{t("fromQuotes", { count: summary.totalCount })}
+						{t("fromInvoices", { count: summary.totalCount })}
 					</p>
+				</CardContent>
+			</Card>
+
+			{/* Paid Amount - Story 30.3 */}
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+					<CardTitle className="text-sm font-medium">{t("paidAmount")}</CardTitle>
+					<CreditCard className="h-4 w-4 text-green-600" />
+				</CardHeader>
+				<CardContent>
+					<div className="text-2xl font-bold text-green-600">{formatCurrency(summary.paidAmount)}</div>
+					<p className="text-xs text-muted-foreground">{t("amountReceived")}</p>
+				</CardContent>
+			</Card>
+
+			{/* Pending Amount - Story 30.3 */}
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+					<CardTitle className="text-sm font-medium">{t("pendingAmount")}</CardTitle>
+					<Clock className="h-4 w-4 text-orange-500" />
+				</CardHeader>
+				<CardContent>
+					<div className={cn("text-2xl font-bold", summary.pendingAmount > 0 && "text-orange-500")}>
+						{formatCurrency(summary.pendingAmount)}
+					</div>
+					<p className="text-xs text-muted-foreground">{t("awaitingPayment")}</p>
 				</CardContent>
 			</Card>
 

@@ -6,12 +6,13 @@ import { reportsRouter } from "../reports";
  * Reports API Tests
  *
  * Story 9.8: Basic Profitability & Yield Reporting
+ * Story 30.3: Validated Financial Reporting - Invoice-based revenue
  */
 
 // Mock database
 vi.mock("@repo/database", () => ({
 	db: {
-		quote: {
+		invoice: {
 			findMany: vi.fn(),
 		},
 	},
@@ -40,44 +41,44 @@ describe("Reports API Routes", () => {
 	});
 
 	describe("GET /reports/profitability", () => {
-		it("should return profitability report with summary and data", async () => {
-			const mockQuotes = [
+		it("should return profitability report with summary and data from invoices", async () => {
+			const mockInvoices = [
 				{
-					id: "quote-1",
-					finalPrice: 200,
-					internalCost: 150,
-					marginPercent: 25,
-					pickupAt: new Date("2024-01-15"),
+					id: "invoice-1",
+					number: "INV-001",
+					totalExclVat: 200,
+					totalInclVat: 240,
+					paidAmount: 240,
+					costBreakdown: { internalCost: 150 },
+					issueDate: new Date("2024-01-15"),
 					contactId: "contact-1",
-					vehicleCategoryId: "cat-1",
 					contact: { id: "contact-1", displayName: "Client A" },
-					vehicleCategory: { id: "cat-1", name: "Sedan", code: "SED" },
 				},
 				{
-					id: "quote-2",
-					finalPrice: 300,
-					internalCost: 280,
-					marginPercent: 7,
-					pickupAt: new Date("2024-01-16"),
+					id: "invoice-2",
+					number: "INV-002",
+					totalExclVat: 300,
+					totalInclVat: 360,
+					paidAmount: 200,
+					costBreakdown: { internalCost: 280 },
+					issueDate: new Date("2024-01-16"),
 					contactId: "contact-2",
-					vehicleCategoryId: "cat-1",
 					contact: { id: "contact-2", displayName: "Client B" },
-					vehicleCategory: { id: "cat-1", name: "Sedan", code: "SED" },
 				},
 				{
-					id: "quote-3",
-					finalPrice: 100,
-					internalCost: 120,
-					marginPercent: -20,
-					pickupAt: new Date("2024-01-17"),
+					id: "invoice-3",
+					number: "INV-003",
+					totalExclVat: 100,
+					totalInclVat: 120,
+					paidAmount: 0,
+					costBreakdown: { internalCost: 120 },
+					issueDate: new Date("2024-01-17"),
 					contactId: "contact-1",
-					vehicleCategoryId: "cat-2",
 					contact: { id: "contact-1", displayName: "Client A" },
-					vehicleCategory: { id: "cat-2", name: "Van", code: "VAN" },
 				},
 			];
 
-			vi.mocked(db.quote.findMany).mockResolvedValue(mockQuotes as never);
+			vi.mocked(db.invoice.findMany).mockResolvedValue(mockInvoices as never);
 
 			const res = await app.request("/reports/profitability");
 			expect(res.status).toBe(200);
@@ -86,54 +87,55 @@ describe("Reports API Routes", () => {
 			expect(data.summary).toBeDefined();
 			expect(data.summary.totalRevenue).toBe(600);
 			expect(data.summary.totalCost).toBe(550);
-			expect(data.summary.lossCount).toBe(1);
+			expect(data.summary.lossCount).toBe(1); // Invoice-3 has negative margin
 			expect(data.summary.totalCount).toBe(3);
+			expect(data.summary.paidAmount).toBe(440); // 240 + 200 + 0
+			expect(data.summary.pendingAmount).toBe(280); // (360-200) + (120-0)
 			expect(data.data).toHaveLength(3);
 		});
 
-		it("should filter by profitability level (red)", async () => {
-			vi.mocked(db.quote.findMany).mockResolvedValue([]);
+		it("should filter invoices by status (only ISSUED, PARTIAL, PAID)", async () => {
+			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
 
-			const res = await app.request("/reports/profitability?profitabilityLevel=red");
-			expect(res.status).toBe(200);
+			await app.request("/reports/profitability");
 
-			// Verify the filter was applied (margin < 0)
-			expect(db.quote.findMany).toHaveBeenCalledWith(
+			// Verify the status filter was applied
+			expect(db.invoice.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: expect.objectContaining({
-						marginPercent: { lt: 0 },
+						status: { in: ["ISSUED", "PARTIAL", "PAID"] },
 					}),
 				})
 			);
 		});
 
 		it("should group by client", async () => {
-			const mockQuotes = [
+			const mockInvoices = [
 				{
-					id: "quote-1",
-					finalPrice: 200,
-					internalCost: 150,
-					marginPercent: 25,
-					pickupAt: new Date("2024-01-15"),
+					id: "invoice-1",
+					number: "INV-001",
+					totalExclVat: 200,
+					totalInclVat: 240,
+					paidAmount: 240,
+					costBreakdown: { internalCost: 150 },
+					issueDate: new Date("2024-01-15"),
 					contactId: "contact-1",
-					vehicleCategoryId: "cat-1",
 					contact: { id: "contact-1", displayName: "Client A" },
-					vehicleCategory: { id: "cat-1", name: "Sedan", code: "SED" },
 				},
 				{
-					id: "quote-2",
-					finalPrice: 300,
-					internalCost: 250,
-					marginPercent: 17,
-					pickupAt: new Date("2024-01-16"),
+					id: "invoice-2",
+					number: "INV-002",
+					totalExclVat: 300,
+					totalInclVat: 360,
+					paidAmount: 360,
+					costBreakdown: { internalCost: 250 },
+					issueDate: new Date("2024-01-16"),
 					contactId: "contact-1",
-					vehicleCategoryId: "cat-1",
 					contact: { id: "contact-1", displayName: "Client A" },
-					vehicleCategory: { id: "cat-1", name: "Sedan", code: "SED" },
 				},
 			];
 
-			vi.mocked(db.quote.findMany).mockResolvedValue(mockQuotes as never);
+			vi.mocked(db.invoice.findMany).mockResolvedValue(mockInvoices as never);
 
 			const res = await app.request("/reports/profitability?groupBy=client");
 			expect(res.status).toBe(200);
@@ -145,43 +147,45 @@ describe("Reports API Routes", () => {
 			expect(data.data[0].revenue).toBe(500);
 		});
 
-		it("should group by vehicle category", async () => {
-			const mockQuotes = [
+		it("should group by vehicle category (all categories)", async () => {
+			const mockInvoices = [
 				{
-					id: "quote-1",
-					finalPrice: 200,
-					internalCost: 150,
-					marginPercent: 25,
-					pickupAt: new Date("2024-01-15"),
+					id: "invoice-1",
+					number: "INV-001",
+					totalExclVat: 200,
+					totalInclVat: 240,
+					paidAmount: 240,
+					costBreakdown: { internalCost: 150 },
+					issueDate: new Date("2024-01-15"),
 					contactId: "contact-1",
-					vehicleCategoryId: "cat-1",
 					contact: { id: "contact-1", displayName: "Client A" },
-					vehicleCategory: { id: "cat-1", name: "Sedan", code: "SED" },
 				},
 				{
-					id: "quote-2",
-					finalPrice: 400,
-					internalCost: 350,
-					marginPercent: 12.5,
-					pickupAt: new Date("2024-01-16"),
+					id: "invoice-2",
+					number: "INV-002",
+					totalExclVat: 400,
+					totalInclVat: 480,
+					paidAmount: 480,
+					costBreakdown: { internalCost: 350 },
+					issueDate: new Date("2024-01-16"),
 					contactId: "contact-2",
-					vehicleCategoryId: "cat-2",
 					contact: { id: "contact-2", displayName: "Client B" },
-					vehicleCategory: { id: "cat-2", name: "Van", code: "VAN" },
 				},
 			];
 
-			vi.mocked(db.quote.findMany).mockResolvedValue(mockQuotes as never);
+			vi.mocked(db.invoice.findMany).mockResolvedValue(mockInvoices as never);
 
 			const res = await app.request("/reports/profitability?groupBy=vehicleCategory");
 			expect(res.status).toBe(200);
 
 			const data = await res.json();
-			expect(data.data).toHaveLength(2); // 2 categories
+			// Story 30.3: Invoice doesn't have vehicleCategoryId, so all grouped under "All Categories"
+			expect(data.data).toHaveLength(1);
+			expect(data.data[0].groupLabel).toBe("All Categories");
 		});
 
-		it("should return empty data when no quotes match", async () => {
-			vi.mocked(db.quote.findMany).mockResolvedValue([]);
+		it("should return empty data when no invoices match", async () => {
+			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
 
 			const res = await app.request("/reports/profitability");
 			expect(res.status).toBe(200);
@@ -189,18 +193,35 @@ describe("Reports API Routes", () => {
 			const data = await res.json();
 			expect(data.summary.totalCount).toBe(0);
 			expect(data.summary.totalRevenue).toBe(0);
+			expect(data.summary.paidAmount).toBe(0);
+			expect(data.summary.pendingAmount).toBe(0);
 			expect(data.data).toHaveLength(0);
 		});
 
 		it("should respect organization isolation (multi-tenancy)", async () => {
-			vi.mocked(db.quote.findMany).mockResolvedValue([]);
+			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
 
 			await app.request("/reports/profitability");
 
-			expect(db.quote.findMany).toHaveBeenCalledWith(
+			expect(db.invoice.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: expect.objectContaining({
 						organizationId: "test-org-id",
+					}),
+				})
+			);
+		});
+
+		it("should exclude DRAFT and CANCELLED invoices from revenue", async () => {
+			// This test verifies the WHERE clause excludes DRAFT and CANCELLED
+			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
+
+			await app.request("/reports/profitability");
+
+			expect(db.invoice.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						status: { in: ["ISSUED", "PARTIAL", "PAID"] },
 					}),
 				})
 			);

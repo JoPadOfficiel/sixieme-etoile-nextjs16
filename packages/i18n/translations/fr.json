@@ -4458,14 +4458,19 @@
 			"description": "Consultez les revenus, coûts et marges par client, catégorie de véhicule ou période"
 		},
 		"summary": {
-			"totalRevenue": "Chiffre d'affaires",
+			"totalRevenue": "Revenu facturé",
 			"totalCost": "Coût total",
 			"avgMargin": "Marge moyenne",
-			"lossCount": "Trajets déficitaires",
+			"lossCount": "Factures déficitaires",
 			"fromQuotes": "{count, plural, =0 {Aucun devis} one {À partir de # devis} other {À partir de # devis}}",
+			"fromInvoices": "{count, plural, =0 {Aucune facture} one {À partir de # facture} other {À partir de # factures}}",
 			"internalCosts": "Coûts internes",
 			"averageMargin": "Pourcentage de marge moyen",
-			"lossPercentage": "{percent}% du total"
+			"lossPercentage": "{percent}% du total",
+			"paidAmount": "Montant encaissé",
+			"pendingAmount": "Montant en attente",
+			"amountReceived": "Montant reçu",
+			"awaitingPayment": "En attente de paiement"
 		},
 		"filters": {
 			"groupBy": "Grouper par",

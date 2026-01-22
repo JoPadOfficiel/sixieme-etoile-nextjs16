@@ -4515,14 +4515,19 @@
 			"description": "View revenue, costs, and margins by client, vehicle category, or period"
 		},
 		"summary": {
-			"totalRevenue": "Total Revenue",
+			"totalRevenue": "Invoiced Revenue",
 			"totalCost": "Total Cost",
 			"avgMargin": "Average Margin",
-			"lossCount": "Loss-Making Trips",
+			"lossCount": "Loss-Making Invoices",
 			"fromQuotes": "{count, plural, =0 {No quotes} one {From # quote} other {From # quotes}}",
+			"fromInvoices": "{count, plural, =0 {No invoices} one {From # invoice} other {From # invoices}}",
 			"internalCosts": "Internal costs",
 			"averageMargin": "Average margin percentage",
-			"lossPercentage": "{percent}% of total"
+			"lossPercentage": "{percent}% of total",
+			"paidAmount": "Paid Amount",
+			"pendingAmount": "Pending Amount",
+			"amountReceived": "Amount received",
+			"awaitingPayment": "Awaiting payment"
 		},
 		"filters": {
 			"groupBy": "Group by",

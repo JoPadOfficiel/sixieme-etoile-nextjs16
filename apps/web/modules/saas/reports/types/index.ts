@@ -13,6 +13,9 @@ export interface ProfitabilityReportSummary {
 	avgMarginPercent: number;
 	lossCount: number;
 	totalCount: number;
+	// Story 30.3: Payment tracking
+	paidAmount: number;
+	pendingAmount: number;
 }
 
 export interface ProfitabilityReportRow {
@@ -24,10 +27,10 @@ export interface ProfitabilityReportRow {
 	marginPercent: number;
 	profitabilityLevel: ProfitabilityLevel;
 	count: number;
-	quoteId?: string;
+	invoiceId?: string;
 	contactName?: string;
-	vehicleCategory?: string;
-	pickupAt?: string;
+	invoiceNumber?: string;
+	issueDate?: string;
 }
 
 export interface ProfitabilityReportResponse {
