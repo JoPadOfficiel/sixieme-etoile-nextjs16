@@ -53,6 +53,10 @@ export interface MissionVehicleCategory {
 export interface MissionListItem {
 	id: string;
 	quoteId: string;
+	// Story 29.7: Sequential reference for multi-mission orders (e.g., "ORD-2026-001-01")
+	ref?: string | null;
+	// Story 29.7: Order ID for grouping (null for ad-hoc missions)
+	orderId?: string | null;
 	pickupAt: string;
 	pickupAddress: string;
 	dropoffAddress: string;
@@ -79,6 +83,8 @@ export interface MissionListItem {
 	stayDays?: StayDayListItem[];
 	// Story 22.11: Notes for dispatch display
 	notes?: string | null;
+	// Story 29.7: Mission status from Mission entity
+	missionStatus?: string;
 }
 
 // Story 22.4: Subcontractor info for subcontracted missions

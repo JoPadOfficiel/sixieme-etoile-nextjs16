@@ -39,9 +39,14 @@ import {
  * Missions Router
  *
  * Story 8.1: Implement Dispatch Screen Layout
+ * Story 29.7: Dispatch List Integrity & Backlog Separation
  *
- * Missions are accepted quotes with pickupAt in the future.
- * This router provides endpoints for the Dispatch screen.
+ * CRITICAL: This router queries the Mission table directly, NOT Quote.
+ * Missions are spawned from Orders (via SpawnService) and represent
+ * real operational work items for dispatch.
+ *
+ * - Backlog: Missions with driverId IS NULL
+ * - Planned: Missions with driverId IS NOT NULL
  *
  * @see FR50-FR51 Multi-base dispatch and driver flexibility
  * @see UX Spec 8.8 Dispatch Screen
@@ -55,12 +60,12 @@ const listMissionsSchema = z.object({
 		.string()
 		.datetime()
 		.optional()
-		.describe("Filter missions with pickupAt >= dateFrom"),
+		.describe("Filter missions with startAt >= dateFrom"),
 	dateTo: z
 		.string()
 		.datetime()
 		.optional()
-		.describe("Filter missions with pickupAt <= dateTo"),
+		.describe("Filter missions with startAt <= dateTo"),
 	vehicleCategoryId: z
 		.string()
 		.optional()
@@ -73,12 +78,12 @@ const listMissionsSchema = z.object({
 	search: z
 		.string()
 		.optional()
-		.describe("Search in contact name, pickup/dropoff addresses"),
+		.describe("Search in contact name, pickup/dropoff addresses, or mission ref"),
 	unassignedOnly: z
 		.enum(["true", "false"])
 		.optional()
 		.transform((val) => val === "true")
-		.describe("Filter unassigned missions (no driver)"),
+		.describe("Story 29.7: Filter unassigned missions (driverId IS NULL)"),
 });
 
 // Response types
@@ -118,6 +123,10 @@ interface StaffingSummary {
 interface MissionListItem {
 	id: string;
 	quoteId: string;
+	// Story 29.7: Sequential reference for multi-mission orders (e.g., "ORD-2026-001-01")
+	ref: string | null;
+	// Story 29.7: Order ID for grouping (null for ad-hoc missions)
+	orderId: string | null;
 	pickupAt: string;
 	pickupAddress: string;
 	dropoffAddress: string | null;
@@ -154,6 +163,8 @@ interface MissionListItem {
 	tripType: string | null;
 	// Story 22.11: Notes for dispatch display
 	notes: string | null;
+	// Story 29.7: Mission status from Mission entity
+	missionStatus: string;
 }
 
 /**
@@ -407,14 +418,15 @@ export const missionsRouter = new Hono()
 	.basePath("/missions")
 	.use("*", organizationMiddleware)
 
-	// List missions (accepted quotes with future pickupAt)
+	// Story 29.7: List missions from Mission table (NOT Quote)
+	// Backlog: driverId IS NULL, Planned: driverId IS NOT NULL
 	.get(
 		"/",
 		validator("query", listMissionsSchema),
 		describeRoute({
 			summary: "List missions",
 			description:
-				"Get a paginated list of missions (accepted quotes with future pickup dates) for dispatch",
+				"Story 29.7: Get a paginated list of real Mission entities for dispatch. Queries Mission table directly, NOT Quote.",
 			tags: ["VTC - Dispatch"],
 		}),
 		async (c) => {
@@ -432,161 +444,210 @@ export const missionsRouter = new Hono()
 			const skip = (page - 1) * limit;
 			const now = new Date();
 
-			// Build where clause
-			const baseWhere: Prisma.QuoteWhereInput = {
-				status: "ACCEPTED",
-				pickupAt: {
+			// Story 29.7: Build where clause for Mission table
+			const baseWhere: Prisma.MissionWhereInput = {
+				organizationId,
+				// Filter by startAt (Mission's timing field)
+				startAt: {
 					gte: dateFrom ? new Date(dateFrom) : startOfDay(now),
 					...(dateTo && { lte: new Date(dateTo) }),
 				},
-				...(vehicleCategoryId && { vehicleCategoryId }),
 			};
 
-			// Client type filter
-			if (clientType && clientType !== "ALL") {
-				baseWhere.contact = {
-					isPartner: clientType === "PARTNER",
+			// Story 29.7: Unassigned filter (Backlog = driverId IS NULL)
+			if (c.req.valid("query").unassignedOnly) {
+				baseWhere.driverId = null;
+			}
+
+			// Vehicle category filter (via quote relation)
+			if (vehicleCategoryId) {
+				baseWhere.quote = {
+					...((baseWhere.quote as Prisma.QuoteWhereInput) || {}),
+					vehicleCategoryId,
 				};
 			}
 
-			// Search filter
+			// Client type filter (via quote.contact relation)
+			if (clientType && clientType !== "ALL") {
+				baseWhere.quote = {
+					...((baseWhere.quote as Prisma.QuoteWhereInput) || {}),
+					contact: {
+						isPartner: clientType === "PARTNER",
+					},
+				};
+			}
+
+			// Search filter (via quote relations and mission ref)
 			if (search) {
 				baseWhere.OR = [
+					// Search in mission ref
+					{ ref: { contains: search, mode: "insensitive" } },
+					// Search in quote relations
 					{
-						contact: { displayName: { contains: search, mode: "insensitive" } },
-					},
-					{
-						contact: { companyName: { contains: search, mode: "insensitive" } },
-					},
-					{
-						endCustomer: {
-							firstName: { contains: search, mode: "insensitive" },
+						quote: {
+							contact: { displayName: { contains: search, mode: "insensitive" } },
 						},
 					},
 					{
-						endCustomer: {
-							lastName: { contains: search, mode: "insensitive" },
+						quote: {
+							contact: { companyName: { contains: search, mode: "insensitive" } },
 						},
 					},
-					{ pickupAddress: { contains: search, mode: "insensitive" } },
-					{ dropoffAddress: { contains: search, mode: "insensitive" } },
-					// Also search by ID/Ref
-					{ id: { contains: search, mode: "insensitive" } },
+					{
+						quote: {
+							endCustomer: {
+								firstName: { contains: search, mode: "insensitive" },
+							},
+						},
+					},
+					{
+						quote: {
+							endCustomer: {
+								lastName: { contains: search, mode: "insensitive" },
+							},
+						},
+					},
+					{
+						quote: {
+							pickupAddress: { contains: search, mode: "insensitive" },
+						},
+					},
+					{
+						quote: {
+							dropoffAddress: { contains: search, mode: "insensitive" },
+						},
+					},
 				];
 			}
 
-			// Story 27.5: Unassigned filter
-			if (c.req.valid("query").unassignedOnly) {
-				baseWhere.assignedDriverId = null;
-			}
-
-			const where = withTenantFilter(baseWhere, organizationId);
-
-			const [quotes, total] = await Promise.all([
-				db.quote.findMany({
-					where,
+			// Story 29.7: Query Mission table with all relations
+			const [missions, total] = await Promise.all([
+				db.mission.findMany({
+					where: baseWhere,
 					skip,
 					take: limit,
-					orderBy: { pickupAt: "asc" },
+					orderBy: { startAt: "asc" },
 					include: {
-						contact: true,
-						vehicleCategory: true,
-						// Story 8.2: Include assignment relations
-						assignedVehicle: {
+						quote: {
+							include: {
+								contact: true,
+								vehicleCategory: true,
+								endCustomer: true,
+								subcontractor: true,
+							},
+						},
+						driver: true,
+						vehicle: {
 							include: {
 								operatingBase: true,
 							},
 						},
-						assignedDriver: true,
-						// Story 20.8: Include second driver for RSE double crew
-						secondDriver: true as any, // Temporary fix for type issue
-						// Story 22.12: Include subcontractor for subcontracted missions
-						subcontractor: true,
-						// Story 24.5: Include endCustomer for dispatch display
-						endCustomer: true,
+						order: true,
 					},
 				}),
-				db.quote.count({ where }),
+				db.mission.count({ where: baseWhere }),
 			]);
 
-			// Transform quotes to missions
-			const missions: MissionListItem[] = quotes.map((quote) => ({
-				id: quote.id,
-				quoteId: quote.id,
-				pickupAt: quote.pickupAt.toISOString(),
-				pickupAddress: quote.pickupAddress,
-				dropoffAddress: quote.dropoffAddress,
-				pickupLatitude: quote.pickupLatitude
-					? Number(quote.pickupLatitude)
-					: null,
-				pickupLongitude: quote.pickupLongitude
-					? Number(quote.pickupLongitude)
-					: null,
-				dropoffLatitude: quote.dropoffLatitude
-					? Number(quote.dropoffLatitude)
-					: null,
-				dropoffLongitude: quote.dropoffLongitude
-					? Number(quote.dropoffLongitude)
-					: null,
-				passengerCount: quote.passengerCount,
-				luggageCount: quote.luggageCount,
-				finalPrice: Number(quote.finalPrice),
-				contact: {
-					id: (quote as any).contact.id,
-					displayName: (quote as any).contact.displayName,
-					isPartner: (quote as any).contact.isPartner,
-					email: (quote as any).contact.email,
-					phone: (quote as any).contact.phone,
-				},
-				vehicleCategory: {
-					id: (quote as any).vehicleCategory.id,
-					name: (quote as any).vehicleCategory.name,
-					code: (quote as any).vehicleCategory.code,
-				},
-				// Story 24.5: Map endCustomer
-				endCustomer: (quote as any).endCustomer
+			// Story 29.7: Transform Mission entities to MissionListItem
+			const missionItems: MissionListItem[] = missions.map((mission) => {
+				const quote = mission.quote;
+				const sourceData = (mission.sourceData as Record<string, unknown>) || {};
+
+				// Extract pickup/dropoff from sourceData or quote
+				const pickupAddress = (sourceData.pickupAddress as string) || quote.pickupAddress;
+				const dropoffAddress = (sourceData.dropoffAddress as string) || quote.dropoffAddress;
+				const pickupLatitude = sourceData.pickupLatitude != null
+					? Number(sourceData.pickupLatitude)
+					: quote.pickupLatitude
+						? Number(quote.pickupLatitude)
+						: null;
+				const pickupLongitude = sourceData.pickupLongitude != null
+					? Number(sourceData.pickupLongitude)
+					: quote.pickupLongitude
+						? Number(quote.pickupLongitude)
+						: null;
+				const dropoffLatitude = sourceData.dropoffLatitude != null
+					? Number(sourceData.dropoffLatitude)
+					: quote.dropoffLatitude
+						? Number(quote.dropoffLatitude)
+						: null;
+				const dropoffLongitude = sourceData.dropoffLongitude != null
+					? Number(sourceData.dropoffLongitude)
+					: quote.dropoffLongitude
+						? Number(quote.dropoffLongitude)
+						: null;
+
+				// Build assignment from Mission's direct relations
+				const assignment: MissionAssignment | null = mission.vehicleId
 					? {
-							id: (quote as any).endCustomer.id,
-							firstName: (quote as any).endCustomer.firstName,
-							lastName: (quote as any).endCustomer.lastName,
-							email: (quote as any).endCustomer.email,
-							phone: (quote as any).endCustomer.phone,
+							vehicleId: mission.vehicleId,
+							vehicleName:
+								mission.vehicle?.internalName ??
+								mission.vehicle?.registrationNumber ??
+								null,
+							baseName: mission.vehicle?.operatingBase?.name ?? null,
+							driverId: mission.driverId,
+							driverName: mission.driver
+								? `${mission.driver.firstName} ${mission.driver.lastName}`
+								: null,
+							secondDriverId: null, // TODO: Add second driver to Mission model if needed
+							secondDriverName: null,
 						}
-					: null,
-				assignment: getAssignmentFromQuote(quote),
-				profitability: {
-					marginPercent: quote.marginPercent
-						? Number(quote.marginPercent)
-						: null,
-					level: getProfitabilityLevel(
-						quote.marginPercent ? Number(quote.marginPercent) : null,
-					),
-				},
-				compliance: getComplianceStatus(quote.tripAnalysis),
-				// Story 22.9: Staffing information display
-				staffingSummary: getStaffingSummary(quote.tripAnalysis),
-				tripType: quote.tripType,
-				// Story 22.11: Notes for dispatch display
-				notes: quote.notes,
-				// Story 22.12: Subcontracting info
-				isSubcontracted: quote.isSubcontracted,
-				subcontractor:
-					quote.isSubcontracted && (quote as any).subcontractor
+					: null;
+
+				return {
+					id: mission.id,
+					quoteId: mission.quoteId,
+					ref: mission.ref,
+					orderId: mission.orderId,
+					pickupAt: mission.startAt.toISOString(),
+					pickupAddress,
+					dropoffAddress,
+					pickupLatitude,
+					pickupLongitude,
+					dropoffLatitude,
+					dropoffLongitude,
+					passengerCount: quote.passengerCount,
+					luggageCount: quote.luggageCount,
+					finalPrice: Number(quote.finalPrice),
+					contact: {
+						id: quote.contact.id,
+						displayName: quote.contact.displayName,
+						isPartner: quote.contact.isPartner,
+					},
+					vehicleCategory: {
+						id: quote.vehicleCategory.id,
+						name: quote.vehicleCategory.name,
+						code: quote.vehicleCategory.code,
+					},
+					endCustomer: quote.endCustomer
 						? {
-								id: (quote as any).subcontractor.id,
-								companyName: (quote as any).subcontractor.companyName,
-								contactName: (quote as any).subcontractor.contactName,
-								phone: (quote as any).subcontractor.phone,
-								agreedPrice: Number(quote.subcontractedPrice) || 0,
-								subcontractedAt:
-									quote.subcontractedAt?.toISOString() ||
-									new Date().toISOString(),
+								id: quote.endCustomer.id,
+								firstName: quote.endCustomer.firstName,
+								lastName: quote.endCustomer.lastName,
+								email: quote.endCustomer.email,
+								phone: quote.endCustomer.phone,
 							}
 						: null,
-			}));
+					assignment,
+					profitability: {
+						marginPercent: quote.marginPercent
+							? Number(quote.marginPercent)
+							: null,
+						level: getProfitabilityLevel(
+							quote.marginPercent ? Number(quote.marginPercent) : null,
+						),
+					},
+					compliance: getComplianceStatus(quote.tripAnalysis),
+					staffingSummary: getStaffingSummary(quote.tripAnalysis),
+					tripType: quote.tripType,
+					notes: mission.notes || quote.notes,
+					missionStatus: mission.status,
+				};
+			});
 
 			return c.json({
-				data: missions,
+				data: missionItems,
 				meta: {
 					page,
 					limit,
@@ -597,67 +658,109 @@ export const missionsRouter = new Hono()
 		},
 	)
 
-	// Get single mission detail
+	// Story 29.7: Get single mission detail from Mission table
 	.get(
 		"/:id",
 		describeRoute({
 			summary: "Get mission detail",
 			description:
-				"Get detailed mission information including tripAnalysis for dispatch",
+				"Story 29.7: Get detailed mission information from Mission table including tripAnalysis for dispatch",
 			tags: ["VTC - Dispatch"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
 			const id = c.req.param("id");
 
-			const quote = await db.quote.findFirst({
+			// Story 29.7: Query Mission table directly
+			const mission = await db.mission.findFirst({
 				where: {
-					...withTenantId(id, organizationId),
-					status: "ACCEPTED",
+					id,
+					organizationId,
 				},
 				include: {
-					contact: true,
-					vehicleCategory: true,
-					// Story 8.2: Include assignment relations
-					assignedVehicle: {
+					quote: {
+						include: {
+							contact: true,
+							vehicleCategory: true,
+							endCustomer: true,
+							subcontractor: true,
+						},
+					},
+					driver: true,
+					vehicle: {
 						include: {
 							operatingBase: true,
 						},
 					},
-					assignedDriver: true,
-					// Story 20.8: Include second driver for RSE double crew
-					secondDriver: true as any, // Temporary fix for type issue
-					// Story 22.12: Include subcontractor for subcontracted missions
-					subcontractor: true,
-					// Story 24.5: Include endCustomer
-					endCustomer: true,
+					order: true,
 				},
 			});
 
-			if (!quote) {
+			if (!mission) {
 				throw new HTTPException(404, {
 					message: "Mission not found",
 				});
 			}
 
-			const mission = {
-				id: quote.id,
-				quoteId: quote.id,
-				pickupAt: quote.pickupAt.toISOString(),
-				pickupAddress: quote.pickupAddress,
-				dropoffAddress: quote.dropoffAddress,
-				pickupLatitude: quote.pickupLatitude
+			const quote = mission.quote;
+			const sourceData = (mission.sourceData as Record<string, unknown>) || {};
+
+			// Extract pickup/dropoff from sourceData or quote
+			const pickupAddress = (sourceData.pickupAddress as string) || quote.pickupAddress;
+			const dropoffAddress = (sourceData.dropoffAddress as string) || quote.dropoffAddress;
+			const pickupLatitude = sourceData.pickupLatitude != null
+				? Number(sourceData.pickupLatitude)
+				: quote.pickupLatitude
 					? Number(quote.pickupLatitude)
-					: null,
-				pickupLongitude: quote.pickupLongitude
+					: null;
+			const pickupLongitude = sourceData.pickupLongitude != null
+				? Number(sourceData.pickupLongitude)
+				: quote.pickupLongitude
 					? Number(quote.pickupLongitude)
-					: null,
-				dropoffLatitude: quote.dropoffLatitude
+					: null;
+			const dropoffLatitude = sourceData.dropoffLatitude != null
+				? Number(sourceData.dropoffLatitude)
+				: quote.dropoffLatitude
 					? Number(quote.dropoffLatitude)
-					: null,
-				dropoffLongitude: quote.dropoffLongitude
+					: null;
+			const dropoffLongitude = sourceData.dropoffLongitude != null
+				? Number(sourceData.dropoffLongitude)
+				: quote.dropoffLongitude
 					? Number(quote.dropoffLongitude)
-					: null,
+					: null;
+
+			// Build assignment from Mission's direct relations
+			const assignment: MissionAssignment | null = mission.vehicleId
+				? {
+						vehicleId: mission.vehicleId,
+						vehicleName:
+							mission.vehicle?.internalName ??
+							mission.vehicle?.registrationNumber ??
+							null,
+						baseName: mission.vehicle?.operatingBase?.name ?? null,
+						driverId: mission.driverId,
+						driverName: mission.driver
+							? `${mission.driver.firstName} ${mission.driver.lastName}`
+							: null,
+						secondDriverId: null,
+						secondDriverName: null,
+					}
+				: null;
+
+			const missionDetail = {
+				id: mission.id,
+				quoteId: mission.quoteId,
+				ref: mission.ref,
+				orderId: mission.orderId,
+				missionStatus: mission.status,
+				pickupAt: mission.startAt.toISOString(),
+				endAt: mission.endAt?.toISOString() || null,
+				pickupAddress,
+				dropoffAddress,
+				pickupLatitude,
+				pickupLongitude,
+				dropoffLatitude,
+				dropoffLongitude,
 				passengerCount: quote.passengerCount,
 				luggageCount: quote.luggageCount,
 				finalPrice: Number(quote.finalPrice),
@@ -666,32 +769,31 @@ export const missionsRouter = new Hono()
 				suggestedPrice: Number(quote.suggestedPrice),
 				pricingMode: quote.pricingMode,
 				tripType: quote.tripType,
-				notes: quote.notes,
+				notes: mission.notes || quote.notes,
 				contact: {
-					id: (quote as any).contact.id,
-					displayName: (quote as any).contact.displayName,
-					isPartner: (quote as any).contact.isPartner,
-					email: (quote as any).contact.email,
-					phone: (quote as any).contact.phone,
+					id: quote.contact.id,
+					displayName: quote.contact.displayName,
+					isPartner: quote.contact.isPartner,
+					email: quote.contact.email,
+					phone: quote.contact.phone,
 				},
 				vehicleCategory: {
-					id: (quote as any).vehicleCategory.id,
-					name: (quote as any).vehicleCategory.name,
-					code: (quote as any).vehicleCategory.code,
+					id: quote.vehicleCategory.id,
+					name: quote.vehicleCategory.name,
+					code: quote.vehicleCategory.code,
 				},
-				// Story 24.5: Map endCustomer
-				endCustomer: (quote as any).endCustomer
+				endCustomer: quote.endCustomer
 					? {
-							id: (quote as any).endCustomer.id,
-							firstName: (quote as any).endCustomer.firstName,
-							lastName: (quote as any).endCustomer.lastName,
-							email: (quote as any).endCustomer.email,
-							phone: (quote as any).endCustomer.phone,
+							id: quote.endCustomer.id,
+							firstName: quote.endCustomer.firstName,
+							lastName: quote.endCustomer.lastName,
+							email: quote.endCustomer.email,
+							phone: quote.endCustomer.phone,
 						}
 					: null,
 				tripAnalysis: quote.tripAnalysis,
 				appliedRules: quote.appliedRules,
-				assignment: getAssignmentFromQuote(quote),
+				assignment,
 				profitability: {
 					marginPercent: quote.marginPercent
 						? Number(quote.marginPercent)
@@ -701,15 +803,15 @@ export const missionsRouter = new Hono()
 					),
 				},
 				compliance: getComplianceStatus(quote.tripAnalysis),
-				// Story 22.12: Subcontracting info
+				// Subcontracting info from quote
 				isSubcontracted: quote.isSubcontracted,
 				subcontractor:
-					quote.isSubcontracted && (quote as any).subcontractor
+					quote.isSubcontracted && quote.subcontractor
 						? {
-								id: (quote as any).subcontractor.id,
-								companyName: (quote as any).subcontractor.companyName,
-								contactName: (quote as any).subcontractor.contactName,
-								phone: (quote as any).subcontractor.phone,
+								id: quote.subcontractor.id,
+								companyName: quote.subcontractor.companyName,
+								contactName: quote.subcontractor.contactName,
+								phone: quote.subcontractor.phone,
 								agreedPrice: Number(quote.subcontractedPrice) || 0,
 								subcontractedAt:
 									quote.subcontractedAt?.toISOString() ||
@@ -718,7 +820,7 @@ export const missionsRouter = new Hono()
 						: null,
 			};
 
-			return c.json(mission);
+			return c.json(missionDetail);
 		},
 	)
 

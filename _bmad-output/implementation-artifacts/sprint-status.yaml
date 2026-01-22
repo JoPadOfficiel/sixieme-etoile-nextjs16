@@ -352,6 +352,6 @@ development_status:
   29-4-implement-intelligent-multi-mission-spawning-the-launch: done
   29-5-implement-multi-mission-invoicing-sync: done
   29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: done
-  29-7-dispatch-list-integrity-backlog-separation: backlog
+  29-7-dispatch-list-integrity-backlog-separation: review
   29-8-revamp-mission-sheet-pdf-generation: backlog
   epic-29-retrospective: optional
