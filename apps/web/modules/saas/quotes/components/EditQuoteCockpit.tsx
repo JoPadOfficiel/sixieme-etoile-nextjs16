@@ -21,6 +21,7 @@ import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
 import { hydrateFromQuote, type DatabaseQuoteLine } from "../utils/hydrateFromQuote";
 import { lineToFormData } from "../utils/lineToFormData";
+import { safeMergeFormData } from "../utils/validateFormData";
 import type { AddedFee } from "./AddQuoteFeeDialog";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
@@ -232,12 +233,18 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 
 	// Handler: Edit line - populate form with line data
 	const handleEditLine = useCallback((line: QuoteLine) => {
-		const lineFormData = lineToFormData(line);
-		setFormData((prev) => ({
-			...prev,
-			...lineFormData,
-		}));
-	}, []);
+		try {
+			const lineFormData = lineToFormData(line);
+			setFormData((prev) => safeMergeFormData(prev, lineFormData));
+		} catch (error) {
+			console.error('Failed to edit line:', error);
+			toast({
+				title: t("common.error"),
+				description: t("quotes.errors.editFailed"),
+				variant: "error",
+			});
+		}
+	}, [toast, t]);
 
 	// Determine if blocking violations exist
 	const violations = hasBlockingViolations(

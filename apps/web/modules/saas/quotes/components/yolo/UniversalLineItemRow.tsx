@@ -33,6 +33,7 @@ import { useBlockTemplateActions } from "../../hooks/useBlockTemplateActions";
 import { SlashMenu, type SlashMenuBlockType } from "../SlashMenu";
 import type { QuoteLine } from "./dnd-utils";
 import { DetachWarningModal } from "./DetachWarningModal";
+import { isValidQuoteLine, sanitizeString } from "../../utils/typeGuards";
 import {
 	getOriginalLabelFromSource,
 	isSensitiveField,
@@ -746,18 +747,26 @@ export function UniversalLineItemRow({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{onEditLine && (
-								<DropdownMenuItem onClick={() => onEditLine({
-									id,
-									type,
-									label: displayData.label,
-									description: displayData.description,
-									quantity: displayData.quantity,
-									unitPrice: displayData.unitPrice,
-									totalPrice: displayData.total,
-									vatRate: displayData.vatRate,
-									sourceData,
-									displayData: displayData as unknown as Record<string, unknown>,
-								} as unknown as QuoteLine)}>
+								<DropdownMenuItem onClick={() => {
+									// Create a safe QuoteLine object with proper type checking
+									const lineData = {
+										id: sanitizeString(id),
+										type: type as "CALCULATED" | "MANUAL" | "GROUP",
+										label: sanitizeString(displayData.label),
+										description: sanitizeString(displayData.description || ""),
+										quantity: displayData.quantity,
+										unitPrice: displayData.unitPrice,
+										totalPrice: displayData.total,
+										vatRate: displayData.vatRate,
+										sourceData,
+										displayData: displayData as unknown as Record<string, unknown>,
+									};
+									
+									// Validate before passing to callback
+									if (isValidQuoteLine(lineData)) {
+										onEditLine(lineData);
+									}
+								}}>
 									<EditIcon className="mr-2 size-4" />
 									{t("quotes.actions.edit") || "Edit"}
 								</DropdownMenuItem>

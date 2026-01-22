@@ -79,13 +79,14 @@ export function SelectionToolbar({
 
 				{/* Actions */}
 				<div className="flex items-center gap-1">
-					{/* Edit button - only show when exactly one line is selected */}
+					{/* Edit button - only show when exactly one line is selected and edit handler is provided */}
 					{selectedCount === 1 && onEdit && (
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={onEdit}
 							className="gap-2"
+							aria-label={t("actions.edit") || "Éditer"}
 						>
 							<EditIcon className="h-4 w-4" />
 							<span className="hidden sm:inline">

@@ -18,6 +18,7 @@ import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
 import { lineToFormData } from "../utils/lineToFormData";
+import { safeMergeFormData } from "../utils/validateFormData";
 import type { AddedFee } from "./AddQuoteFeeDialog";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
@@ -140,12 +141,18 @@ export function CreateQuoteCockpit() {
 
 	// Handler: Edit line - populate form with line data
 	const handleEditLine = useCallback((line: QuoteLine) => {
-		const lineFormData = lineToFormData(line);
-		setFormData((prev) => ({
-			...prev,
-			...lineFormData,
-		}));
-	}, []);
+		try {
+			const lineFormData = lineToFormData(line);
+			setFormData((prev) => safeMergeFormData(prev, lineFormData));
+		} catch (error) {
+			console.error('Failed to edit line:', error);
+			toast({
+				title: t("common.error"),
+				description: t("quotes.errors.editFailed"),
+				variant: "error",
+			});
+		}
+	}, [toast, t]);
 
 	// Preview line: Shows current trip in Shopping Cart in real-time
 	// This line is NOT part of quoteLines - it's a visual preview only
