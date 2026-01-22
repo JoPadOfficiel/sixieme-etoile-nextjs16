@@ -1814,7 +1814,8 @@ model QuoteLine {
   updatedAt DateTime @updatedAt
 
   // Relations
-  missions Mission[] // Operational missions linked to this line
+  missions     Mission[] // Operational missions linked to this line
+  invoiceLines InvoiceLine[]
 
   @@index([quoteId])
   @@index([parentId])
@@ -2100,10 +2101,15 @@ model Invoice {
 
 /// InvoiceLine - Line items for services, optional fees, discounts
 /// Story 26.1: Enhanced with Hybrid Blocks architecture support
+/// Story 29.5: Added quoteLineId for multi-mission invoice traceability
 model InvoiceLine {
   id        String  @id @default(cuid())
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Story 29.5: Traceability link to source QuoteLine (deep copy - data is independent)
+  quoteLineId String?
+  quoteLine   QuoteLine? @relation(fields: [quoteLineId], references: [id])
 
   // Line type (existing - for backward compatibility)
   lineType InvoiceLineType
@@ -2141,6 +2147,7 @@ model InvoiceLine {
 
   @@index([invoiceId])
   @@index([parentId])
+  @@index([quoteLineId]) // Story 29.5: Index for traceability queries
   @@map("invoice_line")
 }
 

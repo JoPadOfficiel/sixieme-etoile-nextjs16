@@ -172,7 +172,7 @@ export const QuoteScalarFieldEnumSchema = z.enum(['id','organizationId','contact
 
 export const InvoiceScalarFieldEnumSchema = z.enum(['id','organizationId','quoteId','contactId','number','status','issueDate','dueDate','totalExclVat','totalVat','totalInclVat','currency','commissionAmount','paidAmount','costBreakdown','notes','createdAt','updatedAt','endCustomerId','orderId']);
 
-export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
+export const InvoiceLineScalarFieldEnumSchema = z.enum(['id','invoiceId','quoteLineId','lineType','blockType','description','quantity','unitPriceExclVat','vatRate','totalExclVat','totalVat','sourceData','displayData','parentId','sortOrder','createdAt','updatedAt']);
 
 export const BlockTemplateScalarFieldEnumSchema = z.enum(['id','organizationId','label','isFullQuote','data','createdAt','updatedAt']);
 
@@ -1538,12 +1538,14 @@ export type Invoice = z.infer<typeof InvoiceSchema>
 /**
  * InvoiceLine - Line items for services, optional fees, discounts
  * Story 26.1: Enhanced with Hybrid Blocks architecture support
+ * Story 29.5: Added quoteLineId for multi-mission invoice traceability
  */
 export const InvoiceLineSchema = z.object({
   lineType: InvoiceLineTypeSchema,
   blockType: QuoteLineTypeSchema,
   id: z.string().cuid(),
   invoiceId: z.string(),
+  quoteLineId: z.string().nullable(),
   description: z.string(),
   quantity: z.instanceof(Prisma.Decimal, { message: "Field 'quantity' must be a Decimal. Location: ['Models', 'InvoiceLine']"}),
   unitPriceExclVat: z.instanceof(Prisma.Decimal, { message: "Field 'unitPriceExclVat' must be a Decimal. Location: ['Models', 'InvoiceLine']"}),

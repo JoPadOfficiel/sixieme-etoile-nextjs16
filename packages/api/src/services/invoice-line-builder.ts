@@ -43,6 +43,7 @@ export interface InvoiceLineInput {
 	totalExclVat: number;
 	totalVat: number;
 	sortOrder: number;
+	quoteLineId?: string; // Story 29.5: Traceability link to source QuoteLine
 }
 
 export interface InvoiceTotals {

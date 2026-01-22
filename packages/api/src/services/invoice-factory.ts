@@ -286,7 +286,8 @@ export class InvoiceFactory {
 				},
 			});
 
-			// Deep copy: Create InvoiceLines with copied data (no FK to QuoteLine)
+			// Deep copy: Create InvoiceLines with copied data
+			// Story 29.5: Include quoteLineId for traceability (data is still independent)
 			if (invoiceLines.length > 0) {
 				await tx.invoiceLine.createMany({
 					data: invoiceLines.map((line) => ({
@@ -299,6 +300,7 @@ export class InvoiceFactory {
 						totalVat: line.totalVat,
 						lineType: line.lineType,
 						sortOrder: line.sortOrder,
+						quoteLineId: line.quoteLineId, // Story 29.5: Traceability link
 					})),
 				});
 			}
@@ -330,6 +332,7 @@ export class InvoiceFactory {
 	/**
 	 * HIGH-1 FIX: Deep copy QuoteLines directly to InvoiceLines
 	 * This ensures AC2/AC3/AC4 compliance - complete isolation between Quote and Invoice
+	 * Story 29.5: Enhanced with quoteLineId traceability and enriched descriptions
 	 */
 	private static deepCopyQuoteLinesToInvoiceLines(
 		quoteLines: Array<{
@@ -342,13 +345,11 @@ export class InvoiceFactory {
 			vatRate: { toString(): string } | number;
 			type: string;
 			sortOrder: number;
+			sourceData?: unknown;
 			displayData?: unknown;
 		}>,
 		endCustomerName: string | null,
 	): InvoiceLineInput[] {
-		const TRANSPORT_VAT_RATE = 10;
-		const DEFAULT_ANCILLARY_VAT_RATE = 20;
-
 		return quoteLines.map((line, index) => {
 			const quantity =
 				typeof line.quantity === "number"
@@ -371,14 +372,12 @@ export class InvoiceFactory {
 			const totalExclVat = Math.round(totalPrice * 100) / 100;
 			const totalVat = Math.round(((totalExclVat * vatRate) / 100) * 100) / 100;
 
-			// Build description with end customer if applicable
-			let description = line.label;
-			if (line.description) {
-				description += ` - ${line.description}`;
-			}
-			if (endCustomerName && index === 0) {
-				description += ` (Client: ${endCustomerName})`;
-			}
+			// Story 29.5: Build enriched description with date and route
+			const description = InvoiceFactory.buildEnrichedDescription(
+				line,
+				endCustomerName,
+				index === 0,
+			);
 
 			// Map QuoteLine type to InvoiceLine type
 			let lineType:
@@ -403,8 +402,110 @@ export class InvoiceFactory {
 				totalExclVat,
 				totalVat,
 				sortOrder: line.sortOrder ?? index,
+				// Story 29.5: Traceability link to source QuoteLine
+				quoteLineId: line.id,
 			};
 		});
+	}
+
+	/**
+	 * Story 29.5: Build enriched description with date and route from sourceData
+	 * Format: "[Type] - [Date] - [Pickup] → [Dropoff]" or fallback to label
+	 */
+	private static buildEnrichedDescription(
+		line: {
+			label: string;
+			description: string | null;
+			type: string;
+			sourceData?: unknown;
+			displayData?: unknown;
+		},
+		endCustomerName: string | null,
+		isFirstLine: boolean,
+	): string {
+		// Try to extract date and route from sourceData
+		const sourceData = line.sourceData as Record<string, unknown> | null;
+		const displayData = line.displayData as Record<string, unknown> | null;
+
+		let description = line.label;
+
+		// Extract pickup date/time
+		let pickupAt: Date | null = null;
+		if (sourceData?.pickupAt) {
+			pickupAt = new Date(sourceData.pickupAt as string);
+		} else if (displayData?.pickupAt) {
+			pickupAt = new Date(displayData.pickupAt as string);
+		}
+
+		// Extract addresses
+		const pickupAddress =
+			(sourceData?.pickupAddress as string) ||
+			(displayData?.pickupAddress as string) ||
+			null;
+		const dropoffAddress =
+			(sourceData?.dropoffAddress as string) ||
+			(displayData?.dropoffAddress as string) ||
+			null;
+
+		// Build enriched description if we have date/route info
+		if (pickupAt && !Number.isNaN(pickupAt.getTime())) {
+			const formattedDate = pickupAt.toLocaleDateString("fr-FR", {
+				day: "2-digit",
+				month: "2-digit",
+				year: "numeric",
+			});
+			const formattedTime = pickupAt.toLocaleTimeString("fr-FR", {
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+
+			// Map type to display label
+			const typeLabels: Record<string, string> = {
+				CALCULATED: "Transfer",
+				TRANSFER: "Transfer",
+				DISPO: "Mise à disposition",
+				EXCURSION: "Excursion",
+				MANUAL: "Service",
+				OPTIONAL_FEE: "Option",
+				PROMOTION: "Promotion",
+			};
+			const typeLabel = typeLabels[line.type] || line.type;
+
+			// Build description parts
+			const parts: string[] = [typeLabel, `${formattedDate} ${formattedTime}`];
+
+			if (pickupAddress && dropoffAddress) {
+				// Truncate addresses if too long
+				const maxLen = 40;
+				const pickup =
+					pickupAddress.length > maxLen
+						? `${pickupAddress.substring(0, maxLen)}...`
+						: pickupAddress;
+				const dropoff =
+					dropoffAddress.length > maxLen
+						? `${dropoffAddress.substring(0, maxLen)}...`
+						: dropoffAddress;
+				parts.push(`${pickup} → ${dropoff}`);
+			} else if (pickupAddress) {
+				const pickup =
+					pickupAddress.length > 50
+						? `${pickupAddress.substring(0, 50)}...`
+						: pickupAddress;
+				parts.push(pickup);
+			}
+
+			description = parts.join(" - ");
+		} else if (line.description) {
+			// Fallback: use label + description
+			description = `${line.label} - ${line.description}`;
+		}
+
+		// Add end customer name on first line
+		if (endCustomerName && isFirstLine) {
+			description += ` (Client: ${endCustomerName})`;
+		}
+
+		return description;
 	}
 
 	/**
@@ -783,6 +884,7 @@ export class InvoiceFactory {
 				},
 			});
 
+			// Story 29.5: Include quoteLineId for traceability
 			if (invoiceLines.length > 0) {
 				await tx.invoiceLine.createMany({
 					data: invoiceLines.map((line) => ({
@@ -795,6 +897,7 @@ export class InvoiceFactory {
 						totalVat: line.totalVat,
 						lineType: line.lineType,
 						sortOrder: line.sortOrder,
+						quoteLineId: line.quoteLineId, // Story 29.5: Traceability link
 					})),
 				});
 			}
