@@ -6,7 +6,7 @@ import { Car } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@ui/lib";
 import { CandidateRow } from "./CandidateRow";
-import type { AssignmentCandidate } from "../types/assignment";
+import type { AssignmentCandidate, ConstraintDiagnostics } from "../types/assignment";
 import { getBestCandidate, getCostDifference, isBestCandidate } from "../hooks/useRouteVisualization";
 
 /**
@@ -33,6 +33,8 @@ interface CandidatesListProps {
 	onHoverEnd?: () => void;
 	/** Story 27.9: Explicit empty state for a specific driver */
 	preSelectedDriverName?: string | null;
+	/** Story 30.2: Diagnostics explaining why candidates were excluded */
+	diagnostics?: ConstraintDiagnostics;
 }
 
 export function CandidatesList({
@@ -44,6 +46,7 @@ export function CandidatesList({
 	onHoverStart,
 	onHoverEnd,
 	preSelectedDriverName,
+	diagnostics,
 }: CandidatesListProps) {
 	// Story 8.3: Find best candidate for cost comparison
 	const bestCandidate = useMemo(() => getBestCandidate(candidates), [candidates]);
@@ -57,6 +60,7 @@ export function CandidatesList({
 			<CandidatesListEmpty
 				className={className}
 				preSelectedDriverName={preSelectedDriverName}
+				diagnostics={diagnostics}
 			/>
 		);
 	}
@@ -117,12 +121,34 @@ function CandidatesListSkeleton({ className }: { className?: string }) {
 
 function CandidatesListEmpty({ 
 	className,
-	preSelectedDriverName 
+	preSelectedDriverName,
+	diagnostics,
 }: { 
 	className?: string;
 	preSelectedDriverName?: string | null;
+	diagnostics?: ConstraintDiagnostics;
 }) {
 	const t = useTranslations("dispatch.assignment.empty");
+
+	// Story 30.2: Build diagnostic message if available
+	const hasDiagnostics = diagnostics && (
+		diagnostics.excludedByLicense > 0 ||
+		diagnostics.excludedBySchedule > 0 ||
+		diagnostics.excludedByCalendar > 0
+	);
+
+	const diagnosticLines: string[] = [];
+	if (diagnostics) {
+		if (diagnostics.excludedByLicense > 0) {
+			diagnosticLines.push(`${diagnostics.excludedByLicense} exclu(s) pour permis incompatible`);
+		}
+		if (diagnostics.excludedBySchedule > 0) {
+			diagnosticLines.push(`${diagnostics.excludedBySchedule} exclu(s) pour chevauchement horaire`);
+		}
+		if (diagnostics.excludedByCalendar > 0) {
+			diagnosticLines.push(`${diagnostics.excludedByCalendar} exclu(s) pour indisponibilité`);
+		}
+	}
 
 	return (
 		<div
@@ -143,6 +169,22 @@ function CandidatesListEmpty({
 					? "Ce conducteur n'est pas éligible ou n'a pas de véhicule compatible pour cette mission."
 					: t("description")}
 			</p>
+			{/* Story 30.2: Show diagnostic details */}
+			{hasDiagnostics && (
+				<div className="mt-4 p-3 bg-muted/50 rounded-lg text-left w-full max-w-[300px]">
+					<p className="text-xs font-medium text-muted-foreground mb-2">
+						Raisons d&apos;exclusion :
+					</p>
+					<ul className="text-xs text-muted-foreground space-y-1">
+						{diagnosticLines.map((line, i) => (
+							<li key={i} className="flex items-center gap-2">
+								<span className="size-1.5 rounded-full bg-orange-400" />
+								{line}
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
 		</div>
 	);
 }

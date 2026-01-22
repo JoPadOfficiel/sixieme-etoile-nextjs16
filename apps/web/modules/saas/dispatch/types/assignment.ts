@@ -121,6 +121,30 @@ export interface CandidateBase {
 	segments: CandidateSegments;
 }
 
+/**
+ * Story 30.2: Constraint diagnostics for empty candidate list explanation
+ */
+export interface ConstraintDiagnostics {
+	excludedByLicense: number;
+	excludedBySchedule: number;
+	excludedByCalendar: number;
+	excludedByRSE: number;
+}
+
+/**
+ * Story 30.2: Warning details for candidates with RSE or other warnings
+ */
+export interface CandidateWarning {
+	type: "RSE_DRIVING_TIME" | "RSE_REST_TIME" | "SCHEDULE_OVERLAP";
+	message: string;
+	details?: {
+		overlapMinutes?: number;
+		conflictingMissionId?: string;
+		totalDrivingMinutes?: number;
+		restMinutes?: number;
+	};
+}
+
 export interface AssignmentCandidatesResponse {
 	candidates: AssignmentCandidate[];
 	mission: {
@@ -134,6 +158,8 @@ export interface AssignmentCandidatesResponse {
 		// Story 20.8: Include tripAnalysis for double crew detection
 		tripAnalysis?: any;
 	};
+	// Story 30.2: Diagnostics for explaining why candidates were excluded
+	diagnostics?: ConstraintDiagnostics;
 }
 
 export interface AssignMissionRequest {
