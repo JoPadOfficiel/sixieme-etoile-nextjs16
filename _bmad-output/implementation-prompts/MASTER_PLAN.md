@@ -141,4 +141,21 @@ graph TD
 | **28.10** | **Feedback Loop** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2810-execution-feedback-loop-placeholders) |
 | **28.11** | **Partial Bill** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2811-partial-invoicing) |
 | **28.12** | **Pending Upsell** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2812-post-mission-pending-charges) |
+| **28.13** | **Free Missions** | [👉 GO TO PROMPT](EPIC-28-PROMPTS.md#story-2813-ad-hoc-free-missions) |
+
+---
+
+### 🌟 PHASE 4: EPIC 29 - COMPLETE MULTI-MISSION LIFECYCLE (PRIORITY)
+*Critical upgrades for Shopping Cart, Spawning, Dispatch, and Invoicing.*
+
+| Story | Feature | Link to Prompt |
+| :--- | :--- | :--- |
+| **29.1** | **Cart Persistence** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-291-fix-shopping-cart-persistence--pricing-aggregation) |
+| **29.2** | **Detail View** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-292-implement-multi-mission-quote-detail-view) |
+| **29.3** | **Hydration** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-293-ensure-lossless-quote-editing-hydration) |
+| **29.4** | **Spawn Engine (Launch)** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-294-implement-intelligent-multi-mission-spawning-the-launch) |
+| **29.5** | **Multi-Inv Sync** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-295-implement-multi-mission-invoicing--sync) |
+| **29.6** | **Gantt Zoom** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-296-upgrade-unified-dispatch-visualization-gantt-zoom--axis) |
+| **29.7** | **List Integrity** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-297-dispatch-list-integrity--backlog-separation) |
+| **29.8** | **Mission PDF** | [👉 GO TO PROMPT](EPIC-29-PROMPTS.md#story-298-revamp-mission-sheet-pdf-generation-per-mission) |
 
