@@ -4,9 +4,10 @@
  * GanttZoomControls Component
  *
  * Story 27.12: Gantt Time & Zoom Controls
+ * Story 29.6: Enhanced with preset buttons and date range picker
  *
  * Toolbar component for controlling the Gantt timeline zoom level
- * and navigating to specific dates.
+ * and navigating to specific dates with multi-day range support.
  */
 
 import { Button } from "@ui/components/button";
@@ -24,10 +25,12 @@ import {
 import { cn } from "@ui/lib";
 import { type Locale, format } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
-import { Calendar, Clock, ZoomIn, ZoomOut } from "lucide-react";
+import { CalendarRange, Clock, ZoomIn, ZoomOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import { memo, useMemo } from "react";
+import type { DateRange, ZoomPreset } from "./types";
+import { ZOOM_PRESETS } from "./constants";
 
 interface GanttZoomControlsProps {
 	/** Current pixels per hour value */
@@ -42,7 +45,7 @@ interface GanttZoomControlsProps {
 	onZoomOut: () => void;
 	/** Function to jump to current time */
 	onJumpToNow: () => void;
-	/** Function to navigate to a specific date */
+	/** Function to navigate to a specific date (legacy) */
 	onNavigateToDate: (date: Date) => void;
 	/** Current selected date */
 	selectedDate: Date;
@@ -52,6 +55,14 @@ interface GanttZoomControlsProps {
 	zoomPercent?: number;
 	/** Additional CSS classes */
 	className?: string;
+	/** Story 29.6: Current date range */
+	dateRange?: DateRange;
+	/** Story 29.6: Callback when date range changes */
+	onDateRangeChange?: (range: DateRange) => void;
+	/** Story 29.6: Callback when preset is selected */
+	onPresetChange?: (preset: ZoomPreset) => void;
+	/** Story 29.6: Current active preset */
+	activePreset?: ZoomPreset | null;
 }
 
 /** Map of locale codes to date-fns locale objects */
@@ -67,11 +78,15 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 	onZoomIn,
 	onZoomOut,
 	onJumpToNow,
-	onNavigateToDate,
+	onNavigateToDate: _onNavigateToDate,
 	selectedDate,
 	zoomLabel,
 	zoomPercent,
 	className,
+	dateRange,
+	onDateRangeChange,
+	onPresetChange,
+	activePreset,
 }: GanttZoomControlsProps) {
 	const t = useTranslations("dispatch.gantt");
 	const localeCode = useLocale();
@@ -81,8 +96,55 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 		return localeMap[localeCode] || fr;
 	}, [localeCode]);
 
+	// Story 29.6: Format date range display
+	const dateRangeDisplay = useMemo(() => {
+		if (!dateRange) {
+			return format(selectedDate, "dd MMM", { locale: dateFnsLocale });
+		}
+		const startStr = format(dateRange.start, "dd MMM", { locale: dateFnsLocale });
+		const endStr = format(dateRange.end, "dd MMM", { locale: dateFnsLocale });
+		if (startStr === endStr) {
+			return startStr;
+		}
+		return `${startStr} - ${endStr}`;
+	}, [dateRange, selectedDate, dateFnsLocale]);
+
+	// Story 29.6: Handle preset button click
+	const handlePresetClick = (preset: ZoomPreset) => {
+		if (onPresetChange) {
+			onPresetChange(preset);
+		}
+	};
+
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
+			{/* Story 29.6: Zoom Preset Buttons */}
+			<div className="flex items-center gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
+				{(Object.keys(ZOOM_PRESETS) as ZoomPreset[]).map((preset) => (
+					<Tooltip key={preset}>
+						<TooltipTrigger asChild>
+							<Button
+								variant={activePreset === preset ? "default" : "ghost"}
+								size="sm"
+								onClick={() => handlePresetClick(preset)}
+								className={cn(
+									"h-7 px-2 text-xs",
+									activePreset === preset && "bg-blue-600 text-white hover:bg-blue-700"
+								)}
+							>
+								{t(`presets.${preset}`)}
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="bottom">
+							<p>{t(`presetsTooltip.${preset}`)}</p>
+						</TooltipContent>
+					</Tooltip>
+				))}
+			</div>
+
+			{/* Separator */}
+			<div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
 			{/* Zoom Controls Group */}
 			<div className="flex items-center gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
 				{/* Zoom Out Button */}
@@ -162,26 +224,34 @@ export const GanttZoomControls = memo(function GanttZoomControls({
 					</TooltipContent>
 				</Tooltip>
 
-				{/* Date Picker */}
+				{/* Story 29.6: Date Range Picker */}
 				<Popover>
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<PopoverTrigger asChild>
 								<Button variant="outline" size="sm" className="h-8">
-									<Calendar className="mr-1 h-4 w-4" />
-									{format(selectedDate, "dd MMM", { locale: dateFnsLocale })}
+									<CalendarRange className="mr-1 h-4 w-4" />
+									{dateRangeDisplay}
 								</Button>
 							</PopoverTrigger>
 						</TooltipTrigger>
 						<TooltipContent side="bottom">
-							<p>{t("selectDate")}</p>
+							<p>{t("selectDateRange")}</p>
 						</TooltipContent>
 					</Tooltip>
 					<PopoverContent className="w-auto p-0" align="start">
 						<CalendarComponent
-							mode="single"
-							selected={selectedDate}
-							onSelect={(date) => date && onNavigateToDate(date)}
+							mode="range"
+							selected={dateRange ? { from: dateRange.start, to: dateRange.end } : undefined}
+							onSelect={(range) => {
+								if (range?.from && range?.to && onDateRangeChange) {
+									onDateRangeChange({ start: range.from, end: range.to });
+								} else if (range?.from && onDateRangeChange) {
+									// Single date selected, use same day as start and end
+									onDateRangeChange({ start: range.from, end: range.from });
+								}
+							}}
+							numberOfMonths={2}
 							initialFocus
 							locale={dateFnsLocale}
 						/>

@@ -4368,10 +4368,21 @@
 			"zoomIn": "Zoom avant",
 			"zoomOut": "Zoom arrière",
 			"selectDate": "Sélectionner une date",
+			"selectDateRange": "Sélectionner une période",
 			"zoomLevel": {
 				"hour": "Heure",
 				"day": "Jour",
 				"week": "Semaine"
+			},
+			"presets": {
+				"day": "Jour",
+				"3days": "3 Jours",
+				"week": "Semaine"
+			},
+			"presetsTooltip": {
+				"day": "Vue sur 24 heures (détail élevé)",
+				"3days": "Vue sur 3 jours (détail moyen)",
+				"week": "Vue sur 7 jours (vue d'ensemble)"
 			},
 			"status": {
 				"available": "Disponible",

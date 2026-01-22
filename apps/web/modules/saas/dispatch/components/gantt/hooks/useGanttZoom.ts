@@ -4,6 +4,7 @@
  * useGanttZoom Hook
  *
  * Story 27.12: Gantt Time & Zoom Controls
+ * Story 29.6: Enhanced with preset buttons and date range sync
  *
  * Hook for managing zoom level (pixelsPerHour) state with bounds checking.
  * Provides functions to zoom in, zoom out, and set specific zoom levels.
@@ -14,19 +15,21 @@ import {
 	DEFAULT_PIXELS_PER_HOUR,
 	MAX_PIXELS_PER_HOUR,
 	MIN_PIXELS_PER_HOUR,
+	ZOOM_PRESETS,
 } from "../constants";
+import type { ZoomPreset } from "../types";
 
 /** Zoom step increment/decrement in pixels per hour */
 export const ZOOM_STEP = 25;
 
-/** Predefined zoom presets for quick selection */
-export const ZOOM_PRESETS = {
+/** Legacy presets for backward compatibility */
+export const LEGACY_ZOOM_PRESETS = {
 	HOUR: 150, // Detailed hourly view
 	DAY: 50, // Standard day view (default)
 	WEEK: 20, // Compressed week view
 } as const;
 
-export type ZoomPreset = keyof typeof ZOOM_PRESETS;
+export type LegacyZoomPreset = keyof typeof LEGACY_ZOOM_PRESETS;
 
 interface UseGanttZoomOptions {
 	/** Initial zoom level (pixels per hour). Defaults to DEFAULT_PIXELS_PER_HOUR (50) */
@@ -101,7 +104,7 @@ export function useGanttZoom(
 	}, []);
 
 	const setZoomPreset = useCallback((preset: ZoomPreset) => {
-		setPixelsPerHour(ZOOM_PRESETS[preset]);
+		setPixelsPerHour(ZOOM_PRESETS[preset].pixelsPerHour);
 	}, []);
 
 	const zoomPercent = useMemo(() => {

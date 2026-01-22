@@ -4,10 +4,12 @@
  * GanttGrid Component
  *
  * Story 27.3: Gantt Core Timeline Rendering
+ * Story 29.6: Enhanced with midnight separator lines for multi-day views
  *
  * Renders the background grid lines for the Gantt timeline.
  */
 
+import { addHours } from "date-fns";
 import { memo, useMemo } from "react";
 import { cn } from "@ui/lib";
 import type { GanttGridProps } from "./types";
@@ -18,14 +20,17 @@ export const GanttGrid = memo(function GanttGrid({
 	rowHeight,
 }: GanttGridProps) {
 	// Generate vertical grid lines (one per hour)
+	// Story 29.6: Enhanced to properly detect midnight for multi-day views
 	const verticalLines = useMemo(() => {
-		const lines: { x: number; isMajor: boolean }[] = [];
+		const lines: { x: number; isMajor: boolean; isMidnight: boolean }[] = [];
 		
 		for (let i = 0; i <= config.totalHours; i++) {
-			const hour = (config.startTime.getHours() + i) % 24;
+			const time = addHours(config.startTime, i);
+			const hour = time.getHours();
 			const x = i * config.pixelsPerHour;
+			const isMidnight = hour === 0 && i > 0; // Midnight (but not the first hour if it starts at midnight)
 			const isMajor = hour === 0 || hour === 12; // Midnight and noon
-			lines.push({ x, isMajor });
+			lines.push({ x, isMajor, isMidnight });
 		}
 
 		return lines;
@@ -46,7 +51,7 @@ export const GanttGrid = memo(function GanttGrid({
 			style={{ overflow: "visible" }}
 		>
 			{/* Vertical lines */}
-			{verticalLines.map(({ x, isMajor }, index) => (
+			{verticalLines.map(({ x, isMajor, isMidnight }, index) => (
 				<line
 					key={`v-${index}`}
 					x1={x}
@@ -54,12 +59,14 @@ export const GanttGrid = memo(function GanttGrid({
 					x2={x}
 					y2={totalHeight}
 					className={cn(
-						isMajor
-							? "stroke-gray-300 dark:stroke-gray-600"
-							: "stroke-gray-200 dark:stroke-gray-700"
+						isMidnight
+							? "stroke-blue-400 dark:stroke-blue-500"
+							: isMajor
+								? "stroke-gray-300 dark:stroke-gray-600"
+								: "stroke-gray-200 dark:stroke-gray-700"
 					)}
-					strokeWidth={isMajor ? 1 : 0.5}
-					strokeDasharray={isMajor ? "none" : "4 4"}
+					strokeWidth={isMidnight ? 2 : isMajor ? 1 : 0.5}
+					strokeDasharray={isMidnight ? "none" : isMajor ? "none" : "4 4"}
 				/>
 			))}
 

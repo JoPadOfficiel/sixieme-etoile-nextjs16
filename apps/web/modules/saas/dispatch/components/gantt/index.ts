@@ -2,6 +2,7 @@
  * Gantt Components Index
  *
  * Story 27.3: Gantt Core Timeline Rendering
+ * Story 29.6: Enhanced with multi-day view types
  *
  * Exports for the Gantt timeline visualization components.
  */
@@ -22,6 +23,9 @@ export type {
 	MissionType,
 	MissionStatus,
 	TimeScaleConfig,
+	DateRange,
+	ZoomPreset,
+	ZoomPresetConfig,
 } from "./types";
 
 export {
@@ -29,4 +33,5 @@ export {
 	SIDEBAR_WIDTH,
 	HEADER_HEIGHT,
 	DEFAULT_PIXELS_PER_HOUR,
+	ZOOM_PRESETS,
 } from "./constants";

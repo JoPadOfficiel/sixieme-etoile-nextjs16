@@ -45,3 +45,12 @@ export const STATUS_LABELS: Record<string, string> = {
 	ON_MISSION: "En mission",
 	UNAVAILABLE: "Indisponible",
 } as const;
+
+/**
+ * Story 29.6: Zoom presets for multi-day views
+ */
+export const ZOOM_PRESETS = {
+	day: { pixelsPerHour: 120, rangeDays: 1, label: "day" },
+	"3days": { pixelsPerHour: 45, rangeDays: 3, label: "3days" },
+	week: { pixelsPerHour: 18, rangeDays: 7, label: "week" },
+} as const;

@@ -42,6 +42,14 @@ export interface GanttTimelineProps {
 	onMissionClick?: (missionId: string) => void;
 	selectedMissionId?: string | null;
 	className?: string;
+	/** Story 29.6: Current date range for multi-day view */
+	dateRange?: DateRange;
+	/** Story 29.6: Callback when date range changes */
+	onDateRangeChange?: (range: DateRange) => void;
+	/** Story 29.6: Callback when preset is selected */
+	onPresetChange?: (preset: ZoomPreset) => void;
+	/** Story 29.6: Current active preset */
+	activePreset?: ZoomPreset | null;
 }
 
 export interface TimeScaleConfig {
@@ -85,4 +93,23 @@ export interface GanttGridProps {
 
 export interface GanttEmptyStateProps {
 	className?: string;
+}
+
+/**
+ * Story 29.6: Date Range for multi-day Gantt view
+ */
+export interface DateRange {
+	start: Date;
+	end: Date;
+}
+
+/**
+ * Story 29.6: Zoom preset types
+ */
+export type ZoomPreset = "day" | "3days" | "week";
+
+export interface ZoomPresetConfig {
+	pixelsPerHour: number;
+	rangeDays: number;
+	label: string;
 }

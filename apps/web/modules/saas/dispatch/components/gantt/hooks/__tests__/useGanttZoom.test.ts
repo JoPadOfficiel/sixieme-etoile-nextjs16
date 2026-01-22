@@ -2,6 +2,7 @@
  * useGanttZoom Hook Tests
  *
  * Story 27.12: Gantt Time & Zoom Controls
+ * Story 29.6: Updated presets to day/3days/week
  *
  * Unit tests for the zoom state management hook.
  */
@@ -12,8 +13,9 @@ import {
 	DEFAULT_PIXELS_PER_HOUR,
 	MAX_PIXELS_PER_HOUR,
 	MIN_PIXELS_PER_HOUR,
+	ZOOM_PRESETS,
 } from "../../constants";
-import { ZOOM_PRESETS, ZOOM_STEP, useGanttZoom } from "../useGanttZoom";
+import { ZOOM_STEP, useGanttZoom } from "../useGanttZoom";
 
 describe("useGanttZoom", () => {
 	describe("Initial State", () => {
@@ -171,34 +173,34 @@ describe("useGanttZoom", () => {
 	});
 
 	describe("setZoomPreset", () => {
-		it("should set zoom to HOUR preset (150px)", () => {
+		it("should set zoom to day preset (120px)", () => {
 			const { result } = renderHook(() => useGanttZoom());
 
 			act(() => {
-				result.current.setZoomPreset("HOUR");
+				result.current.setZoomPreset("day");
 			});
 
-			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS.HOUR);
+			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS.day.pixelsPerHour);
 		});
 
-		it("should set zoom to DAY preset (50px)", () => {
+		it("should set zoom to 3days preset (45px)", () => {
 			const { result } = renderHook(() => useGanttZoom({ initialZoom: 100 }));
 
 			act(() => {
-				result.current.setZoomPreset("DAY");
+				result.current.setZoomPreset("3days");
 			});
 
-			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS.DAY);
+			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS["3days"].pixelsPerHour);
 		});
 
-		it("should set zoom to WEEK preset (20px)", () => {
+		it("should set zoom to week preset (18px)", () => {
 			const { result } = renderHook(() => useGanttZoom());
 
 			act(() => {
-				result.current.setZoomPreset("WEEK");
+				result.current.setZoomPreset("week");
 			});
 
-			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS.WEEK);
+			expect(result.current.pixelsPerHour).toBe(ZOOM_PRESETS.week.pixelsPerHour);
 		});
 	});
 

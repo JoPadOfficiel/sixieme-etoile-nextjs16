@@ -351,7 +351,7 @@ development_status:
   29-3-ensure-lossless-quote-editing-hydration: done
   29-4-implement-intelligent-multi-mission-spawning-the-launch: review
   29-5-implement-multi-mission-invoicing-sync: review
-  29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: backlog
+  29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: review
   29-7-dispatch-list-integrity-backlog-separation: backlog
   29-8-revamp-mission-sheet-pdf-generation: backlog
   epic-29-retrospective: optional

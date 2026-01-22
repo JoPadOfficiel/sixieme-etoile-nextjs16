@@ -5,6 +5,7 @@
  *
  * Story 27.3: Gantt Core Timeline Rendering
  * Story 27.12: Gantt Time & Zoom Controls
+ * Story 29.6: Enhanced with multi-day view, presets, and date range picker
  *
  * Main Gantt timeline visualization component for the Dispatch Cockpit.
  * Displays drivers on the Y-axis and time on the X-axis with virtualization support.
@@ -55,6 +56,10 @@ export const GanttTimeline = memo(function GanttTimeline({
 	onMissionClick,
 	selectedMissionId,
 	className,
+	dateRange,
+	onDateRangeChange,
+	onPresetChange,
+	activePreset,
 }: GanttTimelineProps) {
 	const t = useTranslations("dispatch.gantt");
 	const sidebarRef = useRef<HTMLDivElement>(null);
@@ -218,7 +223,7 @@ export const GanttTimeline = memo(function GanttTimeline({
 						/>
 					</div>
 
-					{/* Zoom Controls (Story 27.12) */}
+					{/* Zoom Controls (Story 27.12, 29.6) */}
 					<GanttZoomControls
 						pixelsPerHour={pixelsPerHour}
 						canZoomIn={canZoomIn}
@@ -230,6 +235,10 @@ export const GanttTimeline = memo(function GanttTimeline({
 						selectedDate={selectedDate}
 						zoomLabel={zoomLabel}
 						zoomPercent={zoomPercent}
+						dateRange={dateRange}
+						onDateRangeChange={onDateRangeChange}
+						onPresetChange={onPresetChange}
+						activePreset={activePreset}
 					/>
 				</div>
 
