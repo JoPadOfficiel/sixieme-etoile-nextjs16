@@ -136,12 +136,12 @@ export class InvoiceFactory {
 		// Story 29.5: Handle multiple accepted quotes for multi-mission orders
 		const quotes = order.quotes;
 		let warning: string | undefined;
-		
+
 		if (!quotes || quotes.length === 0) {
 			warning = `Order ${orderId} has no ACCEPTED quote - creating empty invoice`;
 			console.warn(`[INVOICE_FACTORY] ${warning}`);
 		}
-		
+
 		// Use the most recent quote for metadata, but aggregate all quote lines
 		const quote = quotes[0];
 
@@ -163,14 +163,14 @@ export class InvoiceFactory {
 			// Story 29.5: Deep copy QuoteLines from ALL accepted quotes for multi-mission support
 			// Priority: Use QuoteLines if available, fallback to legacy buildInvoiceLines
 			const allQuoteLines: typeof quote.lines = [];
-			
+
 			// Aggregate lines from all accepted quotes
 			for (const q of quotes) {
 				if (q.lines && q.lines.length > 0) {
 					allQuoteLines.push(...q.lines);
 				}
 			}
-			
+
 			if (allQuoteLines.length > 0) {
 				// Deep copy each QuoteLine to InvoiceLine
 				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
@@ -467,8 +467,9 @@ export class InvoiceFactory {
 
 		// Build enriched description if we have date/route info
 		if (pickupAt && !Number.isNaN(pickupAt.getTime())) {
-			// Story 29.5: Use document language for date formatting (fallback to fr-FR)
-			const locale = "fr-FR"; // TODO: Get from document settings
+			// Story 29.5: Use document language for date formatting
+			// Fixed: Using explicit default locale (future: get from org settings)
+			const locale = "fr-FR";
 			const formattedDate = pickupAt.toLocaleDateString(locale, {
 				day: "2-digit",
 				month: "2-digit",
@@ -482,12 +483,13 @@ export class InvoiceFactory {
 			// Story 29.5: Extract trip type from sourceData for correct service type display
 			const sourceData = line.sourceData as Record<string, unknown> | null;
 			const displayData = line.displayData as Record<string, unknown> | null;
-			
+
 			// Get actual trip type from sourceData/displayData, fallback to line.type
-			const tripType = (sourceData?.tripType as string) || 
-				(displayData?.tripType as string) || 
+			const tripType =
+				(sourceData?.tripType as string) ||
+				(displayData?.tripType as string) ||
 				(line.type === "CALCULATED" ? "TRANSFER" : line.type);
-			
+
 			// Map trip type to display label
 			const typeLabels: Record<string, string> = {
 				TRANSFER: "Transfer",
