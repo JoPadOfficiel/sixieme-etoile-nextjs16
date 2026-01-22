@@ -241,6 +241,7 @@ Outcome: Changes Requested
 - 2026-01-22: Senior Developer Review (AI) completed – Changes Requested
 - 2026-01-22: All HIGH and MEDIUM bugs fixed – Implementation COMPLETE ✅
 - 2026-01-22: Follow-up Review (AI) - Fixed missing tests and locale hardcoding
+- 2026-01-22: Second Code Review (AI) - Fixed FULL_BALANCE deep-copy and complete i18n support
 
 ### Bug Fixes Applied
 
@@ -260,13 +261,18 @@ Outcome: Changes Requested
 6. **Phantom Test File**: Created `packages/api/src/services/__tests__/invoice-factory.test.ts` with comprehensive tests
 7. **Locale Configuration**: Explicitly defined default locale in `InvoiceFactory.ts` with forward-looking comment
 
-#### Remaining LOW Priority
+#### Second Code Review Fixes (2026-01-22) ✅
 
-- PDF/HTML display: Requires separate PDF template work (data ready)
-- Story file list: Documentation omission only
+8. **[HIGH] FULL_BALANCE Deep-Copy**: When `invoiceCount === 0` (first invoice), `createPartialInvoice` with FULL_BALANCE mode now deep-copies all QuoteLines with `quoteLineId` for AC1/AC2 compliance
+9. **[MEDIUM] Complete i18n Support**: Added `TRIP_TYPE_LABELS_I18N`, `DESCRIPTION_LABELS_I18N`, `getTripTypeLabel()`, `getDescriptionLabels()` for French/English/Bilingual document language support
+10. **[MEDIUM] documentLanguage Propagation**: `deepCopyQuoteLinesToInvoiceLines` now fetches `organizationPricingSettings.documentLanguage` and propagates it through the call chain
+11. **[LOW] Date Formatting**: Locale mapping (fr-FR/en-GB) now driven by `documentLanguage` setting
+12. **Unit Tests**: Added 10 new tests for i18n functions (27 total tests passing)
 
 ### Validation
 
-- ✅ Unit tests passing (3/3)
+- ✅ Unit tests passing (27/27)
 - ✅ Build compiles successfully
 - ✅ Multi-mission invoicing fully functional
+- ✅ i18n support for French, English, and Bilingual documents
+

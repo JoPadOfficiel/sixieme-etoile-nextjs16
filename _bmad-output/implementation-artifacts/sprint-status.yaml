@@ -350,6 +350,7 @@ development_status:
   29-2-implement-multi-mission-quote-detail-view: done
   29-3-ensure-lossless-quote-editing-hydration: done
   29-4-implement-intelligent-multi-mission-spawning-the-launch: done
+  29-5-implement-multi-mission-invoicing-sync: done
   29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: done
   29-7-dispatch-list-integrity-backlog-separation: done
   29-8-revamp-mission-sheet-pdf-generation: review

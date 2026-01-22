@@ -176,10 +176,22 @@ export class InvoiceFactory {
 			}
 
 			if (allQuoteLines.length > 0) {
-				// Deep copy each QuoteLine to InvoiceLine
+				// Fetch organization settings for document language
+				const orgSettings = await db.organizationPricingSettings.findFirst({
+					where: { organizationId },
+					select: { documentLanguage: true },
+				});
+				const documentLanguage =
+					(orgSettings?.documentLanguage as
+						| "FRENCH"
+						| "ENGLISH"
+						| "BILINGUAL") || "FRENCH";
+
+				// Deep copy each QuoteLine to InvoiceLine with localized descriptions
 				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
 					allQuoteLines,
 					endCustomerName,
+					documentLanguage,
 				);
 				invoiceNotes = `Facture générée depuis devis - Order ${order.reference}`;
 			} else if (
@@ -354,14 +366,24 @@ export class InvoiceFactory {
 	/**
 	 * Deep copy QuoteLines to InvoiceLines using exported utility function
 	 * This wrapper delegates to the testable utility function
+	 * Story 29.5 Review Fix: Added documentLanguage parameter for i18n support
 	 */
 	private static deepCopyQuoteLinesToInvoiceLines(
 		quoteLines: QuoteLineForDeepCopy[],
 		endCustomerName: string | null,
+		documentLanguage: "FRENCH" | "ENGLISH" | "BILINGUAL" = "FRENCH",
 	): InvoiceLineInput[] {
+		// Map document language to locale for date formatting
+		const localeMap: Record<string, string> = {
+			FRENCH: "fr-FR",
+			ENGLISH: "en-GB",
+			BILINGUAL: "fr-FR", // Use French locale for bilingual, labels are already bilingual
+		};
+
 		// Delegate to exported utility function for testability
 		return deepCopyQuoteLinesUtil(quoteLines, endCustomerName, {
-			locale: "fr-FR", // TODO: Get from organization settings
+			locale: localeMap[documentLanguage] || "fr-FR",
+			documentLanguage,
 		});
 	}
 
@@ -587,23 +609,82 @@ export class InvoiceFactory {
 				invoiceAmount = remainingBalance;
 				invoiceDescription = `Solde facture - Order ${order.reference}`;
 
-				// For balance, we create a single line representing the remainder
-				// Deep copying all lines would be wrong as it creates a duplicate full invoice
-				const amountHT = invoiceAmount.div(1.1).toDecimalPlaces(2);
-				const amountVAT = invoiceAmount.sub(amountHT).toDecimalPlaces(2);
+				// Story 29.5 Review Fix: For first invoice (no prior invoices), deep-copy all QuoteLines
+				// This ensures AC1/AC2 compliance - each QuoteLine becomes an InvoiceLine with quoteLineId
+				if (
+					balance.invoiceCount === 0 &&
+					quote?.lines &&
+					quote.lines.length > 0
+				) {
+					// First invoice: Deep-copy all quote lines for full traceability
+					// Aggregate lines from all accepted quotes
+					const allQuoteLines: typeof quote.lines = [];
 
-				invoiceLines = [
-					{
-						lineType: "SERVICE" as const,
-						description: invoiceDescription,
-						quantity: 1,
-						unitPriceExclVat: amountHT.toNumber(),
-						vatRate: 10,
-						totalExclVat: amountHT.toNumber(),
-						totalVat: amountVAT.toNumber(),
-						sortOrder: 0,
-					},
-				];
+					// Fetch all quotes (not just take: 1) for multi-quote orders
+					const allQuotes = await db.quote.findMany({
+						where: { orderId, status: "ACCEPTED" },
+						include: {
+							lines: { orderBy: { sortOrder: "asc" } },
+							endCustomer: true,
+						},
+						orderBy: { createdAt: "desc" },
+					});
+
+					for (const q of allQuotes) {
+						if (q.lines && q.lines.length > 0) {
+							allQuoteLines.push(...q.lines);
+						}
+					}
+
+					if (allQuoteLines.length > 0) {
+						// Fetch organization settings for document language
+						const orgSettings = await db.organizationPricingSettings.findFirst({
+							where: { organizationId },
+							select: { documentLanguage: true },
+						});
+						const documentLanguage =
+							(orgSettings?.documentLanguage as
+								| "FRENCH"
+								| "ENGLISH"
+								| "BILINGUAL") || "FRENCH";
+
+						invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
+							allQuoteLines,
+							endCustomerName,
+							documentLanguage,
+						);
+						invoiceDescription = `Facture complète - Order ${order.reference}`;
+
+						// Recalculate amount from deep-copied lines
+						invoiceAmount = invoiceLines.reduce(
+							(sum, line) =>
+								sum.add(
+									new Decimal(line.totalExclVat).add(
+										new Decimal(line.totalVat),
+									),
+								),
+							new Decimal(0),
+						);
+					}
+				} else {
+					// Subsequent balance invoice: Create single aggregate line for remaining balance
+					// Deep copying would duplicate lines already invoiced
+					const amountHT = invoiceAmount.div(1.1).toDecimalPlaces(2);
+					const amountVAT = invoiceAmount.sub(amountHT).toDecimalPlaces(2);
+
+					invoiceLines = [
+						{
+							lineType: "SERVICE" as const,
+							description: invoiceDescription,
+							quantity: 1,
+							unitPriceExclVat: amountHT.toNumber(),
+							vatRate: 10,
+							totalExclVat: amountHT.toNumber(),
+							totalVat: amountVAT.toNumber(),
+							sortOrder: 0,
+						},
+					];
+				}
 				break;
 			}
 
@@ -660,10 +741,22 @@ export class InvoiceFactory {
 					throw new Error("No matching lines found for selected IDs");
 				}
 
-				// Deep copy selected lines
+				// Deep copy selected lines with localized descriptions
+				// Fetch organization settings for document language
+				const orgSettings = await db.organizationPricingSettings.findFirst({
+					where: { organizationId },
+					select: { documentLanguage: true },
+				});
+				const documentLanguage =
+					(orgSettings?.documentLanguage as
+						| "FRENCH"
+						| "ENGLISH"
+						| "BILINGUAL") || "FRENCH";
+
 				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
 					selectedLines,
 					endCustomerName,
+					documentLanguage,
 				);
 
 				// Calculate total amount from lines

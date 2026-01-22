@@ -1,6 +1,7 @@
 /**
  * Tests for Invoice Line Utilities
  * Story 29.5: Multi-Mission Invoicing & Sync
+ * Story 29.5 Review Fix: Added i18n support tests
  *
  * REAL TESTS that call actual exported functions (not reimplementations)
  */
@@ -8,9 +9,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	TRIP_TYPE_LABELS,
+	TRIP_TYPE_LABELS_I18N,
 	buildEnrichedDescription,
 	calculateTotalsFromLines,
 	deepCopyQuoteLinesToInvoiceLines,
+	getDescriptionLabels,
+	getTripTypeLabel,
 } from "../invoice-line-utils";
 
 describe("Invoice Line Utilities", () => {
@@ -222,7 +226,8 @@ describe("Invoice Line Utilities", () => {
 			});
 
 			// Validate enriched description format (AC3) - now multi-line
-			expect(description).toContain("Transfer");
+			// Default language is French, so "Transfert" is expected
+			expect(description).toContain("Transfert");
 			expect(description).toContain("25/01/2026");
 			// Full addresses on separate lines
 			expect(description).toContain("Départ: CDG Terminal 2E");
@@ -230,8 +235,9 @@ describe("Invoice Line Utilities", () => {
 		});
 
 		it("should extract tripType from sourceData correctly", () => {
+			// Default language is French
 			const testCases = [
-				{ tripType: "TRANSFER", expected: "Transfer" },
+				{ tripType: "TRANSFER", expected: "Transfert" },
 				{ tripType: "DISPO", expected: "Mise à disposition" },
 				{ tripType: "EXCURSION", expected: "Excursion" },
 				{ tripType: "STAY", expected: "Séjour" },
@@ -382,15 +388,118 @@ describe("Invoice Line Utilities", () => {
 	});
 
 	describe("TRIP_TYPE_LABELS", () => {
-		it("should contain all expected trip types", () => {
-			expect(TRIP_TYPE_LABELS.TRANSFER).toBe("Transfer");
+		it("should contain all expected trip types (French default)", () => {
+			// TRIP_TYPE_LABELS now defaults to French for backward compatibility
+			expect(TRIP_TYPE_LABELS.TRANSFER).toBe("Transfert");
 			expect(TRIP_TYPE_LABELS.DISPO).toBe("Mise à disposition");
 			expect(TRIP_TYPE_LABELS.EXCURSION).toBe("Excursion");
 			expect(TRIP_TYPE_LABELS.STAY).toBe("Séjour");
-			expect(TRIP_TYPE_LABELS.CALCULATED).toBe("Transfer");
+			expect(TRIP_TYPE_LABELS.CALCULATED).toBe("Transfert");
 			expect(TRIP_TYPE_LABELS.MANUAL).toBe("Service");
 			expect(TRIP_TYPE_LABELS.OPTIONAL_FEE).toBe("Option");
 			expect(TRIP_TYPE_LABELS.PROMOTION).toBe("Promotion");
+		});
+
+		it("should have labels for all three languages via TRIP_TYPE_LABELS_I18N", () => {
+			expect(TRIP_TYPE_LABELS_I18N.FRENCH.TRANSFER).toBe("Transfert");
+			expect(TRIP_TYPE_LABELS_I18N.ENGLISH.TRANSFER).toBe("Transfer");
+			expect(TRIP_TYPE_LABELS_I18N.BILINGUAL.TRANSFER).toBe(
+				"Transfert / Transfer",
+			);
+		});
+	});
+
+	describe("getTripTypeLabel", () => {
+		it("should return French labels by default", () => {
+			expect(getTripTypeLabel("TRANSFER")).toBe("Transfert");
+			expect(getTripTypeLabel("DISPO")).toBe("Mise à disposition");
+		});
+
+		it("should return English labels when specified", () => {
+			expect(getTripTypeLabel("TRANSFER", "ENGLISH")).toBe("Transfer");
+			expect(getTripTypeLabel("DISPO", "ENGLISH")).toBe("Chauffeur Service");
+		});
+
+		it("should return bilingual labels when specified", () => {
+			expect(getTripTypeLabel("TRANSFER", "BILINGUAL")).toBe(
+				"Transfert / Transfer",
+			);
+			expect(getTripTypeLabel("DISPO", "BILINGUAL")).toBe(
+				"Mise à disposition / Chauffeur Service",
+			);
+		});
+
+		it("should return the tripType as-is if not found in labels", () => {
+			expect(getTripTypeLabel("UNKNOWN_TYPE", "FRENCH")).toBe("UNKNOWN_TYPE");
+		});
+	});
+
+	describe("getDescriptionLabels", () => {
+		it("should return French labels by default", () => {
+			const labels = getDescriptionLabels();
+			expect(labels.departure).toBe("Départ");
+			expect(labels.arrival).toBe("Arrivée");
+			expect(labels.client).toBe("Client");
+		});
+
+		it("should return English labels when specified", () => {
+			const labels = getDescriptionLabels("ENGLISH");
+			expect(labels.departure).toBe("Departure");
+			expect(labels.arrival).toBe("Arrival");
+		});
+
+		it("should return bilingual labels when specified", () => {
+			const labels = getDescriptionLabels("BILINGUAL");
+			expect(labels.departure).toBe("Départ / Departure");
+			expect(labels.arrival).toBe("Arrivée / Arrival");
+		});
+	});
+
+	describe("buildEnrichedDescription with documentLanguage", () => {
+		it("should use English labels when documentLanguage is ENGLISH", () => {
+			const line = {
+				label: "Transfer",
+				description: null,
+				type: "CALCULATED",
+				sourceData: {
+					tripType: "TRANSFER",
+					pickupAt: "2026-01-25T10:00:00Z",
+					pickupAddress: "CDG Terminal 2E",
+					dropoffAddress: "Hotel Ritz Paris",
+				},
+			};
+
+			const description = buildEnrichedDescription(line, null, false, {
+				locale: "en-GB",
+				documentLanguage: "ENGLISH",
+			});
+
+			expect(description).toContain("Transfer");
+			expect(description).toContain("Departure: CDG Terminal 2E");
+			expect(description).toContain("Arrival: Hotel Ritz Paris");
+		});
+
+		it("should use bilingual labels when documentLanguage is BILINGUAL", () => {
+			const line = {
+				label: "Transfer",
+				description: null,
+				type: "CALCULATED",
+				sourceData: {
+					tripType: "TRANSFER",
+					pickupAt: "2026-01-25T10:00:00Z",
+					pickupAddress: "CDG",
+					dropoffAddress: "Paris",
+				},
+			};
+
+			const description = buildEnrichedDescription(line, null, false, {
+				locale: "fr-FR",
+				documentLanguage: "BILINGUAL",
+			});
+
+			expect(description).toContain("Transfert / Transfer");
+			expect(description).toContain("Départ / Departure: CDG");
+			expect(description).toContain("Arrivée / Arrival: Paris");
 		});
 	});
 

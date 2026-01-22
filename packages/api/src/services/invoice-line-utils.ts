@@ -1,6 +1,7 @@
 /**
  * Invoice Line Utilities
  * Story 29.5: Extracted and exported functions for multi-mission invoicing
+ * Story 29.5 Review Fix: Added i18n support for document language settings
  *
  * These functions are extracted from InvoiceFactory to enable proper unit testing.
  * They handle the deep copy of QuoteLines to InvoiceLines with enriched descriptions.
@@ -11,6 +12,8 @@ import type { InvoiceLineInput } from "./invoice-line-builder";
 // ============================================================================
 // Types
 // ============================================================================
+
+export type DocumentLanguage = "FRENCH" | "ENGLISH" | "BILINGUAL";
 
 export interface QuoteLineForDeepCopy {
 	id: string;
@@ -29,25 +32,112 @@ export interface QuoteLineForDeepCopy {
 export interface EnrichedDescriptionOptions {
 	locale?: string;
 	timezone?: string;
+	/** Document language for i18n labels (defaults to FRENCH for backward compatibility) */
+	documentLanguage?: DocumentLanguage;
 }
 
 // ============================================================================
-// Exported Functions
+// i18n Labels
 // ============================================================================
 
 /**
- * Map trip type to display label
+ * Localized trip type labels by language
  */
-export const TRIP_TYPE_LABELS: Record<string, string> = {
-	TRANSFER: "Transfer",
-	DISPO: "Mise à disposition",
-	EXCURSION: "Excursion",
-	STAY: "Séjour",
-	CALCULATED: "Transfer", // Fallback for legacy data
-	MANUAL: "Service",
-	OPTIONAL_FEE: "Option",
-	PROMOTION: "Promotion",
+export const TRIP_TYPE_LABELS_I18N: Record<
+	DocumentLanguage,
+	Record<string, string>
+> = {
+	FRENCH: {
+		TRANSFER: "Transfert",
+		DISPO: "Mise à disposition",
+		EXCURSION: "Excursion",
+		STAY: "Séjour",
+		CALCULATED: "Transfert",
+		MANUAL: "Service",
+		OPTIONAL_FEE: "Option",
+		PROMOTION: "Promotion",
+	},
+	ENGLISH: {
+		TRANSFER: "Transfer",
+		DISPO: "Chauffeur Service",
+		EXCURSION: "Excursion",
+		STAY: "Stay",
+		CALCULATED: "Transfer",
+		MANUAL: "Service",
+		OPTIONAL_FEE: "Option",
+		PROMOTION: "Promotion",
+	},
+	BILINGUAL: {
+		TRANSFER: "Transfert / Transfer",
+		DISPO: "Mise à disposition / Chauffeur Service",
+		EXCURSION: "Excursion",
+		STAY: "Séjour / Stay",
+		CALCULATED: "Transfert / Transfer",
+		MANUAL: "Service",
+		OPTIONAL_FEE: "Option",
+		PROMOTION: "Promotion",
+	},
 };
+
+/**
+ * Localized description labels by language
+ */
+export const DESCRIPTION_LABELS_I18N: Record<
+	DocumentLanguage,
+	{
+		departure: string;
+		arrival: string;
+		client: string;
+		pax: string;
+		bags: string;
+	}
+> = {
+	FRENCH: {
+		departure: "Départ",
+		arrival: "Arrivée",
+		client: "Client",
+		pax: "pax",
+		bags: "bag.",
+	},
+	ENGLISH: {
+		departure: "Departure",
+		arrival: "Arrival",
+		client: "Client",
+		pax: "pax",
+		bags: "bags",
+	},
+	BILINGUAL: {
+		departure: "Départ / Departure",
+		arrival: "Arrivée / Arrival",
+		client: "Client",
+		pax: "pax",
+		bags: "bag.",
+	},
+};
+
+/**
+ * Map trip type to display label (legacy - kept for backward compatibility)
+ * @deprecated Use getTripTypeLabel() with documentLanguage instead
+ */
+export const TRIP_TYPE_LABELS: Record<string, string> =
+	TRIP_TYPE_LABELS_I18N.FRENCH;
+
+/**
+ * Get localized trip type label
+ */
+export function getTripTypeLabel(
+	tripType: string,
+	language: DocumentLanguage = "FRENCH",
+): string {
+	return TRIP_TYPE_LABELS_I18N[language][tripType] || tripType;
+}
+
+/**
+ * Get localized description labels
+ */
+export function getDescriptionLabels(language: DocumentLanguage = "FRENCH") {
+	return DESCRIPTION_LABELS_I18N[language];
+}
 
 /**
  * Build enriched description with date and route from sourceData
@@ -71,7 +161,10 @@ export function buildEnrichedDescription(
 	isFirstLine: boolean,
 	options: EnrichedDescriptionOptions = {},
 ): string {
-	const { locale = "fr-FR", timezone } = options;
+	const { locale = "fr-FR", timezone, documentLanguage = "FRENCH" } = options;
+
+	// Get localized labels
+	const labels = getDescriptionLabels(documentLanguage);
 
 	// Try to extract date and route from sourceData
 	const sourceData = line.sourceData as Record<string, unknown> | null;
@@ -132,7 +225,8 @@ export function buildEnrichedDescription(
 			(displayData?.tripType as string) ||
 			(line.type === "CALCULATED" ? "TRANSFER" : line.type);
 
-		const typeLabel = TRIP_TYPE_LABELS[tripType] || tripType;
+		// Use localized trip type label
+		const typeLabel = getTripTypeLabel(tripType, documentLanguage);
 
 		// Build description lines (multi-line format for PDF)
 		const lines: string[] = [];
@@ -140,23 +234,23 @@ export function buildEnrichedDescription(
 		// Line 1: Type + Date/Time
 		lines.push(`${typeLabel} - ${formattedDate} ${formattedTime}`);
 
-		// Line 2: Departure address (full)
+		// Line 2: Departure address (full) - localized
 		if (pickupAddress) {
-			lines.push(`Départ: ${pickupAddress}`);
+			lines.push(`${labels.departure}: ${pickupAddress}`);
 		}
 
-		// Line 3: Arrival address (full)
+		// Line 3: Arrival address (full) - localized
 		if (dropoffAddress) {
-			lines.push(`Arrivée: ${dropoffAddress}`);
+			lines.push(`${labels.arrival}: ${dropoffAddress}`);
 		}
 
-		// Line 4: Passengers & Luggage & Vehicle (if available)
+		// Line 4: Passengers & Luggage & Vehicle (if available) - localized
 		const details: string[] = [];
 		if (passengerCount !== null) {
-			details.push(`${passengerCount} pax`);
+			details.push(`${passengerCount} ${labels.pax}`);
 		}
 		if (luggageCount !== null) {
-			details.push(`${luggageCount} bag.`);
+			details.push(`${luggageCount} ${labels.bags}`);
 		}
 		if (vehicleCategory) {
 			details.push(vehicleCategory);
@@ -165,9 +259,9 @@ export function buildEnrichedDescription(
 			lines.push(details.join(" | "));
 		}
 
-		// Line 5: End customer name (if applicable and first line)
+		// Line 5: End customer name (if applicable and first line) - localized
 		if (endCustomerName && isFirstLine) {
-			lines.push(`Client: ${endCustomerName}`);
+			lines.push(`${labels.client}: ${endCustomerName}`);
 		}
 
 		return lines.join("\n");
@@ -181,7 +275,7 @@ export function buildEnrichedDescription(
 
 	// Add end customer name on first line
 	if (endCustomerName && isFirstLine) {
-		description += ` (Client: ${endCustomerName})`;
+		description += ` (${labels.client}: ${endCustomerName})`;
 	}
 
 	return description;
