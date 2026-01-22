@@ -66,6 +66,15 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 				<div className="flex items-center gap-1.5 min-w-0 flex-1">
 					<div className="flex flex-col min-w-0">
 						<div className="flex items-center gap-1.5">
+							{/* Story 29.7: Display Mission.ref */}
+							{mission.ref && (
+								<Badge
+									variant="outline"
+									className="text-xs px-1.5 py-0 border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400 flex-shrink-0"
+								>
+									{mission.ref}
+								</Badge>
+							)}
 							<span className="font-medium truncate">
 								{mission.endCustomer 
 									? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`
@@ -86,6 +95,19 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 								>
 									<Calendar className="size-3 mr-1" />
 									{mission.stayDays.length} {t("days")}
+								</Badge>
+							)}
+							{/* Story 29.7: Display mission status badge */}
+							{mission.missionStatus && (
+								<Badge
+									variant={
+										mission.missionStatus === "COMPLETED" ? "default" :
+										mission.missionStatus === "IN_PROGRESS" ? "secondary" :
+										mission.missionStatus === "CANCELLED" ? "destructive" : "outline"
+									}
+									className="text-xs px-1.5 py-0 flex-shrink-0"
+								>
+									{mission.missionStatus}
 								</Badge>
 							)}
 						</div>

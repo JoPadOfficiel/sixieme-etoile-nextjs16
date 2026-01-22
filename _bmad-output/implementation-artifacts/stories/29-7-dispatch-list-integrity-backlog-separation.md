@@ -2,7 +2,7 @@
 
 **Epic**: Epic 29 - Complete Multi-Mission Quote Lifecycle  
 **Story ID**: 29-7-dispatch-list-integrity-backlog-separation  
-**Status**: ✅ **COMPLETED** (Review Ready)  
+**Status**: done
 **Date**: 2026-01-22  
 **Developer**: Amelia (Developer)  
 **Reviewer**: BMad Orchestrator
@@ -140,7 +140,7 @@ THEN: La mission ad-hoc apparaît
 
 ## 🧪 Tests Exécutés
 
-### Tests Unitaires
+### Tests Unitaires Améliorés
 
 ```bash
 ✓ 6 tests passed (missions-integrity.test.ts)
@@ -148,18 +148,20 @@ THEN: La mission ad-hoc apparaît
 
 **Tests couverts**:
 
-- Backlog Query Filter (unassignedOnly=true)
-- Planned Query Filter (unassignedOnly=false)
-- Mission vs Quote Entity Separation
-- Mission.ref Display
-- Ad-Hoc Missions (orderId IS NULL)
-- Response Shape Validation
+- AC3: Orders without spawned Missions do NOT appear
+- AC5: Ad-Hoc Missions (orderId IS NULL) DO appear
+- Backlog vs Planned Separation (driverId filter)
+- Mission Entity Fields (ref, orderId, missionStatus)
+- Date Range Filtering (backlog only)
+- Realistic scenarios validation
 
 ### Tests d'Intégration
 
 - [x] API `/missions` retourne uniquement des `Mission`
 - [x] Filtre `unassignedOnly` fonctionne correctement
 - [x] Champs `ref`, `orderId`, `missionStatus` présents
+- [x] Backlog: `driverId IS NULL` + date range
+- [x] Planned: `driverId IS NOT NULL` (no date restriction)
 
 ---
 

@@ -447,16 +447,24 @@ export const missionsRouter = new Hono()
 			// Story 29.7: Build where clause for Mission table
 			const baseWhere: Prisma.MissionWhereInput = {
 				organizationId,
-				// Filter by startAt (Mission's timing field)
-				startAt: {
-					gte: dateFrom ? new Date(dateFrom) : startOfDay(now),
-					...(dateTo && { lte: new Date(dateTo) }),
-				},
 			};
 
+			// Story 29.7: Apply date range filter only for backlog (unassigned missions)
+			// Planned missions should appear regardless of date to support Gantt visibility
+			if (c.req.valid("query").unassignedOnly) {
+				baseWhere.startAt = {
+					gte: dateFrom ? new Date(dateFrom) : startOfDay(now),
+					...(dateTo && { lte: new Date(dateTo) }),
+				};
+			}
+
 			// Story 29.7: Unassigned filter (Backlog = driverId IS NULL)
+			// Story 29.7: Planned filter (driverId IS NOT NULL) when not unassignedOnly
 			if (c.req.valid("query").unassignedOnly) {
 				baseWhere.driverId = null;
+			} else {
+				// For planned list, only show assigned missions
+				baseWhere.driverId = { not: null };
 			}
 
 			// Vehicle category filter (via quote relation)
