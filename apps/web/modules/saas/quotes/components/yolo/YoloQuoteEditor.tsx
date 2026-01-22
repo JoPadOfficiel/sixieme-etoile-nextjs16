@@ -31,6 +31,8 @@ interface YoloQuoteEditorProps {
 	currency?: string;
 	/** Callback when lines change (for auto-save or parent sync) */
 	onChange?: (lines: QuoteLine[]) => void;
+	/** Callback when edit line is requested */
+	onEditLine?: (line: QuoteLine) => void;
 }
 
 export function YoloQuoteEditor({
@@ -38,6 +40,7 @@ export function YoloQuoteEditor({
 	readOnly = false,
 	currency = "EUR",
 	onChange,
+	onEditLine,
 }: YoloQuoteEditorProps) {
 	const t = useTranslations("quotes.yolo");
 	const tTemplates = useTranslations("quotes.templates");
@@ -166,7 +169,18 @@ export function YoloQuoteEditor({
 	useEffect(() => {
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [handleKeyDown]);
+	}, [lines.length, t]);
+
+	// Handler: Edit selected line (only when exactly one is selected)
+	const handleEditSelected = useCallback(() => {
+		if (selectedLineIds.size === 1 && onEditLine) {
+			const selectedId = Array.from(selectedLineIds)[0];
+			const selectedLine = lines.find((line) => getLineId(line) === selectedId);
+			if (selectedLine) {
+				onEditLine(selectedLine);
+			}
+		}
+	}, [selectedLineIds, lines, onEditLine]);
 
 	// Story 26.17 UX: Handle manual line addition from UI button
 	const handleManualAdd = useCallback(() => {
@@ -304,6 +318,7 @@ export function YoloQuoteEditor({
 				readOnly={readOnly}
 				currency={currency}
 				onLineAdd={handleManualAdd}
+				onEditLine={onEditLine}
 			/>
 
 			{/* Story 26.17: Explicit Action Buttons */}
@@ -336,6 +351,7 @@ export function YoloQuoteEditor({
 					selectedCount={selectedLineIds.size}
 					onDelete={deleteSelected}
 					onDuplicate={duplicateSelected}
+					onEdit={selectedLineIds.size === 1 ? handleEditSelected : undefined}
 					onDeselect={deselectAll}
 				/>
 			)}

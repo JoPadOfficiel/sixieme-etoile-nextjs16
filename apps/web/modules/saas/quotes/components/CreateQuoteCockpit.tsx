@@ -17,6 +17,7 @@ import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
+import { lineToFormData } from "../utils/lineToFormData";
 import type { AddedFee } from "./AddQuoteFeeDialog";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
@@ -136,6 +137,15 @@ export function CreateQuoteCockpit() {
 		},
 		[],
 	);
+
+	// Handler: Edit line - populate form with line data
+	const handleEditLine = useCallback((line: QuoteLine) => {
+		const lineFormData = lineToFormData(line);
+		setFormData((prev) => ({
+			...prev,
+			...lineFormData,
+		}));
+	}, []);
 
 	// Preview line: Shows current trip in Shopping Cart in real-time
 	// This line is NOT part of quoteLines - it's a visual preview only
@@ -586,6 +596,7 @@ export function CreateQuoteCockpit() {
 							onChange={setQuoteLines}
 							readOnly={createQuoteMutation.isPending}
 							currency="EUR"
+							onEditLine={handleEditLine}
 						/>
 					</div>
 

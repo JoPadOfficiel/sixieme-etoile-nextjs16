@@ -83,6 +83,8 @@ interface SortableQuoteLinesListProps {
 	onLineDetach?: (id: string) => void;
 	/** Callback when a new line is manually added */
 	onLineAdd?: () => void;
+	/** Callback when edit line is requested - fills main form */
+	onEditLine?: (line: QuoteLine) => void;
 	/** Map of expanded group IDs */
 	expandedGroups?: Set<string>;
 	/** Whether the list is in read-only mode */
@@ -109,6 +111,7 @@ export function SortableQuoteLinesList({
 	readOnly = false,
 	currency = "EUR",
 	onLineAdd,
+	onEditLine,
 }: SortableQuoteLinesListProps) {
 	const t = useTranslations("quotes.yolo");
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -405,6 +408,7 @@ export function SortableQuoteLinesList({
 								}}
 								onToggleExpand={() => onToggleExpand?.(id)}
 								onDetach={() => handleLineDetach(id)}
+								onEditLine={onEditLine}
 								dragHandleProps={dragHandleProps}
 								// Story 26.19: Selection props
 								isSelected={selectedLineIds.has(id)}

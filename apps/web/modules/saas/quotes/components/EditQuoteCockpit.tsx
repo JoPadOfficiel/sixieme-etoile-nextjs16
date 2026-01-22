@@ -19,7 +19,8 @@ import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
-import { hydrateFromQuote } from "../utils/hydrateFromQuote";
+import { hydrateFromQuote, type DatabaseQuoteLine } from "../utils/hydrateFromQuote";
+import { lineToFormData } from "../utils/lineToFormData";
 import type { AddedFee } from "./AddQuoteFeeDialog";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
@@ -133,13 +134,16 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 
 			// Story 29.3: Hydrate quote lines using dedicated function with Zod validation
 			if (quote.lines && quote.lines.length > 0) {
-				const hydratedLines = hydrateFromQuote(quote.lines as any);
+				const hydratedLines = hydrateFromQuote(quote.lines as DatabaseQuoteLine[]);
 				setQuoteLines(hydratedLines);
 
 				// Story 29.3: Sync with Zustand store for YoloQuoteEditor
 				// This ensures the store is initialized with the correct lines
 				// and clears history so we can't undo the initial hydration
+				// Note: Direct setState is acceptable here for initial data hydration
+				// as this is a one-time setup, not reactive state management
 				useQuoteLinesStore.setState({ lines: hydratedLines });
+				// Clear temporal history after initial hydration
 				useQuoteLinesStore.temporal.getState().clear();
 			}
 
@@ -225,6 +229,15 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 		},
 		[],
 	);
+
+	// Handler: Edit line - populate form with line data
+	const handleEditLine = useCallback((line: QuoteLine) => {
+		const lineFormData = lineToFormData(line);
+		setFormData((prev) => ({
+			...prev,
+			...lineFormData,
+		}));
+	}, []);
 
 	// Determine if blocking violations exist
 	const violations = hasBlockingViolations(
@@ -612,6 +625,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 								onChange={setQuoteLines}
 								readOnly={updateQuoteMutation.isPending}
 								currency="EUR"
+								onEditLine={handleEditLine}
 							/>
 						</div>
 

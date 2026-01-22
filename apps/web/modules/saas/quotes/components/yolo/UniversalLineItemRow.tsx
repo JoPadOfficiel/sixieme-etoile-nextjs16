@@ -20,6 +20,7 @@ import { cn } from "@ui/lib";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
+	EditIcon,
 	FolderIcon,
 	GripVerticalIcon,
 	LinkIcon,
@@ -30,6 +31,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useBlockTemplateActions } from "../../hooks/useBlockTemplateActions";
 import { SlashMenu, type SlashMenuBlockType } from "../SlashMenu";
+import type { QuoteLine } from "./dnd-utils";
 import { DetachWarningModal } from "./DetachWarningModal";
 import {
 	getOriginalLabelFromSource,
@@ -97,6 +99,8 @@ export interface UniversalLineItemRowProps {
 		field: keyof DisplayData,
 		value: string | number,
 	) => void;
+	/** Callback when edit line is requested - fills main form */
+	onEditLine?: (line: QuoteLine) => void;
 	/** Callback when expand/collapse is toggled */
 	onToggleExpand?: () => void;
 	/** Callback when the line should be detached from operational data */
@@ -179,6 +183,7 @@ export function UniversalLineItemRow({
 	disabled = false,
 	currency = "EUR",
 	onDisplayDataChange,
+	onEditLine,
 	onToggleExpand,
 	onDetach,
 	onInsert,
@@ -740,6 +745,23 @@ export function UniversalLineItemRow({
 							</button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
+							{onEditLine && (
+								<DropdownMenuItem onClick={() => onEditLine({
+									id,
+									type,
+									label: displayData.label,
+									description: displayData.description,
+									quantity: displayData.quantity,
+									unitPrice: displayData.unitPrice,
+									totalPrice: displayData.total,
+									vatRate: displayData.vatRate,
+									sourceData,
+									displayData: displayData as unknown as Record<string, unknown>,
+								} as unknown as QuoteLine)}>
+									<EditIcon className="mr-2 size-4" />
+									{t("quotes.actions.edit") || "Edit"}
+								</DropdownMenuItem>
+							)}
 							<DropdownMenuItem onClick={handleSaveTemplate}>
 								<FolderIcon className="mr-2 size-4" />
 								{t("quotes.actions.saveAsTemplate") || "Save as Template"}

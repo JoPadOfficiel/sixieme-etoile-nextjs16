@@ -18,7 +18,7 @@ export const sourceDataSchema = z
 		formData: z.record(z.unknown()).optional(),
 		pricingResult: z.record(z.unknown()).optional(),
 	})
-	.passthrough();
+	.strict();
 
 export type SourceData = z.infer<typeof sourceDataSchema>;
 

@@ -12,7 +12,7 @@ import {
 } from "@ui/components/alert-dialog";
 import { Button } from "@ui/components/button";
 import { cn } from "@ui/lib";
-import { CopyIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CopyIcon, EditIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -20,6 +20,7 @@ interface SelectionToolbarProps {
 	selectedCount: number;
 	onDelete: () => void;
 	onDuplicate: () => void;
+	onEdit?: () => void; // Only available when exactly one line is selected
 	onDeselect: () => void;
 	className?: string;
 }
@@ -28,6 +29,7 @@ export function SelectionToolbar({
 	selectedCount,
 	onDelete,
 	onDuplicate,
+	onEdit,
 	onDeselect,
 	className,
 }: SelectionToolbarProps) {
@@ -77,6 +79,21 @@ export function SelectionToolbar({
 
 				{/* Actions */}
 				<div className="flex items-center gap-1">
+					{/* Edit button - only show when exactly one line is selected */}
+					{selectedCount === 1 && onEdit && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onEdit}
+							className="gap-2"
+						>
+							<EditIcon className="h-4 w-4" />
+							<span className="hidden sm:inline">
+								{t("actions.edit") || "Éditer"}
+							</span>
+						</Button>
+					)}
+
 					<Button
 						variant="ghost"
 						size="sm"
