@@ -284,7 +284,9 @@ export function CreateQuoteCockpit() {
 				title: t("quotes.create.success"),
 				description: t("quotes.create.successDescription"),
 			});
-			router.push(`/app/${activeOrganization?.slug}/quotes/${data.id}`);
+			if (data?.id && activeOrganization?.slug) {
+				router.push(`/app/${activeOrganization.slug}/quotes/${data.id}`);
+			}
 		},
 		onError: (error) => {
 			toast({
@@ -392,17 +394,12 @@ export function CreateQuoteCockpit() {
 			// Story 29.1: Reset form for next trip (Keep Contact/Org context)
 			setFormData((prev) => ({
 				...initialCreateQuoteFormData,
-				organizationId: prev.organizationId,
 				contactId: prev.contactId, // Keep selected client
 				pricingMode: prev.pricingMode, // Keep pricing preference
 				vehicleCategoryId: prev.vehicleCategoryId, // Keep vehicle preference? Maybe reset. Let's keep for speed.
-				// Reset trip specifics
+				// Reset trip specifics (override initial values)
 				pickupAddress: "",
 				dropoffAddress: "",
-				pickupLatitude: undefined,
-				pickupLongitude: undefined,
-				dropoffLatitude: undefined,
-				dropoffLongitude: undefined,
 				pickupAt: null,
 				returnDate: null,
 				notes: "",

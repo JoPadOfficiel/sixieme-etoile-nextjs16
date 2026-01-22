@@ -12,6 +12,7 @@ import { LoadQuoteTemplateDialog } from "./LoadQuoteTemplateDialog";
 import { SaveQuoteTemplateDialog } from "./SaveQuoteTemplateDialog";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SortableQuoteLinesList } from "./SortableQuoteLinesList";
+import { getLineId } from "./dnd-utils";
 import type { QuoteLine } from "./dnd-utils";
 
 /**

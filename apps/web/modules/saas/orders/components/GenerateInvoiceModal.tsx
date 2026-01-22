@@ -1,5 +1,6 @@
 "use client";
 
+import Decimal from "decimal.js";
 import { apiClient } from "@shared/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
