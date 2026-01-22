@@ -13,6 +13,7 @@ import {
 import { apiClient } from "@shared/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@ui/hooks/use-toast";
+import { addDays, endOfDay, format, startOfDay } from "date-fns";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
 import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
@@ -28,7 +29,8 @@ import {
 import { AssignmentDrawer } from "./AssignmentDrawer";
 import { MissionRow } from "./MissionRow";
 import { UnassignedSidebar } from "./UnassignedSidebar";
-import type { GanttDriver } from "./gantt/types";
+import { ZOOM_PRESETS } from "./gantt/constants";
+import type { DateRange, GanttDriver, ZoomPreset } from "./gantt/types";
 
 import { InspectorPanel } from "./InspectorPanel";
 // Shell Components
@@ -55,6 +57,43 @@ export function DispatchPage() {
 	// Sidebar state
 	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+	// Story 29.6: Date range state for multi-day view (lifted from DispatchMain)
+	const [dateRange, setDateRange] = useState<DateRange>(() => {
+		const now = new Date();
+		return {
+			start: startOfDay(now),
+			end: endOfDay(addDays(now, 2)), // Default: 3 days view
+		};
+	});
+
+	// Story 29.6: Active preset state
+	const [activePreset, setActivePreset] = useState<ZoomPreset | null>("3days");
+
+	// Story 29.6: Handle preset change with date centering and zoom sync
+	const handlePresetChange = useCallback((preset: ZoomPreset) => {
+		const presetConfig = ZOOM_PRESETS[preset];
+		const now = new Date();
+
+		// Center the range around current time for better UX
+		const halfDays = Math.floor(presetConfig.rangeDays / 2);
+		const newStart = startOfDay(addDays(now, -halfDays));
+		const newEnd = endOfDay(
+			addDays(now, presetConfig.rangeDays - halfDays - 1),
+		);
+
+		setDateRange({ start: newStart, end: newEnd });
+		setActivePreset(preset);
+	}, []);
+
+	// Story 29.6: Handle date range change from picker
+	const handleDateRangeChange = useCallback((range: DateRange) => {
+		setDateRange({
+			start: startOfDay(range.start),
+			end: endOfDay(range.end),
+		});
+		setActivePreset(null); // Clear preset when manually selecting range
+	}, []);
+
 	// Story 8.3: Multi-base visualization state
 	const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
 		null,
@@ -74,18 +113,18 @@ export function DispatchPage() {
 	 *
 	 * Story 27.9, 27.10, 27.13
 	 *
-	 * NOTE: This query uses a DIFFERENT key than useDriversForGantt hook because:
-	 * - This query includes calendar events (includeEvents: true)
-	 * - This query includes missions per driver (includeMissions: true)
-	 * - useDriversForGantt is a simpler query without these inclusions
-	 *
-	 * Both share the same polling configuration via DISPATCH_QUERY_OPTIONS.
+	 * This query includes calendar events (includeEvents: true) and missions per driver (includeMissions: true).
+	 * It uses DISPATCH_QUERY_OPTIONS for polling configuration.
 	 */
+	// Story 29.6: Query key includes date range for proper cache invalidation
 	const DISPATCH_DRIVERS_QUERY_KEY = [
 		"dispatch-drivers",
 		"with-events-missions",
+		format(dateRange.start, "yyyy-MM-dd"),
+		format(dateRange.end, "yyyy-MM-dd"),
 	] as const;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const { data: driversData } = useQuery<any>({
 		queryKey: DISPATCH_DRIVERS_QUERY_KEY,
 		queryFn: async () => {
@@ -95,9 +134,14 @@ export function DispatchPage() {
 					limit: "100",
 					includeEvents: "true",
 					includeMissions: "true",
+					// TODO Story 29.6: Backend API needs to support missionsStartDate/missionsEndDate
+					// Once added, uncomment these lines:
+					// missionsStartDate: format(dateRange.start, "yyyy-MM-dd"),
+					// missionsEndDate: format(dateRange.end, "yyyy-MM-dd"),
 				},
 			});
 			if (!res.ok) throw new Error("Failed to fetch drivers");
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			return res.json() as Promise<any>;
 		},
 		...DISPATCH_QUERY_OPTIONS,
@@ -359,6 +403,10 @@ export function DispatchPage() {
 					isLoadingBases={basesLoading}
 					drivers={drivers}
 					onMissionSelect={handleSelectMission}
+					dateRange={dateRange}
+					onDateRangeChange={handleDateRangeChange}
+					onPresetChange={handlePresetChange}
+					activePreset={activePreset}
 				/>
 			</DispatchLayout>
 

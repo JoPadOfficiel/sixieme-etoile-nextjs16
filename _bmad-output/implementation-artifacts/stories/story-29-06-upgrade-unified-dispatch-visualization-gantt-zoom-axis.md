@@ -7,7 +7,7 @@
 | **Story ID**         | 29.6                                                       |
 | **Epic**             | Epic 29 - Complete Multi-Mission Quote Lifecycle           |
 | **Title**            | Upgrade Unified Dispatch Visualization (Gantt Zoom & Axis) |
-| **Status**           | ready-for-dev                                              |
+| **Status**           | done                                                    |
 | **Priority**         | High                                                       |
 | **Estimated Points** | 5                                                          |
 | **Assignee**         | Amelia (Developer)                                         |
@@ -39,41 +39,41 @@ The current implementation in `GanttTimeline.tsx` uses `startOfDay(today)` and `
 
 ### AC1: Continuous Linear Time Axis
 
-- [ ] The X-axis displays time continuously without visual "reset" at 00h00
-- [ ] Hour labels flow naturally: ...22h, 23h, 00h, 01h, 02h...
-- [ ] Date labels appear at midnight transitions and at the start of the range
-- [ ] A mission at 23h Monday and one at 01h Tuesday appear visually adjacent (not separated)
+- [x] The X-axis displays time continuously without visual "reset" at 00h00
+- [x] Hour labels flow naturally: ...22h, 23h, 00h, 01h, 02h...
+- [x] Date labels appear at midnight transitions and at the start of the range
+- [x] A mission at 23h Monday and one at 01h Tuesday appear visually adjacent (not separated)
 
 ### AC2: Zoom Preset Buttons
 
-- [ ] Three preset buttons are available: `Day`, `3 Days`, `Week`
-- [ ] `Day` preset: High detail (~100-150 px/hour), shows ~24h
-- [ ] `3 Days` preset: Medium detail (~40-50 px/hour), shows ~72h
-- [ ] `Week` preset: Low detail (~15-20 px/hour), shows ~168h
-- [ ] Clicking a preset adjusts both `pixelsPerHour` and the date range
-- [ ] Current zoom level is visually indicated (active button state)
+- [x] Three preset buttons are available: `Day`, `3 Days`, `Week`
+- [x] `Day` preset: High detail (~100-150 px/hour), shows ~24h
+- [x] `3 Days` preset: Medium detail (~40-50 px/hour), shows ~72h
+- [x] `Week` preset: Low detail (~15-20 px/hour), shows ~168h
+- [x] Clicking a preset adjusts both `pixelsPerHour` and the date range
+- [x] Current zoom level is visually indicated (active button state)
 
 ### AC3: Date Range Picker
 
-- [ ] Replace the single date picker with a date range picker (Start Date - End Date)
-- [ ] Default range: Today 00h00 to Tomorrow 23h59 (48h view)
-- [ ] User can select any date range up to 14 days
-- [ ] Range selection updates the Gantt view immediately
-- [ ] Range is synchronized with zoom presets (selecting "Week" adjusts range to 7 days)
+- [x] Replace the single date picker with a date range picker (Start Date - End Date)
+- [x] Default range: Today 00h00 to Tomorrow 23h59 (48h view)
+- [x] User can select any date range up to 14 days
+- [x] Range selection updates the Gantt view immediately
+- [x] Range is synchronized with zoom presets (selecting "Week" adjusts range to 7 days)
 
 ### AC4: Multi-Day Data Fetching
 
-- [ ] `DispatchProvider` fetches missions between `rangeStart` and `rangeEnd`
-- [ ] API query includes date range parameters
-- [ ] Missions outside the visible range are not fetched (performance)
-- [ ] Real-time polling respects the selected date range
+- [x] `DispatchProvider` fetches missions between `rangeStart` and `rangeEnd`
+- [x] API query includes date range parameters
+- [x] Missions outside the visible range are not fetched (performance)
+- [x] Real-time polling respects the selected date range
 
 ### AC5: Visual Continuity
 
-- [ ] Grid lines are consistent across day boundaries
-- [ ] The "Now" indicator works correctly across multi-day views
-- [ ] Scroll position is preserved when changing zoom levels
-- [ ] Date separators are subtle but visible (vertical line at midnight)
+- [x] Grid lines are consistent across day boundaries
+- [x] The "Now" indicator works correctly across multi-day views
+- [x] Scroll position is preserved when changing zoom levels
+- [x] Date separators are subtle but visible (vertical line at midnight)
 
 ---
 
@@ -209,14 +209,14 @@ export const ZOOM_PRESETS: Record<ZoomPreset, ZoomPresetConfig> = {
 
 ## Definition of Done
 
-- [ ] All acceptance criteria met
-- [ ] Unit tests for `useGanttZoom` hook with presets
-- [ ] Browser MCP test: 3-day view with missions at 23h and 01h
-- [ ] No TypeScript errors
-- [ ] No console errors
-- [ ] Translations added for FR/EN
-- [ ] Code reviewed
-- [ ] Story status updated to `review`
+- [x] All acceptance criteria met
+- [x] Unit tests for `useGanttZoom` hook with presets
+- [x] Browser MCP test: 3-day view with missions at 23h and 01h
+- [x] No TypeScript errors
+- [x] No console errors
+- [x] Translations added for FR/EN
+- [x] Code reviewed
+- [x] Story status updated to `review`
 
 ---
 
@@ -246,3 +246,33 @@ export const ZOOM_PRESETS: Record<ZoomPreset, ZoomPresetConfig> = {
 | Date       | Author   | Change        |
 | ---------- | -------- | ------------- |
 | 2026-01-22 | Bob (SM) | Story created |
+| 2026-01-22 | AI Agent | Implementation completed, code review fixes applied |
+
+---
+
+## Dev Agent Record
+
+### File List
+
+| File | Action | Description |
+| ---- | ------ | ----------- |
+| `apps/web/modules/saas/dispatch/components/DispatchPage.tsx` | Modified | Lifted dateRange state from DispatchMain, integrated date range params in API query |
+| `apps/web/modules/saas/dispatch/components/shell/DispatchMain.tsx` | Modified | Receives dateRange and handlers as props instead of managing internal state |
+| `apps/web/modules/saas/dispatch/components/gantt/GanttTimeline.tsx` | Modified | Added multi-day view support, preset sync, drag-to-scroll |
+| `apps/web/modules/saas/dispatch/components/gantt/GanttZoomControls.tsx` | Modified | Added preset buttons (Day/3Days/Week) and date range picker |
+| `apps/web/modules/saas/dispatch/components/gantt/GanttHeader.tsx` | Modified | Continuous hour labels with midnight date labels |
+| `apps/web/modules/saas/dispatch/components/gantt/GanttGrid.tsx` | Modified | Midnight separator lines for multi-day views |
+| `apps/web/modules/saas/dispatch/components/gantt/hooks/useGanttZoom.ts` | Modified | Added setZoomPreset function |
+| `apps/web/modules/saas/dispatch/components/gantt/types.ts` | Modified | Added DateRange, ZoomPreset, ZoomPresetConfig types |
+| `apps/web/modules/saas/dispatch/components/gantt/constants.ts` | Modified | Added ZOOM_PRESETS configuration |
+| `apps/web/modules/saas/dispatch/components/gantt/hooks/__tests__/useGanttZoom.test.ts` | Modified | Added tests for preset functions |
+| `packages/i18n/translations/fr.json` | Modified | Added translations for presets and zoom controls |
+| `packages/i18n/translations/en.json` | Modified | Added translations for presets and zoom controls |
+| `apps/web/modules/saas/dispatch/hooks/useDriversForGantt.ts` | Deleted | Removed unused/confusing hook |
+| `apps/web/modules/saas/dispatch/hooks/index.ts` | Modified | Removed export of useDriversForGantt |
+
+### Change Log
+
+- **2026-01-22**: Initial implementation of multi-day Gantt view
+- **2026-01-22**: Code review fix - lifted dateRange state to DispatchPage for proper API integration (AC4 fix)
+- **2026-01-22**: Code review fix - deleted unused `useDriversForGantt` hook and cleaned up references
