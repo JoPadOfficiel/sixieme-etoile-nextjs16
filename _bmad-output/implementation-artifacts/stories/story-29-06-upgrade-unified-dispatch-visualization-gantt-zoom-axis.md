@@ -7,7 +7,7 @@
 | **Story ID**         | 29.6                                                       |
 | **Epic**             | Epic 29 - Complete Multi-Mission Quote Lifecycle           |
 | **Title**            | Upgrade Unified Dispatch Visualization (Gantt Zoom & Axis) |
-| **Status**           | done                                                    |
+| **Status**           | dones                                                    |
 | **Priority**         | High                                                       |
 | **Estimated Points** | 5                                                          |
 | **Assignee**         | Amelia (Developer)                                         |
