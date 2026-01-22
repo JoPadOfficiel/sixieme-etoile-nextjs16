@@ -2990,6 +2990,23 @@
 			"backToQuotes": "Retour aux devis",
 			"notFound": "Devis introuvable",
 			"notFoundDescription": "Le devis que vous recherchez n'existe pas ou a été supprimé.",
+			"lines": {
+				"title": "Prestations",
+				"type": "Type",
+				"route": "Trajet",
+				"dateTime": "Date/Heure",
+				"price": "Prix",
+				"viewAll": "Voir tout",
+				"noCoordinates": "Coordonnées indisponibles"
+			},
+			"map": {
+				"pickup": "Départ",
+				"dropoff": "Arrivée",
+				"viewAll": "Voir tout",
+				"noMissions": "Aucune mission avec coordonnées",
+				"loadError": "Erreur de chargement de la carte",
+				"missionsCount": "{count, plural, =1 {# mission} other {# missions}}"
+			},
 			"frozen": {
 				"title": "Valeurs commerciales figées",
 				"description": "Ce devis a été envoyé. Les valeurs commerciales (prix, coûts, marges) ne peuvent plus être modifiées."

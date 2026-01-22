@@ -39,3 +39,7 @@ export { TripSummaryHeader } from "./TripSummaryHeader";
 export { CollapsibleSection } from "./CollapsibleSection";
 export { PriceBreakdownContent } from "./PriceBreakdownContent";
 export { OperationalCostsContent } from "./OperationalCostsContent";
+
+// Story 29.2: Multi-Mission Quote Detail View
+export { QuoteLinesTable } from "./QuoteLinesTable";
+export { MultiMissionMap } from "./MultiMissionMap";

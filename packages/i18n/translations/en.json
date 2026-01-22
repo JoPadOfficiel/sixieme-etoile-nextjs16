@@ -3005,6 +3005,23 @@
 			"backToQuotes": "Back to Quotes",
 			"notFound": "Quote not found",
 			"notFoundDescription": "The quote you are looking for does not exist or has been deleted.",
+			"lines": {
+				"title": "Services",
+				"type": "Type",
+				"route": "Route",
+				"dateTime": "Date/Time",
+				"price": "Price",
+				"viewAll": "View All",
+				"noCoordinates": "Coordinates unavailable"
+			},
+			"map": {
+				"pickup": "Pickup",
+				"dropoff": "Dropoff",
+				"viewAll": "View All",
+				"noMissions": "No missions with coordinates",
+				"loadError": "Map loading error",
+				"missionsCount": "{count, plural, =1 {# mission} other {# missions}}"
+			},
 			"frozen": {
 				"title": "Commercial Values Frozen",
 				"description": "This quote has been sent. Commercial values (prices, costs, margins) cannot be modified."
