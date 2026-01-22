@@ -3950,6 +3950,7 @@
 			"cancel": "Cancel",
 			"generating": "Generating...",
 			"pdf": {
+				"title": "Schedule",
 				"date": "Date",
 				"generatedAt": "Generated at",
 				"driver": "Driver",
@@ -4387,6 +4388,7 @@
 			"zoomLevel": {
 				"hour": "Hour",
 				"day": "Day",
+				"3days": "3 Days",
 				"week": "Week"
 			},
 			"presets": {

@@ -71,7 +71,8 @@ function clamp(value: number, min: number, max: number): number {
  */
 function getZoomLabel(pixelsPerHour: number): string {
 	if (pixelsPerHour >= 120) return "hour"; // Detailed hourly view
-	if (pixelsPerHour >= 40) return "day"; // Standard day view
+	if (pixelsPerHour >= 45) return "day"; // Standard day view (matches 3days preset)
+	if (pixelsPerHour >= 25) return "3days"; // 3-day view
 	return "week"; // Compressed week view
 }
 

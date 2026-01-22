@@ -63,6 +63,7 @@ export interface TimeScaleConfig {
 export interface GanttHeaderProps {
 	config: TimeScaleConfig;
 	className?: string;
+	onScroll?: (scrollLeft: number) => void;
 }
 
 export interface GanttDriverRowProps {

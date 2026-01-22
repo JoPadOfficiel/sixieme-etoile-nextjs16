@@ -38,6 +38,7 @@ import {
 	OVERSCAN_COUNT,
 	ROW_HEIGHT,
 	SIDEBAR_WIDTH,
+	ZOOM_PRESETS,
 } from "./constants";
 import {
 	useGanttScroll,
@@ -70,6 +71,14 @@ export const GanttTimeline = memo(function GanttTimeline({
 		scrollTo,
 	} = useGanttScroll();
 
+	// Story 29.6: Get initial zoom from active preset
+	const getPresetZoom = useCallback(() => {
+		if (activePreset && ZOOM_PRESETS[activePreset]) {
+			return ZOOM_PRESETS[activePreset].pixelsPerHour;
+		}
+		return initialPixelsPerHour;
+	}, [activePreset, initialPixelsPerHour]);
+
 	// Zoom state management (Story 27.12)
 	const {
 		pixelsPerHour,
@@ -79,15 +88,87 @@ export const GanttTimeline = memo(function GanttTimeline({
 		zoomOut,
 		zoomLabel,
 		zoomPercent,
-	} = useGanttZoom({ initialZoom: initialPixelsPerHour });
+		setZoomLevel,
+	} = useGanttZoom({ initialZoom: getPresetZoom() });
+
+	// Story 29.6: Sync zoom with preset changes
+	useEffect(() => {
+		if (activePreset && ZOOM_PRESETS[activePreset]) {
+			const presetZoom = ZOOM_PRESETS[activePreset].pixelsPerHour;
+			if (pixelsPerHour !== presetZoom) {
+				setZoomLevel(presetZoom);
+			}
+		}
+	}, [activePreset, setZoomLevel, pixelsPerHour]);
 
 	// State for selected date (updated when user navigates)
 	const [selectedDate, setSelectedDate] = useState<Date>(startTime);
 
-	// Time scale configuration - now uses dynamic pixelsPerHour from zoom state
+	// Story 29.6: Sync selectedDate with dateRange changes
+	useEffect(() => {
+		if (dateRange) {
+			setSelectedDate(dateRange.start);
+		} else {
+			setSelectedDate(startTime);
+		}
+	}, [dateRange, startTime]);
+
+	// Story 29.6: Handle drag on timeline content
+	const isContentDraggingRef = useRef(false);
+	const contentStartXRef = useRef(0);
+	const contentScrollLeftRef = useRef(0);
+
+	const handleContentMouseDown = useCallback((e: React.MouseEvent) => {
+		if (!contentRef.current) return;
+		
+		isContentDraggingRef.current = true;
+		contentStartXRef.current = e.pageX - contentRef.current.offsetLeft;
+		contentScrollLeftRef.current = contentRef.current.scrollLeft;
+		
+		// Change cursor to indicate dragging
+		document.body.style.cursor = 'grabbing';
+		document.body.style.userSelect = 'none';
+		
+		e.preventDefault();
+	}, [contentRef]);
+
+	const handleContentMouseMove = useCallback((e: MouseEvent) => {
+		if (!isContentDraggingRef.current || !contentRef.current) return;
+		
+		e.preventDefault();
+		const x = e.pageX - contentRef.current.offsetLeft;
+		const walk = (x - contentStartXRef.current) * 1.5; // Adjust scroll speed
+		const newScrollLeft = contentScrollLeftRef.current - walk;
+		
+		contentRef.current.scrollLeft = newScrollLeft;
+		if (headerRef.current) {
+			headerRef.current.scrollLeft = newScrollLeft;
+		}
+	}, [contentRef, headerRef]);
+
+	const handleContentMouseUp = useCallback(() => {
+		isContentDraggingRef.current = false;
+		document.body.style.cursor = '';
+		document.body.style.userSelect = '';
+	}, []);
+
+	// Add global mouse event listeners for content drag
+	useEffect(() => {
+		if (isContentDraggingRef.current) {
+			document.addEventListener('mousemove', handleContentMouseMove);
+			document.addEventListener('mouseup', handleContentMouseUp);
+			
+			return () => {
+				document.removeEventListener('mousemove', handleContentMouseMove);
+				document.removeEventListener('mouseup', handleContentMouseUp);
+			};
+		}
+	}, [handleContentMouseMove, handleContentMouseUp]);
+
+	// Time scale configuration - Story 29.6: Use dateRange for multi-day views
 	const { config } = useGanttTimeScale({
-		startTime,
-		endTime,
+		startTime: dateRange ? dateRange.start : startTime,
+		endTime: dateRange ? dateRange.end : endTime,
 		pixelsPerHour,
 	});
 
@@ -248,7 +329,7 @@ export const GanttTimeline = memo(function GanttTimeline({
 					className="flex overflow-x-hidden"
 					style={{ height: HEADER_HEIGHT }}
 				>
-					<GanttHeader config={config} />
+					<GanttHeader config={config} onScroll={scrollTo} />
 				</div>
 
 				{/* Main content area */}
@@ -272,11 +353,12 @@ export const GanttTimeline = memo(function GanttTimeline({
 					{/* Scrollable timeline content */}
 					<div
 						ref={contentRef}
-						className="relative flex-1 overflow-auto"
+						className="relative flex-1 overflow-auto cursor-grab active:cursor-grabbing"
 						onScroll={(e) => {
 							handleHorizontalScroll(e);
 							handleVerticalScroll(e);
 						}}
+						onMouseDown={handleContentMouseDown}
 					>
 						<div
 							className="relative"
