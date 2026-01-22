@@ -140,6 +140,8 @@ export class QuoteStateMachine {
 		userId?: string,
 		reason?: string,
 	): Promise<TransitionResult> {
+		console.log(`[QuoteStateMachine] Starting transition: ${quoteId} -> ${newStatus} for org ${organizationId}`);
+		
 		// Fetch current quote
 		const quote = await db.quote.findFirst({
 			where: {
@@ -149,6 +151,7 @@ export class QuoteStateMachine {
 		});
 
 		if (!quote) {
+			console.log(`[QuoteStateMachine] Quote not found: ${quoteId}`);
 			return {
 				success: false,
 				error: "Quote not found",
@@ -157,10 +160,12 @@ export class QuoteStateMachine {
 		}
 
 		const currentStatus = quote.status;
+		console.log(`[QuoteStateMachine] Current status: ${currentStatus}, New status: ${newStatus}`);
 
 		// Validate transition
 		const validation = this.validateTransition(currentStatus, newStatus);
 		if (!validation.valid) {
+			console.log(`[QuoteStateMachine] Invalid transition: ${validation.error}`);
 			return {
 				success: false,
 				error: validation.error,
@@ -195,33 +200,40 @@ export class QuoteStateMachine {
 		}
 
 		// Execute transition in a transaction
-		const [updatedQuote] = await db.$transaction([
-			// Update quote status, timestamp, and orderId
-			db.quote.update({
-				where: { id: quoteId },
-				data: {
-					status: newStatus,
-					...timestampUpdate,
-					...(orderId && !quote.orderId ? { orderId } : {}),
-				},
-				include: {
-					contact: true,
-					vehicleCategory: true,
-					invoices: true,
-				},
-			}),
-			// Create audit log entry
-			db.quoteStatusAuditLog.create({
-				data: {
-					organizationId,
-					quoteId,
-					previousStatus: currentStatus,
-					newStatus,
-					userId,
-					reason,
-				},
-			}),
-		]);
+		let updatedQuote;
+		try {
+			[updatedQuote] = await db.$transaction([
+				// Update quote status, timestamp, and orderId
+				db.quote.update({
+					where: { id: quoteId },
+					data: {
+						status: newStatus,
+						...timestampUpdate,
+						...(orderId && !quote.orderId ? { orderId } : {}),
+					},
+					include: {
+						contact: true,
+						vehicleCategory: true,
+						invoices: true,
+					},
+				}),
+				// Create audit log entry
+				db.quoteStatusAuditLog.create({
+					data: {
+						organizationId,
+						quoteId,
+						previousStatus: currentStatus,
+						newStatus,
+						userId,
+						reason,
+					},
+				}),
+			]);
+			console.log(`[QuoteStateMachine] Transaction successful for ${quoteId} -> ${newStatus}`);
+		} catch (error) {
+			console.error(`[QuoteStateMachine] Transaction failed:`, error);
+			throw error;
+		}
 
 		// Story 29.5: Link missions to the new Order
 		if (newStatus === "ACCEPTED" && orderId) {

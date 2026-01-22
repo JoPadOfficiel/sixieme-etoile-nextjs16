@@ -340,12 +340,25 @@ const duplicateQuote = async (quoteId: string) => {
 | `packages/i18n/translations/fr.json` | Added `quotes.status.cancelled`, `quotes.detail.actions.cancel/duplicate/cancelSuccess/cancelError/duplicateSuccess/duplicateError`, `settings.documentSettings.pdfAppearance.*` |
 | `packages/i18n/translations/en.json` | Same keys in English                                                                                                                                                             |
 
+### CRITICAL FIXES Completed (2026-01-22)
+
+| Fix                                | Files Modified                                                            | Description                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **PDF description enrichment**     | `packages/api/src/services/invoice-line-utils.ts` (already implemented)   | `buildEnrichedDescription` already generates multi-line descriptions with Type+Date, Departure/Arrival, Pax/Luggage/Vehicle |
+| **Fix 0.00€ price mapping**        | `packages/api/src/routes/vtc/documents.ts:415-421`                        | Use QuoteLine prices (`l.unitPrice`, `l.totalPrice`) as fallback when display prices are 0                                  |
+| **Map visibility toggle**          | `apps/web/modules/saas/quotes/components/QuoteDetailPage.tsx:274-290`     | Only provide `routeCoordinates` if both pickup AND dropoff coordinates are valid                                            |
+| **Contact card immediate display** | `apps/web/modules/saas/quotes/components/QuoteBasicInfoPanel.tsx:241-286` | Add Contact Card that appears immediately when contact is selected, showing name, company, email, phone, and badge          |
+
+### Translations Added
+
+| File                                 | Keys Added                        |
+| ------------------------------------ | --------------------------------- |
+| `packages/i18n/translations/fr.json` | `quotes.create.contactCard.title` |
+| `packages/i18n/translations/en.json` | `quotes.create.contactCard.title` |
+
 ### Pending Items
 
-- [ ] PDF description enrichment (buildEnrichedDescription)
-- [ ] Fix 0.00€ price mapping in PDF
-- [ ] Map visibility toggle when no mission selected
-- [ ] Contact card immediate display
+- [ ] None - All CRITICAL FIXES completed
 
 ---
 

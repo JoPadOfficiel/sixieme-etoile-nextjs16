@@ -1,6 +1,7 @@
 "use client";
 
 import { AddressAutocomplete } from "@saas/shared/components/AddressAutocomplete";
+import { Badge } from "@ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/components/card";
 import { Input } from "@ui/components/input";
 import { Label } from "@ui/components/label";
@@ -13,7 +14,15 @@ import {
 } from "@ui/components/select";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
-import { CalendarIcon, LockIcon, LuggageIcon, UsersIcon } from "lucide-react";
+import { 
+	CalendarIcon, 
+	LockIcon, 
+	LuggageIcon, 
+	UsersIcon,
+	UserIcon,
+	MailIcon,
+	PhoneIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
 import { getAutoSelectResult } from "../hooks/useScenarioHelpers";
@@ -237,6 +246,47 @@ export function QuoteBasicInfoPanel({
 					)}
 				</CardContent>
 			</Card>
+
+			{/* CRITICAL FIX 4: Contact Card immediate display */}
+			{formData.contact && (
+				<Card>
+					<CardHeader className="pb-3">
+						<CardTitle className="text-base flex items-center gap-2">
+							<UserIcon className="size-4" />
+							{t("quotes.create.contactCard.title")}
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<div>
+									<div className="font-medium">{formData.contact.displayName}</div>
+									{formData.contact.companyName && (
+										<div className="text-sm text-muted-foreground">
+											{formData.contact.companyName}
+										</div>
+									)}
+								</div>
+								<Badge variant={formData.contact.isPartner ? "default" : "secondary"}>
+									{formData.contact.isPartner ? t("quotes.partner") : t("quotes.private")}
+								</Badge>
+							</div>
+							{formData.contact.email && (
+								<div className="flex items-center gap-2 text-sm text-muted-foreground">
+									<MailIcon className="size-3" />
+									{formData.contact.email}
+								</div>
+							)}
+							{formData.contact.phone && (
+								<div className="flex items-center gap-2 text-sm text-muted-foreground">
+									<PhoneIcon className="size-3" />
+									{formData.contact.phone}
+								</div>
+							)}
+						</div>
+					</CardContent>
+				</Card>
+			)}
 
 			{/* Trip & Vehicle Details - Story 19.10: Merged cards */}
 			<Card>

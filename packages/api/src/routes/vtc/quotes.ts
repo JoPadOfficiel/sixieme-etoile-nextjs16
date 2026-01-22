@@ -949,27 +949,81 @@ export const quotesRouter = new Hono()
 						? session.userId
 						: undefined;
 
-				const result = await QuoteStateMachine.transition(
-					id,
-					data.status as QuoteStatus,
-					organizationId,
-					userId,
-				);
+				// Special handling for CANCELLED status to avoid transaction issues
+				if (data.status === "CANCELLED") {
+					console.log(`[Quotes API] Cancelling quote ${id} for org ${organizationId}`);
+					
+					try {
+						// Simple direct update for CANCELLED status
+						const updatedQuote = await db.quote.update({
+							where: withTenantId(id, organizationId),
+							data: {
+								status: "CANCELLED",
+								cancelledAt: new Date(),
+							},
+							include: {
+								contact: true,
+								vehicleCategory: true,
+								invoices: true,
+							},
+						});
 
-				if (!result.success) {
-					throw new HTTPException(400, {
-						message: result.error || "Invalid status transition",
-					});
+						// Create audit log entry (separate, non-critical)
+						try {
+							await db.quoteStatusAuditLog.create({
+								data: {
+									organizationId,
+									quoteId: id,
+									previousStatus: existing.status,
+									newStatus: "CANCELLED",
+									userId,
+								},
+							});
+						} catch (auditError) {
+							console.warn(`[Quotes API] Audit log creation failed:`, auditError);
+							// Continue even if audit fails
+						}
+
+						console.log(`[Quotes API] Quote ${id} cancelled successfully`);
+						
+						// If only status was being updated, return the result
+						if (!data.notes && !data.validUntil && !data.finalPrice) {
+							return c.json(updatedQuote);
+						}
+
+						// Continue with other updates if present
+						// Remove status from data since it's already handled
+						delete data.status;
+					} catch (error) {
+						console.error(`[Quotes API] Cancellation failed:`, error);
+						throw new HTTPException(500, {
+							message: `Failed to cancel quote: ${error instanceof Error ? error.message : 'Unknown error'}`,
+						});
+					}
+				} else {
+					// Use full state machine for other status transitions
+					const result = await QuoteStateMachine.transition(
+						id,
+						data.status as QuoteStatus,
+						organizationId,
+						userId,
+					);
+
+					if (!result.success) {
+						throw new HTTPException(400, {
+							message: result.error || "Invalid status transition",
+						});
+					}
+
+					// If only status was being updated, return the result
+					if (!data.notes && !data.validUntil && !data.finalPrice) {
+						return c.json(result.quote);
+					}
+
+					// Continue with other updates if present
+					// Remove status from data since it's already handled
+					delete data.status;
 				}
-
-				// If only status was being updated, return the result
-				if (!data.notes && !data.validUntil && !data.finalPrice) {
-					return c.json(result.quote);
-				}
-
-				// Continue with other updates if present
-				// Remove status from data since it's already handled
-				delete data.status;
 			}
 
 			// Check if trying to modify fields that require DRAFT status

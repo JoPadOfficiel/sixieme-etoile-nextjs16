@@ -267,25 +267,27 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
 
         {/* Center Column - Trip Transparency */}
         <div className="lg:col-span-6">
+          {/* CRITICAL FIX 3: Map visibility toggle - hide if no valid coordinates */}
           <TripTransparencyPanel
             pricingResult={pricingResult}
             isLoading={false}
-            routeCoordinates={{
-              pickup: data.pickupLatitude && data.pickupLongitude
-                ? { 
-                    lat: parseFloat(data.pickupLatitude), 
-                    lng: parseFloat(data.pickupLongitude), 
-                    address: data.pickupAddress 
+            routeCoordinates={
+              // Only provide routeCoordinates if we have valid coordinates
+              data.pickupLatitude && data.pickupLongitude && data.dropoffLatitude && data.dropoffLongitude
+                ? {
+                    pickup: { 
+                      lat: parseFloat(data.pickupLatitude), 
+                      lng: parseFloat(data.pickupLongitude), 
+                      address: data.pickupAddress 
+                    },
+                    dropoff: { 
+                      lat: parseFloat(data.dropoffLatitude), 
+                      lng: parseFloat(data.dropoffLongitude), 
+                      address: data.dropoffAddress ?? "" 
+                    },
                   }
-                : undefined,
-              dropoff: data.dropoffLatitude && data.dropoffLongitude
-                ? { 
-                    lat: parseFloat(data.dropoffLatitude), 
-                    lng: parseFloat(data.dropoffLongitude), 
-                    address: data.dropoffAddress ?? "" 
-                  }
-                : undefined,
-            }}
+                : undefined
+            }
           />
         </div>
 

@@ -2686,6 +2686,9 @@
 			},
 			"contact": "Contact",
 			"selectContact": "Sélectionner un contact...",
+			"contactCard": {
+				"title": "Détails du contact"
+			},
 			"searchContacts": "Rechercher des contacts...",
 			"noContactsFound": "Aucun contact trouvé",
 			"noContacts": "Aucun contact disponible",

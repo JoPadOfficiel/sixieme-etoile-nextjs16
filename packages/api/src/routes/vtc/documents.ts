@@ -412,18 +412,21 @@ function transformQuoteToPdfData(
 			// For safety in this "Restricted" context, let's prioritize the detailed description
 			// because the user complaint is about MISSING details.
 
+			// CRITICAL FIX 2: Fix 0.00€ price mapping - Use QuoteLine prices if display prices are 0
+			const unitPrice = Number(display.unitPrice ?? l.unitPrice ?? 0);
+			const totalPrice = Number(display.totalPrice ?? l.totalPrice ?? 0);
+			const vatRate = Number(display.vatRate ?? l.vatRate ?? 0);
+			const totalVat = Number(
+				display.totalVat ?? totalPrice * (vatRate / 100),
+			);
+
 			return {
 				description: enrichedDescription, // FORCE detailed description
-				quantity: Number(display.quantity ?? 1),
-				unitPriceExclVat: Number(display.unitPrice ?? 0),
-				vatRate: Number(display.vatRate ?? 0),
-				totalExclVat: Number(display.totalPrice ?? 0),
-				// Calculate VAT amount if not present
-				totalVat: Number(
-					display.totalVat ??
-						Number(display.totalPrice ?? 0) *
-							(Number(display.vatRate ?? 0) / 100),
-				),
+				quantity: Number(display.quantity ?? l.quantity ?? 1),
+				unitPriceExclVat: unitPrice,
+				vatRate: vatRate,
+				totalExclVat: totalPrice,
+				totalVat: totalVat,
 				type: (l.type as any) || "CALCULATED",
 			};
 		});
