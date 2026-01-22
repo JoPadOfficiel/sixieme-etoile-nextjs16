@@ -94,6 +94,20 @@ describe("Reports API Routes", () => {
 			expect(data.data).toHaveLength(3);
 		});
 
+		it("should pass vehicleCategoryId filter to invoice query", async () => {
+			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
+
+			await app.request("/reports/profitability?vehicleCategoryId=cat-1");
+
+			expect(db.invoice.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						quote: { vehicleCategoryId: "cat-1" },
+					}),
+				})
+			);
+		});
+
 		it("should filter invoices by status (only ISSUED, PARTIAL, PAID)", async () => {
 			vi.mocked(db.invoice.findMany).mockResolvedValue([]);
 
@@ -107,6 +121,44 @@ describe("Reports API Routes", () => {
 					}),
 				})
 			);
+		});
+
+		it("should filter by profitability level (red) and update summary", async () => {
+			const mockInvoices = [
+				{
+					id: "invoice-1",
+					number: "INV-001",
+					totalExclVat: 200,
+					totalInclVat: 240,
+					paidAmount: 240,
+					costBreakdown: { internalCost: 150 },
+					issueDate: new Date("2024-01-15"),
+					contactId: "contact-1",
+					contact: { id: "contact-1", displayName: "Client A" },
+				},
+				{
+					id: "invoice-2",
+					number: "INV-002",
+					totalExclVat: 100,
+					totalInclVat: 120,
+					paidAmount: 0,
+					costBreakdown: { internalCost: 130 },
+					issueDate: new Date("2024-01-16"),
+					contactId: "contact-2",
+					contact: { id: "contact-2", displayName: "Client B" },
+				},
+			];
+
+			vi.mocked(db.invoice.findMany).mockResolvedValue(mockInvoices as never);
+
+			const res = await app.request("/reports/profitability?profitabilityLevel=red");
+			expect(res.status).toBe(200);
+
+			const data = await res.json();
+			expect(data.summary.totalRevenue).toBe(100);
+			expect(data.summary.totalCount).toBe(1);
+			expect(data.data).toHaveLength(1);
+			expect(data.data[0].invoiceId).toBe("invoice-2");
 		});
 
 		it("should group by client", async () => {

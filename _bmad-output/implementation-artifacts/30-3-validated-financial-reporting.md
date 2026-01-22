@@ -184,7 +184,7 @@ const validStatuses: InvoiceStatus[] = ["ISSUED", "PARTIAL", "PAID"];
 ## Definition of Done
 
 - [x] Code implémenté et fonctionnel
-- [x] Tests unitaires mis à jour et passants (7/7 tests)
+- [x] Tests unitaires mis à jour et passants (9/9 tests)
 - [ ] Tests manuels validés (TC1-TC8)
 - [x] Traductions mises à jour (EN + FR)
 - [ ] PR créée et prête pour review
@@ -239,9 +239,11 @@ const validStatuses: InvoiceStatus[] = ["ISSUED", "PARTIAL", "PAID"];
 ### Tests Executed
 
 ```
-✓ Reports API Routes (7 tests) 90ms
+✓ Reports API Routes (9 tests) 20ms
   ✓ should return profitability report with summary and data from invoices
+  ✓ should pass vehicleCategoryId filter to invoice query
   ✓ should filter invoices by status (only ISSUED, PARTIAL, PAID)
+  ✓ should filter by profitability level (red) and update summary
   ✓ should group by client
   ✓ should group by vehicle category (all categories)
   ✓ should return empty data when no invoices match
@@ -249,7 +251,7 @@ const validStatuses: InvoiceStatus[] = ["ISSUED", "PARTIAL", "PAID"];
   ✓ should exclude DRAFT and CANCELLED invoices from revenue
 
 Test Files  1 passed (1)
-     Tests  7 passed (7)
+     Tests  9 passed (9)
 ```
 
 ### Git Commands

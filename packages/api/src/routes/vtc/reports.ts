@@ -99,7 +99,7 @@ export const reportsRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { dateFrom, dateTo, groupBy, profitabilityLevel, contactId } =
+			const { dateFrom, dateTo, groupBy, profitabilityLevel, contactId, vehicleCategoryId } =
 				c.req.valid("query");
 
 			// Story 30.3: Build where clause for Invoice (not Quote)
@@ -110,6 +110,7 @@ export const reportsRouter = new Hono()
 				...(dateFrom && { issueDate: { gte: new Date(dateFrom) } }),
 				...(dateTo && { issueDate: { lte: new Date(dateTo) } }),
 				...(contactId && { contactId }),
+				...(vehicleCategoryId && { quote: { vehicleCategoryId } }),
 			};
 
 			const where = withTenantFilter(baseWhere, organizationId);
@@ -125,7 +126,31 @@ export const reportsRouter = new Hono()
 				orderBy: { issueDate: "desc" },
 			});
 
-			// Calculate summary from Invoice data
+			// Helper to calculate margin for an invoice
+			const getInvoiceMargin = (invoice: typeof invoices[0]) => {
+				const revenue = Number(invoice.totalExclVat) || 0;
+				const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
+				const cost = costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
+				return revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
+			};
+
+			const getInvoiceCost = (invoice: typeof invoices[0]) => {
+				const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
+				return costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
+			};
+
+			// Apply profitability filter post-fetch (since margin is calculated)
+			const marginFilter = getMarginFilter(profitabilityLevel);
+			const filteredInvoices = marginFilter
+				? invoices.filter((invoice) => {
+						const margin = getInvoiceMargin(invoice);
+						if (marginFilter.gte !== undefined && margin < marginFilter.gte) return false;
+						if (marginFilter.lt !== undefined && margin >= marginFilter.lt) return false;
+						return true;
+					})
+				: invoices;
+
+			// Calculate summary from filtered Invoice data
 			let totalRevenue = 0;
 			let totalCost = 0;
 			let lossCount = 0;
@@ -133,18 +158,13 @@ export const reportsRouter = new Hono()
 			let totalPendingAmount = 0;
 			const margins: number[] = [];
 
-			for (const invoice of invoices) {
+			for (const invoice of filteredInvoices) {
 				const revenue = Number(invoice.totalExclVat) || 0;
 				const paid = Number(invoice.paidAmount) || 0;
 				const totalTTC = Number(invoice.totalInclVat) || 0;
-				
-				// Extract cost from costBreakdown if available
-				const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
-				const cost = costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
-				
-				// Calculate margin
-				const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
-				
+				const cost = getInvoiceCost(invoice);
+				const margin = getInvoiceMargin(invoice);
+
 				totalRevenue += revenue;
 				totalCost += cost;
 				totalPaidAmount += paid;
@@ -161,46 +181,18 @@ export const reportsRouter = new Hono()
 					? margins.reduce((sum, m) => sum + m, 0) / margins.length
 					: 0;
 
-			// Apply profitability filter post-fetch (since margin is calculated)
-			const marginFilter = getMarginFilter(profitabilityLevel);
-			const filteredInvoices = marginFilter
-				? invoices.filter((invoice) => {
-						const revenue = Number(invoice.totalExclVat) || 0;
-						const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
-						const cost = costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
-						const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
-						
-						if (marginFilter.gte !== undefined && margin < marginFilter.gte) return false;
-						if (marginFilter.lt !== undefined && margin >= marginFilter.lt) return false;
-						return true;
-				  })
-				: invoices;
-
 			const summary: ProfitabilityReportSummary = {
 				totalRevenue: Math.round(totalRevenue * 100) / 100,
 				totalCost: Math.round(totalCost * 100) / 100,
 				avgMarginPercent: Math.round(avgMarginPercent * 10) / 10,
 				lossCount,
-				totalCount: invoices.length,
+				totalCount: filteredInvoices.length,
 				paidAmount: Math.round(totalPaidAmount * 100) / 100,
 				pendingAmount: Math.round(totalPendingAmount * 100) / 100,
 			};
 
 			// Build data rows based on groupBy
 			let data: ProfitabilityReportRow[];
-
-			// Helper to calculate margin for an invoice
-			const getInvoiceMargin = (invoice: typeof invoices[0]) => {
-				const revenue = Number(invoice.totalExclVat) || 0;
-				const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
-				const cost = costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
-				return revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
-			};
-
-			const getInvoiceCost = (invoice: typeof invoices[0]) => {
-				const costBreakdown = invoice.costBreakdown as { internalCost?: number } | null;
-				return costBreakdown?.internalCost ? Number(costBreakdown.internalCost) : 0;
-			};
 
 			if (groupBy === "none") {
 				// No grouping - return individual invoices
