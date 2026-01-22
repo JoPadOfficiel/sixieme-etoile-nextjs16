@@ -174,14 +174,35 @@ export class QuoteStateMachine {
 			? { [timestampField]: new Date() }
 			: {};
 
+		// Story 29.5: When transitioning to ACCEPTED, create Order if not exists
+		let orderId: string | null = quote.orderId;
+		if (newStatus === "ACCEPTED" && !quote.orderId) {
+			// Generate order reference
+			const orderReference = await this.generateOrderReference(organizationId);
+			
+			// Create Order in a separate transaction first
+			const newOrder = await db.order.create({
+				data: {
+					organizationId,
+					reference: orderReference,
+					contactId: quote.contactId,
+					status: "CONFIRMED",
+					notes: null,
+				},
+			});
+			orderId = newOrder.id;
+			console.log(`[QuoteStateMachine] Created Order ${orderReference} for accepted quote ${quoteId}`);
+		}
+
 		// Execute transition in a transaction
 		const [updatedQuote] = await db.$transaction([
-			// Update quote status and timestamp
+			// Update quote status, timestamp, and orderId
 			db.quote.update({
 				where: { id: quoteId },
 				data: {
 					status: newStatus,
 					...timestampUpdate,
+					...(orderId && !quote.orderId ? { orderId } : {}),
 				},
 				include: {
 					contact: true,
@@ -202,10 +223,65 @@ export class QuoteStateMachine {
 			}),
 		]);
 
+		// Story 29.5: Link missions to the new Order
+		if (newStatus === "ACCEPTED" && orderId) {
+			await db.mission.updateMany({
+				where: {
+					quoteId,
+					orderId: null,
+				},
+				data: {
+					orderId,
+				},
+			});
+			console.log(`[QuoteStateMachine] Linked missions to Order ${orderId}`);
+		}
+
 		return {
 			success: true,
 			quote: updatedQuote,
 		};
+	}
+
+	/**
+	 * Generate unique order reference in format ORD-YYYY-NNN
+	 * Story 29.5: Used when auto-creating Order on quote acceptance
+	 */
+	private static async generateOrderReference(
+		organizationId: string,
+		retryCount = 0,
+	): Promise<string> {
+		const MAX_RETRIES = 3;
+		const year = new Date().getFullYear();
+		const prefix = `ORD-${year}-`;
+
+		const lastOrder = await db.order.findFirst({
+			where: {
+				organizationId,
+				reference: { startsWith: prefix },
+			},
+			orderBy: { reference: "desc" },
+		});
+
+		let sequence = 1;
+		if (lastOrder) {
+			const match = lastOrder.reference.match(/ORD-\d{4}-(\d+)/);
+			if (match) sequence = Number.parseInt(match[1], 10) + 1;
+		}
+
+		sequence += retryCount;
+		const reference = `${prefix}${sequence.toString().padStart(3, "0")}`;
+
+		if (retryCount < MAX_RETRIES) {
+			const existing = await db.order.findFirst({
+				where: { organizationId, reference },
+			});
+			if (existing) {
+				return this.generateOrderReference(organizationId, retryCount + 1);
+			}
+		}
+
+		return reference;
 	}
 
 	/**
