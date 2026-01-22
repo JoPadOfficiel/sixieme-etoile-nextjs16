@@ -16,8 +16,10 @@ import { usePricingCalculation } from "../hooks/usePricingCalculation";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useScenarioHelpers } from "../hooks/useScenarioHelpers";
 import { useVehicleCategories } from "../hooks/useVehicleCategories";
+import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
+import { hydrateFromQuote } from "../utils/hydrateFromQuote";
 import type { AddedFee } from "./AddQuoteFeeDialog";
 import { AirportHelperPanel } from "./AirportHelperPanel";
 import { CapacityWarningAlert } from "./CapacityWarningAlert";
@@ -67,7 +69,7 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 	// Shopping Cart State (The list of lines) - initialized from existing quote lines
 	const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
 
-	// Initialize form data and lines from quote
+	// Story 29.3: Initialize form data and lines from quote with proper hydration
 	useEffect(() => {
 		if (quote && !isInitialized) {
 			// Initialize form with quote data for adding new items
@@ -129,24 +131,16 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 				stayDays: [],
 			});
 
-			// Initialize quote lines from existing lines
+			// Story 29.3: Hydrate quote lines using dedicated function with Zod validation
 			if (quote.lines && quote.lines.length > 0) {
-				const existingLines: QuoteLine[] = quote.lines.map((line: any) => ({
-					id: line.id,
-					type: line.type as "CALCULATED" | "MANUAL" | "GROUP",
-					label: line.label,
-					description: line.description || undefined,
-					quantity: line.quantity ? Number.parseFloat(line.quantity) : 1,
-					unitPrice: Number.parseFloat(line.unitPrice),
-					totalPrice: Number.parseFloat(line.totalPrice),
-					vatRate: line.vatRate ? Number.parseFloat(line.vatRate) : 10,
-					parentId: line.parentId || null,
-					displayData: line.displayData || {},
-					sourceData: line.sourceData || {},
-					sortOrder: line.sortOrder ?? 0,
-					dispatchable: line.dispatchable ?? true,
-				}));
-				setQuoteLines(existingLines);
+				const hydratedLines = hydrateFromQuote(quote.lines as any);
+				setQuoteLines(hydratedLines);
+
+				// Story 29.3: Sync with Zustand store for YoloQuoteEditor
+				// This ensures the store is initialized with the correct lines
+				// and clears history so we can't undo the initial hydration
+				useQuoteLinesStore.setState({ lines: hydratedLines });
+				useQuoteLinesStore.temporal.getState().clear();
 			}
 
 			// Restore added fees from appliedRules
@@ -321,7 +315,11 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 					dropoffAddress: finalFormData.dropoffAddress,
 					dropoffLatitude: finalFormData.dropoffLatitude,
 					dropoffLongitude: finalFormData.dropoffLongitude,
-					pickupAt: finalFormData.pickupAt?.toISOString() ?? undefined,
+					pickupAt: finalFormData.pickupAt
+						? finalFormData.pickupAt instanceof Date
+							? finalFormData.pickupAt.toISOString()
+							: String(finalFormData.pickupAt)
+						: undefined,
 					tripType: finalFormData.tripType as
 						| "TRANSFER"
 						| "EXCURSION"

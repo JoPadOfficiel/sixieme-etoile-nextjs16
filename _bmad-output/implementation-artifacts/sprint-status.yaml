@@ -348,7 +348,7 @@ development_status:
   epic-29: in-progress
   29-1-fix-shopping-cart-persistence-pricing-aggregation: done
   29-2-implement-multi-mission-quote-detail-view: done
-  29-3-ensure-lossless-quote-editing-hydration: backlog
+  29-3-ensure-lossless-quote-editing-hydration: review
   29-4-implement-intelligent-multi-mission-spawning-the-launch: backlog
   29-5-implement-multi-mission-invoicing-sync: backlog
   29-6-upgrade-unified-dispatch-visualization-gantt-zoom-axis: backlog
