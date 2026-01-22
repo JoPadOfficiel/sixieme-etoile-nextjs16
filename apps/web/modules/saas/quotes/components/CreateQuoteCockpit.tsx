@@ -67,12 +67,7 @@ export function CreateQuoteCockpit() {
 	// For now, clicking a line in cart could populate formData, but let's stick to "Add New" flow first.
 
 	// Pricing calculation for the current item
-	const {
-		pricingResult,
-		isCalculating,
-		error: pricingError,
-		calculate,
-	} = usePricingCalculation({
+	const { pricingResult, isCalculating, calculate } = usePricingCalculation({
 		debounceMs: 500,
 	});
 
@@ -376,6 +371,28 @@ export function CreateQuoteCockpit() {
 				title: t("quotes.create.addedToCart"),
 				description: t("quotes.create.addedToCartDesc"),
 			});
+
+			// Story 29.1: Reset form for next trip (Keep Contact/Org context)
+			setFormData((prev) => ({
+				...initialCreateQuoteFormData,
+				organizationId: prev.organizationId,
+				contactId: prev.contactId, // Keep selected client
+				pricingMode: prev.pricingMode, // Keep pricing preference
+				vehicleCategoryId: prev.vehicleCategoryId, // Keep vehicle preference? Maybe reset. Let's keep for speed.
+				// Reset trip specifics
+				pickupAddress: "",
+				dropoffAddress: "",
+				pickupLatitude: undefined,
+				pickupLongitude: undefined,
+				dropoffLatitude: undefined,
+				dropoffLongitude: undefined,
+				pickupAt: null,
+				returnDate: null,
+				notes: "",
+				flightNumber: "",
+				finalPrice: 0,
+			}));
+			setAddedFees([]);
 		}
 	}, [createLineFromState, t, toast]);
 
@@ -406,6 +423,7 @@ export function CreateQuoteCockpit() {
 					formData={formData}
 					onFormChange={handleFormChange}
 					allCategories={allVehicleCategories || []}
+					contactLocked={quoteLines.length > 0}
 				/>
 
 				{/* Helpers & Alerts */}
@@ -502,7 +520,7 @@ export function CreateQuoteCockpit() {
 						isSubmitting={false}
 						onFormChange={handleFormChange}
 						onSubmit={handleAddItemToCart} // Kept for logic reference or hidden button trigger if prop changed later
-						hideSubmit={true} // HIDE THE DUPLICATE BUTTON
+						hideSubmit={false} // SHOW THE ADD TO CART BUTTON (Story 29.1)
 						submitLabel={t("quotes.create.addToCart")}
 						addedFees={addedFees}
 						onAddFee={(fee) => setAddedFees([...addedFees, fee])}
@@ -549,6 +567,7 @@ export function CreateQuoteCockpit() {
 									disabled={true}
 									currency="EUR"
 									dispatchable={false}
+									compact={true}
 									// Dummy handlers for read-only preview
 									onDisplayDataChange={() => {}}
 									onToggleExpand={() => {}}

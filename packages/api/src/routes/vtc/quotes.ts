@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, QuoteLineType } from "@prisma/client";
 import type { QuoteStatus } from "@prisma/client";
 import { db } from "@repo/database";
 import { Hono } from "hono";
@@ -588,6 +588,10 @@ export const quotesRouter = new Hono()
 							difficultyScore: true,
 						},
 					},
+					// Story 29.1: Include lines for multi-item quotes
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
 				},
 			});
 
@@ -636,58 +640,188 @@ export const quotesRouter = new Hono()
 				});
 			}
 
-			const quote = await db.quote.create({
-				data: withTenantCreate(
-					{
-						contactId: data.contactId,
-						// Story 24.4: Link end-customer for partner agency sub-contacts
-						endCustomerId: data.endCustomerId ?? null,
-						vehicleCategoryId: data.vehicleCategoryId,
-						pricingMode: data.pricingMode,
-						tripType: data.tripType,
-						pickupAt: new Date(data.pickupAt),
-						pickupAddress: data.pickupAddress,
-						pickupLatitude: data.pickupLatitude,
-						pickupLongitude: data.pickupLongitude,
-						// Story 16.1: dropoffAddress is now optional
-						dropoffAddress: data.dropoffAddress ?? null,
-						dropoffLatitude: data.dropoffLatitude,
-						dropoffLongitude: data.dropoffLongitude,
-						// Story 16.1: Trip type specific fields
-						isRoundTrip: data.isRoundTrip ?? false,
-						stops: data.stops as Prisma.InputJsonValue | undefined,
-						returnDate: data.returnDate ? new Date(data.returnDate) : null,
-						durationHours: data.durationHours,
-						maxKilometers: data.maxKilometers,
-						passengerCount: data.passengerCount,
-						luggageCount: data.luggageCount,
-						suggestedPrice: data.suggestedPrice,
-						finalPrice: data.finalPrice,
-						// Story 24.9: Store bidirectional prices
-						partnerGridPrice: data.partnerGridPrice ?? null,
-						clientDirectPrice: data.clientDirectPrice ?? null,
-						internalCost: data.internalCost,
-						marginPercent: data.marginPercent,
-						tripAnalysis: data.tripAnalysis as
-							| Prisma.InputJsonValue
-							| undefined,
-						appliedRules: data.appliedRules as
-							| Prisma.InputJsonValue
-							| undefined,
-						// Story 15.7: Store cost breakdown for audit
-						costBreakdown: data.costBreakdown as
-							| Prisma.InputJsonValue
-							| undefined,
-						validUntil: data.validUntil ? new Date(data.validUntil) : null,
-						notes: data.notes,
-						// Story 17.5: Estimated end time for driver availability detection
-						estimatedEndAt: data.estimatedEndAt
-							? new Date(data.estimatedEndAt)
-							: null,
-						status: "DRAFT",
-					},
-					organizationId,
-				),
+			// Story 29.1: Use transaction for atomic Quote + QuoteLines creation
+			const result = await db.$transaction(async (tx) => {
+				// Story 29.1: Calculate aggregated totals from lines if provided (Yolo Mode)
+				const hasLines = data.lines && Array.isArray(data.lines) && data.lines.length > 0;
+				let aggregatedFinalPrice = data.finalPrice ?? 0;
+				let aggregatedInternalCost: number | null = data.internalCost ?? null;
+
+				if (hasLines) {
+					// Calculate totals from lines
+					aggregatedFinalPrice = data.lines!.reduce((sum, line) => {
+						const linePrice = Number(line.totalPrice) || Number(line.unitPrice) || 0;
+						return sum + linePrice;
+					}, 0);
+
+					// Calculate internal cost from lines if available
+					const lineCosts = data.lines!.map((line) => {
+						const sourceData = line.sourceData as Record<string, unknown> | null;
+						if (!sourceData) return null;
+						// Check for direct internalCost or sum of cost components
+						if (typeof sourceData.internalCost === "number") {
+							return sourceData.internalCost;
+						}
+						const pricingResult = sourceData.pricingResult as Record<string, unknown> | null;
+						if (pricingResult && typeof pricingResult.internalCost === "number") {
+							return pricingResult.internalCost;
+						}
+						return null;
+					});
+
+					const validCosts = lineCosts.filter((c): c is number => c !== null);
+					if (validCosts.length > 0) {
+						aggregatedInternalCost = validCosts.reduce((sum, cost) => sum + cost, 0);
+					}
+				}
+
+				// Calculate margin if we have both values
+				let calculatedMargin: number | null = data.marginPercent ?? null;
+				if (aggregatedInternalCost !== null && aggregatedFinalPrice > 0) {
+					calculatedMargin = ((aggregatedFinalPrice - aggregatedInternalCost) / aggregatedFinalPrice) * 100;
+				}
+
+				// Create Quote header
+				const quote = await tx.quote.create({
+					data: withTenantCreate(
+						{
+							contactId: data.contactId,
+							// Story 24.4: Link end-customer for partner agency sub-contacts
+							endCustomerId: data.endCustomerId ?? null,
+							vehicleCategoryId: data.vehicleCategoryId,
+							pricingMode: data.pricingMode,
+							tripType: data.tripType,
+							pickupAt: new Date(data.pickupAt),
+							pickupAddress: data.pickupAddress,
+							pickupLatitude: data.pickupLatitude,
+							pickupLongitude: data.pickupLongitude,
+							// Story 16.1: dropoffAddress is now optional
+							dropoffAddress: data.dropoffAddress ?? null,
+							dropoffLatitude: data.dropoffLatitude,
+							dropoffLongitude: data.dropoffLongitude,
+							// Story 16.1: Trip type specific fields
+							isRoundTrip: data.isRoundTrip ?? false,
+							stops: data.stops as Prisma.InputJsonValue | undefined,
+							returnDate: data.returnDate ? new Date(data.returnDate) : null,
+							durationHours: data.durationHours,
+							maxKilometers: data.maxKilometers,
+							passengerCount: data.passengerCount,
+							luggageCount: data.luggageCount,
+							suggestedPrice: data.suggestedPrice,
+							// Story 29.1: Use aggregated price from lines
+							finalPrice: aggregatedFinalPrice,
+							// Story 24.9: Store bidirectional prices
+							partnerGridPrice: data.partnerGridPrice ?? null,
+							clientDirectPrice: data.clientDirectPrice ?? null,
+							// Story 29.1: Use aggregated internal cost
+							internalCost: aggregatedInternalCost,
+							marginPercent: calculatedMargin,
+							tripAnalysis: data.tripAnalysis as
+								| Prisma.InputJsonValue
+								| undefined,
+							appliedRules: data.appliedRules as
+								| Prisma.InputJsonValue
+								| undefined,
+							// Story 15.7: Store cost breakdown for audit
+							costBreakdown: data.costBreakdown as
+								| Prisma.InputJsonValue
+								| undefined,
+							validUntil: data.validUntil ? new Date(data.validUntil) : null,
+							notes: data.notes,
+							// Story 17.5: Estimated end time for driver availability detection
+							estimatedEndAt: data.estimatedEndAt
+								? new Date(data.estimatedEndAt)
+								: null,
+							status: "DRAFT",
+						},
+						organizationId,
+					),
+				});
+
+				// Story 29.1: Create QuoteLines if provided (Yolo Mode / Shopping Cart)
+				let createdLines: Array<{
+					id: string;
+					type: string;
+					label: string;
+					totalPrice: number;
+					sortOrder: number;
+				}> = [];
+
+				if (hasLines) {
+					const linesToCreate = data.lines!.map((line, index) => {
+						const lineData = line as Record<string, unknown>;
+						// Parse type as QuoteLineType enum, default to CALCULATED
+						const lineType = (lineData.type as string) === "MANUAL" 
+							? QuoteLineType.MANUAL 
+							: (lineData.type as string) === "GROUP" 
+								? QuoteLineType.GROUP 
+								: QuoteLineType.CALCULATED;
+						
+						const totalPrice = Number(lineData.totalPrice) || Number(lineData.unitPrice) || 0;
+						const label = (lineData.label as string) || `Item ${index + 1}`;
+						
+						// Build displayData with proper typing
+						const displayData: Prisma.InputJsonValue = lineData.displayData
+							? (lineData.displayData as Prisma.InputJsonValue)
+							: { 
+								label, 
+								quantity: 1, 
+								unitPrice: totalPrice, 
+								vatRate: 10, 
+								total: totalPrice 
+							};
+
+						return {
+							quoteId: quote.id,
+							type: lineType,
+							label,
+							description: (lineData.description as string) || null,
+							// CRITICAL: Store full operational metadata in sourceData
+							sourceData: lineData.sourceData
+								? (lineData.sourceData as Prisma.InputJsonValue)
+								: Prisma.JsonNull,
+							displayData,
+							quantity: Number(lineData.quantity) || 1,
+							unitPrice: Number(lineData.unitPrice) || totalPrice,
+							totalPrice,
+							vatRate: Number(lineData.vatRate) || 10,
+							sortOrder: index,
+							dispatchable: lineData.dispatchable !== false, // Default true
+						};
+					});
+
+					// Use createMany for efficiency
+					await tx.quoteLine.createMany({
+						data: linesToCreate,
+					});
+
+					// Fetch created lines for response
+					createdLines = await tx.quoteLine.findMany({
+						where: { quoteId: quote.id },
+						orderBy: { sortOrder: "asc" },
+						select: {
+							id: true,
+							type: true,
+							label: true,
+							totalPrice: true,
+							sortOrder: true,
+						},
+					}).then(lines => lines.map(l => ({
+						...l,
+						totalPrice: Number(l.totalPrice),
+					})));
+
+					console.log(
+						`[Story 29.1] Created ${createdLines.length} QuoteLines for quote ${quote.id}, aggregated finalPrice: ${aggregatedFinalPrice}`,
+					);
+				}
+
+				return { quote, createdLines };
+			});
+
+			// Fetch complete quote with all relations for response
+			const completeQuote = await db.quote.findUnique({
+				where: { id: result.quote.id },
 				include: {
 					contact: true,
 					vehicleCategory: true,
@@ -702,21 +836,25 @@ export const quotesRouter = new Hono()
 							difficultyScore: true,
 						},
 					},
+					// Story 29.1: Include lines in response
+					lines: {
+						orderBy: { sortOrder: "asc" },
+					},
 				},
 			});
 
 			// Story 27.2: Sync missions after quote creation
 			try {
-				await missionSyncService.syncQuoteMissions(quote.id);
+				await missionSyncService.syncQuoteMissions(result.quote.id);
 			} catch (syncError) {
 				// Log sync error but don't fail the quote creation
 				console.warn(
-					`[MissionSync] Failed to sync missions for quote ${quote.id}:`,
+					`[MissionSync] Failed to sync missions for quote ${result.quote.id}:`,
 					syncError,
 				);
 			}
 
-			return c.json(quote, 201);
+			return c.json(completeQuote, 201);
 		},
 	)
 

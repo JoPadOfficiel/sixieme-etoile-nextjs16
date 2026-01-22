@@ -13,7 +13,7 @@ import {
 } from "@ui/components/select";
 import { useToast } from "@ui/hooks/use-toast";
 import { cn } from "@ui/lib";
-import { CalendarIcon, LuggageIcon, UsersIcon } from "lucide-react";
+import { CalendarIcon, LockIcon, LuggageIcon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
 import { getAutoSelectResult } from "../hooks/useScenarioHelpers";
@@ -38,6 +38,8 @@ interface QuoteBasicInfoPanelProps {
 	) => void;
 	allCategories: VehicleCategory[];
 	disabled?: boolean;
+	/** Story 29.2: Lock contact when cart has items to prevent conflicts */
+	contactLocked?: boolean;
 	className?: string;
 }
 
@@ -62,6 +64,7 @@ export function QuoteBasicInfoPanel({
 	onFormChange,
 	allCategories,
 	disabled = false,
+	contactLocked = false,
 	className,
 }: QuoteBasicInfoPanelProps) {
 	const t = useTranslations();
@@ -209,10 +212,17 @@ export function QuoteBasicInfoPanel({
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
+					{/* Story 29.2: Show lock indicator when contact can't be changed */}
+					{contactLocked && formData.contact && (
+						<div className="mb-2 flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-muted-foreground text-sm">
+							<LockIcon className="h-4 w-4" />
+							<span>{t("quotes.create.contactLockedHint")}</span>
+						</div>
+					)}
 					<ContactSelector
 						value={formData.contact}
 						onChange={handleContactChange}
-						disabled={disabled}
+						disabled={disabled || contactLocked}
 						required
 					/>
 

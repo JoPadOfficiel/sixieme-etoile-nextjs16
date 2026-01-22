@@ -115,6 +115,8 @@ export interface UniversalLineItemRowProps {
 	dispatchable?: boolean;
 	/** Story 28.6: Callback when dispatchable toggle changes */
 	onDispatchableChange?: (id: string, value: boolean) => void;
+	/** Story 29.1: Compact mode for sidebar cart display */
+	compact?: boolean;
 }
 
 /**
@@ -186,6 +188,7 @@ export function UniversalLineItemRow({
 	showSelection = false,
 	dispatchable = true,
 	onDispatchableChange,
+	compact = false,
 }: UniversalLineItemRowProps) {
 	const t = useTranslations();
 	const { toast } = useToast();
@@ -599,48 +602,54 @@ export function UniversalLineItemRow({
 					</div>
 				)}
 
-				{/* Drag handle */}
-				<div
-					{...dragHandleProps}
-					className="cursor-grab opacity-0 transition-opacity group-hover:opacity-100"
-				>
-					<GripVerticalIcon className="size-4 text-muted-foreground" />
-				</div>
+				{/* Drag handle - hidden in compact mode */}
+				{!compact && (
+					<div
+						{...dragHandleProps}
+						className="cursor-grab opacity-0 transition-opacity group-hover:opacity-100"
+					>
+						<GripVerticalIcon className="size-4 text-muted-foreground" />
+					</div>
+				)}
 
-				{/* Link indicator */}
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<div className="w-5">
-								{isLinked ? (
-									<LinkIcon
-										className="size-4 text-green-600"
-										data-testid="link-icon"
-									/>
-								) : type === "MANUAL" ? (
-									<UnlinkIcon
-										className="size-4 text-muted-foreground"
-										data-testid="unlink-icon"
-									/>
-								) : null}
-							</div>
-						</TooltipTrigger>
-						<TooltipContent side="right">
-							{isLinked
-								? t("quotes.yolo.linkedToSource") || "Linked to pricing engine"
-								: t("quotes.yolo.manualLine") || "Manual line (no source data)"}
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
+				{/* Link indicator - hidden in compact mode */}
+				{!compact && (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className="w-5">
+									{isLinked ? (
+										<LinkIcon
+											className="size-4 text-green-600"
+											data-testid="link-icon"
+										/>
+									) : type === "MANUAL" ? (
+										<UnlinkIcon
+											className="size-4 text-muted-foreground"
+											data-testid="unlink-icon"
+										/>
+									) : null}
+								</div>
+							</TooltipTrigger>
+							<TooltipContent side="right">
+								{isLinked
+									? t("quotes.yolo.linkedToSource") ||
+										"Linked to pricing engine"
+									: t("quotes.yolo.manualLine") ||
+										"Manual line (no source data)"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)}
 
 				{/* Label / Description */}
-				<div className="min-w-[200px] flex-1">
+				<div className="min-w-[120px] flex-1">
 					<InlineInput
 						value={displayData.label}
 						onChange={handleFieldChange("label")}
 						placeholder={t("quotes.yolo.labelPlaceholder") || "Description..."}
 						disabled={disabled}
-						className="text-sm"
+						className="w-full truncate text-sm"
 					/>
 				</div>
 
@@ -672,26 +681,28 @@ export function UniversalLineItemRow({
 					/>
 				</div>
 
-				{/* VAT Rate */}
-				<div className="w-16">
-					<InlineInput
-						value={displayData.vatRate.toString()}
-						onChange={handleFieldChange("vatRate")}
-						type="number"
-						disabled={disabled}
-						align="right"
-						className="text-sm"
-						formatValue={(v) => `${v}%`}
-					/>
-				</div>
+				{/* VAT Rate - hidden in compact mode */}
+				{!compact && (
+					<div className="w-16">
+						<InlineInput
+							value={displayData.vatRate.toString()}
+							onChange={handleFieldChange("vatRate")}
+							type="number"
+							disabled={disabled}
+							align="right"
+							className="text-sm"
+							formatValue={(v) => `${v}%`}
+						/>
+					</div>
+				)}
 
 				{/* Total (read-only, calculated) */}
 				<div className="w-24 text-right font-medium text-sm">
 					{formatPrice(displayData.total, currency)}
 				</div>
 
-				{/* Story 28.6: Dispatch toggle - for CALCULATED and GROUP lines */}
-				{type === "CALCULATED" && onDispatchableChange && (
+				{/* Story 28.6: Dispatch toggle - for CALCULATED lines, hidden in compact mode */}
+				{!compact && type === "CALCULATED" && onDispatchableChange && (
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
