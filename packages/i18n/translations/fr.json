@@ -3004,8 +3004,20 @@
 				"dropoff": "Arrivée",
 				"viewAll": "Voir tout",
 				"noMissions": "Aucune mission avec coordonnées",
+				"noCoordinatesHint": "Les adresses n'ont pas de coordonnées GPS",
 				"loadError": "Erreur de chargement de la carte",
 				"missionsCount": "{count, plural, =1 {# mission} other {# missions}}"
+			},
+			"totals": {
+				"title": "Récapitulatif",
+				"services": "prestations",
+				"service": "prestation",
+				"totalPrice": "Prix total",
+				"linesTotal": "Total lignes",
+				"internalCost": "Coût interne",
+				"grossMargin": "Marge brute",
+				"marginPercent": "Marge %",
+				"pricingMode": "Mode de tarification"
 			},
 			"frozen": {
 				"title": "Valeurs commerciales figées",

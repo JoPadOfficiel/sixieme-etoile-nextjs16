@@ -12,6 +12,8 @@ import { CostBreakdownDisplay } from "./CostBreakdownDisplay";
 import { QuoteAssignmentInfo } from "./QuoteAssignmentInfo";
 import { QuoteLinesTable } from "./QuoteLinesTable";
 import { MultiMissionMap } from "./MultiMissionMap";
+import { QuoteMultiMissionTotals } from "./QuoteMultiMissionTotals";
+import { QuoteClientCard } from "./QuoteClientCard";
 import { QuoteLineSelectionProvider } from "../contexts/QuoteLineSelectionContext";
 import { useQuoteDetail } from "../hooks/useQuoteDetail";
 import { useQuoteActions } from "../hooks/useQuoteActions";
@@ -184,77 +186,117 @@ export function QuoteDetailPage({ quoteId }: QuoteDetailPageProps) {
   const pricingResult = transformToPricingResult(data.tripAnalysis, data);
   const hasMultipleLines = data.lines && data.lines.length > 0;
 
-  return (
-    <QuoteLineSelectionProvider>
-      <div className="py-4 space-y-6">
-        {/* Header */}
-        <QuoteHeader
-          quote={data}
-          onSend={handleSend}
-          onAccept={handleAccept}
-          onReject={handleReject}
-          onConvertToInvoice={handleConvertToInvoice}
-          onDownloadPdf={handleDownloadPdf}
-          isLoading={isActionsLoading || isConverting || generatePdfMutation.isPending}
-        />
+  // Multi-mission layout: completely different structure
+  if (hasMultipleLines) {
+    return (
+      <QuoteLineSelectionProvider>
+        <div className="py-4 space-y-6">
+          {/* Header */}
+          <QuoteHeader
+            quote={data}
+            onSend={handleSend}
+            onAccept={handleAccept}
+            onReject={handleReject}
+            onConvertToInvoice={handleConvertToInvoice}
+            onDownloadPdf={handleDownloadPdf}
+            isLoading={isActionsLoading || isConverting || generatePdfMutation.isPending}
+          />
 
-        {/* Story 29.2: Multi-Mission Lines Table + Map */}
-        {hasMultipleLines && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <QuoteLinesTable lines={data.lines} />
-            <MultiMissionMap lines={data.lines} />
-          </div>
-        )}
+          {/* Main content: 2-column layout for multi-mission */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Services table + Map (takes 9 cols) */}
+            <div className="lg:col-span-9 space-y-6">
+              {/* Services Table with expandable details */}
+              <QuoteLinesTable lines={data.lines} />
+              
+              {/* Map showing all missions */}
+              <MultiMissionMap lines={data.lines} className="h-[350px]" />
+              
+              {/* Aggregated Totals Card */}
+              <QuoteMultiMissionTotals quote={data} />
+            </div>
 
-        {/* 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column - Commercial Summary + Cost Breakdown */}
-          <div className="lg:col-span-3 space-y-4">
-            <QuoteCommercialSummary quote={data} />
-            {/* Story 15.7: Display cost breakdown for audit */}
-            <CostBreakdownDisplay 
-              breakdown={(data.tripAnalysis as TripAnalysis | null)?.costBreakdown ?? null} 
-              compact 
-            />
-          </div>
-
-          {/* Center Column - Trip Transparency */}
-          <div className="lg:col-span-6">
-            <TripTransparencyPanel
-              pricingResult={pricingResult}
-              isLoading={false}
-              routeCoordinates={{
-                pickup: data.pickupLatitude && data.pickupLongitude
-                  ? { 
-                      lat: parseFloat(data.pickupLatitude), 
-                      lng: parseFloat(data.pickupLongitude), 
-                      address: data.pickupAddress 
-                    }
-                  : undefined,
-                dropoff: data.dropoffLatitude && data.dropoffLongitude
-                  ? { 
-                      lat: parseFloat(data.dropoffLatitude), 
-                      lng: parseFloat(data.dropoffLongitude), 
-                      address: data.dropoffAddress ?? "" 
-                    }
-                  : undefined,
-              }}
-            />
-          </div>
-
-          {/* Right Column - Assignment Info & Activity */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* Story 20.8: Display assignment info in quote details */}
-            <QuoteAssignmentInfo quote={data} />
-            <QuoteActivityLog
-              quote={data}
-              onUpdateNotes={handleUpdateNotes}
-              isUpdating={isActionsLoading}
-            />
+            {/* Right sidebar: Client, Assignment, Activity (takes 3 cols) */}
+            <div className="lg:col-span-3 space-y-4">
+              {/* Client info from QuoteCommercialSummary - extracted */}
+              <QuoteClientCard quote={data} />
+              {/* Assignment info */}
+              <QuoteAssignmentInfo quote={data} />
+              {/* Activity log */}
+              <QuoteActivityLog
+                quote={data}
+                onUpdateNotes={handleUpdateNotes}
+                isUpdating={isActionsLoading}
+              />
+            </div>
           </div>
         </div>
+      </QuoteLineSelectionProvider>
+    );
+  }
+
+  // Single-trip layout: original 3-column structure
+  return (
+    <div className="py-4 space-y-6">
+      {/* Header */}
+      <QuoteHeader
+        quote={data}
+        onSend={handleSend}
+        onAccept={handleAccept}
+        onReject={handleReject}
+        onConvertToInvoice={handleConvertToInvoice}
+        onDownloadPdf={handleDownloadPdf}
+        isLoading={isActionsLoading || isConverting || generatePdfMutation.isPending}
+      />
+
+      {/* 3-Column Layout for single-trip */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column - Commercial Summary + Cost Breakdown */}
+        <div className="lg:col-span-3 space-y-4">
+          <QuoteCommercialSummary quote={data} />
+          {/* Story 15.7: Display cost breakdown for audit */}
+          <CostBreakdownDisplay 
+            breakdown={(data.tripAnalysis as TripAnalysis | null)?.costBreakdown ?? null} 
+            compact 
+          />
+        </div>
+
+        {/* Center Column - Trip Transparency */}
+        <div className="lg:col-span-6">
+          <TripTransparencyPanel
+            pricingResult={pricingResult}
+            isLoading={false}
+            routeCoordinates={{
+              pickup: data.pickupLatitude && data.pickupLongitude
+                ? { 
+                    lat: parseFloat(data.pickupLatitude), 
+                    lng: parseFloat(data.pickupLongitude), 
+                    address: data.pickupAddress 
+                  }
+                : undefined,
+              dropoff: data.dropoffLatitude && data.dropoffLongitude
+                ? { 
+                    lat: parseFloat(data.dropoffLatitude), 
+                    lng: parseFloat(data.dropoffLongitude), 
+                    address: data.dropoffAddress ?? "" 
+                  }
+                : undefined,
+            }}
+          />
+        </div>
+
+        {/* Right Column - Assignment Info & Activity */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Story 20.8: Display assignment info in quote details */}
+          <QuoteAssignmentInfo quote={data} />
+          <QuoteActivityLog
+            quote={data}
+            onUpdateNotes={handleUpdateNotes}
+            isUpdating={isActionsLoading}
+          />
+        </div>
       </div>
-    </QuoteLineSelectionProvider>
+    </div>
   );
 }
 

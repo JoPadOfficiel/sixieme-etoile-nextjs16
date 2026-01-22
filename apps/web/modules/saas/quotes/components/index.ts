@@ -43,3 +43,5 @@ export { OperationalCostsContent } from "./OperationalCostsContent";
 // Story 29.2: Multi-Mission Quote Detail View
 export { QuoteLinesTable } from "./QuoteLinesTable";
 export { MultiMissionMap } from "./MultiMissionMap";
+export { QuoteMultiMissionTotals } from "./QuoteMultiMissionTotals";
+export { QuoteClientCard } from "./QuoteClientCard";

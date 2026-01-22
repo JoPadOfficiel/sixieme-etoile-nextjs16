@@ -3019,8 +3019,20 @@
 				"dropoff": "Dropoff",
 				"viewAll": "View All",
 				"noMissions": "No missions with coordinates",
+				"noCoordinatesHint": "Addresses do not have GPS coordinates",
 				"loadError": "Map loading error",
 				"missionsCount": "{count, plural, =1 {# mission} other {# missions}}"
+			},
+			"totals": {
+				"title": "Summary",
+				"services": "services",
+				"service": "service",
+				"totalPrice": "Total Price",
+				"linesTotal": "Lines Total",
+				"internalCost": "Internal Cost",
+				"grossMargin": "Gross Margin",
+				"marginPercent": "Margin %",
+				"pricingMode": "Pricing Mode"
 			},
 			"frozen": {
 				"title": "Commercial Values Frozen",

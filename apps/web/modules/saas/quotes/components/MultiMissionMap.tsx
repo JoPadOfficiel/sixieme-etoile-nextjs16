@@ -369,7 +369,7 @@ export function MultiMissionMap({ lines, className }: MultiMissionMapProps) {
           <MapIcon className="size-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">{t("noMissions")}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {t("lines.noCoordinates")}
+            {t("noCoordinatesHint")}
           </p>
         </div>
       </div>
