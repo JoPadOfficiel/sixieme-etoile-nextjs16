@@ -54,7 +54,8 @@ export type PartialInvoiceMode =
 export interface PartialInvoiceOptions {
 	mode: PartialInvoiceMode;
 	depositPercent?: number; // For DEPOSIT_PERCENT mode (1-100)
-	selectedLineIds?: string[]; // For MANUAL_SELECTION mode
+	selectedLineIds?: string[]; // For MANUAL_SELECTION mode (legacy: QuoteLine IDs)
+	missionIds?: string[]; // Story 30.4: For MANUAL_SELECTION mode (Mission IDs)
 }
 
 export interface OrderBalance {
@@ -723,25 +724,10 @@ export class InvoiceFactory {
 			}
 
 			case "MANUAL_SELECTION": {
+				// Story 30.4: Support both missionIds (new) and selectedLineIds (legacy)
+				const missionIds = options.missionIds;
 				const selectedLineIds = options.selectedLineIds;
-				if (!selectedLineIds || selectedLineIds.length === 0) {
-					throw new Error("No lines selected for manual invoice");
-				}
 
-				if (!quote?.lines) {
-					throw new Error("Order has no quote lines to select from");
-				}
-
-				// Filter selected lines
-				const selectedLines = quote.lines.filter((line) =>
-					selectedLineIds.includes(line.id),
-				);
-
-				if (selectedLines.length === 0) {
-					throw new Error("No matching lines found for selected IDs");
-				}
-
-				// Deep copy selected lines with localized descriptions
 				// Fetch organization settings for document language
 				const orgSettings = await db.organizationPricingSettings.findFirst({
 					where: { organizationId },
@@ -753,29 +739,138 @@ export class InvoiceFactory {
 						| "ENGLISH"
 						| "BILINGUAL") || "FRENCH";
 
-				invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
-					selectedLines,
-					endCustomerName,
-					documentLanguage,
-				);
+				// Story 30.4: Mission-based selection (preferred for orders with missions)
+				if (missionIds && missionIds.length > 0) {
+					// Fetch missions with their quote lines
+					const missions = await db.mission.findMany({
+						where: {
+							id: { in: missionIds },
+							orderId: order.id,
+							organizationId,
+							// Only allow billing of COMPLETED missions (not already BILLED)
+							status: { in: ["COMPLETED", "PENDING", "ASSIGNED", "IN_PROGRESS"] },
+						},
+						include: {
+							quoteLine: true,
+						},
+					});
 
-				// Calculate total amount from lines
-				invoiceAmount = invoiceLines.reduce(
-					(sum, line) =>
-						sum.add(
-							new Decimal(line.totalExclVat).add(new Decimal(line.totalVat)),
-						),
-					new Decimal(0),
-				);
+					if (missions.length === 0) {
+						throw new Error(
+							"No eligible missions found. Missions may already be billed or cancelled.",
+						);
+					}
 
-				// Validate amount doesn't exceed balance
-				if (invoiceAmount.gt(remainingBalance)) {
+					// Check for already billed missions
+					const alreadyBilledCheck = await db.mission.findMany({
+						where: {
+							id: { in: missionIds },
+							status: "BILLED",
+						},
+						select: { id: true },
+					});
+
+					if (alreadyBilledCheck.length > 0) {
+						throw new Error(
+							`${alreadyBilledCheck.length} mission(s) are already billed and cannot be invoiced again.`,
+						);
+					}
+
+					// Build invoice lines from missions
+					for (const mission of missions) {
+						const missionPrice = mission.quoteLine
+							? new Decimal(mission.quoteLine.totalPrice)
+							: new Decimal(
+									(mission.sourceData as { price?: number })?.price ?? 0,
+								);
+
+						const missionLabel =
+							mission.quoteLine?.label ||
+							(mission.sourceData as { label?: string })?.label ||
+							(mission.sourceData as { lineLabel?: string })?.lineLabel ||
+							"Mission";
+
+						const priceHT = missionPrice.div(1.1).toDecimalPlaces(2);
+						const priceVAT = missionPrice.sub(priceHT).toDecimalPlaces(2);
+
+						invoiceLines.push({
+							lineType: "SERVICE" as const,
+							description: missionLabel,
+							quantity: 1,
+							unitPriceExclVat: priceHT.toNumber(),
+							vatRate: 10,
+							totalExclVat: priceHT.toNumber(),
+							totalVat: priceVAT.toNumber(),
+							sortOrder: invoiceLines.length,
+							quoteLineId: mission.quoteLineId ?? undefined,
+						});
+					}
+
+					// Calculate total
+					invoiceAmount = invoiceLines.reduce(
+						(sum, line) =>
+							sum.add(
+								new Decimal(line.totalExclVat).add(new Decimal(line.totalVat)),
+							),
+						new Decimal(0),
+					);
+
+					// Validate amount doesn't exceed balance
+					if (invoiceAmount.gt(remainingBalance)) {
+						throw new Error(
+							`Selected missions amount (${invoiceAmount}€) exceeds remaining balance (${remainingBalance}€)`,
+						);
+					}
+
+					invoiceDescription = `Facture partielle (${missions.length} mission${missions.length > 1 ? "s" : ""}) - Order ${order.reference}`;
+
+					// Story 30.4: Store mission IDs to mark as BILLED after invoice creation
+					(options as { _missionIdsToMark?: string[] })._missionIdsToMark =
+						missions.map((m) => m.id);
+				}
+				// Legacy: QuoteLine-based selection
+				else if (selectedLineIds && selectedLineIds.length > 0) {
+					if (!quote?.lines) {
+						throw new Error("Order has no quote lines to select from");
+					}
+
+					// Filter selected lines
+					const selectedLines = quote.lines.filter((line) =>
+						selectedLineIds.includes(line.id),
+					);
+
+					if (selectedLines.length === 0) {
+						throw new Error("No matching lines found for selected IDs");
+					}
+
+					invoiceLines = InvoiceFactory.deepCopyQuoteLinesToInvoiceLines(
+						selectedLines,
+						endCustomerName,
+						documentLanguage,
+					);
+
+					// Calculate total amount from lines
+					invoiceAmount = invoiceLines.reduce(
+						(sum, line) =>
+							sum.add(
+								new Decimal(line.totalExclVat).add(new Decimal(line.totalVat)),
+							),
+						new Decimal(0),
+					);
+
+					// Validate amount doesn't exceed balance
+					if (invoiceAmount.gt(remainingBalance)) {
+						throw new Error(
+							`Selected lines amount (${invoiceAmount}€) exceeds remaining balance (${remainingBalance}€)`,
+						);
+					}
+
+					invoiceDescription = `Facture partielle (${selectedLines.length} lignes) - Order ${order.reference}`;
+				} else {
 					throw new Error(
-						`Selected lines amount (${invoiceAmount}€) exceeds remaining balance (${remainingBalance}€)`,
+						"No missions or lines selected for manual invoice",
 					);
 				}
-
-				invoiceDescription = `Facture partielle (${selectedLines.length} lignes) - Order ${order.reference}`;
 				break;
 			}
 		}
@@ -812,6 +907,10 @@ export class InvoiceFactory {
 			issueDate,
 			order.contact.partnerContract,
 		);
+
+		// Story 30.4: Get mission IDs to mark as BILLED
+		const missionIdsToMark = (options as { _missionIdsToMark?: string[] })
+			._missionIdsToMark;
 
 		// 8. Create invoice in transaction
 		const invoice = await db.$transaction(async (tx) => {
@@ -850,6 +949,17 @@ export class InvoiceFactory {
 						quoteLineId: line.quoteLineId, // Story 29.5: Traceability link
 					})),
 				});
+			}
+
+			// Story 30.4: Mark missions as BILLED to prevent duplicate invoicing
+			if (missionIdsToMark && missionIdsToMark.length > 0) {
+				await tx.mission.updateMany({
+					where: { id: { in: missionIdsToMark } },
+					data: { status: "BILLED" },
+				});
+				console.log(
+					`[INVOICE_FACTORY] Marked ${missionIdsToMark.length} mission(s) as BILLED`,
+				);
 			}
 
 			return newInvoice;

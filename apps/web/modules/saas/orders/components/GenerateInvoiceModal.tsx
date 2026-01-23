@@ -19,18 +19,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/tabs";
 import { useToast } from "@ui/hooks/use-toast";
 import {
 	AlertCircleIcon,
+	CheckCircle2Icon,
 	Loader2Icon,
 	PercentIcon,
 	ReceiptIcon,
 	WalletIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Story 28.11: Partial Invoicing
+ * Story 30.4: Mission-based partial invoicing with BILLED status tracking
  * Modal for generating partial invoices from an Order
- * Supports three modes: Full Balance, Deposit %, Manual Selection
+ * Supports three modes: Full Balance, Deposit %, Manual Selection (by mission)
  */
 
 // ============================================================================
@@ -43,6 +45,27 @@ interface QuoteLine {
 	type: string;
 	totalPrice: string | number;
 	vatRate?: number;
+}
+
+// Story 30.4: Mission type for partial invoicing
+interface Mission {
+	id: string;
+	status: string;
+	startAt: string;
+	isInternal: boolean;
+	quoteLineId: string | null;
+	sourceData: {
+		label?: string;
+		lineLabel?: string;
+		pickupAddress?: string;
+		dropoffAddress?: string;
+		price?: number;
+	} | null;
+	quoteLine?: {
+		id: string;
+		label: string;
+		totalPrice: string | number;
+	} | null;
 }
 
 interface GenerateInvoiceModalProps {
@@ -83,6 +106,58 @@ export function GenerateInvoiceModal({
 	const [mode, setMode] = useState<InvoiceMode>("FULL_BALANCE");
 	const [depositPercent, setDepositPercent] = useState<number>(30);
 	const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
+	const [selectedMissionIds, setSelectedMissionIds] = useState<string[]>([]);
+
+	// Story 30.4: Fetch missions for this order
+	const { data: missionsData, isLoading: isLoadingMissions } = useQuery<{
+		missions?: Mission[];
+	}>({
+		queryKey: ["orderMissions", orderId],
+		queryFn: async () => {
+			const response = await apiClient.vtc.orders[":id"].$get({
+				param: { id: orderId },
+			});
+			if (!response.ok) {
+				throw new Error("Failed to fetch order missions");
+			}
+			return response.json() as Promise<{ missions?: Mission[] }>;
+		},
+		enabled: open,
+	});
+
+	const missions = useMemo(
+		() => missionsData?.missions ?? [],
+		[missionsData?.missions],
+	);
+	const hasMissions = missions.length > 0;
+
+	// Story 30.4: Pre-select COMPLETED missions when modal opens
+	const completedMissionIds = useMemo(
+		() =>
+			missions
+				.filter((m) => m.status === "COMPLETED")
+				.map((m) => m.id),
+		[missions],
+	);
+
+	// Story 30.4: Track if initial selection has been done
+	const hasInitializedRef = useRef(false);
+
+	// Auto-select completed missions when data loads (only once)
+	useEffect(() => {
+		if (
+			!hasInitializedRef.current &&
+			completedMissionIds.length > 0 &&
+			open
+		) {
+			hasInitializedRef.current = true;
+			setSelectedMissionIds(completedMissionIds);
+		}
+		// Reset when modal closes
+		if (!open) {
+			hasInitializedRef.current = false;
+		}
+	}, [completedMissionIds, open]);
 
 	// Fetch order balance
 	const { data: balance, isLoading: isLoadingBalance } = useQuery<OrderBalance>(
@@ -103,6 +178,34 @@ export function GenerateInvoiceModal({
 		},
 	);
 
+	// Story 30.4: Get mission price
+	const getMissionPrice = (mission: Mission): number => {
+		if (mission.quoteLine?.totalPrice) {
+			return Number(mission.quoteLine.totalPrice);
+		}
+		if (mission.sourceData?.price) {
+			return mission.sourceData.price;
+		}
+		return 0;
+	};
+
+	// Story 30.4: Get mission label
+	const getMissionLabel = (mission: Mission): string => {
+		if (mission.quoteLine?.label) {
+			return mission.quoteLine.label;
+		}
+		if (mission.sourceData?.label) {
+			return mission.sourceData.label;
+		}
+		if (mission.sourceData?.lineLabel) {
+			return mission.sourceData.lineLabel;
+		}
+		if (mission.sourceData?.pickupAddress && mission.sourceData?.dropoffAddress) {
+			return `${mission.sourceData.pickupAddress.split(",")[0]} → ${mission.sourceData.dropoffAddress.split(",")[0]}`;
+		}
+		return "Mission";
+	};
+
 	// Calculate invoice amount based on mode
 	const calculatedAmount = useMemo(() => {
 		if (!balance) return 0;
@@ -121,6 +224,18 @@ export function GenerateInvoiceModal({
 			}
 
 			case "MANUAL_SELECTION": {
+				// Story 30.4: Use missions if available, otherwise fall back to quote lines
+				if (hasMissions) {
+					const selectedTotal = missions
+						.filter((m) => selectedMissionIds.includes(m.id))
+						.reduce(
+							(sum, m) => sum.add(new Decimal(getMissionPrice(m))),
+							new Decimal(0),
+						);
+					return selectedTotal.toDecimalPlaces(2).toNumber();
+				}
+
+				// Legacy: Quote lines
 				const selectedTotal = quoteLines
 					.filter((line) => selectedLineIds.includes(line.id))
 					.reduce(
@@ -135,7 +250,7 @@ export function GenerateInvoiceModal({
 			default:
 				return 0;
 		}
-	}, [mode, balance, depositPercent, selectedLineIds, quoteLines]);
+	}, [mode, balance, depositPercent, selectedLineIds, selectedMissionIds, quoteLines, missions, hasMissions]);
 
 	// Check if amount exceeds remaining balance
 	const exceedsBalance = balance
@@ -151,9 +266,55 @@ export function GenerateInvoiceModal({
 		);
 	};
 
+	// Story 30.4: Toggle mission selection
+	const toggleMissionSelection = (missionId: string) => {
+		setSelectedMissionIds((prev) =>
+			prev.includes(missionId)
+				? prev.filter((id) => id !== missionId)
+				: [...prev, missionId],
+		);
+	};
+
+	// Story 30.4: Check if mission can be selected
+	const canSelectMission = (mission: Mission): boolean => {
+		return mission.status !== "BILLED" && mission.status !== "CANCELLED";
+	};
+
+	// Story 30.4: Get mission status badge
+	const getMissionStatusBadge = (mission: Mission) => {
+		if (mission.status === "BILLED") {
+			return (
+				<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-800 text-xs dark:bg-green-900 dark:text-green-200">
+					<CheckCircle2Icon className="h-3 w-3" />
+					{t("orders.invoice.alreadyBilled")}
+				</span>
+			);
+		}
+		if (mission.status === "CANCELLED") {
+			return (
+				<span className="rounded-full bg-red-100 px-2 py-0.5 text-red-800 text-xs dark:bg-red-900 dark:text-red-200">
+					{t("orders.invoice.cancelled")}
+				</span>
+			);
+		}
+		if (mission.status === "COMPLETED") {
+			return (
+				<span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-800 text-xs dark:bg-blue-900 dark:text-blue-200">
+					{t("orders.invoice.completed")}
+				</span>
+			);
+		}
+		return (
+			<span className="rounded-full bg-yellow-100 px-2 py-0.5 text-yellow-800 text-xs dark:bg-yellow-900 dark:text-yellow-200">
+				{t("orders.invoice.pending")}
+			</span>
+		);
+	};
+
 	// Create partial invoice mutation
 	const createInvoiceMutation = useMutation({
 		mutationFn: async () => {
+			// Story 30.4: Use missionIds if available, otherwise selectedLineIds
 			const response = await apiClient.vtc.invoices.partial.$post({
 				json: {
 					orderId,
@@ -161,7 +322,13 @@ export function GenerateInvoiceModal({
 					depositPercent:
 						mode === "DEPOSIT_PERCENT" ? depositPercent : undefined,
 					selectedLineIds:
-						mode === "MANUAL_SELECTION" ? selectedLineIds : undefined,
+						mode === "MANUAL_SELECTION" && !hasMissions
+							? selectedLineIds
+							: undefined,
+					missionIds:
+						mode === "MANUAL_SELECTION" && hasMissions
+							? selectedMissionIds
+							: undefined,
 				},
 			});
 
@@ -184,6 +351,7 @@ export function GenerateInvoiceModal({
 			// Invalidate queries to refresh data
 			queryClient.invalidateQueries({ queryKey: ["order", orderId] });
 			queryClient.invalidateQueries({ queryKey: ["orderBalance", orderId] });
+			queryClient.invalidateQueries({ queryKey: ["orderMissions", orderId] }); // Story 30.4
 			queryClient.invalidateQueries({ queryKey: ["invoices"] });
 
 			onOpenChange(false);
@@ -207,12 +375,18 @@ export function GenerateInvoiceModal({
 		if (exceedsBalance) return false;
 		if (calculatedAmount <= 0) return false;
 
-		if (mode === "MANUAL_SELECTION" && selectedLineIds.length === 0) {
-			return false;
+		if (mode === "MANUAL_SELECTION") {
+			// Story 30.4: Check missions or lines based on what's available
+			if (hasMissions && selectedMissionIds.length === 0) {
+				return false;
+			}
+			if (!hasMissions && selectedLineIds.length === 0) {
+				return false;
+			}
 		}
 
 		return true;
-	}, [balance, exceedsBalance, calculatedAmount, mode, selectedLineIds]);
+	}, [balance, exceedsBalance, calculatedAmount, mode, selectedLineIds, selectedMissionIds, hasMissions]);
 
 	// Format currency
 	const formatCurrency = (amount: number) => {
@@ -354,13 +528,61 @@ export function GenerateInvoiceModal({
 							)}
 						</TabsContent>
 
-						{/* Manual Selection Tab */}
+						{/* Manual Selection Tab - Story 30.4: Mission-based selection */}
 						<TabsContent value="MANUAL_SELECTION" className="mt-4 space-y-4">
 							<p className="text-muted-foreground text-sm">
-								{t("orders.invoice.manualDescription")}
+								{hasMissions
+									? t("orders.invoice.missionSelectionDescription")
+									: t("orders.invoice.manualDescription")}
 							</p>
-							<div className="max-h-[200px] space-y-2 overflow-y-auto rounded-lg border p-2">
-								{quoteLines.length === 0 ? (
+							<div className="max-h-[250px] space-y-2 overflow-y-auto rounded-lg border p-2">
+								{/* Story 30.4: Show missions if available */}
+								{hasMissions ? (
+									isLoadingMissions ? (
+										<p className="py-4 text-center text-muted-foreground text-sm">
+											{t("common.loading")}
+										</p>
+									) : (
+										missions.map((mission) => {
+											const isDisabled = !canSelectMission(mission);
+											const isSelected = selectedMissionIds.includes(mission.id);
+											return (
+												<label
+													key={mission.id}
+													className={`flex items-center gap-3 rounded-md p-2 ${
+														isDisabled
+															? "cursor-not-allowed opacity-50"
+															: "cursor-pointer hover:bg-muted/50"
+													}`}
+												>
+													<Checkbox
+														checked={isSelected}
+														onCheckedChange={() =>
+															!isDisabled && toggleMissionSelection(mission.id)
+														}
+														disabled={isDisabled}
+													/>
+													<div className="flex flex-1 flex-col gap-1">
+														<div className="flex items-center gap-2">
+															{mission.isInternal && (
+																<span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-800 text-xs dark:bg-purple-900 dark:text-purple-200">
+																	{t("orders.invoice.internal")}
+																</span>
+															)}
+															<span className="text-sm">
+																{getMissionLabel(mission)}
+															</span>
+														</div>
+														{getMissionStatusBadge(mission)}
+													</div>
+													<span className="font-medium">
+														{formatCurrency(getMissionPrice(mission))}
+													</span>
+												</label>
+											);
+										})
+									)
+								) : quoteLines.length === 0 ? (
 									<p className="py-4 text-center text-muted-foreground text-sm">
 										{t("orders.invoice.noLines")}
 									</p>
@@ -387,9 +609,13 @@ export function GenerateInvoiceModal({
 									{formatCurrency(calculatedAmount)}
 								</p>
 								<p className="text-muted-foreground text-sm">
-									{t("orders.invoice.linesSelected", {
-										count: selectedLineIds.length,
-									})}
+									{hasMissions
+										? t("orders.invoice.missionsSelected", {
+												count: selectedMissionIds.length,
+											})
+										: t("orders.invoice.linesSelected", {
+												count: selectedLineIds.length,
+											})}
 								</p>
 							</div>
 							{exceedsBalance && (

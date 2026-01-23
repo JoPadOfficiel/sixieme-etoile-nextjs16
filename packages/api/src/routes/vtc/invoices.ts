@@ -1300,6 +1300,7 @@ export const invoicesRouter = new Hono()
 	)
 
 	// Create partial invoice from order
+	// Story 30.4: Added missionIds support for mission-based partial invoicing
 	.post(
 		"/partial",
 		validator(
@@ -1321,18 +1322,22 @@ export const invoicesRouter = new Hono()
 				selectedLineIds: z
 					.array(z.string())
 					.optional()
-					.describe("Quote line IDs to include (for MANUAL_SELECTION mode)"),
+					.describe("Quote line IDs to include (for MANUAL_SELECTION mode - legacy)"),
+				missionIds: z
+					.array(z.string())
+					.optional()
+					.describe("Story 30.4: Mission IDs to include (for MANUAL_SELECTION mode)"),
 			}),
 		),
 		describeRoute({
 			summary: "Create partial invoice",
 			description:
-				"Create a partial invoice from an order. Supports three modes: FULL_BALANCE (remaining balance), DEPOSIT_PERCENT (percentage deposit), MANUAL_SELECTION (specific lines)",
+				"Create a partial invoice from an order. Supports three modes: FULL_BALANCE (remaining balance), DEPOSIT_PERCENT (percentage deposit), MANUAL_SELECTION (specific missions or lines). Story 30.4: Added mission-based selection with BILLED status tracking.",
 			tags: ["VTC - Invoices"],
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { orderId, mode, depositPercent, selectedLineIds } =
+			const { orderId, mode, depositPercent, selectedLineIds, missionIds } =
 				c.req.valid("json");
 
 			try {
@@ -1343,6 +1348,7 @@ export const invoicesRouter = new Hono()
 						mode: mode as PartialInvoiceMode,
 						depositPercent,
 						selectedLineIds,
+						missionIds, // Story 30.4
 					},
 				);
 

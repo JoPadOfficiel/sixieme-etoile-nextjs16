@@ -2491,8 +2491,15 @@
 			"depositOf": "Acompte de {percent}% du total",
 			"exceedsBalance": "Le montant dépasse le solde restant",
 			"manualDescription": "Sélectionnez les lignes à inclure dans cette facture.",
+			"missionSelectionDescription": "Sélectionnez les missions à facturer. Les missions déjà facturées sont grisées.",
 			"noLines": "Aucune ligne disponible pour la sélection.",
 			"linesSelected": "{count, plural, =0 {aucune ligne sélectionnée} =1 {1 ligne sélectionnée} other {# lignes sélectionnées}}",
+			"missionsSelected": "{count, plural, =0 {aucune mission sélectionnée} =1 {1 mission sélectionnée} other {# missions sélectionnées}}",
+			"alreadyBilled": "Déjà facturée",
+			"cancelled": "Annulée",
+			"completed": "Terminée",
+			"pending": "En attente",
+			"internal": "Interne",
 			"generating": "Génération...",
 			"generate": "Générer la facture",
 			"successTitle": "Facture créée",
@@ -2543,7 +2550,8 @@
 			"assigned": "Affecté",
 			"in_progress": "En cours",
 			"completed": "Terminé",
-			"cancelled": "Annulé"
+			"cancelled": "Annulé",
+			"billed": "Facturé"
 		}
 	},
 	"quotes": {

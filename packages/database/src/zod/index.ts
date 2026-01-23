@@ -332,7 +332,7 @@ export const QuoteLineTypeSchema = z.enum(['CALCULATED','MANUAL','GROUP']);
 
 export type QuoteLineTypeType = `${z.infer<typeof QuoteLineTypeSchema>}`
 
-export const MissionStatusSchema = z.enum(['PENDING','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED']);
+export const MissionStatusSchema = z.enum(['PENDING','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED','BILLED']);
 
 export type MissionStatusType = `${z.infer<typeof MissionStatusSchema>}`
 

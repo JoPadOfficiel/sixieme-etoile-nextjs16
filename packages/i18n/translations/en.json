@@ -2504,8 +2504,15 @@
 			"depositOf": "{percent}% deposit of total",
 			"exceedsBalance": "Amount exceeds remaining balance",
 			"manualDescription": "Select the lines to include in this invoice.",
+			"missionSelectionDescription": "Select the missions to invoice. Already billed missions are grayed out.",
 			"noLines": "No lines available for selection.",
 			"linesSelected": "{count, plural, =0 {no lines selected} =1 {1 line selected} other {# lines selected}}",
+			"missionsSelected": "{count, plural, =0 {no missions selected} =1 {1 mission selected} other {# missions selected}}",
+			"alreadyBilled": "Already Billed",
+			"cancelled": "Cancelled",
+			"completed": "Completed",
+			"pending": "Pending",
+			"internal": "Internal",
 			"generating": "Generating...",
 			"generate": "Generate Invoice",
 			"successTitle": "Invoice Created",
@@ -2556,7 +2563,8 @@
 			"assigned": "Assigned",
 			"in_progress": "In Progress",
 			"completed": "Completed",
-			"cancelled": "Cancelled"
+			"cancelled": "Cancelled",
+			"billed": "Billed"
 		}
 	},
 	"quotes": {

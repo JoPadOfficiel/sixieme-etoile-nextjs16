@@ -427,12 +427,14 @@ enum QuoteLineType {
 
 /// Story 26.1: Mission status for operational tracking
 /// Tracks the lifecycle of a mission from creation to completion
+/// Story 30.4: Added BILLED status for partial invoicing support
 enum MissionStatus {
   PENDING // Mission created, awaiting assignment
   ASSIGNED // Driver/vehicle assigned, awaiting execution
   IN_PROGRESS // Currently executing
   COMPLETED // Successfully finished
   CANCELLED // Mission cancelled
+  BILLED // Story 30.4: Mission has been invoiced
 }
 
 /// Story 28.1: Order (Dossier) lifecycle status
