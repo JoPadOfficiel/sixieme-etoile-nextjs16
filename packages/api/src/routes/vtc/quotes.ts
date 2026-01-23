@@ -953,18 +953,58 @@ export const quotesRouter = new Hono()
 					console.log(`[Quotes API] Cancelling quote ${id} for org ${organizationId}`);
 					
 					try {
-						// Simple direct update for CANCELLED status
-						const updatedQuote = await db.quote.update({
-							where: withTenantId(id, organizationId),
-							data: {
-								status: QuoteStatus.CANCELLED,
-								// cancelledAt will be set automatically by database default
-							},
-							include: {
-								contact: true,
-								vehicleCategory: true,
-								invoices: true,
-							},
+						// Use transaction to cancel quote and clean up missions
+						const updatedQuote = await db.$transaction(async (tx) => {
+							// Delete all unassigned missions for this quote
+							const missionsToDelete = await tx.mission.findMany({
+								where: {
+									quoteId: id,
+									driverId: null, // Only delete unassigned missions
+								},
+								select: { id: true },
+							});
+
+							if (missionsToDelete.length > 0) {
+								await tx.mission.deleteMany({
+									where: {
+										id: { in: missionsToDelete.map(m => m.id) },
+									},
+								});
+								console.log(`[Quotes API] Deleted ${missionsToDelete.length} unassigned missions for quote ${id}`);
+							}
+
+							// Detach assigned missions (set quoteLineId to null but keep the mission)
+							const assignedMissions = await tx.mission.findMany({
+								where: {
+									quoteId: id,
+									driverId: { not: null }, // Only assigned missions
+								},
+								select: { id: true },
+							});
+
+							if (assignedMissions.length > 0) {
+								await tx.mission.updateMany({
+									where: {
+										id: { in: assignedMissions.map(m => m.id) },
+									},
+									data: { quoteLineId: null },
+								});
+								console.log(`[Quotes API] Detached ${assignedMissions.length} assigned missions for quote ${id}`);
+							}
+
+							// Update quote status to CANCELLED
+							return await tx.quote.update({
+								where: { id },
+								data: {
+									status: QuoteStatus.CANCELLED,
+									// cancelledAt will be set automatically by database default
+								},
+								include: {
+									contact: true,
+									vehicleCategory: true,
+									invoices: true,
+								},
+							});
 						});
 
 						// Create audit log entry (separate, non-critical)
@@ -983,7 +1023,7 @@ export const quotesRouter = new Hono()
 							// Continue even if audit fails
 						}
 
-						console.log(`[Quotes API] Quote ${id} cancelled successfully`);
+						console.log(`[Quotes API] Quote ${id} cancelled successfully with mission cleanup`);
 						
 						// If only status was being updated, return the result
 						if (!data.notes && !data.validUntil && !data.finalPrice) {

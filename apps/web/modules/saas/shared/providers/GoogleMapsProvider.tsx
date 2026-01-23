@@ -126,8 +126,9 @@ export function GoogleMapsProvider({ children }: GoogleMapsProviderProps) {
       };
     }
 
-    // Create and load script
+    // Create and load script with unique ID
     const script = document.createElement("script");
+    script.id = "google-maps-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=${GOOGLE_MAPS_LIBRARIES.join(",")}&loading=async`;
     script.async = true;
     script.defer = true;
@@ -148,6 +149,9 @@ export function GoogleMapsProvider({ children }: GoogleMapsProviderProps) {
     document.head.appendChild(script);
 
     // Cleanup function - don't remove script as other components may use it
+    return () => {
+      // Cleanup is minimal since we keep the script loaded
+    };
   }, [apiKey, keyLoading, checkAndSetLoaded]);
 
   // Compute error from multiple sources
