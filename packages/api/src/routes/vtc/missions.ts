@@ -1339,6 +1339,12 @@ export const missionsRouter = new Hono()
 						);
 					});
 
+					// Story 19.8: Create a minimal compliance status without routing data
+					const complianceNoCoords = determineComplianceStatusNoCoordinates(
+						vehicleData,
+						missionRequirements,
+					);
+
 					// If no eligible drivers, still show the vehicle without driver
 					if (eligibleDrivers.length === 0) {
 						const scoreResult = calculateFlexibilityScoreSimple({
@@ -1348,12 +1354,6 @@ export const missionsRouter = new Hono()
 							remainingDrivingHours: 10,
 							remainingAmplitudeHours: 14,
 						});
-
-						// Story 19.8: Create a minimal compliance status without routing data
-						const complianceNoCoords = determineComplianceStatusNoCoordinates(
-							vehicleData,
-							missionRequirements,
-						);
 
 						candidates.push({
 							candidateId: `${vehicleCandidate.vehicleId}:no-driver`,
@@ -1388,61 +1388,55 @@ export const missionsRouter = new Hono()
 								return: { distanceKm: null, durationMinutes: null },
 							},
 						});
-						continue;
-					}
+					} else {
+						// Create one entry per eligible driver for this vehicle
+						for (const driver of eligibleDrivers) {
+							const driverLicenseCount = driver.driverLicenses.length;
 
-					// Create one entry per eligible driver for this vehicle
-					for (const driver of eligibleDrivers) {
-						const driverLicenseCount = driver.driverLicenses.length;
+							const scoreResult = calculateFlexibilityScoreSimple({
+								licenseCount: driverLicenseCount,
+								availabilityHours: 8,
+								distanceKm: 0, // No distance available
+								remainingDrivingHours: 10,
+								remainingAmplitudeHours: 14,
+							});
 
-						const scoreResult = calculateFlexibilityScoreSimple({
-							licenseCount: driverLicenseCount,
-							availabilityHours: 8,
-							distanceKm: 0, // No distance available
-							remainingDrivingHours: 10,
-							remainingAmplitudeHours: 14,
-						});
-
-						const complianceNoCoords = determineComplianceStatusNoCoordinates(
-							vehicleData,
-							missionRequirements,
-						);
-
-						candidates.push({
-							candidateId: `${vehicleCandidate.vehicleId}:${driver.id}`,
-							vehicleId: vehicleCandidate.vehicleId,
-							vehicleName: vehicleCandidate.vehicleName,
-							vehicleCategory: {
-								id: vehicleData?.vehicleCategory.id ?? "",
-								name: vehicleData?.vehicleCategory.name ?? "",
-								code: vehicleData?.vehicleCategory.code ?? "",
-							},
-							baseId: vehicleCandidate.baseId,
-							baseName: vehicleCandidate.baseName,
-							baseDistanceKm: null, // Story 19.8: No distance available
-							baseLatitude: vehicleCandidate.baseLocation.lat,
-							baseLongitude: vehicleCandidate.baseLocation.lng,
-							driverId: driver.id,
-							driverName: `${driver.firstName} ${driver.lastName}`,
-							driverLicenses: driver.driverLicenses.map(
-								(dl) => dl.licenseCategory.code,
-							),
-							flexibilityScore: scoreResult.totalScore,
-							scoreBreakdown: scoreResult.breakdown,
-							compliance: complianceNoCoords,
-							estimatedCost: {
-								approach: null,
-								service: null,
-								return: null,
-								total: null,
-							},
-							routingSource: "NO_COORDINATES",
-							segments: {
-								approach: { distanceKm: null, durationMinutes: null },
-								service: { distanceKm: null, durationMinutes: null },
-								return: { distanceKm: null, durationMinutes: null },
-							},
-						});
+							candidates.push({
+								candidateId: `${vehicleCandidate.vehicleId}:${driver.id}`,
+								vehicleId: vehicleCandidate.vehicleId,
+								vehicleName: vehicleCandidate.vehicleName,
+								vehicleCategory: {
+									id: vehicleData?.vehicleCategory.id ?? "",
+									name: vehicleData?.vehicleCategory.name ?? "",
+									code: vehicleData?.vehicleCategory.code ?? "",
+								},
+								baseId: vehicleCandidate.baseId,
+								baseName: vehicleCandidate.baseName,
+								baseDistanceKm: null, // Story 19.8: No distance available
+								baseLatitude: vehicleCandidate.baseLocation.lat,
+								baseLongitude: vehicleCandidate.baseLocation.lng,
+								driverId: driver.id,
+								driverName: `${driver.firstName} ${driver.lastName}`,
+								driverLicenses: driver.driverLicenses.map(
+									(dl) => dl.licenseCategory.code,
+								),
+								flexibilityScore: scoreResult.totalScore,
+								scoreBreakdown: scoreResult.breakdown,
+								compliance: complianceNoCoords,
+								estimatedCost: {
+									approach: null,
+									service: null,
+									return: null,
+									total: null,
+								},
+								routingSource: "NO_COORDINATES",
+								segments: {
+									approach: { distanceKm: null, durationMinutes: null },
+									service: { distanceKm: null, durationMinutes: null },
+									return: { distanceKm: null, durationMinutes: null },
+								},
+							});
+						}
 					}
 				}
 			}
