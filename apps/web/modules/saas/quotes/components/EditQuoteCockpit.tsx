@@ -19,7 +19,10 @@ import { useVehicleCategories } from "../hooks/useVehicleCategories";
 import { useQuoteLinesStore } from "../stores/useQuoteLinesStore";
 import type { CreateQuoteFormData } from "../types";
 import { hasBlockingViolations, initialCreateQuoteFormData } from "../types";
-import { hydrateFromQuote, type DatabaseQuoteLine } from "../utils/hydrateFromQuote";
+import {
+	type DatabaseQuoteLine,
+	hydrateFromQuote,
+} from "../utils/hydrateFromQuote";
 import { lineToFormData } from "../utils/lineToFormData";
 import { safeMergeFormData } from "../utils/validateFormData";
 import type { AddedFee } from "./AddQuoteFeeDialog";
@@ -135,7 +138,9 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 
 			// Story 29.3: Hydrate quote lines using dedicated function with Zod validation
 			if (quote.lines && quote.lines.length > 0) {
-				const hydratedLines = hydrateFromQuote(quote.lines as DatabaseQuoteLine[]);
+				const hydratedLines = hydrateFromQuote(
+					quote.lines as DatabaseQuoteLine[],
+				);
 				setQuoteLines(hydratedLines);
 
 				// Story 29.3: Sync with Zustand store for YoloQuoteEditor
@@ -232,19 +237,22 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 	);
 
 	// Handler: Edit line - populate form with line data
-	const handleEditLine = useCallback((line: QuoteLine) => {
-		try {
-			const lineFormData = lineToFormData(line);
-			setFormData((prev) => safeMergeFormData(prev, lineFormData));
-		} catch (error) {
-			console.error('Failed to edit line:', error);
-			toast({
-				title: t("common.error"),
-				description: t("quotes.errors.editFailed"),
-				variant: "error",
-			});
-		}
-	}, [toast, t]);
+	const handleEditLine = useCallback(
+		(line: QuoteLine) => {
+			try {
+				const lineFormData = lineToFormData(line);
+				setFormData((prev) => safeMergeFormData(prev, lineFormData));
+			} catch (error) {
+				console.error("Failed to edit line:", error);
+				toast({
+					title: t("common.error"),
+					description: t("quotes.errors.editFailed"),
+					variant: "error",
+				});
+			}
+		},
+		[toast, t],
+	);
 
 	// Determine if blocking violations exist
 	const violations = hasBlockingViolations(
@@ -577,7 +585,15 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 											lng: formData.pickupLongitude,
 											address: formData.pickupAddress,
 										}
-									: undefined,
+									: (pricingResult?.tripAnalysis as any)?.startLocation
+										? {
+												lat: (pricingResult.tripAnalysis as any).startLocation
+													.lat,
+												lng: (pricingResult.tripAnalysis as any).startLocation
+													.lng,
+												address: formData.pickupAddress,
+											}
+										: undefined,
 							dropoff:
 								formData.dropoffLatitude && formData.dropoffLongitude
 									? {
@@ -585,7 +601,15 @@ export function EditQuoteCockpit({ quoteId }: EditQuoteCockpitProps) {
 											lng: formData.dropoffLongitude,
 											address: formData.dropoffAddress || "",
 										}
-									: undefined,
+									: (pricingResult?.tripAnalysis as any)?.endLocation
+										? {
+												lat: (pricingResult.tripAnalysis as any).endLocation
+													.lat,
+												lng: (pricingResult.tripAnalysis as any).endLocation
+													.lng,
+												address: formData.dropoffAddress || "",
+											}
+										: undefined,
 						}}
 					/>
 				</div>
