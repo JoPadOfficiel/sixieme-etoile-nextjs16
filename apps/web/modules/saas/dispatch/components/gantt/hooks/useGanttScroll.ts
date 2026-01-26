@@ -8,7 +8,7 @@
  * Hook for synchronizing horizontal scroll between header and content areas.
  */
 
-import { useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 interface UseGanttScrollReturn {
 	headerRef: React.RefObject<HTMLDivElement>;
@@ -55,6 +55,7 @@ export function useGanttScroll(): UseGanttScrollReturn {
 	// Handle horizontal scroll with shift+wheel
 	useEffect(() => {
 		const content = contentRef.current;
+		const header = headerRef.current;
 		if (!content) return;
 
 		const handleWheel = (e: WheelEvent) => {
@@ -70,7 +71,16 @@ export function useGanttScroll(): UseGanttScrollReturn {
 		};
 
 		content.addEventListener("wheel", handleWheel, { passive: false });
-		return () => content.removeEventListener("wheel", handleWheel);
+		if (header) {
+			header.addEventListener("wheel", handleWheel, { passive: false });
+		}
+
+		return () => {
+			content.removeEventListener("wheel", handleWheel);
+			if (header) {
+				header.removeEventListener("wheel", handleWheel);
+			}
+		};
 	}, []);
 
 	return {
