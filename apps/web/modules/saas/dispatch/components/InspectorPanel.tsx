@@ -86,7 +86,7 @@ export function InspectorPanel({
 
 	return (
 		<Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-			<SheetContent className="w-[400px] overflow-y-auto sm:w-[540px] sm:max-w-none">
+			<SheetContent className="sm:!max-w-none sm:!w-full lg:!max-w-[35vw] lg:!w-[35vw] w-full overflow-y-auto">
 				{isLoading ? (
 					<div className="mt-6 space-y-4">
 						<SheetHeader className="sr-only">

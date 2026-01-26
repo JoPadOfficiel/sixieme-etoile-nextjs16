@@ -1,16 +1,16 @@
 "use client";
 
 import { Badge } from "@ui/components/badge";
-import { MapPin, ArrowRight, Clock, Car, User, Calendar, Phone } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { format } from "date-fns";
 import { cn } from "@ui/lib";
+import { format } from "date-fns";
+import { Calendar, Car, Clock, MapPin, Phone, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { DispatchBadges } from "./DispatchBadges";
-import { SubcontractedBadge } from "./SubcontractedBadge";
-import { StaffingIndicators } from "./StaffingIndicators";
-import { NotesIndicator } from "./NotesIndicator";
 import type { MissionListItem } from "../types";
+import { DispatchBadges } from "./DispatchBadges";
+import { NotesIndicator } from "./NotesIndicator";
+import { StaffingIndicators } from "./StaffingIndicators";
+import { SubcontractedBadge } from "./SubcontractedBadge";
 
 /**
  * MissionRow Component
@@ -36,54 +36,49 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 	const pickupDate = new Date(mission.pickupAt);
 
 	// Truncate address for display
-	const truncateAddress = (address: string | null | undefined, maxLength = 35) => {
-		if (!address) return "—";
-		if (address.length <= maxLength) return address;
-		return `${address.substring(0, maxLength)}...`;
-	};
+	// Address truncation logic removed
 
 	return (
 		<div
 			className={cn(
-				"p-3 border-b cursor-pointer transition-colors hover:bg-muted/50",
-				isSelected && "bg-primary/5 border-l-2 border-l-primary"
+				"cursor-pointer border-b p-3 transition-colors hover:bg-muted/50",
+				isSelected && "border-l-2 border-l-primary bg-primary/5",
 			)}
 			onClick={() => onSelect(mission.id)}
 			data-testid="mission-row"
 			data-selected={isSelected}
 		>
 			{/* Row 1: Time + Client + Trip Type */}
-			<div className="flex items-center gap-3 mb-2">
+			<div className="mb-2 flex items-center gap-3">
 				{/* Time */}
-				<div className="flex items-center gap-1.5 flex-shrink-0">
+				<div className="flex flex-shrink-0 items-center gap-1.5">
 					<Clock className="size-4 text-muted-foreground" />
 					<div className="font-semibold">{format(pickupDate, "HH:mm")}</div>
-					<div className="text-xs text-muted-foreground">
+					<div className="text-muted-foreground text-xs">
 						{format(pickupDate, "dd/MM/yyyy")}
 					</div>
 				</div>
 				{/* Client */}
-				<div className="flex items-center gap-1.5 min-w-0 flex-1">
-					<div className="flex flex-col min-w-0">
+				<div className="flex min-w-0 flex-1 items-center gap-1.5">
+					<div className="flex min-w-0 flex-col">
 						<div className="flex items-center gap-1.5">
 							{/* Story 29.7: Display Mission.ref */}
 							{mission.ref && (
 								<Badge
 									variant="outline"
-									className="text-xs px-1.5 py-0 border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400 flex-shrink-0"
+									className="flex-shrink-0 border-blue-500/50 bg-blue-500/10 px-1.5 py-0 text-blue-700 text-xs dark:text-blue-400"
 								>
 									{mission.ref}
 								</Badge>
 							)}
-							<span className="font-medium truncate">
-								{mission.endCustomer 
+							<span className="break-words font-medium">
+								{mission.endCustomer
 									? `${mission.endCustomer.firstName} ${mission.endCustomer.lastName}`
-									: mission.contact.displayName
-								}
+									: mission.contact.displayName}
 							</span>
 							<Badge
 								variant={mission.contact.isPartner ? "default" : "secondary"}
-								className="text-xs px-1.5 py-0 flex-shrink-0"
+								className="flex-shrink-0 px-1.5 py-0 text-xs"
 							>
 								{mission.contact.isPartner ? t("partner") : t("private")}
 							</Badge>
@@ -91,9 +86,9 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 							{mission.tripType === "STAY" && mission.stayDays && (
 								<Badge
 									variant="outline"
-									className="text-xs px-1.5 py-0 border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400 flex-shrink-0"
+									className="flex-shrink-0 border-purple-500/50 bg-purple-500/10 px-1.5 py-0 text-purple-700 text-xs dark:text-purple-400"
 								>
-									<Calendar className="size-3 mr-1" />
+									<Calendar className="mr-1 size-3" />
 									{mission.stayDays.length} {t("days")}
 								</Badge>
 							)}
@@ -101,11 +96,15 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 							{mission.missionStatus && (
 								<Badge
 									variant={
-										mission.missionStatus === "COMPLETED" ? "default" :
-										mission.missionStatus === "IN_PROGRESS" ? "secondary" :
-										mission.missionStatus === "CANCELLED" ? "destructive" : "outline"
+										mission.missionStatus === "COMPLETED"
+											? "default"
+											: mission.missionStatus === "IN_PROGRESS"
+												? "secondary"
+												: mission.missionStatus === "CANCELLED"
+													? "destructive"
+													: "outline"
 									}
-									className="text-xs px-1.5 py-0 flex-shrink-0"
+									className="flex-shrink-0 px-1.5 py-0 text-xs"
 								>
 									{mission.missionStatus}
 								</Badge>
@@ -113,13 +112,14 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 						</div>
 						{/* Show Agency name if End Customer is displayed */}
 						{mission.endCustomer && (
-							<span className="text-xs text-muted-foreground truncate">
+							<span className="break-words text-muted-foreground text-xs">
 								{t("via")} {mission.contact.displayName}
 							</span>
 						)}
 						{/* Contact Phone */}
-						{(mission.contact.phone || (mission.endCustomer && mission.endCustomer.phone)) && (
-							<div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+						{(mission.contact.phone ||
+							(mission.endCustomer && mission.endCustomer.phone)) && (
+							<div className="mt-0.5 flex items-center gap-1 text-muted-foreground text-xs">
 								<Phone className="size-3" />
 								<span>
 									{mission.endCustomer?.phone || mission.contact.phone}
@@ -131,19 +131,24 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 			</div>
 
 			{/* Row 1.5: Badges */}
-			<div className="flex items-center gap-2 mb-3 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+			<div
+				className="mb-3 flex items-center gap-2 overflow-x-auto"
+				style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+			>
 				<DispatchBadges
 					profitability={mission.profitability}
 					compliance={mission.compliance}
 					assignment={mission.assignment}
 					className="shrink-0"
 				/>
-				
-				{(mission.notes || mission.staffingSummary || (mission.isSubcontracted && mission.subcontractor)) && (
-					<div className="h-4 w-px bg-border shrink-0 mx-1" />
+
+				{(mission.notes ||
+					mission.staffingSummary ||
+					(mission.isSubcontracted && mission.subcontractor)) && (
+					<div className="mx-1 h-4 w-px shrink-0 bg-border" />
 				)}
 
-				<div className="flex items-center gap-1 shrink-0">
+				<div className="flex shrink-0 items-center gap-1">
 					{/* Story 22.11: Notes indicator */}
 					<NotesIndicator notes={mission.notes ?? null} />
 					{/* Story 22.9: Staffing indicators */}
@@ -156,25 +161,26 @@ export function MissionRow({ mission, isSelected, onSelect }: MissionRowProps) {
 			</div>
 
 			{/* Row 2: Route (pickup → dropoff) */}
-			<div className="flex items-center gap-1.5 text-sm mb-2">
-				<MapPin className="size-3.5 text-green-600 flex-shrink-0" />
-				<span className="truncate" title={mission.pickupAddress}>
-					{truncateAddress(mission.pickupAddress)}
-				</span>
-				<ArrowRight className="size-3 text-muted-foreground flex-shrink-0 mx-1" />
-				<MapPin className="size-3.5 text-red-600 flex-shrink-0" />
-				<span className="truncate" title={mission.dropoffAddress}>
-					{truncateAddress(mission.dropoffAddress)}
-				</span>
+			<div className="mb-2 flex flex-col gap-1 text-sm">
+				<div className="flex items-start gap-1.5">
+					<MapPin className="mt-0.5 size-3.5 flex-shrink-0 text-green-600" />
+					<span className="break-words">{mission.pickupAddress || "—"}</span>
+				</div>
+				<div className="flex items-start gap-1.5">
+					<MapPin className="mt-0.5 size-3.5 flex-shrink-0 text-red-600" />
+					<span className="break-words">{mission.dropoffAddress || "—"}</span>
+				</div>
 			</div>
 
 			{/* Row 3: Vehicle + Driver */}
-			<div className="flex items-center gap-4 text-sm text-muted-foreground">
+			<div className="flex items-center gap-4 text-muted-foreground text-sm">
 				{mission.assignment?.vehicleName ? (
 					<>
 						<div className="flex items-center gap-1.5">
 							<Car className="size-3.5" />
-							<span className="font-medium text-foreground">{mission.assignment.vehicleName}</span>
+							<span className="font-medium text-foreground">
+								{mission.assignment.vehicleName}
+							</span>
 						</div>
 						{mission.assignment.driverName && (
 							<div className="flex items-center gap-1.5">

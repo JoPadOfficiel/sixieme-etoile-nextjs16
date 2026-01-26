@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
+import { Label } from "@ui/components/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@ui/components/select";
 import {
 	Sheet,
 	SheetContent,
@@ -10,29 +18,28 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@ui/components/sheet";
-import { MapPin, ArrowRight, Loader2, Users, AlertTriangle, User } from "lucide-react";
-import { Badge } from "@ui/components/badge";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@ui/components/select";
-import { Label } from "@ui/components/label";
-import { useTranslations } from "next-intl";
-import { format } from "date-fns";
 import { useToast } from "@ui/hooks/use-toast";
-import { CandidateFilters } from "./CandidateFilters";
-import { CandidatesList } from "./CandidatesList";
-import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
+import { format } from "date-fns";
+import {
+	AlertTriangle,
+	ArrowRight,
+	Loader2,
+	MapPin,
+	User,
+	Users,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useState } from "react";
 import { useAssignMission } from "../hooks/useAssignMission";
+import { useAssignmentCandidates } from "../hooks/useAssignmentCandidates";
 import { useSubcontractMission } from "../hooks/useSubcontracting";
 import type {
 	CandidateSortBy,
 	ComplianceFilter,
 	FleetTypeFilter,
 } from "../types/assignment";
+import { CandidateFilters } from "./CandidateFilters";
+import { CandidatesList } from "./CandidatesList";
 
 /**
  * AssignmentDrawer Component
@@ -83,29 +90,34 @@ export function AssignmentDrawer({
 	const { toast } = useToast();
 
 	// State
-	const [selectedCandidateId, setSelectedCandidateIdInternal] = useState<string | null>(null);
+	const [selectedCandidateId, setSelectedCandidateIdInternal] = useState<
+		string | null
+	>(null);
 	const [sortBy, setSortBy] = useState<CandidateSortBy>("score");
-	const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
+	const [complianceFilter, setComplianceFilter] =
+		useState<ComplianceFilter>("all");
 	// Story 18.9: Fleet type filter state
-	const [fleetTypeFilter, setFleetTypeFilter] = useState<FleetTypeFilter>("all");
+	const [fleetTypeFilter, setFleetTypeFilter] =
+		useState<FleetTypeFilter>("all");
 	const [search, setSearch] = useState("");
 	// Story 20.8: Second driver for RSE double crew missions
 	const [secondDriverId, setSecondDriverId] = useState<string | null>(null);
 
 	// Story 8.3: Wrap setSelectedCandidateId to notify parent
-	const setSelectedCandidateId = useCallback((id: string | null) => {
-		setSelectedCandidateIdInternal(id);
-		onSelectedCandidateChange?.(id);
-	}, [onSelectedCandidateChange]);
+	const setSelectedCandidateId = useCallback(
+		(id: string | null) => {
+			setSelectedCandidateIdInternal(id);
+			onSelectedCandidateChange?.(id);
+		},
+		[onSelectedCandidateChange],
+	);
 
 	// Fetch candidates
-	const {
-		data: candidatesData,
-		isLoading: candidatesLoading,
-	} = useAssignmentCandidates({
-		missionId,
-		enabled: isOpen && !!missionId,
-	});
+	const { data: candidatesData, isLoading: candidatesLoading } =
+		useAssignmentCandidates({
+			missionId,
+			enabled: isOpen && !!missionId,
+		});
 
 	// Assign mutation
 	const assignMutation = useAssignMission({
@@ -183,18 +195,30 @@ export function AssignmentDrawer({
 		});
 
 		return result;
-	}, [candidates, complianceFilter, fleetTypeFilter, search, sortBy, preSelectedDriverId]);
+	}, [
+		candidates,
+		complianceFilter,
+		fleetTypeFilter,
+		search,
+		sortBy,
+		preSelectedDriverId,
+	]);
 
 	// Story 27.9: Get driver name for empty state messaging
 	const preSelectedDriverName = useMemo(() => {
 		if (!preSelectedDriverId || !candidates) return null;
-		return candidates.find((c) => c.driverId === preSelectedDriverId)?.driverName ?? null;
+		return (
+			candidates.find((c) => c.driverId === preSelectedDriverId)?.driverName ??
+			null
+		);
 	}, [preSelectedDriverId, candidates]);
 
 	// Get selected candidate
 	const selectedCandidate = useMemo(() => {
 		if (!selectedCandidateId || !candidates) return null;
-		return candidates.find((c) => c.candidateId === selectedCandidateId) ?? null;
+		return (
+			candidates.find((c) => c.candidateId === selectedCandidateId) ?? null
+		);
 	}, [selectedCandidateId, candidates]);
 
 	// Story 20.8: Check if mission requires double crew from tripAnalysis
@@ -210,21 +234,31 @@ export function AssignmentDrawer({
 	// FIXED: Filter by required license for the selected vehicle
 	const availableSecondDrivers = useMemo(() => {
 		if (!candidates || !selectedCandidate) return [];
-		
+
 		// Get the required license from the selected candidate's vehicle
 		const requiredLicenses = selectedCandidate.driverLicenses || [];
-		
+
 		// Get unique drivers from candidates, excluding the selected primary driver
 		// IMPORTANT: Only show drivers who have the required license for this vehicle
 		const driversMap = new Map<string, { id: string; name: string }>();
 		for (const c of candidates) {
-			if (c.driverId && c.driverId !== selectedCandidate.driverId && !c.isShadowFleet) {
+			if (
+				c.driverId &&
+				c.driverId !== selectedCandidate.driverId &&
+				!c.isShadowFleet
+			) {
 				// Check if this driver has the required license
-				const hasRequiredLicense = requiredLicenses.length === 0 || 
-					c.driverLicenses.some(license => requiredLicenses.includes(license));
-				
+				const hasRequiredLicense =
+					requiredLicenses.length === 0 ||
+					c.driverLicenses.some((license) =>
+						requiredLicenses.includes(license),
+					);
+
 				if (hasRequiredLicense) {
-					driversMap.set(c.driverId, { id: c.driverId, name: c.driverName ?? "Unknown" });
+					driversMap.set(c.driverId, {
+						id: c.driverId,
+						name: c.driverName ?? "Unknown",
+					});
 				}
 			}
 		}
@@ -248,30 +282,33 @@ export function AssignmentDrawer({
 				return;
 			}
 
-			subcontractMutation.mutate({
-				missionId,
-				data: {
-					subcontractorId: selectedCandidate.subcontractorId,
-					agreedPrice: selectedCandidate.estimatedCost.total ?? 0, // Use estimated/indicative price
-					notes: "Assigned via Dispatch",
+			subcontractMutation.mutate(
+				{
+					missionId,
+					data: {
+						subcontractorId: selectedCandidate.subcontractorId,
+						agreedPrice: selectedCandidate.estimatedCost.total ?? 0, // Use estimated/indicative price
+						notes: "Assigned via Dispatch",
+					},
 				},
-			}, {
-				onSuccess: () => {
-					toast({
-						title: t("success"),
-						variant: "default",
-					});
-					onClose();
-					onAssignmentComplete?.();
+				{
+					onSuccess: () => {
+						toast({
+							title: t("success"),
+							variant: "default",
+						});
+						onClose();
+						onAssignmentComplete?.();
+					},
+					onError: (error) => {
+						toast({
+							title: t("error"),
+							description: error.message,
+							variant: "error",
+						});
+					},
 				},
-				onError: (error) => {
-					toast({
-						title: t("error"),
-						description: error.message,
-						variant: "error",
-					});
-				}
-			});
+			);
 		} else {
 			// Internal assignment flow
 			const payload = {
@@ -283,7 +320,17 @@ export function AssignmentDrawer({
 			};
 			assignMutation.mutate(payload);
 		}
-	}, [missionId, selectedCandidate, secondDriverId, assignMutation, subcontractMutation, toast, t, onClose, onAssignmentComplete]);
+	}, [
+		missionId,
+		selectedCandidate,
+		secondDriverId,
+		assignMutation,
+		subcontractMutation,
+		toast,
+		t,
+		onClose,
+		onAssignmentComplete,
+	]);
 
 	const isPending = assignMutation.isPending || subcontractMutation.isPending;
 
@@ -308,7 +355,7 @@ export function AssignmentDrawer({
 	return (
 		<Sheet open={isOpen} onOpenChange={handleOpenChange}>
 			<SheetContent
-				className="w-full sm:!max-w-none sm:!w-full lg:!max-w-[50vw] lg:!w-[50vw] flex flex-col"
+				className="sm:!max-w-none sm:!w-full lg:!max-w-[35vw] lg:!w-[35vw] flex w-full flex-col"
 				data-testid="assignment-drawer"
 			>
 				<SheetHeader>
@@ -326,25 +373,31 @@ export function AssignmentDrawer({
 						<SheetDescription asChild>
 							<div className="space-y-1">
 								{missionSummary.endCustomerName && (
-									<div className="flex items-center gap-1.5 text-foreground font-medium mb-1">
+									<div className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
 										<User className="size-3.5 text-muted-foreground" />
 										<span>{missionSummary.endCustomerName}</span>
 									</div>
 								)}
 								<span className="flex items-center gap-1 text-sm">
 									<MapPin className="size-3.5 text-green-600" />
-									<span className="truncate">{missionSummary.pickupAddress}</span>
-									<ArrowRight className="size-3 text-muted-foreground flex-shrink-0" />
+									<span className="truncate">
+										{missionSummary.pickupAddress}
+									</span>
+									<ArrowRight className="size-3 flex-shrink-0 text-muted-foreground" />
 									<MapPin className="size-3.5 text-red-600" />
-									<span className="truncate">{missionSummary.dropoffAddress}</span>
+									<span className="truncate">
+										{missionSummary.dropoffAddress}
+									</span>
 								</span>
-								<span className="text-xs text-muted-foreground block">{pickupTime}</span>
+								<span className="block text-muted-foreground text-xs">
+									{pickupTime}
+								</span>
 							</div>
 						</SheetDescription>
 					)}
 				</SheetHeader>
 
-				<div className="flex-1 overflow-hidden flex flex-col py-4 gap-4">
+				<div className="flex flex-1 flex-col gap-4 overflow-hidden py-4">
 					<CandidateFilters
 						sortBy={sortBy}
 						onSortChange={setSortBy}
@@ -361,44 +414,48 @@ export function AssignmentDrawer({
 						selectedId={selectedCandidateId}
 						onSelect={setSelectedCandidateId}
 						isLoading={candidatesLoading}
-						className="flex-1 max-h-[calc(100vh-18rem)]"
+						className="max-h-[calc(100vh-18rem)] flex-1"
 						onHoverStart={onCandidateHoverStart}
 						onHoverEnd={onCandidateHoverEnd}
 						preSelectedDriverName={preSelectedDriverName}
 					/>
 
 					{/* Story 20.8: Second driver selection for double crew missions */}
-					{requiresDoubleCrew && selectedCandidate && !selectedCandidate.isShadowFleet && (
-						<div className="border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20">
-							<div className="flex items-center gap-2 mb-3">
-								<Users className="size-4 text-amber-600" />
-								<Label className="font-medium text-amber-800 dark:text-amber-200">
-									{t("selectSecondDriver")}
-								</Label>
+					{requiresDoubleCrew &&
+						selectedCandidate &&
+						!selectedCandidate.isShadowFleet && (
+							<div className="rounded-lg border bg-amber-50 p-4 dark:bg-amber-950/20">
+								<div className="mb-3 flex items-center gap-2">
+									<Users className="size-4 text-amber-600" />
+									<Label className="font-medium text-amber-800 dark:text-amber-200">
+										{t("selectSecondDriver")}
+									</Label>
+								</div>
+								<Select
+									value={secondDriverId ?? ""}
+									onValueChange={(value) => setSecondDriverId(value || null)}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue
+											placeholder={t("selectSecondDriverPlaceholder")}
+										/>
+									</SelectTrigger>
+									<SelectContent>
+										{availableSecondDrivers.map((driver) => (
+											<SelectItem key={driver.id} value={driver.id}>
+												{driver.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								{!secondDriverId && (
+									<p className="mt-2 flex items-center gap-1 text-amber-600 text-xs">
+										<AlertTriangle className="size-3" />
+										{t("secondDriverWarning")}
+									</p>
+								)}
 							</div>
-							<Select
-								value={secondDriverId ?? ""}
-								onValueChange={(value) => setSecondDriverId(value || null)}
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder={t("selectSecondDriverPlaceholder")} />
-								</SelectTrigger>
-								<SelectContent>
-									{availableSecondDrivers.map((driver) => (
-										<SelectItem key={driver.id} value={driver.id}>
-											{driver.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{!secondDriverId && (
-								<p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-									<AlertTriangle className="size-3" />
-									{t("secondDriverWarning")}
-								</p>
-							)}
-						</div>
-					)}
+						)}
 				</div>
 
 				<SheetFooter className="gap-2 sm:gap-2">
@@ -410,12 +467,9 @@ export function AssignmentDrawer({
 						disabled={!selectedCandidateId || isPending}
 						data-testid="confirm-assignment"
 					>
-						{isPending && (
-							<Loader2 className="size-4 mr-2 animate-spin" />
-						)}
+						{isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
 						{t("confirm")}
 					</Button>
-
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>
