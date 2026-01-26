@@ -9,9 +9,9 @@
  * Renders the background grid lines for the Gantt timeline.
  */
 
+import { cn } from "@ui/lib";
 import { addHours } from "date-fns";
 import { memo, useMemo } from "react";
-import { cn } from "@ui/lib";
 import type { GanttGridProps } from "./types";
 
 export const GanttGrid = memo(function GanttGrid({
@@ -21,16 +21,38 @@ export const GanttGrid = memo(function GanttGrid({
 }: GanttGridProps) {
 	// Generate vertical grid lines (one per hour)
 	// Story 29.6: Enhanced to properly detect midnight for multi-day views
+	// Generate vertical grid lines (one per step)
+	// Story 29.6: Enhanced to properly detect midnight for multi-day views AND sub-hour intervals
 	const verticalLines = useMemo(() => {
-		const lines: { x: number; isMajor: boolean; isMidnight: boolean }[] = [];
-		
-		for (let i = 0; i <= config.totalHours; i++) {
-			const time = addHours(config.startTime, i);
+		const lines: {
+			x: number;
+			isMajor: boolean;
+			isMidnight: boolean;
+			isSubHour: boolean;
+		}[] = [];
+
+		// Determine grid step in minutes same as header
+		const getMinuteStep = (pixelsPerHour: number) => {
+			if (pixelsPerHour >= 160) return 15;
+			if (pixelsPerHour >= 80) return 30;
+			return 60; // Default to hourly grid lines for lower zooms
+		};
+
+		const minuteStep = getMinuteStep(config.pixelsPerHour);
+		const totalMinutes = config.totalHours * 60;
+
+		for (let i = 0; i <= totalMinutes; i += minuteStep) {
+			const time = addHours(config.startTime, i / 60);
 			const hour = time.getHours();
-			const x = i * config.pixelsPerHour;
-			const isMidnight = hour === 0 && i > 0; // Midnight (but not the first hour if it starts at midnight)
-			const isMajor = hour === 0 || hour === 12; // Midnight and noon
-			lines.push({ x, isMajor, isMidnight });
+			const minutes = time.getMinutes();
+
+			const x = (i / 60) * config.pixelsPerHour;
+
+			const isMidnight = hour === 0 && minutes === 0 && i > 0;
+			const isMajor = minutes === 0 && (hour === 0 || hour === 12);
+			const isSubHour = minutes !== 0;
+
+			lines.push({ x, isMajor, isMidnight, isSubHour });
 		}
 
 		return lines;
@@ -45,13 +67,14 @@ export const GanttGrid = memo(function GanttGrid({
 
 	return (
 		<svg
-			className="absolute inset-0 pointer-events-none"
+			aria-hidden="true"
+			className="pointer-events-none absolute inset-0"
 			width={config.totalWidth}
 			height={totalHeight}
 			style={{ overflow: "visible" }}
 		>
 			{/* Vertical lines */}
-			{verticalLines.map(({ x, isMajor, isMidnight }, index) => (
+			{verticalLines.map(({ x, isMajor, isMidnight, isSubHour }, index) => (
 				<line
 					key={`v-${index}`}
 					x1={x}
@@ -63,10 +86,14 @@ export const GanttGrid = memo(function GanttGrid({
 							? "stroke-blue-400 dark:stroke-blue-500"
 							: isMajor
 								? "stroke-gray-300 dark:stroke-gray-600"
-								: "stroke-gray-200 dark:stroke-gray-700"
+								: isSubHour
+									? "stroke-gray-100 dark:stroke-gray-800"
+									: "stroke-gray-200 dark:stroke-gray-700",
 					)}
 					strokeWidth={isMidnight ? 2 : isMajor ? 1 : 0.5}
-					strokeDasharray={isMidnight ? "none" : isMajor ? "none" : "4 4"}
+					strokeDasharray={
+						isMidnight ? "none" : isMajor ? "none" : isSubHour ? "2 2" : "4 4"
+					}
 				/>
 			))}
 

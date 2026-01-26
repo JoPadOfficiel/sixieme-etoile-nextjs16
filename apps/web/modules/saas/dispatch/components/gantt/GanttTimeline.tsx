@@ -92,14 +92,47 @@ export const GanttTimeline = memo(function GanttTimeline({
 	} = useGanttZoom({ initialZoom: getPresetZoom() });
 
 	// Story 29.6: Sync zoom with preset changes
+	// Story 29.6: Sync zoom with preset changes (Decoupled to allow manual zoom)
+	const prevPresetRef = useRef(activePreset);
 	useEffect(() => {
-		if (activePreset && ZOOM_PRESETS[activePreset]) {
-			const presetZoom = ZOOM_PRESETS[activePreset].pixelsPerHour;
-			if (pixelsPerHour !== presetZoom) {
-				setZoomLevel(presetZoom);
+		// Only enforce zoom if the preset selection actually changed
+		if (activePreset && activePreset !== prevPresetRef.current) {
+			if (ZOOM_PRESETS[activePreset]) {
+				setZoomLevel(ZOOM_PRESETS[activePreset].pixelsPerHour);
 			}
 		}
-	}, [activePreset, setZoomLevel, pixelsPerHour]);
+		prevPresetRef.current = activePreset;
+	}, [activePreset, setZoomLevel]);
+
+	// Smart Zoom: Auto-switch preset based on zoom level thresholds
+	// This ensures "dezoom" switches to 3Days/Week views automatically
+	// Use a ref to track the last requested preset to prevent loops
+	const lastRequestedPresetRef = useRef<string | null>(activePreset);
+
+	useEffect(() => {
+		if (!onPresetChange) return;
+
+		let targetPreset: "day" | "3days" | "week" | null = null;
+
+		// Define thresholds for switching
+		if (pixelsPerHour >= 80) targetPreset = "day";
+		else if (pixelsPerHour >= 30) targetPreset = "3days";
+		else targetPreset = "week";
+
+		// Only change if different from current active AND different from what we last requested
+		// This prevents rapid firing if the parent hasn't updated yet or if there's a slight mismatch
+		if (
+			targetPreset &&
+			targetPreset !== activePreset &&
+			targetPreset !== lastRequestedPresetRef.current
+		) {
+			lastRequestedPresetRef.current = targetPreset;
+			onPresetChange(targetPreset);
+		} else if (targetPreset === activePreset) {
+			// Sync ref if we are stable
+			lastRequestedPresetRef.current = activePreset;
+		}
+	}, [pixelsPerHour, activePreset, onPresetChange]);
 
 	// State for selected date (updated when user navigates)
 	const [selectedDate, setSelectedDate] = useState<Date>(startTime);
@@ -118,49 +151,55 @@ export const GanttTimeline = memo(function GanttTimeline({
 	const contentStartXRef = useRef(0);
 	const contentScrollLeftRef = useRef(0);
 
-	const handleContentMouseDown = useCallback((e: React.MouseEvent) => {
-		if (!contentRef.current) return;
-		
-		isContentDraggingRef.current = true;
-		contentStartXRef.current = e.pageX - contentRef.current.offsetLeft;
-		contentScrollLeftRef.current = contentRef.current.scrollLeft;
-		
-		// Change cursor to indicate dragging
-		document.body.style.cursor = 'grabbing';
-		document.body.style.userSelect = 'none';
-		
-		e.preventDefault();
-	}, [contentRef]);
+	const handleContentMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			if (!contentRef.current) return;
 
-	const handleContentMouseMove = useCallback((e: MouseEvent) => {
-		if (!isContentDraggingRef.current || !contentRef.current) return;
-		
-		e.preventDefault();
-		const x = e.pageX - contentRef.current.offsetLeft;
-		const walk = (x - contentStartXRef.current) * 1.5; // Adjust scroll speed
-		const newScrollLeft = contentScrollLeftRef.current - walk;
-		
-		contentRef.current.scrollLeft = newScrollLeft;
-		if (headerRef.current) {
-			headerRef.current.scrollLeft = newScrollLeft;
-		}
-	}, [contentRef, headerRef]);
+			isContentDraggingRef.current = true;
+			contentStartXRef.current = e.pageX - contentRef.current.offsetLeft;
+			contentScrollLeftRef.current = contentRef.current.scrollLeft;
+
+			// Change cursor to indicate dragging
+			document.body.style.cursor = "grabbing";
+			document.body.style.userSelect = "none";
+
+			e.preventDefault();
+		},
+		[contentRef],
+	);
+
+	const handleContentMouseMove = useCallback(
+		(e: MouseEvent) => {
+			if (!isContentDraggingRef.current || !contentRef.current) return;
+
+			e.preventDefault();
+			const x = e.pageX - contentRef.current.offsetLeft;
+			const walk = (x - contentStartXRef.current) * 1.5; // Adjust scroll speed
+			const newScrollLeft = contentScrollLeftRef.current - walk;
+
+			contentRef.current.scrollLeft = newScrollLeft;
+			if (headerRef.current) {
+				headerRef.current.scrollLeft = newScrollLeft;
+			}
+		},
+		[contentRef, headerRef],
+	);
 
 	const handleContentMouseUp = useCallback(() => {
 		isContentDraggingRef.current = false;
-		document.body.style.cursor = '';
-		document.body.style.userSelect = '';
+		document.body.style.cursor = "";
+		document.body.style.userSelect = "";
 	}, []);
 
 	// Add global mouse event listeners for content drag
 	useEffect(() => {
 		if (isContentDraggingRef.current) {
-			document.addEventListener('mousemove', handleContentMouseMove);
-			document.addEventListener('mouseup', handleContentMouseUp);
-			
+			document.addEventListener("mousemove", handleContentMouseMove);
+			document.addEventListener("mouseup", handleContentMouseUp);
+
 			return () => {
-				document.removeEventListener('mousemove', handleContentMouseMove);
-				document.removeEventListener('mouseup', handleContentMouseUp);
+				document.removeEventListener("mousemove", handleContentMouseMove);
+				document.removeEventListener("mouseup", handleContentMouseUp);
 			};
 		}
 	}, [handleContentMouseMove, handleContentMouseUp]);
@@ -353,7 +392,7 @@ export const GanttTimeline = memo(function GanttTimeline({
 					{/* Scrollable timeline content */}
 					<div
 						ref={contentRef}
-						className="relative flex-1 overflow-auto cursor-grab active:cursor-grabbing"
+						className="relative flex-1 cursor-grab overflow-auto active:cursor-grabbing"
 						onScroll={(e) => {
 							handleHorizontalScroll(e);
 							handleVerticalScroll(e);

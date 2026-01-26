@@ -13,7 +13,7 @@ export const HEADER_HEIGHT = 50;
 
 // Time scale defaults
 export const DEFAULT_PIXELS_PER_HOUR = 50;
-export const MIN_PIXELS_PER_HOUR = 20;
+export const MIN_PIXELS_PER_HOUR = 15;
 export const MAX_PIXELS_PER_HOUR = 200;
 
 // Virtualization

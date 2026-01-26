@@ -97,36 +97,47 @@ export const GanttHeader = memo(function GanttHeader({
 			x: number;
 			showDate: boolean;
 			dateLabel: string;
+			isMajor: boolean;
 		}[] = [];
 		let prevDate: Date | null = null;
 
-		// Determine which hours to show based on zoom level
-		const getHourStep = (pixelsPerHour: number) => {
-			if (pixelsPerHour >= 120) return 1; // Hour view: show all hours
-			if (pixelsPerHour >= 60) return 2; // 2-hour view: show even hours
-			if (pixelsPerHour >= 30) return 3; // 3-hour view: show 0, 3, 6, 9, 12, 15, 18, 21
-			if (pixelsPerHour >= 20) return 4; // 4-hour view: show 0, 4, 8, 12, 16, 20
-			return 6; // Week view: show 0, 6, 12, 18 (important hours)
+		// Determine time step in minutes based on zoom level
+		const getMinuteStep = (pixelsPerHour: number) => {
+			if (pixelsPerHour >= 160) return 15; // 15 min view
+			if (pixelsPerHour >= 80) return 30; // 30 min view
+			if (pixelsPerHour >= 40) return 60; // 1 hour view
+			if (pixelsPerHour >= 20) return 120; // 2 hours
+			return 240; // 4 hours
 		};
 
-		const hourStep = getHourStep(config.pixelsPerHour);
+		const minuteStep = getMinuteStep(config.pixelsPerHour);
+		const totalMinutes = config.totalHours * 60;
 
-		for (let i = 0; i <= config.totalHours; i++) {
-			const time = addHours(config.startTime, i);
+		for (let i = 0; i <= totalMinutes; i += minuteStep) {
+			const time = addHours(config.startTime, i / 60);
 			const hour = time.getHours();
+			const minutes = time.getMinutes();
 
-			// Only show hours that match the step pattern
-			if (hour % hourStep !== 0 && i !== 0) continue;
+			// Filter out if not matching step (double check)
+			if (i % minuteStep !== 0) continue;
 
-			const label = `${hour.toString().padStart(2, "0")}:00`;
-			const x = i * config.pixelsPerHour;
+			// Format label: HH:00 or HH:mm
+			let label = "";
+			if (minutes === 0) {
+				label = `${hour.toString().padStart(2, "0")}:00`;
+			} else {
+				label = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+			}
+
+			const x = (i / 60) * config.pixelsPerHour;
 
 			// Show date label at midnight or at the start
 			const showDate =
 				i === 0 || (prevDate !== null && !isSameDay(time, prevDate));
 			const dateLabel = format(time, DATE_FORMAT, { locale: fr });
+			const isMajor = minutes === 0;
 
-			labels.push({ hour, label, x, showDate, dateLabel });
+			labels.push({ hour, label, x, showDate, dateLabel, isMajor });
 			prevDate = time;
 		}
 
@@ -159,42 +170,46 @@ export const GanttHeader = memo(function GanttHeader({
 				onMouseDown={handleMouseDown}
 			>
 				<div className="relative h-full" style={{ width: config.totalWidth }}>
-					{hourLabels.map(({ hour, label, x, showDate, dateLabel }, index) => (
-						<div
-							key={index}
-							className="absolute top-0 flex h-full flex-col justify-center"
-							style={{ left: x }}
-						>
-							{/* Hour label */}
-							<span
-								className={cn(
-									"px-1 font-medium text-xs",
-									hour === 0
-										? "text-gray-900 dark:text-gray-100"
-										: "text-gray-600 dark:text-gray-400",
-								)}
-							>
-								{label}
-							</span>
-
-							{/* Date label - only shown at midnight or start */}
-							{showDate && (
-								<span className="whitespace-nowrap px-1 text-[10px] text-gray-500 dark:text-gray-500">
-									{dateLabel}
-								</span>
-							)}
-
-							{/* Vertical grid line indicator */}
+					{hourLabels.map(
+						({ hour, label, x, showDate, dateLabel, isMajor }, index) => (
 							<div
-								className={cn(
-									"absolute bottom-0 h-2 w-px",
-									hour === 0
-										? "bg-gray-400 dark:bg-gray-500"
-										: "bg-gray-300 dark:bg-gray-600",
+								key={index}
+								className="absolute top-0 flex h-full flex-col justify-center"
+								style={{ left: x }}
+							>
+								{/* Hour/Time label */}
+								<span
+									className={cn(
+										"px-1 font-medium",
+										isMajor
+											? "text-gray-900 text-xs dark:text-gray-100"
+											: "text-[10px] text-gray-500 dark:text-gray-400",
+									)}
+								>
+									{label}
+								</span>
+
+								{/* Date label - only shown at midnight or start */}
+								{showDate && (
+									<span className="whitespace-nowrap px-1 text-[10px] text-gray-500 dark:text-gray-500">
+										{dateLabel}
+									</span>
 								)}
-							/>
-						</div>
-					))}
+
+								{/* Vertical grid line indicator */}
+								<div
+									className={cn(
+										"absolute bottom-0 h-2 w-px",
+										hour === 0
+											? "bg-gray-400 dark:bg-gray-500" // Midnight
+											: isMajor
+												? "bg-gray-300 dark:bg-gray-600" // Hours
+												: "bg-gray-200 dark:bg-gray-700", // Sub-hours
+									)}
+								/>
+							</div>
+						),
+					)}
 				</div>
 			</div>
 		</div>
