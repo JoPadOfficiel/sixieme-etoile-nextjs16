@@ -10,7 +10,7 @@
  * 5. Log subcontracting decisions
  */
 
-import type { PrismaClient, SubcontractorProfile, PricingZone, VehicleCategory, Prisma } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 // ============================================================================
 // Types
@@ -151,7 +151,7 @@ const REVIEW_THRESHOLD_PERCENT = 5;
 export function isStructurallyUnprofitable(
 	sellingPrice: number,
 	internalCost: number,
-	thresholdPercent: number = 0
+	thresholdPercent = 0,
 ): boolean {
 	if (sellingPrice <= 0) return true;
 	const marginPercent = ((sellingPrice - internalCost) / sellingPrice) * 100;
@@ -161,7 +161,10 @@ export function isStructurallyUnprofitable(
 /**
  * Calculate margin percentage
  */
-export function calculateMarginPercent(sellingPrice: number, cost: number): number {
+export function calculateMarginPercent(
+	sellingPrice: number,
+	cost: number,
+): number {
 	if (sellingPrice <= 0) return -100;
 	return Math.round(((sellingPrice - cost) / sellingPrice) * 100 * 10) / 10;
 }
@@ -176,7 +179,7 @@ export function calculateSubcontractorPrice(
 	ratePerHour: number | null,
 	minimumFare: number | null,
 	distanceKm: number,
-	durationMinutes: number
+	durationMinutes: number,
 ): number {
 	const effectiveRatePerKm = ratePerKm ?? DEFAULT_RATE_PER_KM;
 	const effectiveRatePerHour = ratePerHour ?? DEFAULT_RATE_PER_HOUR;
@@ -197,7 +200,7 @@ export function calculateSubcontractorPrice(
 export function compareMargins(
 	sellingPrice: number,
 	internalCost: number,
-	subcontractorCost: number
+	subcontractorCost: number,
 ): MarginComparison {
 	const savings = internalCost - subcontractorCost;
 	const savingsPercent = internalCost > 0 ? (savings / internalCost) * 100 : 0;
@@ -207,9 +210,15 @@ export function compareMargins(
 
 	let recommendation: "SUBCONTRACT" | "INTERNAL" | "REVIEW";
 
-	if (subcontractorMargin > internalMargin + (sellingPrice * REVIEW_THRESHOLD_PERCENT / 100)) {
+	if (
+		subcontractorMargin >
+		internalMargin + (sellingPrice * REVIEW_THRESHOLD_PERCENT) / 100
+	) {
 		recommendation = "SUBCONTRACT";
-	} else if (internalMargin > subcontractorMargin + (sellingPrice * REVIEW_THRESHOLD_PERCENT / 100)) {
+	} else if (
+		internalMargin >
+		subcontractorMargin + (sellingPrice * REVIEW_THRESHOLD_PERCENT) / 100
+	) {
 		recommendation = "INTERNAL";
 	} else {
 		recommendation = "REVIEW";
@@ -230,7 +239,10 @@ export function compareMargins(
  * - 50: Only pickup or only dropoff matches
  * - 0: No match
  */
-export function calculateZoneMatchScore(pickupMatch: boolean, dropoffMatch: boolean): number {
+export function calculateZoneMatchScore(
+	pickupMatch: boolean,
+	dropoffMatch: boolean,
+): number {
 	if (pickupMatch && dropoffMatch) return 100;
 	if (pickupMatch || dropoffMatch) return 50;
 	return 0;
@@ -247,7 +259,7 @@ export function isPointInZone(
 		centerLatitude: number | null;
 		centerLongitude: number | null;
 		radiusKm: number | null;
-	}
+	},
 ): boolean {
 	if (!zone.centerLatitude || !zone.centerLongitude) return false;
 
@@ -256,7 +268,7 @@ export function isPointInZone(
 		pointLat,
 		pointLng,
 		Number(zone.centerLatitude),
-		Number(zone.centerLongitude)
+		Number(zone.centerLongitude),
 	);
 
 	return distance <= radiusKm;
@@ -269,14 +281,17 @@ function haversineDistance(
 	lat1: number,
 	lng1: number,
 	lat2: number,
-	lng2: number
+	lng2: number,
 ): number {
 	const R = 6371; // Earth's radius in km
 	const dLat = toRad(lat2 - lat1);
 	const dLng = toRad(lng2 - lng1);
 	const a =
 		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-		Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+		Math.cos(toRad(lat1)) *
+			Math.cos(toRad(lat2)) *
+			Math.sin(dLng / 2) *
+			Math.sin(dLng / 2);
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	return R * c;
 }
@@ -321,7 +336,7 @@ export async function findSubcontractorsForMission(
 	dropoffLat: number | null,
 	dropoffLng: number | null,
 	vehicleCategoryId: string,
-	db: PrismaClient
+	db: PrismaClient,
 ): Promise<SubcontractorWithMatch[]> {
 	// Get all active subcontractors for the organization
 	const subcontractors = await db.subcontractorProfile.findMany({
@@ -349,7 +364,9 @@ export async function findSubcontractorsForMission(
 		// Check vehicle category compatibility
 		const hasVehicleCategory =
 			sub.vehicleCategories.length === 0 || // No restriction = all categories
-			sub.vehicleCategories.some((vc) => vc.vehicleCategoryId === vehicleCategoryId);
+			sub.vehicleCategories.some(
+				(vc) => vc.vehicleCategoryId === vehicleCategoryId,
+			);
 
 		if (!hasVehicleCategory) continue;
 
@@ -361,9 +378,15 @@ export async function findSubcontractorsForMission(
 			for (const sz of sub.operatingZones) {
 				if (
 					isPointInZone(pickupLat, pickupLng, {
-						centerLatitude: sz.pricingZone.centerLatitude ? Number(sz.pricingZone.centerLatitude) : null,
-						centerLongitude: sz.pricingZone.centerLongitude ? Number(sz.pricingZone.centerLongitude) : null,
-						radiusKm: sz.pricingZone.radiusKm ? Number(sz.pricingZone.radiusKm) : null,
+						centerLatitude: sz.pricingZone.centerLatitude
+							? Number(sz.pricingZone.centerLatitude)
+							: null,
+						centerLongitude: sz.pricingZone.centerLongitude
+							? Number(sz.pricingZone.centerLongitude)
+							: null,
+						radiusKm: sz.pricingZone.radiusKm
+							? Number(sz.pricingZone.radiusKm)
+							: null,
 					})
 				) {
 					pickupMatch = true;
@@ -376,9 +399,15 @@ export async function findSubcontractorsForMission(
 			for (const sz of sub.operatingZones) {
 				if (
 					isPointInZone(dropoffLat, dropoffLng, {
-						centerLatitude: sz.pricingZone.centerLatitude ? Number(sz.pricingZone.centerLatitude) : null,
-						centerLongitude: sz.pricingZone.centerLongitude ? Number(sz.pricingZone.centerLongitude) : null,
-						radiusKm: sz.pricingZone.radiusKm ? Number(sz.pricingZone.radiusKm) : null,
+						centerLatitude: sz.pricingZone.centerLatitude
+							? Number(sz.pricingZone.centerLatitude)
+							: null,
+						centerLongitude: sz.pricingZone.centerLongitude
+							? Number(sz.pricingZone.centerLongitude)
+							: null,
+						radiusKm: sz.pricingZone.radiusKm
+							? Number(sz.pricingZone.radiusKm)
+							: null,
 					})
 				) {
 					dropoffMatch = true;
@@ -439,7 +468,7 @@ export async function generateSubcontractingSuggestions(
 	missionId: string,
 	organizationId: string,
 	db: PrismaClient,
-	config: SubcontractorConfig = DEFAULT_SUBCONTRACTOR_CONFIG
+	config: SubcontractorConfig = DEFAULT_SUBCONTRACTOR_CONFIG,
 ): Promise<SubcontractingSuggestionsResult> {
 	// Get mission data
 	const mission = await db.quote.findFirst({
@@ -455,12 +484,14 @@ export async function generateSubcontractingSuggestions(
 
 	const sellingPrice = Number(mission.finalPrice);
 	const internalCost = mission.internalCost ? Number(mission.internalCost) : 0;
-	const marginPercent = mission.marginPercent ? Number(mission.marginPercent) : calculateMarginPercent(sellingPrice, internalCost);
+	const marginPercent = mission.marginPercent
+		? Number(mission.marginPercent)
+		: calculateMarginPercent(sellingPrice, internalCost);
 
 	const isUnprofitable = isStructurallyUnprofitable(
 		sellingPrice,
 		internalCost,
-		config.unprofitableThresholdPercent
+		config.unprofitableThresholdPercent,
 	);
 
 	const result: SubcontractingSuggestionsResult = {
@@ -486,11 +517,13 @@ export async function generateSubcontractingSuggestions(
 		mission.dropoffLatitude ? Number(mission.dropoffLatitude) : null,
 		mission.dropoffLongitude ? Number(mission.dropoffLongitude) : null,
 		mission.vehicleCategoryId,
-		db
+		db,
 	);
 
 	// Extract trip metrics
-	const { distanceKm, durationMinutes } = extractTripMetrics(mission.tripAnalysis);
+	const { distanceKm, durationMinutes } = extractTripMetrics(
+		mission.tripAnalysis,
+	);
 
 	// Generate suggestions
 	for (const sub of subcontractors) {
@@ -499,13 +532,20 @@ export async function generateSubcontractingSuggestions(
 			sub.ratePerHour,
 			sub.minimumFare,
 			distanceKm,
-			durationMinutes
+			durationMinutes,
 		);
 
 		const marginIfSubcontracted = sellingPrice - estimatedPrice;
-		const marginPercentIfSubcontracted = calculateMarginPercent(sellingPrice, estimatedPrice);
+		const marginPercentIfSubcontracted = calculateMarginPercent(
+			sellingPrice,
+			estimatedPrice,
+		);
 
-		const comparison = compareMargins(sellingPrice, internalCost, estimatedPrice);
+		const comparison = compareMargins(
+			sellingPrice,
+			internalCost,
+			estimatedPrice,
+		);
 
 		result.suggestions.push({
 			subcontractorId: sub.id,
@@ -525,7 +565,9 @@ export async function generateSubcontractingSuggestions(
 	}
 
 	// Sort by resulting margin (highest first)
-	result.suggestions.sort((a, b) => b.marginIfSubcontracted - a.marginIfSubcontracted);
+	result.suggestions.sort(
+		(a, b) => b.marginIfSubcontracted - a.marginIfSubcontracted,
+	);
 
 	// Limit suggestions
 	result.suggestions = result.suggestions.slice(0, config.maxSuggestions);
@@ -543,19 +585,31 @@ export async function subcontractMission(
 	notes: string | null,
 	operatorId: string,
 	organizationId: string,
-	db: PrismaClient
-): Promise<{ mission: { id: string; isSubcontracted: boolean; subcontractorId: string; subcontractedPrice: number } }> {
-	// Verify mission exists
-	const mission = await db.quote.findFirst({
+	db: PrismaClient,
+): Promise<{
+	mission: {
+		id: string;
+		isSubcontracted: boolean;
+		subcontractorId: string;
+		subcontractedPrice: number;
+	};
+}> {
+	// Verify mission exists (lookup by Mission ID)
+	const mission = await db.mission.findFirst({
 		where: {
 			id: missionId,
 			organizationId,
 		},
+		include: {
+			quote: true,
+		},
 	});
 
-	if (!mission) {
+	if (!mission || !mission.quote) {
 		throw new Error(`Mission not found: ${missionId}`);
 	}
+
+	const quote = mission.quote;
 
 	// Verify subcontractor exists
 	const subcontractor = await db.subcontractorProfile.findFirst({
@@ -573,15 +627,23 @@ export async function subcontractMission(
 	// Story 22.12: When subcontracting, internal resources must be freed
 	// Also clear tripAnalysis.assignment to prevent fallback display
 	let updatedTripAnalysis: Prisma.InputJsonValue | undefined = undefined;
-	if (mission.tripAnalysis && typeof mission.tripAnalysis === "object" && !Array.isArray(mission.tripAnalysis)) {
-		const tripAnalysisObj = { ...mission.tripAnalysis as object } as Record<string, unknown>;
+	if (
+		quote.tripAnalysis &&
+		typeof quote.tripAnalysis === "object" &&
+		!Array.isArray(quote.tripAnalysis)
+	) {
+		const tripAnalysisObj = { ...(quote.tripAnalysis as object) } as Record<
+			string,
+			unknown
+		>;
 		// Remove assignment from tripAnalysis - subcontractor handles the mission
 		delete tripAnalysisObj.assignment;
 		updatedTripAnalysis = tripAnalysisObj as Prisma.InputJsonValue;
 	}
 
-	const updatedMission = await db.quote.update({
-		where: { id: missionId },
+	// Update Quote logic
+	const updatedQuote = await db.quote.update({
+		where: { id: quote.id },
 		data: {
 			isSubcontracted: true,
 			subcontractorId,
@@ -598,13 +660,22 @@ export async function subcontractMission(
 		},
 	});
 
+	// CRITICAL: Also update the Mission table to clear internal assignment
+	await db.mission.update({
+		where: { id: missionId },
+		data: {
+			vehicleId: null,
+			driverId: null,
+		},
+	});
+
 	// Create audit log entry
 	await db.quoteStatusAuditLog.create({
 		data: {
 			organizationId,
-			quoteId: missionId,
-			previousStatus: mission.status,
-			newStatus: mission.status, // Status doesn't change, just subcontracting flag
+			quoteId: quote.id,
+			previousStatus: quote.status,
+			newStatus: quote.status, // Status doesn't change, just subcontracting flag
 			userId: operatorId,
 			reason: `Subcontracted to ${subcontractor.id} for €${agreedPrice}`,
 		},
@@ -612,10 +683,10 @@ export async function subcontractMission(
 
 	return {
 		mission: {
-			id: updatedMission.id,
-			isSubcontracted: updatedMission.isSubcontracted,
-			subcontractorId: updatedMission.subcontractorId!,
-			subcontractedPrice: Number(updatedMission.subcontractedPrice),
+			id: mission.id,
+			isSubcontracted: updatedQuote.isSubcontracted,
+			subcontractorId: updatedQuote.subcontractorId!,
+			subcontractedPrice: Number(updatedQuote.subcontractedPrice),
 		},
 	};
 }
@@ -627,23 +698,28 @@ export async function removeSubcontracting(
 	missionId: string,
 	operatorId: string,
 	organizationId: string,
-	db: PrismaClient
+	db: PrismaClient,
 ): Promise<{ mission: { id: string; isSubcontracted: boolean } }> {
-	// Verify mission exists
-	const mission = await db.quote.findFirst({
+	// Verify mission exists (lookup by Mission ID)
+	const mission = await db.mission.findFirst({
 		where: {
 			id: missionId,
 			organizationId,
 		},
+		include: {
+			quote: true,
+		},
 	});
 
-	if (!mission) {
+	if (!mission || !mission.quote) {
 		throw new Error(`Mission not found: ${missionId}`);
 	}
 
+	const quote = mission.quote;
+
 	// Update mission - remove subcontracting and allow normal assignment
-	const updatedMission = await db.quote.update({
-		where: { id: missionId },
+	const updatedQuote = await db.quote.update({
+		where: { id: quote.id },
 		data: {
 			isSubcontracted: false,
 			subcontractorId: null,
@@ -658,22 +734,32 @@ export async function removeSubcontracting(
 		},
 	});
 
+	// Ensure Mission table is consistent (should already be null if previously subcontracted, but good to ensure)
+	await db.mission.update({
+		where: { id: missionId },
+		data: {
+			vehicleId: null,
+			driverId: null,
+		},
+	});
+
 	// Create audit log entry
 	await db.quoteStatusAuditLog.create({
 		data: {
 			organizationId,
-			quoteId: missionId,
-			previousStatus: mission.status,
-			newStatus: mission.status, // Status doesn't change, just subcontracting flag
+			quoteId: quote.id,
+			previousStatus: quote.status,
+			newStatus: quote.status, // Status doesn't change, just subcontracting flag
 			userId: operatorId,
-			reason: "Subcontracting removed - mission available for normal assignment",
+			reason:
+				"Subcontracting removed - mission available for normal assignment",
 		},
 	});
 
 	return {
 		mission: {
-			id: updatedMission.id,
-			isSubcontracted: updatedMission.isSubcontracted,
+			id: mission.id,
+			isSubcontracted: updatedQuote.isSubcontracted,
 		},
 	};
 }
@@ -685,7 +771,7 @@ export async function removeSubcontracting(
 export async function getSubcontractorById(
 	subcontractorId: string,
 	organizationId: string,
-	db: PrismaClient
+	db: PrismaClient,
 ) {
 	return db.subcontractorProfile.findFirst({
 		where: {
@@ -716,9 +802,11 @@ export async function listSubcontractors(
 	db: PrismaClient,
 	options?: {
 		includeInactive?: boolean;
-	}
+	},
 ) {
-	const where: { organizationId: string; isActive?: boolean } = { organizationId };
+	const where: { organizationId: string; isActive?: boolean } = {
+		organizationId,
+	};
 	if (!options?.includeInactive) {
 		where.isActive = true;
 	}
@@ -794,7 +882,7 @@ export async function createSubcontractor(
 		minimumFare?: number;
 		notes?: string;
 	},
-	db: PrismaClient
+	db: PrismaClient,
 ) {
 	// Create subcontractor profile
 	const subcontractor = await db.subcontractorProfile.create({
@@ -817,14 +905,14 @@ export async function createSubcontractor(
 						create: data.operatingZoneIds.map((zoneId) => ({
 							pricingZoneId: zoneId,
 						})),
-				  }
+					}
 				: undefined,
 			vehicleCategories: data.vehicleCategoryIds?.length
 				? {
 						create: data.vehicleCategoryIds.map((catId) => ({
 							vehicleCategoryId: catId,
 						})),
-				  }
+					}
 				: undefined,
 		},
 		include: {
@@ -868,7 +956,7 @@ export async function updateSubcontractor(
 		notes?: string | null;
 		isActive?: boolean;
 	},
-	db: PrismaClient
+	db: PrismaClient,
 ) {
 	// Verify subcontractor exists
 	const existing = await db.subcontractorProfile.findFirst({
@@ -960,7 +1048,7 @@ export async function updateSubcontractor(
 export async function deleteSubcontractor(
 	subcontractorId: string,
 	organizationId: string,
-	db: PrismaClient
+	db: PrismaClient,
 ) {
 	// Verify subcontractor exists
 	const existing = await db.subcontractorProfile.findFirst({
