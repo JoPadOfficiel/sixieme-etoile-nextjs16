@@ -1,9 +1,12 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@shared/lib/api-client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { MissionsListResponse } from "../types";
-import type { AssignMissionRequest, AssignMissionResponse } from "../types/assignment";
+import type {
+	AssignMissionRequest,
+	AssignMissionResponse,
+} from "../types/assignment";
 
 /**
  * useAssignMission Hook
@@ -25,15 +28,21 @@ export function useAssignMission(options?: UseAssignMissionOptions) {
 		mutationFn: async ({
 			missionId,
 			...data
-		}: AssignMissionRequest & { missionId: string }): Promise<AssignMissionResponse> => {
+		}: AssignMissionRequest & {
+			missionId: string;
+		}): Promise<AssignMissionResponse> => {
 			const response = await apiClient.vtc.missions[":id"].assign.$post({
 				param: { id: missionId },
 				json: data,
 			});
 
 			if (!response.ok) {
-				const error = await response.json().catch(() => ({ message: "Assignment failed" }));
-				throw new Error((error as { message?: string }).message || "Assignment failed");
+				const error = await response
+					.json()
+					.catch(() => ({ message: "Assignment failed" }));
+				throw new Error(
+					(error as { message?: string }).message || "Assignment failed",
+				);
 			}
 
 			return response.json() as Promise<AssignMissionResponse>;
@@ -74,11 +83,15 @@ export function useAssignMission(options?: UseAssignMissionOptions) {
 			queryClient.invalidateQueries({ queryKey: ["missions"] });
 			queryClient.invalidateQueries({ queryKey: ["mission"] });
 			if (data) {
-				queryClient.invalidateQueries({ queryKey: ["mission", data.mission.id] });
+				queryClient.invalidateQueries({
+					queryKey: ["mission", data.mission.id],
+				});
 				queryClient.invalidateQueries({ queryKey: ["quote", data.mission.id] });
 			}
 			queryClient.invalidateQueries({ queryKey: ["assignment-candidates"] });
 			queryClient.invalidateQueries({ queryKey: ["quote"] });
+			// Story 29.6: Invalidate drivers query to refresh Gantt
+			queryClient.invalidateQueries({ queryKey: ["dispatch-drivers"] });
 		},
 		onSuccess: (data) => {
 			options?.onSuccess?.(data);

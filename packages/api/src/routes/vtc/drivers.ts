@@ -11,12 +11,12 @@ import {
 } from "../../lib/tenant-prisma";
 import { organizationMiddleware } from "../../middleware/organization";
 import {
-	getDriverCounters,
-	getDriverCounterByRegime,
-	recordDrivingActivity,
-	getRecentAuditLogs,
-	getComplianceSnapshot,
 	type RegulatoryCategory,
+	getComplianceSnapshot,
+	getDriverCounterByRegime,
+	getDriverCounters,
+	getRecentAuditLogs,
+	recordDrivingActivity,
 } from "../../services/rse-counter";
 
 // Validation schemas
@@ -91,8 +91,15 @@ export const driversRouter = new Hono()
 		}),
 		async (c) => {
 			const organizationId = c.get("organizationId");
-			const { page, limit, isActive, includeEvents, includeMissions, licenseCategoryId, search } =
-				c.req.valid("query");
+			const {
+				page,
+				limit,
+				isActive,
+				includeEvents,
+				includeMissions,
+				licenseCategoryId,
+				search,
+			} = c.req.valid("query");
 
 			const skip = (page - 1) * limit;
 
@@ -133,22 +140,26 @@ export const driversRouter = new Hono()
 								licenseCategory: true,
 							},
 						},
-						driverCalendarEvents: includeEvents ? {
-							where: {
-								endAt: {
-									gte: new Date(), // Only future/current events by default optimization? Or all?
+						driverCalendarEvents: includeEvents
+							? {
+									where: {
+										endAt: {
+											gte: new Date(),
+										},
+									},
 								}
-							}
-						} : false,
-						missions: includeMissions ? {
-							where: {
-								// Limit to recent/future
-								startAt: { 
-									gte: new Date(Date.now() - 72 * 60 * 60 * 1000)
+							: false,
+						missions: includeMissions
+							? {
+									where: {
+										// Limit to recent/future
+										startAt: {
+											gte: new Date(Date.now() - 72 * 60 * 60 * 1000),
+										},
+									},
+									orderBy: { startAt: "asc" },
 								}
-							},
-							orderBy: { startAt: 'asc' }
-						} : false,
+							: false,
 					},
 				}),
 				db.driver.count({ where }),
@@ -163,7 +174,7 @@ export const driversRouter = new Hono()
 					totalPages: Math.ceil(total / limit),
 				},
 			});
-		}
+		},
 	)
 
 	// Get single driver
@@ -202,7 +213,7 @@ export const driversRouter = new Hono()
 			}
 
 			return c.json(driver);
-		}
+		},
 	)
 
 	// Create driver
@@ -230,7 +241,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(driver, 201);
-		}
+		},
 	)
 
 	// Update driver
@@ -270,7 +281,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(driver);
-		}
+		},
 	)
 
 	// Delete driver
@@ -305,7 +316,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json({ success: true });
-		}
+		},
 	)
 
 	// Add license to driver
@@ -379,7 +390,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(license, 201);
-		}
+		},
 	)
 
 	// Update driver license
@@ -440,7 +451,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(license);
-		}
+		},
 	)
 
 	// Remove license from driver
@@ -486,7 +497,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json({ success: true });
-		}
+		},
 	)
 
 	// ============================================================================
@@ -500,7 +511,7 @@ export const driversRouter = new Hono()
 			"query",
 			z.object({
 				date: z.string().optional(), // ISO date string, defaults to today
-			})
+			}),
 		),
 		describeRoute({
 			summary: "Get driver RSE counters",
@@ -525,13 +536,18 @@ export const driversRouter = new Hono()
 			}
 
 			const date = dateStr ? new Date(dateStr) : new Date();
-			const counters = await getDriverCounters(db, organizationId, driverId, date);
+			const counters = await getDriverCounters(
+				db,
+				organizationId,
+				driverId,
+				date,
+			);
 
 			return c.json({
 				date: date.toISOString().split("T")[0],
 				counters,
 			});
-		}
+		},
 	)
 
 	// Get RSE counter for a specific regime
@@ -541,7 +557,7 @@ export const driversRouter = new Hono()
 			"query",
 			z.object({
 				date: z.string().optional(),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "Get driver RSE counter by regime",
@@ -578,7 +594,7 @@ export const driversRouter = new Hono()
 				organizationId,
 				driverId,
 				date,
-				regime
+				regime,
 			);
 
 			return c.json({
@@ -586,7 +602,7 @@ export const driversRouter = new Hono()
 				regime,
 				counter,
 			});
-		}
+		},
 	)
 
 	// Record driving activity
@@ -603,7 +619,7 @@ export const driversRouter = new Hono()
 				breakMinutes: z.number().int().min(0).optional(),
 				workStartTime: z.string().datetime().optional(),
 				workEndTime: z.string().datetime().optional(),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "Record driving activity",
@@ -638,12 +654,14 @@ export const driversRouter = new Hono()
 				drivingMinutes: data.drivingMinutes,
 				amplitudeMinutes: data.amplitudeMinutes,
 				breakMinutes: data.breakMinutes,
-				workStartTime: data.workStartTime ? new Date(data.workStartTime) : undefined,
+				workStartTime: data.workStartTime
+					? new Date(data.workStartTime)
+					: undefined,
 				workEndTime: data.workEndTime ? new Date(data.workEndTime) : undefined,
 			});
 
 			return c.json(counter, 201);
-		}
+		},
 	)
 
 	// Get compliance snapshot for a driver
@@ -653,7 +671,7 @@ export const driversRouter = new Hono()
 			"query",
 			z.object({
 				date: z.string().optional(),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "Get driver compliance snapshot",
@@ -678,10 +696,15 @@ export const driversRouter = new Hono()
 			}
 
 			const date = dateStr ? new Date(dateStr) : new Date();
-			const snapshot = await getComplianceSnapshot(db, organizationId, driverId, date);
+			const snapshot = await getComplianceSnapshot(
+				db,
+				organizationId,
+				driverId,
+				date,
+			);
 
 			return c.json(snapshot);
-		}
+		},
 	)
 
 	// Get compliance audit logs for a driver
@@ -691,7 +714,7 @@ export const driversRouter = new Hono()
 			"query",
 			z.object({
 				limit: z.coerce.number().int().positive().max(100).default(10),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "Get driver compliance audit logs",
@@ -715,7 +738,12 @@ export const driversRouter = new Hono()
 				});
 			}
 
-			const logs = await getRecentAuditLogs(db, organizationId, driverId, limit);
+			const logs = await getRecentAuditLogs(
+				db,
+				organizationId,
+				driverId,
+				limit,
+			);
 
 			return c.json({
 				data: logs,
@@ -724,7 +752,7 @@ export const driversRouter = new Hono()
 					count: logs.length,
 				},
 			});
-		}
+		},
 	)
 
 	// ============================================================================
@@ -743,7 +771,7 @@ export const driversRouter = new Hono()
 					.enum(["HOLIDAY", "SICK", "PERSONAL", "TRAINING", "OTHER"])
 					.optional(),
 				limit: z.coerce.number().int().positive().max(100).default(50),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "List driver calendar events",
@@ -791,7 +819,7 @@ export const driversRouter = new Hono()
 						// Event ends within range
 						{ endAt: { gte: start, lte: end } },
 						// Event spans entire range
-						{ AND: [{ startAt: { lte: start } }, { endAt: { gte: end } }] }
+						{ AND: [{ startAt: { lte: start } }, { endAt: { gte: end } }] },
 					);
 					where.OR = dateFilters;
 				} else if (start) {
@@ -816,7 +844,7 @@ export const driversRouter = new Hono()
 					limit,
 				},
 			});
-		}
+		},
 	)
 
 	// Create calendar event
@@ -826,7 +854,13 @@ export const driversRouter = new Hono()
 			"json",
 			z
 				.object({
-					eventType: z.enum(["HOLIDAY", "SICK", "PERSONAL", "TRAINING", "OTHER"]),
+					eventType: z.enum([
+						"HOLIDAY",
+						"SICK",
+						"PERSONAL",
+						"TRAINING",
+						"OTHER",
+					]),
 					title: z.string().max(200).optional().nullable(),
 					notes: z.string().max(1000).optional().nullable(),
 					startAt: z.coerce.date(),
@@ -835,7 +869,7 @@ export const driversRouter = new Hono()
 				.refine((data) => data.startAt < data.endAt, {
 					message: "startAt must be before endAt",
 					path: ["startAt"],
-				})
+				}),
 		),
 		describeRoute({
 			summary: "Create driver calendar event",
@@ -872,7 +906,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(event, 201);
-		}
+		},
 	)
 
 	// Update calendar event
@@ -900,8 +934,8 @@ export const driversRouter = new Hono()
 					{
 						message: "startAt must be before endAt",
 						path: ["startAt"],
-					}
-				)
+					},
+				),
 		),
 		describeRoute({
 			summary: "Update driver calendar event",
@@ -961,7 +995,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json(event);
-		}
+		},
 	)
 
 	// Delete calendar event
@@ -1008,7 +1042,7 @@ export const driversRouter = new Hono()
 			});
 
 			return c.json({ success: true });
-		}
+		},
 	)
 
 	// ============================================================================
@@ -1024,7 +1058,7 @@ export const driversRouter = new Hono()
 				startDate: z.string().optional(),
 				endDate: z.string().optional(),
 				limit: z.coerce.number().int().positive().max(100).default(50),
-			})
+			}),
 		),
 		describeRoute({
 			summary: "List driver missions",
@@ -1052,10 +1086,7 @@ export const driversRouter = new Hono()
 			const where: Record<string, unknown> = {
 				organizationId,
 				// Check both assignedDriverId and driverId
-				OR: [
-					{ assignedDriverId: driverId },
-					{ driverId: driverId },
-				],
+				OR: [{ assignedDriverId: driverId }, { driverId: driverId }],
 				// Only active mission statuses
 				status: { in: ["ACCEPTED"] },
 			};
@@ -1127,5 +1158,5 @@ export const driversRouter = new Hono()
 					limit,
 				},
 			});
-		}
+		},
 	);

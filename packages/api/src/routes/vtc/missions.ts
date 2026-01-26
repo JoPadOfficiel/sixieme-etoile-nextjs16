@@ -16,10 +16,7 @@ import {
 	extractCostData,
 	generateChainId,
 } from "../../services/chaining-service";
-import {
-	DEFAULT_MAX_DISTANCE_KM,
-	calculateFlexibilityScoreSimple,
-} from "../../services/flexibility-score";
+import { calculateFlexibilityScoreSimple } from "../../services/flexibility-score";
 import type { OrganizationPricingSettings } from "../../services/pricing-engine";
 import {
 	getShadowFleetCandidates,
@@ -28,7 +25,6 @@ import {
 import {
 	type CandidateWithRouting,
 	type VehicleCandidate,
-	filterByCapacity,
 	filterByHaversineDistance,
 	filterByStatus,
 	getRoutingForCandidates,
@@ -78,7 +74,9 @@ const listMissionsSchema = z.object({
 	search: z
 		.string()
 		.optional()
-		.describe("Search in contact name, pickup/dropoff addresses, or mission ref"),
+		.describe(
+			"Search in contact name, pickup/dropoff addresses, or mission ref",
+		),
 	unassignedOnly: z
 		.enum(["true", "false"])
 		.optional()
@@ -493,12 +491,16 @@ export const missionsRouter = new Hono()
 					// Search in quote relations
 					{
 						quote: {
-							contact: { displayName: { contains: search, mode: "insensitive" } },
+							contact: {
+								displayName: { contains: search, mode: "insensitive" },
+							},
 						},
 					},
 					{
 						quote: {
-							contact: { companyName: { contains: search, mode: "insensitive" } },
+							contact: {
+								companyName: { contains: search, mode: "insensitive" },
+							},
 						},
 					},
 					{
@@ -531,7 +533,13 @@ export const missionsRouter = new Hono()
 			// Story 29.7: Query Mission table with all relations
 			const [missions, total] = await Promise.all([
 				db.mission.findMany({
-					where: baseWhere,
+					where: {
+						...baseWhere,
+						quote: {
+							...((baseWhere.quote as Prisma.QuoteWhereInput) || {}),
+							status: "ACCEPTED",
+						},
+					},
 					skip,
 					take: limit,
 					orderBy: { startAt: "asc" },
@@ -553,37 +561,52 @@ export const missionsRouter = new Hono()
 						order: true,
 					},
 				}),
-				db.mission.count({ where: baseWhere }),
+				db.mission.count({
+					where: {
+						...baseWhere,
+						quote: {
+							...((baseWhere.quote as Prisma.QuoteWhereInput) || {}),
+							status: "ACCEPTED",
+						},
+					},
+				}),
 			]);
 
 			// Story 29.7: Transform Mission entities to MissionListItem
 			const missionItems: MissionListItem[] = missions.map((mission) => {
 				const quote = mission.quote;
-				const sourceData = (mission.sourceData as Record<string, unknown>) || {};
+				const sourceData =
+					(mission.sourceData as Record<string, unknown>) || {};
 
 				// Extract pickup/dropoff from sourceData or quote
-				const pickupAddress = (sourceData.pickupAddress as string) || quote.pickupAddress;
-				const dropoffAddress = (sourceData.dropoffAddress as string) || quote.dropoffAddress;
-				const pickupLatitude = sourceData.pickupLatitude != null
-					? Number(sourceData.pickupLatitude)
-					: quote.pickupLatitude
-						? Number(quote.pickupLatitude)
-						: null;
-				const pickupLongitude = sourceData.pickupLongitude != null
-					? Number(sourceData.pickupLongitude)
-					: quote.pickupLongitude
-						? Number(quote.pickupLongitude)
-						: null;
-				const dropoffLatitude = sourceData.dropoffLatitude != null
-					? Number(sourceData.dropoffLatitude)
-					: quote.dropoffLatitude
-						? Number(quote.dropoffLatitude)
-						: null;
-				const dropoffLongitude = sourceData.dropoffLongitude != null
-					? Number(sourceData.dropoffLongitude)
-					: quote.dropoffLongitude
-						? Number(quote.dropoffLongitude)
-						: null;
+				const pickupAddress =
+					(sourceData.pickupAddress as string) || quote.pickupAddress;
+				const dropoffAddress =
+					(sourceData.dropoffAddress as string) || quote.dropoffAddress;
+				const pickupLatitude =
+					sourceData.pickupLatitude != null
+						? Number(sourceData.pickupLatitude)
+						: quote.pickupLatitude
+							? Number(quote.pickupLatitude)
+							: null;
+				const pickupLongitude =
+					sourceData.pickupLongitude != null
+						? Number(sourceData.pickupLongitude)
+						: quote.pickupLongitude
+							? Number(quote.pickupLongitude)
+							: null;
+				const dropoffLatitude =
+					sourceData.dropoffLatitude != null
+						? Number(sourceData.dropoffLatitude)
+						: quote.dropoffLatitude
+							? Number(quote.dropoffLatitude)
+							: null;
+				const dropoffLongitude =
+					sourceData.dropoffLongitude != null
+						? Number(sourceData.dropoffLongitude)
+						: quote.dropoffLongitude
+							? Number(quote.dropoffLongitude)
+							: null;
 
 				// Build assignment from Mission's direct relations
 				const assignment: MissionAssignment | null = mission.vehicleId
@@ -714,28 +737,34 @@ export const missionsRouter = new Hono()
 			const sourceData = (mission.sourceData as Record<string, unknown>) || {};
 
 			// Extract pickup/dropoff from sourceData or quote
-			const pickupAddress = (sourceData.pickupAddress as string) || quote.pickupAddress;
-			const dropoffAddress = (sourceData.dropoffAddress as string) || quote.dropoffAddress;
-			const pickupLatitude = sourceData.pickupLatitude != null
-				? Number(sourceData.pickupLatitude)
-				: quote.pickupLatitude
-					? Number(quote.pickupLatitude)
-					: null;
-			const pickupLongitude = sourceData.pickupLongitude != null
-				? Number(sourceData.pickupLongitude)
-				: quote.pickupLongitude
-					? Number(quote.pickupLongitude)
-					: null;
-			const dropoffLatitude = sourceData.dropoffLatitude != null
-				? Number(sourceData.dropoffLatitude)
-				: quote.dropoffLatitude
-					? Number(quote.dropoffLatitude)
-					: null;
-			const dropoffLongitude = sourceData.dropoffLongitude != null
-				? Number(sourceData.dropoffLongitude)
-				: quote.dropoffLongitude
-					? Number(quote.dropoffLongitude)
-					: null;
+			const pickupAddress =
+				(sourceData.pickupAddress as string) || quote.pickupAddress;
+			const dropoffAddress =
+				(sourceData.dropoffAddress as string) || quote.dropoffAddress;
+			const pickupLatitude =
+				sourceData.pickupLatitude != null
+					? Number(sourceData.pickupLatitude)
+					: quote.pickupLatitude
+						? Number(quote.pickupLatitude)
+						: null;
+			const pickupLongitude =
+				sourceData.pickupLongitude != null
+					? Number(sourceData.pickupLongitude)
+					: quote.pickupLongitude
+						? Number(quote.pickupLongitude)
+						: null;
+			const dropoffLatitude =
+				sourceData.dropoffLatitude != null
+					? Number(sourceData.dropoffLatitude)
+					: quote.dropoffLatitude
+						? Number(quote.dropoffLatitude)
+						: null;
+			const dropoffLongitude =
+				sourceData.dropoffLongitude != null
+					? Number(sourceData.dropoffLongitude)
+					: quote.dropoffLongitude
+						? Number(quote.dropoffLongitude)
+						: null;
 
 			// Build assignment from Mission's direct relations
 			const assignment: MissionAssignment | null = mission.vehicleId
@@ -826,6 +855,8 @@ export const missionsRouter = new Hono()
 									new Date().toISOString(),
 							}
 						: null,
+				// Story 21.9: Expose encodedPolyline for map visualization
+				encodedPolyline: (quote.tripAnalysis as any)?.encodedPolyline || null,
 			};
 
 			return c.json(missionDetail);
@@ -945,22 +976,31 @@ export const missionsRouter = new Hono()
 			const organizationId = c.get("organizationId");
 			const id = c.req.param("id");
 
-			// Get the mission (quote)
-			const quote = await db.quote.findFirst({
+			// Get the mission first to resolve the correct Quote
+			const mission = await db.mission.findFirst({
 				where: {
-					...withTenantId(id, organizationId),
-					status: "ACCEPTED",
+					id,
+					organizationId,
+					quote: {
+						status: "ACCEPTED",
+					},
 				},
 				include: {
-					vehicleCategory: true,
+					quote: {
+						include: {
+							vehicleCategory: true,
+						},
+					},
 				},
 			});
 
-			if (!quote) {
+			if (!mission || !mission.quote) {
 				throw new HTTPException(404, {
 					message: "Mission not found",
 				});
 			}
+
+			const quote = mission.quote;
 
 			// Story 19.8: Check if we have pickup coordinates - if not, we'll return all vehicles without distance filtering
 			const hasCoordinates = quote.pickupLatitude && quote.pickupLongitude;
@@ -1045,15 +1085,11 @@ export const missionsRouter = new Hono()
 				transformVehicleToCandidate(v),
 			);
 
-			// Story 20.8: Filter vehicles by capacity and status FIRST
-			// Only show vehicles that can actually accommodate the mission requirements
+			// Story 20.8: Filter vehicles by status only (show all active vehicles)
+			// Modified: We now include ALL active vehicles regardless of capacity/distance
 			const activeVehicles = filterByStatus(vehicleCandidates);
-			const capacityFiltered = filterByCapacity(
-				activeVehicles,
-				quote.passengerCount,
-				quote.luggageCount ?? 0,
-				quote.vehicleCategoryId,
-			);
+			// Show all active vehicles, capacity checks will be done in compliance
+			const vehiclesToConsider = activeVehicles;
 
 			// Keep track of mission requirements for compliance checks
 			const missionRequirements = {
@@ -1110,21 +1146,33 @@ export const missionsRouter = new Hono()
 
 			// Story 19.8: Different processing paths based on whether we have coordinates
 			if (hasCoordinates && pickup) {
-				// Original flow with coordinates - filter by distance and get routing
+				// Process all vehicles regardless of distance (large threshold)
 				const haversineFiltered = filterByHaversineDistance(
-					capacityFiltered,
+					vehiclesToConsider,
 					pickup,
-					DEFAULT_MAX_DISTANCE_KM,
+					20000,
 				);
 
-				// Get routing for top candidates (limit to 20 for more options)
+				// Get routing for top candidates (priority) and rest
 				const topCandidates = haversineFiltered.slice(0, 20);
-				const candidatesWithRouting = await getRoutingForCandidates(
+				const restCandidates = haversineFiltered.slice(20);
+
+				const topRouting = await getRoutingForCandidates(
 					topCandidates,
 					pickup,
 					dropoff ?? pickup,
 					settings,
 				);
+
+				const restRouting = await getRoutingForCandidates(
+					restCandidates,
+					pickup,
+					dropoff ?? pickup,
+					settings,
+					undefined, // Force Haversine estimate
+				);
+
+				const candidatesWithRouting = [...topRouting, ...restRouting];
 
 				for (const candidate of candidatesWithRouting) {
 					// Find matching driver(s) for this vehicle
@@ -1441,11 +1489,16 @@ export const missionsRouter = new Hono()
 				}
 			}
 
-			// Sort by flexibility score descending
-			candidates.sort(
-				(a: { flexibilityScore: number }, b: { flexibilityScore: number }) =>
-					b.flexibilityScore - a.flexibilityScore,
-			);
+			// Sort by compliance status (OK/WARNING first, VIOLATION last) then flexibility score
+			candidates.sort((a, b) => {
+				const aIsViolation = a.compliance.status === "VIOLATION";
+				const bIsViolation = b.compliance.status === "VIOLATION";
+
+				if (aIsViolation && !bIsViolation) return 1;
+				if (!aIsViolation && bIsViolation) return -1;
+
+				return b.flexibilityScore - a.flexibilityScore;
+			});
 
 			// Story 18.9: Get Shadow Fleet candidates
 			const shadowFleetResult = await getShadowFleetCandidates(
@@ -1545,19 +1598,27 @@ export const missionsRouter = new Hono()
 			if (driverId === "") driverId = null;
 			if (secondDriverId === "") secondDriverId = null;
 
-			// Verify mission exists
-			const quote = await db.quote.findFirst({
+			// Verify mission exists (query Mission table, not Quote)
+			const mission = await db.mission.findFirst({
 				where: {
-					...withTenantId(id, organizationId),
-					status: "ACCEPTED",
+					id,
+					organizationId,
+					quote: {
+						status: "ACCEPTED",
+					},
+				},
+				include: {
+					quote: true,
 				},
 			});
 
-			if (!quote) {
+			if (!mission || !mission.quote) {
 				throw new HTTPException(404, {
 					message: "Mission not found",
 				});
 			}
+
+			const quote = mission.quote;
 
 			// Verify vehicle exists and belongs to organization
 			const vehicle = await db.vehicle.findFirst({
@@ -1674,6 +1735,15 @@ export const missionsRouter = new Hono()
 			await db.quote.update({
 				where: { id: quote.id },
 				data: updateData,
+			});
+
+			// CRITICAL: Also update the Mission table for dispatch visibility
+			await db.mission.update({
+				where: { id: mission.id },
+				data: {
+					vehicleId: vehicleId,
+					driverId: driverId ?? null,
+				},
 			});
 
 			// Then fetch the updated quote with relations to ensure fresh data

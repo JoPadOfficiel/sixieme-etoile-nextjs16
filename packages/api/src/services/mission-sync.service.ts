@@ -154,12 +154,20 @@ export class MissionSyncService {
 
 					if (updateNeeded) {
 						try {
+							// Merge line sourceData with transparency flow data from quote
+							const mergedSourceData = {
+								...(line.sourceData as Record<string, unknown> || {}),
+								// Transparency flow data (flux de transparence)
+								tripAnalysis: quote.tripAnalysis ?? null,
+								appliedRules: quote.appliedRules ?? null,
+								costBreakdown: quote.costBreakdown ?? null,
+							};
 							await tx.mission.update({
 								where: { id: existingMission.id },
 								data: {
 									startAt: this.extractStartTime(quote, line),
 									endAt: quote.estimatedEndAt || undefined,
-									sourceData: line.sourceData || undefined,
+									sourceData: mergedSourceData,
 									// Note: driverId, vehicleId, status are NOT updated
 								},
 							});
@@ -182,6 +190,14 @@ export class MissionSyncService {
 				} else {
 					// Create new mission
 					try {
+						// Merge line sourceData with transparency flow data from quote
+						const mergedSourceData = {
+							...(line.sourceData as Record<string, unknown> || {}),
+							// Transparency flow data (flux de transparence)
+							tripAnalysis: quote.tripAnalysis ?? null,
+							appliedRules: quote.appliedRules ?? null,
+							costBreakdown: quote.costBreakdown ?? null,
+						};
 						await tx.mission.create({
 							data: {
 								organizationId: quote.organizationId,
@@ -189,7 +205,7 @@ export class MissionSyncService {
 								quoteLineId: line.id,
 								startAt: this.extractStartTime(quote, line),
 								endAt: quote.estimatedEndAt || undefined,
-								sourceData: line.sourceData || undefined,
+								sourceData: mergedSourceData,
 								status: "PENDING",
 								// driverId and vehicleId are null (unassigned)
 							},

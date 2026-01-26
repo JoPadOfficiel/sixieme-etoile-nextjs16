@@ -87,6 +87,10 @@ interface LineWithPickupDate {
 		tripType: string;
 		pricingMode: string | null;
 		isRoundTrip: boolean | null;
+		// Transparency flow data
+		tripAnalysis?: unknown;
+		appliedRules?: unknown;
+		costBreakdown?: unknown;
 	};
 	pickupAt: Date;
 	groupLineId: string | null;
@@ -487,6 +491,10 @@ export class SpawnService {
 					// Manual spawn marker
 					manuallySpawned: true,
 					spawnedAt: new Date().toISOString(),
+					// Transparency flow data (flux de transparence)
+					tripAnalysis: quoteLine.quote.tripAnalysis ?? null,
+					appliedRules: quoteLine.quote.appliedRules ?? null,
+					costBreakdown: quoteLine.quote.costBreakdown ?? null,
 				},
 			},
 		});
@@ -685,6 +693,10 @@ export class SpawnService {
 			tripType: string;
 			pricingMode: string | null;
 			isRoundTrip: boolean | null;
+			// Transparency flow data
+			tripAnalysis?: unknown;
+			appliedRules?: unknown;
+			costBreakdown?: unknown;
 		},
 		order: { id: string; organizationId: string; reference: string },
 		groupLineId: string | null,
@@ -813,6 +825,10 @@ export class SpawnService {
 				sequenceIndex,
 				totalMissionsInOrder: totalMissions,
 				spawnedAt: new Date().toISOString(),
+				// Transparency flow data (flux de transparence)
+				tripAnalysis: quote.tripAnalysis ?? null,
+				appliedRules: quote.appliedRules ?? null,
+				costBreakdown: quote.costBreakdown ?? null,
 			} as Prisma.InputJsonValue,
 		};
 	}
@@ -848,7 +864,7 @@ export class SpawnService {
 			passengerCount: number | null;
 			luggageCount: number | null;
 			vehicleCategoryId: string | null;
-			name: string | null;
+			vehicleCategory: { name: string } | null;
 			tripType: string;
 			pricingMode: string | null;
 			isRoundTrip: boolean | null;
